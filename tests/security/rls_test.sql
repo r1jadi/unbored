@@ -1662,7 +1662,7 @@ select rls_test.ok(
               = public.queens_side(level)
             and not exists (
               select 1 from generate_series(1, public.queens_side(level) - 1) r
-               where abs(public.queens_solution(42, level)[r] - public.queens_solution(42, level)[r + 1]) < 2))
+               where abs((public.queens_solution(42, level))[r] - (public.queens_solution(42, level))[r + 1]) < 2))
      from generate_series(1, 30) as level),
   'every Queens solution has one Queen per column and no two touching'
 );
