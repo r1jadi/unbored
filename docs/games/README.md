@@ -3,11 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Eight games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Nine games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
-**7 Second** and **Queens**. Seven of them — Stack 10, Chain, Memory Flash, One
-Move, Color Merge, Don't Touch the Black and Queens — are endless, with no final
-tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
+**7 Second**, **Queens** and **Zip**. Eight of them — all but 7 Second — are
+endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
 
@@ -914,6 +913,152 @@ Each vector is asserted by both the SQL suite and the client engine.
 5. **Seed 1, an ended line** —
    `1,1,8,8,10,10,19,19,22,22,4,4,7,7,15,15,18,18,29,29,32,32`: boards one and two
    solved, then the player ends the run. **110 points**, 22 taps.
+
+## Zip
+
+LinkedIn's Zip puzzle as an endless run against a clock. Every board is an N×N
+grid with numbered checkpoints and sometimes walls: draw one path that starts on
+1, passes through the numbers in order, visits every cell exactly once and ends on
+the highest number, moving up, down, left or right and never through a wall.
+Every board has exactly one solution.
+
+### The board
+
+| Thing   | Value                                                                   |
+| ------- | ----------------------------------------------------------------------- |
+| Board   | 5×5 for levels 1–2, 6×6 for 3–8, then 7×7 for every board               |
+| Clock   | 60 s to start, +5 s per row of every solved board                       |
+| Slack   | 20 s: how late after its clock a run may still reach the server         |
+| Cells   | 8192 at most in one submission: a request bound, not a level            |
+| Rules   | `zip@1`                                                                 |
+| Runtime | `zip` (the catalogue's `games.runtime` value)                           |
+
+### How the real game works, and what this one keeps
+
+LinkedIn's Zip (designed with Grandmaster Puzzles) has exactly these rules; walls
+appear on some boards as a design theme. The player can only draw the path — no
+notes — and undoes by going back over it. Nothing ever ends a daily puzzle: it is
+a race against the timer, and that is what this version keeps. A ranked endless
+run needs an ending the server can check, so a run is one clock: it starts at
+sixty seconds, every solved board adds five seconds per row, and the run is over
+when the clock reaches zero (or when the player ends it).
+
+### The boards
+
+A board is drawn in two steps from one random stream, a function of the run's
+seed, which the **server** chooses:
+
+1. **The solution** — a random path through every cell. This is what the verifier
+   needs, so it is written out in full:
+
+   ```
+   side(n) = 5 for levels 1–2, 6 for 3–8, then 7
+   state₀ = ((seed mod 2³²) + 2³²) mod 2³²            // as One Move and Queens
+   if state₀ = 0 then state₀ = 2654435769
+   stateₙ = (stateₙ₋₁ × 1664525 + 1013904223) mod 2³²  // advanced once per level
+   t = stateₙ; draw() = t ← (t × 22695477 + 1) mod 2³²; t >> 16
+   path = the serpentine: row 0 left→right, row 1 right→left, …
+   repeat 8 × side² times:                            // backbite moves
+     tail = draw() mod 2 = 1; dir = draw() mod 4       // up, down, left, right
+     end = the path's last cell if tail else its first
+     next = end's neighbour in dir; skip if off the board
+     j = next's index on the path
+     if tail:  skip if j = side² − 2, else reverse path[j + 1 … side² − 1]
+     else:     skip if j = 1,         else reverse path[0 … j − 1]
+   ```
+
+   A backbite joins an end of the path to one of its neighbours and reverses the
+   stretch between them, so every step still covers the board; eight per cell
+   leave no trace of the serpentine.
+
+2. **The checkpoints and walls** — 1 on the path's first cell, the highest number
+   on its last, and a checkpoint about every four cells along it (jittered by a
+   cell either way). A solver then looks for a second solution. While one exists,
+   the generator adds one constraint that rules it out and leaves the planted path
+   valid: usually a checkpoint that the other path would reach out of order,
+   otherwise a wall across a step the other path takes and the planted one does
+   not. The solver is a depth-first search that, after every step, requires the
+   unvisited cells to stay one connected piece and no cell to be left with too few
+   open sides. A unique 7×7 board averages a few milliseconds and peaked around
+   75 ms in testing; 8×8 took seconds, which is why the board stops at 7×7.
+
+Only the client places checkpoints and walls. Because the solution is unique, a
+drawn path that covers the board is solved exactly when it *is* the solution, so
+the verifier needs only step 1.
+
+### A move
+
+A move is a **cell index on the current board**, as the path is dragged or tapped:
+
+1. With no path yet, the cell must be the one numbered 1.
+2. A cell already on the path cuts the path back to it (that is how a player
+   undoes). The head itself is not a move.
+3. Any other cell extends the path, if it is a neighbour of the head — and not
+   once the head is the highest number.
+
+The board adds its own two rules and never sends a move that breaks them: no step
+through a wall, and no number reached before the one it follows. The verifier
+does not check those two, because it does not know where the checkpoints are; the
+moves it receives are always a subset of what it accepts, so the two agree on
+every score.
+
+When the path covers the board and is the solution, the board is solved: **ten
+points per row** (50 for 5×5, 70 for 7×7), its clock bonus is added, and the next
+board starts with no path.
+
+### How a run ends, and the server's clock
+
+| Outcome        | When                                     |
+| -------------- | ---------------------------------------- |
+| `over` (time)  | The clock reached zero.                  |
+| `over` (ended) | The player pressed End run.              |
+| `over` (bound) | The submission reached 8192 cells.       |
+
+Any prefix of a legal line is a valid submission: the score never goes down.
+
+The clock is enforced with the **server's** time. Every other game issues its
+session when the play screen opens; Zip issues it when the player presses Start,
+so the session's `started_at` is the start of the run. The verifier refuses a run
+that reaches it more than `zip_budget_ms(boards solved) + zip_slack_ms()` after
+that (`out_of_time`, a `422`). A client that ignored its own clock would only
+reach the server too late.
+
+The cost: a submission whose first send never reached the server, retried by hand
+long after the clock ran out, is refused too. The client retries a failed request
+on its own straight away, and the error screen says that a Zip run has to arrive
+soon after its clock ends.
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261105120000_zip_sessions.sql`.
+
+- `public.zip_path(seed, level)`, `public.zip_side(level)` and
+  `public.zip_budget_ms(cleared)` are the solution, the board and the clock.
+  `zip_path` is internals; execute is not granted to a client.
+- `public.start_game_session` accepts (`zip`, `zip@1`); the session reports
+  `tile_count` 8192 and lives twelve hours.
+- `public.complete_zip_run(session, actions, score, duration)` replays the cells
+  as above, derives the score, compares it with the claim, checks the clock, and
+  only then records it. The Go service routes `zip@` runs to it, accepts up to
+  8192 cells on 0 to 48 (the 7×7 board), and maps `out_of_time` to `422`.
+- `20261105120100_zip_playable.sql` inserts the catalogue record (Puzzle), applied
+  after the deployment carrying the runtime is live.
+
+### Test vectors
+
+Each vector is asserted by both the SQL suite and the client engine.
+
+1. **Seed 1's first two solution paths** (5×5) —
+   `8,7,6,5,10,15,20,21,16,11,12,17,22,23,24,19,18,13,14,9,4,3,2,1,0` and
+   `20,15,10,5,0,1,6,11,12,7,2,3,4,9,8,13,14,19,18,17,16,21,22,23,24`.
+2. **A full-width seed** — `9223372036854775807`'s first board starts
+   `0,1,2,3,4,9,14,…` and its ninth (7×7) starts `8,7,14,15,22,…`.
+3. **Seed 1, a stopped line** — board one's path, then `20,15,10,5,15,10`: board
+   two started, cut back once, and the run ended. **50 points**, 31 cells.
+4. **Seed 1, two boards** — both paths in order: **100 points**, 50 cells.
+5. **The clock** — a session started two minutes earlier: board one alone (85 s
+   earned + 20 s slack) is `out_of_time`; both boards (110 s + 20 s) are on time.
 
 ## Color Merge
 

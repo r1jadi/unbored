@@ -33,6 +33,7 @@ const DYNAMIC_PATHS = [
     "memory-flash",
     "7-second",
     "queens",
+    "zip",
   ].map((id) => `/games/${id}`),
 ];
 

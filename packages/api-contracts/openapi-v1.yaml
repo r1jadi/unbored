@@ -865,7 +865,10 @@ paths:
         exception in the other direction — its clock decides when a run ends, so
         a submission is valid with any number of answers from zero to sixty — and
         so is Queens, whose player may end a run at any time: a Queens run never
-        loses points, so any prefix of a legal line is valid.
+        loses points, so any prefix of a legal line is valid. Zip is the same,
+        with one more check: its run is against a clock the server times from the
+        session's start, and a run that arrives after the time its solved boards
+        earned is refused (`422`).
 
         Retries are safe and expected. A repeated submission of the run already
         recorded answers `200` with `duplicate: true` and the recorded score, and a
@@ -917,7 +920,8 @@ paths:
                         addressed: a column for Stack 10, a pad for Chain, a cell
                         for Memory Flash, a cell for One Move, a direction for
                         Color Merge, a cell for Don't Touch the Black, an
-                        answer button for 7 Second, and a cell for Queens. This is what is replayed; the
+                        answer button for 7 Second, and a cell for Queens and
+                        for Zip (the cells its path enters). This is what is replayed; the
                         rules for how a move is generated and what it does belong
                         to the game (see `docs/games`). The bound is a submission's
                         move ceiling, not a complete run: the finite games' lengths
@@ -927,11 +931,13 @@ paths:
                         forty-eight slides for the retired Color Merge deck), while
                         the endless games carry up to 4096 Stack 10 tiles, 4096
                         Chain taps, 4096 Color Merge slides, 4095 Don't Touch
-                        the Black cell taps and 8192 Queens taps (notes are taps). A position is a column for Stack 10
+                        the Black cell taps, 8192 Queens taps (notes are taps)
+                        and 8192 Zip cells. A position is a column for Stack 10
                         (0–3), a pad for Chain, a cell for Memory Flash, One Move
                         and Don't Touch the Black, a direction for Color Merge
                         (0–3), an answer button for 7 Second (0–2) and a cell of
-                        the 9×9 board for Queens (0–80). Each
+                        the 9×9 board for Queens (0–80) and of the 7×7 board for
+                        Zip (0–48). Each
                         verifier refuses anything past its own bound.
                       maxItems: 8192
                       # The highest position any shipped version addresses: a cell
@@ -2053,7 +2059,7 @@ components:
           description: |
             The client runtime that plays this game (`stack-10`, `chain`,
             `memory-flash`, `one-move`, `color-merge`, `dont-touch`,
-            `seven-second` or `queens`), or null when none exists. It is the runtime's
+            `seven-second`, `queens` or `zip`), or null when none exists. It is the runtime's
             identifier, not its title, because the client mounts a runtime by
             that name.
         playable:

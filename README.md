@@ -53,7 +53,7 @@ are unavailable instead of showing fabricated rows.
 
 ## Games
 
-Eight games are playable end to end. Each has a browser runtime in
+Nine games are playable end to end. Each has a browser runtime in
 [`src/lib/games/`](src/lib/games/), a server-issued play session, and a score the
 database accepts only after replaying the run.
 
@@ -67,6 +67,7 @@ database accepts only after replaying the run.
 | Don't Touch the Black | `dont-touch-the-black` | `dont-touch.ts`   |
 | 7 Second              | `7-second`             | `seven-second.ts` |
 | Queens                | `queens`               | `queens.ts`       |
+| Zip                   | `zip`                  | `zip.ts`          |
 
 7 Second is the daily game: one shared deck per UTC day and one ranked attempt a
 day. `play.$id.tsx` mounts a runtime only for a game whose `runtime` identifier it

@@ -9,6 +9,7 @@ import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
 import { OneMoveRuntime } from "@/components/game/OneMoveRuntime";
 import { QueensRuntime } from "@/components/game/QueensRuntime";
+import { ZipRuntime } from "@/components/game/ZipRuntime";
 import { SevenSecondRuntime } from "@/components/game/SevenSecondRuntime";
 import { Stack10Runtime } from "@/components/game/Stack10Runtime";
 import {
@@ -32,6 +33,7 @@ import { ONE_MOVE_RUNTIME } from "@/lib/games/one-move";
 import { RunProgressContext } from "@/lib/games/run-progress";
 import { prefetchPlay } from "@/lib/prefetch";
 import { QUEENS_RUNTIME } from "@/lib/games/queens";
+import { ZIP_RUNTIME } from "@/lib/games/zip";
 import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
 import { STACK10_RUNTIME } from "@/lib/games/stack10";
 
@@ -62,7 +64,8 @@ export const Route = createFileRoute("/play/$id")({
  * The runtime is chosen by the game's `runtime` identifier — `stack-10` plays Stack
  * 10, `chain` plays Chain, `memory-flash` plays Memory Flash, `one-move` plays One
  * Move, `color-merge` plays Color Merge, `dont-touch` plays Don't Touch the Black,
- * `seven-second` plays 7 Second, `queens` plays Queens, and anything else gets the honest "no runtime
+ * `seven-second` plays 7 Second, `queens` plays Queens, `zip` plays Zip, and
+ * anything else gets the honest "no runtime
  * yet" screen rather than a board that does not follow that game's rules. Every
  * catalogue game now has a runtime, but the branch stays a feature rather than a
  * leftover: it is what stops a future catalogue entry from silently pretending.
@@ -114,7 +117,8 @@ export function PlaySurface({ id, progress }: { id: string; progress: boolean })
       state.game.runtime === COLOR_MERGE_RUNTIME ||
       state.game.runtime === DONT_TOUCH_RUNTIME ||
       state.game.runtime === SEVEN_SECOND_RUNTIME ||
-      state.game.runtime === QUEENS_RUNTIME);
+      state.game.runtime === QUEENS_RUNTIME ||
+      state.game.runtime === ZIP_RUNTIME);
 
   const nav = useNavigate();
   const [confirming, setConfirming] = useState(false);
@@ -178,6 +182,10 @@ export function PlaySurface({ id, progress }: { id: string; progress: boolean })
 
       {state.status === "ready" && state.game.runtime === QUEENS_RUNTIME && playable && (
         <QueensRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
+      )}
+
+      {state.status === "ready" && state.game.runtime === ZIP_RUNTIME && playable && (
+        <ZipRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
       )}
 
       {state.status === "ready" && !(hasShippedRuntime && playable) && (

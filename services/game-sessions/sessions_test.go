@@ -58,7 +58,11 @@ const (
 	// twice: an X, then a Queen. Fifty points and one solved board.
 	queensRules = "queens@1"
 	queensRun   = "[1,1,8,8,10,10,19,19,22,22]"
-	testUserID  = "3f7c2b1e-4d5a-4c9b-8e2f-1a2b3c4d5e6f"
+	// Seed 1's first Zip board is solved by one path through all twenty-five
+	// cells: fifty points and one solved board.
+	zipRules   = "zip@1"
+	zipRun     = "[8,7,6,5,10,15,20,21,16,11,12,17,22,23,24,19,18,13,14,9,4,3,2,1,0]"
+	testUserID = "3f7c2b1e-4d5a-4c9b-8e2f-1a2b3c4d5e6f"
 )
 
 // token signs a token the platform verifier accepts, with the given subject.
@@ -438,6 +442,7 @@ func TestCompleteSessionMapsEveryRefusal(t *testing.T) {
 		{"invalid_actions", http.StatusUnprocessableEntity, "unprocessable_entity", "an impossible run is not a score"},
 		{"invalid_duration", http.StatusUnprocessableEntity, "unprocessable_entity", "a duration longer than the session is impossible"},
 		{"score_mismatch", http.StatusUnprocessableEntity, "unprocessable_entity", "a claim the replay contradicts is refused"},
+		{"out_of_time", http.StatusUnprocessableEntity, "unprocessable_entity", "a Zip run that outlasted its clock is refused"},
 		{"already_played", http.StatusConflict, "conflict", "a second run of today's deck cannot become a second score"},
 	}
 	for _, tc := range cases {
@@ -948,6 +953,57 @@ func TestCompleteSessionRejectsAQueensRunPastItsBounds(t *testing.T) {
 				t.Fatal("a malformed Queens run reached the verifier")
 			}
 		})
+	}
+}
+
+func TestCompleteSessionVerifiesAZipRun(t *testing.T) {
+	backend := testBackend()
+	started := time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)
+	backend.result = supabaseplay.Result{
+		Outcome:        "recorded",
+		SessionID:      sessionID,
+		GameSlug:       "zip",
+		Score:          ptr(int64(50)),
+		ClearedColumns: ptr(1),
+		TilesPlaced:    ptr(25),
+		DurationMS:     ptr(20000),
+		Ranked:         ptr(true),
+		RecordedAt:     &started,
+	}
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules(zipRules, "50", "20000", zipRun), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if body["score"] != float64(50) || body["gameSlug"] != "zip" {
+		t.Fatalf("body = %#v, want the verified Zip run", body)
+	}
+	if backend.lastRun.RulesVersion != zipRules {
+		t.Fatalf("rules version = %q, want the run's pinned zip@1", backend.lastRun.RulesVersion)
+	}
+	if len(backend.lastRun.Actions) != 25 || backend.lastRun.Actions[24] != 0 {
+		t.Fatalf("actions = %v, want the drawn path", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionRejectsAZipCellPastTheLargestBoard(t *testing.T) {
+	// The largest Zip board is 7×7, so cell 49 is malformed input.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules(zipRules, "0", "20000", "[48,49]"), "")
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (%#v)", status, body)
+	}
+	if backend.runCalls != 0 {
+		t.Fatal("a cell outside the Zip board reached the verifier")
 	}
 }
 

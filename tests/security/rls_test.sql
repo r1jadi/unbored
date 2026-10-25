@@ -1471,6 +1471,18 @@ reset role;
 \set queens_open_session   'c0c0c0c0-2222-4222-8222-c0c0c0c0c0c0'
 \set queens_guest_session  'c0c0c0c0-4444-4444-8444-c0c0c0c0c0c0'
 \set queens_old_session    'c0c0c0c0-5555-4555-8555-c0c0c0c0c0c0'
+-- Zip. Seed 1's first two solution paths (both 5×5) are below. The line solves
+-- board one, starts board two, cuts back once and stops: 50 points, thirty-one
+-- cells. See the Zip section of docs/games/README.md.
+\set zip_line 'array[8,7,6,5,10,15,20,21,16,11,12,17,22,23,24,19,18,13,14,9,4,3,2,1,0,20,15,10,5,15,10]'
+\set zip_board_one 'array[8,7,6,5,10,15,20,21,16,11,12,17,22,23,24,19,18,13,14,9,4,3,2,1,0]'
+\set zip_two_boards 'array[8,7,6,5,10,15,20,21,16,11,12,17,22,23,24,19,18,13,14,9,4,3,2,1,0,20,15,10,5,0,1,6,11,12,7,2,3,4,9,8,13,14,19,18,17,16,21,22,23,24]'
+\set zip_game          'd1d1d1d1-aaaa-4aaa-8aaa-d1d1d1d1d1d1'
+\set zip_session       'd1d1d1d1-1111-4111-8111-d1d1d1d1d1d1'
+\set zip_open_session  'd1d1d1d1-2222-4222-8222-d1d1d1d1d1d1'
+\set zip_late_session  'd1d1d1d1-3333-4333-8333-d1d1d1d1d1d1'
+\set zip_guest_session 'd1d1d1d1-4444-4444-8444-d1d1d1d1d1d1'
+\set zip_old_session   'd1d1d1d1-5555-4555-8555-d1d1d1d1d1d1'
 
 insert into public.games (id, owner_id, slug, title, status, published_at, runtime, playable, category_id) values
   (:'runnable_game', :'alice', 'fixture-runnable', 'Fixture Runnable', 'published', now(), 'stack-10', true,
@@ -1498,7 +1510,9 @@ insert into public.games (id, owner_id, slug, title, status, published_at, runti
   (:'seven_second_game', :'alice', 'fixture-seven-second', 'Fixture 7 Second', 'published', now(), 'seven-second', true,
    (select id from public.categories where slug = 'daily')),
   (:'queens_game', :'alice', 'fixture-queens', 'Fixture Queens', 'published', now(), 'queens', true,
-   (select id from public.categories where slug = 'logic'));
+   (select id from public.categories where slug = 'logic')),
+  (:'zip_game', :'alice', 'fixture-zip', 'Fixture Zip', 'published', now(), 'zip', true,
+   (select id from public.categories where slug = 'puzzle'));
 
 -- Runs that have been open for five minutes, which is what makes a claimed
 -- 45-second duration credible: a run cannot have taken longer than the session
@@ -1593,7 +1607,15 @@ insert into public.game_sessions (id, game_id, user_id, seed, rules_version, sta
   (:'queens_session',       :'queens_game', :'alice', 1, 'queens@1', now() - interval '5 minutes', now() + interval '2 hours', null),
   (:'queens_open_session',  :'queens_game', :'alice', 1, 'queens@1', now() - interval '5 minutes', now() + interval '2 hours', null),
   (:'queens_guest_session', :'queens_game', null,     1, 'queens@1', now() - interval '5 minutes', now() + interval '2 hours', null),
-  (:'queens_old_session',   :'queens_game', :'alice', 1, 'queens@0', now() - interval '5 minutes', now() + interval '2 hours', null);
+  (:'queens_old_session',   :'queens_game', :'alice', 1, 'queens@0', now() - interval '5 minutes', now() + interval '2 hours', null),
+  -- Zip fixtures, all on seed 1. Zip's verifier times the run from the session,
+  -- so these started thirty seconds ago — inside the sixty-second opening clock —
+  -- except the late one, which started two minutes ago.
+  (:'zip_session',       :'zip_game', :'alice', 1, 'zip@1', now() - interval '30 seconds', now() + interval '2 hours', null),
+  (:'zip_open_session',  :'zip_game', :'alice', 1, 'zip@1', now() - interval '30 seconds', now() + interval '2 hours', null),
+  (:'zip_late_session',  :'zip_game', :'alice', 1, 'zip@1', now() - interval '2 minutes',  now() + interval '2 hours', null),
+  (:'zip_guest_session', :'zip_game', null,     1, 'zip@1', now() - interval '30 seconds', now() + interval '2 hours', null),
+  (:'zip_old_session',   :'zip_game', :'alice', 1, 'zip@0', now() - interval '30 seconds', now() + interval '2 hours', null);
 
 insert into public.game_sessions
   (id, game_id, user_id, seed, rules_version, started_at, expires_at, completed_at, verified_score, verified_digest)
@@ -1669,6 +1691,39 @@ select rls_test.ok(
 select rls_test.raises(
   $$select public.queens_solution(1, 0)$$,
   '22023', 'a Queens level before the first is a request error'
+);
+-- The Zip path generator, asserted directly: seed 1's first three solution paths
+-- and a full-width seed's first 7×7 path are the ones the client engine draws.
+select rls_test.ok(
+  public.zip_path(1, 1) = array[8,7,6,5,10,15,20,21,16,11,12,17,22,23,24,19,18,13,14,9,4,3,2,1,0]
+    and public.zip_path(1, 2) = array[20,15,10,5,0,1,6,11,12,7,2,3,4,9,8,13,14,19,18,17,16,21,22,23,24]
+    and public.zip_path(1, 3) = array[14,8,7,6,0,1,2,3,9,15,16,10,4,5,11,17,23,29,35,34,33,32,26,27,28,22,21,20,19,13,12,18,24,25,31,30],
+  'the Zip generator draws seed 1''s first three solution paths'
+);
+select rls_test.ok(
+  public.zip_path(9223372036854775807, 9) = array[8,7,14,15,22,21,28,29,36,35,42,43,44,45,38,37,30,23,24,31,32,25,26,33,40,39,46,47,48,41,34,27,20,19,12,13,6,5,4,11,18,17,16,9,10,3,2,1,0],
+  'the Zip generator replays a full-width seed exactly'
+);
+select rls_test.ok(
+  public.zip_path(0, 9) = public.zip_path(2654435769, 9),
+  'a zero Zip seed draws the fallback state''s boards'
+);
+select rls_test.ok(
+  public.zip_side(1) = 5 and public.zip_side(3) = 6 and public.zip_side(9) = 7 and public.zip_side(500) = 7
+    and public.zip_budget_ms(0) = 60000 and public.zip_budget_ms(1) = 85000
+    and public.zip_budget_ms(3) = 140000,
+  'a Zip board grows from 5×5 to 7×7, and the clock adds five seconds a row'
+);
+select rls_test.ok(
+  (select bool_and(
+            (select count(distinct c) from unnest(public.zip_path(42, level)) c)
+              = public.zip_side(level) * public.zip_side(level))
+     from generate_series(1, 12) as level),
+  'every Zip solution path visits every cell once'
+);
+select rls_test.raises(
+  $$select public.zip_path(1, 0)$$,
+  '22023', 'a Zip level before the first is a request error'
 );
 -- The Color Merge generator, asserted directly: the opening board and the
 -- spawns after it are the ones the client engine computes and the verifier
@@ -1979,8 +2034,8 @@ select rls_test.visible(
 -- ships, only the six with runtimes are playable.
 select rls_test.visible(
   $$select 1 from public.games
-     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'queens') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
-  0, 'no shipped game besides the eight runtimes is marked playable'
+     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'queens', 'zip') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
+  0, 'no shipped game besides the nine runtimes is marked playable'
 );
 select rls_test.says_field(
   $$public.start_game_session('stack-10', 'stack-10@1', 'test/1.0')$$,
@@ -2144,6 +2199,24 @@ select rls_test.says(
 select rls_test.says(
   $$public.start_game_session('fixture-one-move', 'queens@1', 'test/1.0')$$,
   'unsupported_runtime', 'a One Move game cannot start a Queens run'
+);
+-- The shipped Zip game, same shape.
+select rls_test.visible(
+  $$select 1 from public.games where slug = 'zip' and playable and runtime = 'zip'
+       and status = 'published' and is_official$$,
+  1, 'the shipped Zip game is published, playable and names its runtime'
+);
+select rls_test.says_field(
+  $$public.start_game_session('zip', 'zip@1', 'test/1.0')$$,
+  'tile_count', '8192', 'a Zip session reports its submission bound'
+);
+select rls_test.says(
+  $$public.start_game_session('fixture-zip', 'queens@1', 'test/1.0')$$,
+  'unsupported_runtime', 'a Zip game cannot start a Queens run'
+);
+select rls_test.says(
+  $$public.start_game_session('fixture-queens', 'zip@1', 'test/1.0')$$,
+  'unsupported_runtime', 'a Queens game cannot start a Zip run'
 );
 select rls_test.says_field(
   $$public.start_game_session('one-move', 'one-move@1', 'test/1.0')$$,
@@ -2493,6 +2566,17 @@ select rls_test.says(
 select rls_test.ok(
   rls_test.count_rows($$select 1 from public.scores where session_id = 'c0c0c0c0-4444-4444-8444-c0c0c0c0c0c0'$$) = 0,
   'a guest Queens run leaves no score behind'
+);
+-- A guest Zip run completes the same way: verified, recorded, unranked.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 50 and r.ranked = false
+     from public.complete_zip_run(
+       'd1d1d1d1-4444-4444-8444-d1d1d1d1d1d1'::uuid, :zip_line, 50, 25000) r),
+  'a guest Zip run is replayed and recorded at fifty, unranked'
+);
+select rls_test.says(
+  format($$public.complete_zip_run('d1d1d1d1-4444-4444-8444-d1d1d1d1d1d1'::uuid, %s, 50, 25000)$$, :'zip_line'),
+  'duplicate', 'a repeated guest Zip submission is recognised, not recorded again'
 );
 
 reset role;
@@ -3194,6 +3278,84 @@ select rls_test.ok(
 select rls_test.ok(
   (select rank = 1 and score = 110 from public.game_standing('fixture-queens', '11111111-1111-4111-8111-111111111111', null)),
   'your Queens standing is your recorded best at its real rank'
+);
+
+-- ── Zip: one path through every cell, against the clock ──
+--
+-- Seed 1's first two boards are solved by the paths in :zip_two_boards. The line
+-- solves board one, starts board two and stops: 50 points, thirty-one cells.
+select rls_test.ok(
+  (select r.outcome = 'recorded'
+      and r.score = 50
+      and r.cleared_columns = 1
+      and r.tiles_placed = 31
+     from public.complete_zip_run(
+       'd1d1d1d1-1111-4111-8111-d1d1d1d1d1d1'::uuid, :zip_line, 50, 25000) r),
+  'a Zip run is recorded: one board solved, thirty-one cells, 50 points'
+);
+select rls_test.says(
+  format($$public.complete_zip_run('d1d1d1d1-1111-4111-8111-d1d1d1d1d1d1'::uuid, %s, 50, 25000)$$, :'zip_line'),
+  'duplicate', 'a retry of the same Zip run is safe to repeat'
+);
+select rls_test.says(
+  $$public.complete_zip_run('d1d1d1d1-1111-4111-8111-d1d1d1d1d1d1'::uuid, array[8], 0, 25000)$$,
+  'closed', 'a closed Zip session does not accept a different run'
+);
+-- Refusals, all leaving the open fixture open for the run that follows.
+select rls_test.says_field(
+  format($$public.complete_zip_run('d1d1d1d1-2222-4222-8222-d1d1d1d1d1d1'::uuid, %s, 999, 25000)$$, :'zip_two_boards'),
+  'score', '100', 'the Zip replay is the score, and it is reported back'
+);
+select rls_test.says(
+  $$public.complete_zip_run('d1d1d1d1-2222-4222-8222-d1d1d1d1d1d1'::uuid, array[0], 0, 25000)$$,
+  'invalid_actions', 'a Zip path must start on the cell numbered 1'
+);
+select rls_test.says(
+  $$public.complete_zip_run('d1d1d1d1-2222-4222-8222-d1d1d1d1d1d1'::uuid, array[8,0], 0, 25000)$$,
+  'invalid_actions', 'a Zip path only steps to a neighbouring cell'
+);
+select rls_test.says(
+  $$public.complete_zip_run('d1d1d1d1-2222-4222-8222-d1d1d1d1d1d1'::uuid, array[8,8], 0, 25000)$$,
+  'invalid_actions', 'the head of a Zip path is not a move'
+);
+select rls_test.says(
+  $$public.complete_zip_run('d1d1d1d1-2222-4222-8222-d1d1d1d1d1d1'::uuid, array[8,7,6,5,0,1], 0, 25000)$$,
+  'invalid_actions', 'a Zip path does not go on past the last number'
+);
+select rls_test.says(
+  $$public.complete_zip_run('d1d1d1d1-2222-4222-8222-d1d1d1d1d1d1'::uuid, array[25], 0, 25000)$$,
+  'invalid_actions', 'a cell past the first 5×5 board is impossible play'
+);
+select rls_test.says(
+  $$public.complete_zip_run('d1d1d1d1-2222-4222-8222-d1d1d1d1d1d1'::uuid, array[8,7,6,5,7,6], 10, 25000)$$,
+  'score_mismatch', 'cutting a Zip path back and redrawing it is legal play, worth nothing until solved'
+);
+select rls_test.says(
+  $$public.complete_zip_run('d1d1d1d1-5555-4555-8555-d1d1d1d1d1d1'::uuid, array[8], 0, 25000)$$,
+  'wrong_rules', 'a Zip session pinned to other rules is refused by its own verifier'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 100 and r.cleared_columns = 2 and r.tiles_placed = 50
+     from public.complete_zip_run(
+       'd1d1d1d1-2222-4222-8222-d1d1d1d1d1d1'::uuid, :zip_two_boards, 100, 25000) r),
+  'a Zip run that solved two boards is recorded at 100'
+);
+-- The clock is the server's. The late session started two minutes ago: one solved
+-- board earns 85 s (+20 s of slack), so that run arrived too late; two solved
+-- boards earn 110 s (+20), so that one is on time.
+select rls_test.says(
+  format($$public.complete_zip_run('d1d1d1d1-3333-4333-8333-d1d1d1d1d1d1'::uuid, %s, 50, 100000)$$, :'zip_board_one'),
+  'out_of_time', 'a Zip run that arrives after its clock ran out is refused'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 100
+     from public.complete_zip_run(
+       'd1d1d1d1-3333-4333-8333-d1d1d1d1d1d1'::uuid, :zip_two_boards, 100, 100000) r),
+  'a solved board buys time: the same arrival with two boards solved is on time'
+);
+select rls_test.ok(
+  (select rank = 1 and score = 100 from public.game_standing('fixture-zip', '11111111-1111-4111-8111-111111111111', null)),
+  'your Zip standing is your recorded best at its real rank'
 );
 
 -- ── Color Merge: the same properties, replayed against a sliding board ──

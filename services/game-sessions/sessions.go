@@ -8,8 +8,8 @@
 //     pinned rules (`complete_stack10_run`, `complete_chain_run`,
 //     `complete_memory_flash_run`, `complete_one_move_run`,
 //     `complete_color_merge_run`, `complete_dont_touch_run`,
-//     `complete_seven_second_run`, `complete_queens_run`) replays the submitted
-//     actions, derives the
+//     `complete_seven_second_run`, `complete_queens_run`, `complete_zip_run`)
+//     replays the submitted actions, derives the
 //     score and writes the ledger. This service validates
 //     the request shape, maps the verifier's outcome onto an HTTP answer, and
 //     never sees a score it can change. That is why there is no service_role key
@@ -77,6 +77,8 @@ const (
 	// queens@1 carries at most 8192 taps: notes (Xs) are taps too, so a long run
 	// spends more of them per board than the other endless games do.
 	queensMaxActions = 8192
+	// zip@1 carries at most 8192 cells: every cell a drawn path enters is one.
+	zipMaxActions = 8192
 	// The bounds a move has to fit. Stack 10 addresses a column and Chain a pad,
 	// both 0 to 3; Color Merge addresses one of its four directions, also 0 to 3;
 	// Memory Flash addresses a cell of its board — sixteen for the retired 4×4
@@ -103,6 +105,8 @@ const (
 	// queensCells is the largest Queens board, 9×9: boards grow from 5×5 and stop
 	// there.
 	queensCells = 81
+	// zipCells is the largest Zip board, 7×7.
+	zipCells = 49
 )
 
 // Patterns mirror the database constraints, so a bad request is a 400 that names
@@ -346,6 +350,8 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 		limit = dontTouchMaxActions
 	case strings.HasPrefix(rules, "queens@"):
 		limit = queensMaxActions
+	case strings.HasPrefix(rules, "zip@"):
+		limit = zipMaxActions
 	}
 	if len(actions) > limit {
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
@@ -420,6 +426,11 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 	case "score_mismatch":
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnprocessable,
 			"That score is not the one this run produces."))
+	case "out_of_time":
+		// Zip only: the run reached the server later than the clock its solved
+		// boards earned, timed from the session's own start.
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnprocessable,
+			"That run finished after its clock ran out, so it cannot be scored."))
 	case "already_played":
 		// One ranked attempt a day is enforced at the ledger too, so two sessions
 		// of the same day's deck cannot both become scores even if their starts
@@ -455,6 +466,8 @@ func boardSize(rulesVersion string) int {
 		return sevenSecondChoices
 	case strings.HasPrefix(rulesVersion, "queens@"):
 		return queensCells
+	case strings.HasPrefix(rulesVersion, "zip@"):
+		return zipCells
 	default:
 		return stackChainPositions
 	}

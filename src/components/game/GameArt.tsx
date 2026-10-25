@@ -55,6 +55,7 @@ export function GameArt({
       {id === "memory-flash" && <MemoryFlash />}
       {id === "7-second" && <Seven />}
       {id === "queens" && <Queens />}
+      {id === "zip" && <Zip />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </div>
   );
@@ -70,6 +71,7 @@ const KNOWN = new Set([
   "memory-flash",
   "7-second",
   "queens",
+  "zip",
 ]);
 
 /**
@@ -207,6 +209,48 @@ function Queens() {
         </div>
       ))}
     </div>
+  );
+}
+
+function Zip() {
+  // Seed 1's first board, solved: one line through every cell, past its numbers.
+  const path = [
+    8, 7, 6, 5, 10, 15, 20, 21, 16, 11, 12, 17, 22, 23, 24, 19, 18, 13, 14, 9, 4, 3, 2, 1, 0,
+  ];
+  const numbers: Record<number, number> = { 8: 1, 6: 2, 16: 3, 12: 4, 24: 5, 14: 6, 2: 7, 0: 8 };
+  return (
+    <svg viewBox="0 0 5 5" className="w-[min(66cqw,66cqh)] max-w-72" aria-hidden>
+      <rect width="5" height="5" rx="0.3" className="fill-surface-2" />
+      <polyline
+        points={path.map((c) => `${(c % 5) + 0.5},${Math.floor(c / 5) + 0.5}`).join(" ")}
+        fill="none"
+        className="stroke-game-7"
+        strokeWidth={0.34}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {Object.entries(numbers).map(([cell, n]) => (
+        <g key={cell}>
+          <circle
+            cx={(+cell % 5) + 0.5}
+            cy={Math.floor(+cell / 5) + 0.5}
+            r={0.28}
+            className="fill-foreground"
+          />
+          <text
+            x={(+cell % 5) + 0.5}
+            y={Math.floor(+cell / 5) + 0.5}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={0.3}
+            fontWeight={600}
+            className="fill-background"
+          >
+            {n}
+          </text>
+        </g>
+      ))}
+    </svg>
   );
 }
 
