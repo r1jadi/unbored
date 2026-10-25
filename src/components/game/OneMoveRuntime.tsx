@@ -254,28 +254,31 @@ function Board({
         board · <span className="tabular">{board.size * board.size}</span> cells
       </p>
 
-      {/* A square board, centred in whatever height is left. The width is capped
-          against the viewport height as well, minus the chrome above and below
-          it, so a landscape phone shows a board that fits instead of one whose
-          bottom row is off screen. Past 12×12 the cells would shrink below a
-          comfortable target, so the board keeps a 36 px cell and scrolls inside
-          this box instead of becoming untappable. */}
+      {/* A square board, centred in whatever space is left. It always fits: the
+          width is the smaller of the column and the viewport height minus the
+          chrome above and below it, so neither a phone nor a landscape screen
+          ever scrolls it. The board grows without cap, so the cells shrink to
+          share that square instead; larger boards get a little more room on a
+          wide screen and tighter gaps so each cell keeps as much of it as
+          possible. */}
       <div className="flex min-h-0 flex-1 items-center justify-center py-3">
-        <div
-          className={cn(
-            "flex max-h-full w-full",
-            board.size > 12 ? "justify-start overflow-auto rounded-xl p-1" : "justify-center",
-          )}
-        >
+        <div className="flex max-h-full w-full justify-center">
           <div
             className={cn(
               "grid aspect-square w-full",
-              board.size > 12 && "shrink-0",
-              board.size > 9 ? "gap-1" : board.size > 6 ? "gap-1.5" : "gap-2",
+              board.size > 12
+                ? "gap-0.5"
+                : board.size > 9
+                  ? "gap-1"
+                  : board.size > 6
+                    ? "gap-1.5"
+                    : "gap-2",
             )}
             style={{
-              width: board.size > 12 ? `${board.size * 2.25}rem` : undefined,
-              maxWidth: board.size > 12 ? undefined : "min(28rem, calc(100dvh - 12rem))",
+              maxWidth:
+                board.size > 9
+                  ? "min(36rem, calc(100dvh - 12rem))"
+                  : "min(28rem, calc(100dvh - 12rem))",
               gridTemplateColumns: `repeat(${board.size}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${board.size}, minmax(0, 1fr))`,
             }}
@@ -291,8 +294,8 @@ function Board({
                 onClick={() => onTap(index)}
                 aria-label={cellLabel(index, board.size, dark, run, verifying)}
                 className={cn(
-                  "press rounded-lg border transition-colors",
-                  board.size > 9 ? "rounded-md" : "rounded-lg",
+                  "press border transition-colors",
+                  board.size > 12 ? "rounded-sm" : board.size > 9 ? "rounded-md" : "rounded-lg",
                   "motion-reduce:transition-none",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   "active:scale-[0.97]",
