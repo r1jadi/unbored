@@ -38,6 +38,7 @@ import { getAccessToken, getSessionUserId } from "@/lib/auth/session";
 import { getQueryClient } from "@/lib/query";
 import {
   createRun as createChainRun,
+  finish as finishChainRun,
   submission as chainSubmission,
   CHAIN_RULES_VERSION,
   tap as tapPad,
@@ -45,6 +46,7 @@ import {
 } from "@/lib/games/chain";
 import {
   createRun as createColorMergeRun,
+  finish as finishColorMergeRun,
   submission as colorMergeSubmission,
   COLOR_MERGE_RULES_VERSION,
   slide as slideColorMerge,
@@ -70,6 +72,7 @@ import {
 } from "@/lib/games/seven-second";
 import {
   createRun as createMemoryFlashRun,
+  finish as finishMemoryFlashRun,
   submission as memoryFlashSubmission,
   MEMORY_FLASH_RULES_VERSION,
   tap as tapCell,
@@ -77,6 +80,7 @@ import {
 } from "@/lib/games/memory-flash";
 import {
   createRun as createOneMoveRun,
+  finish as finishOneMoveRun,
   submission as oneMoveSubmission,
   ONE_MOVE_RULES_VERSION,
   tap as tapOneMoveCell,
@@ -111,6 +115,7 @@ import {
 } from "@/lib/games/eight-puzzle";
 import {
   createRun,
+  finish as finishStack10Run,
   place as placeTile,
   submission,
   STACK10_RULES_VERSION,
@@ -337,6 +342,8 @@ export type Stack10RunState =
     };
 
 export type Stack10RunControls = Stack10RunState & {
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
   /** Places the run's next tile. Ignored unless the run is live. */
   place: (column: number) => void;
   /** Starts a fresh run, replacing whatever is on the board. */
@@ -433,6 +440,14 @@ export function useStack10Run(gameSlug: string): Stack10RunControls {
     });
   }, []);
 
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishStack10Run(current.run);
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
   const restart = useCallback(() => setAttempt((n) => n + 1), []);
 
   const retry = useCallback(() => {
@@ -451,7 +466,7 @@ export function useStack10Run(gameSlug: string): Stack10RunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, place, restart, retry };
+  return { ...state, place, finish, restart, retry };
 }
 
 // ── A run of Chain, from session to score ─────────────────────────────────
@@ -472,6 +487,8 @@ export type ChainRunState =
     };
 
 export type ChainRunControls = ChainRunState & {
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
   /** Taps a pad. Ignored unless the run is live. */
   tap: (pad: number) => void;
   /** Starts a fresh run, replacing whatever is on the board. */
@@ -574,6 +591,14 @@ export function useChainRun(gameSlug: string): ChainRunControls {
     });
   }, []);
 
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishChainRun(current.run);
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
   const restart = useCallback(() => setAttempt((n) => n + 1), []);
 
   const retry = useCallback(() => {
@@ -592,7 +617,7 @@ export function useChainRun(gameSlug: string): ChainRunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, tap, restart, retry };
+  return { ...state, tap, finish, restart, retry };
 }
 
 // ── A run of Memory Flash, from session to score ───────────────────────────
@@ -613,6 +638,8 @@ export type MemoryFlashRunState =
     };
 
 export type MemoryFlashRunControls = MemoryFlashRunState & {
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
   /** Taps a cell. Ignored unless the run is live. */
   tap: (cell: number) => void;
   /** Starts a fresh run, replacing whatever is on the board. */
@@ -715,6 +742,14 @@ export function useMemoryFlashRun(gameSlug: string): MemoryFlashRunControls {
     });
   }, []);
 
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishMemoryFlashRun(current.run);
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
   const restart = useCallback(() => setAttempt((n) => n + 1), []);
 
   const retry = useCallback(() => {
@@ -733,7 +768,7 @@ export function useMemoryFlashRun(gameSlug: string): MemoryFlashRunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, tap, restart, retry };
+  return { ...state, tap, finish, restart, retry };
 }
 
 // ── A run of One Move, from session to score ───────────────────────────────
@@ -754,6 +789,8 @@ export type OneMoveRunState =
     };
 
 export type OneMoveRunControls = OneMoveRunState & {
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
   /**
    * Marks the moment the player pressed Start, so the submitted duration is the
    * run's and not the time spent reading the rules.
@@ -868,6 +905,14 @@ export function useOneMoveRun(gameSlug: string): OneMoveRunControls {
     if (startedAt.current === 0) startedAt.current = Date.now();
   }, []);
 
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishOneMoveRun(current.run);
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
   const restart = useCallback(() => setAttempt((n) => n + 1), []);
 
   const retry = useCallback(() => {
@@ -886,7 +931,7 @@ export function useOneMoveRun(gameSlug: string): OneMoveRunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, begin, tap, restart, retry };
+  return { ...state, begin, tap, finish, restart, retry };
 }
 
 // ── A run of Queens, from session to score ───────────────────────────────
@@ -1466,6 +1511,8 @@ export type ColorMergeRunState =
     };
 
 export type ColorMergeRunControls = ColorMergeRunState & {
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
   /**
    * Marks the moment the player pressed Start, so the submitted duration is the
    * run's and not the time spent reading the rules.
@@ -1580,6 +1627,14 @@ export function useColorMergeRun(gameSlug: string): ColorMergeRunControls {
     if (startedAt.current === 0) startedAt.current = Date.now();
   }, []);
 
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishColorMergeRun(current.run);
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
   const restart = useCallback(() => setAttempt((n) => n + 1), []);
 
   const retry = useCallback(() => {
@@ -1598,7 +1653,7 @@ export function useColorMergeRun(gameSlug: string): ColorMergeRunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, begin, slide, restart, retry };
+  return { ...state, begin, slide, finish, restart, retry };
 }
 
 // ── A run of Don't Touch the Black, from session to score ──────────────────

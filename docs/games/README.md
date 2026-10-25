@@ -10,6 +10,21 @@ Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
 
+
+## Ending a run
+
+Every game can be ended by the player, and ending a run **saves it**: the run is
+submitted as it stands, verified like any other, and its score recorded. A run
+has an End run control on its board, and the play screen's quit button asks to
+end and save a live run rather than leaving without a score.
+
+Every verifier accepts a run that stops while it is still live, because in every
+game the score only grows: cutting a line short can never raise a score, only
+stop the run earlier. Stack 10, Chain, Memory Flash, One Move and Color Merge
+learned this in `supabase/migrations/20261107120000_end_run_saves_score.sql`
+(their `@2` rules; the retired `@1` rules still require a complete run); the
+other games accepted it from the start.
+
 ## Stack 10
 
 Place the numbered tiles the game deals into four columns. A column that adds up to

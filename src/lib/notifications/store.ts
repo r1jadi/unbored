@@ -115,6 +115,30 @@ export async function markRead(id: string): Promise<void> {
   }
 }
 
+// Every mounted unread badge listens here, so the inbox can clear them all the
+// moment it is opened rather than leaving a stale number until the next reload.
+const unreadListeners = new Set<(count: number | null) => void>();
+
+/** Sets every badge to `count` now; `null` asks every badge to read the count again. */
+function announceUnread(count: number | null): void {
+  unreadListeners.forEach((listener) => listener(count));
+}
+
+/**
+ * Opening the inbox reads every notification in it: the badge clears at once,
+ * and the rows are marked read on the server. If marking fails, the badges read
+ * the real count again rather than showing a zero that is not true.
+ */
+export async function openInbox(): Promise<void> {
+  announceUnread(0);
+  try {
+    await markAllRead();
+  } catch (error) {
+    announceUnread(null);
+    throw error;
+  }
+}
+
 export type NotificationsState =
   | { status: "anonymous" }
   | { status: "loading" }
@@ -226,6 +250,35 @@ export function useUnreadCount(): UnreadBadgeState & { retry: () => void } {
       }),
     [],
   );
+
+  // The inbox clears the badge when it is opened (see `openInbox`).
+  useEffect(() => {
+    const listener = (count: number | null) => {
+      if (getAuthState().status !== "authenticated") return;
+      if (count === null) setTick((n) => n + 1);
+      else setState({ status: "ready", count });
+    };
+    unreadListeners.add(listener);
+    return () => {
+      unreadListeners.delete(listener);
+    };
+  }, []);
+
+  // Coming back to the tab reads the count again, so a notification that arrived
+  // in the meantime shows without a reload.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible" && getAuthState().status === "authenticated") {
+        setTick((n) => n + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
 
   const retry = useCallback(() => setTick((n) => n + 1), []);
   return { ...state, retry } as UnreadBadgeState & { retry: () => void };

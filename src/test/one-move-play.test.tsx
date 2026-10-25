@@ -5,7 +5,7 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OneMoveRuntime } from "@/components/game/OneMoveRuntime";
@@ -384,6 +384,30 @@ describe("finishing a run", () => {
     expect(body.progress.actions).toHaveLength(21);
     expect(body.progress.rulesVersion).toBe("one-move@2");
     expect(body.score).toBe(200);
+  });
+
+  it("ends the run where the player stops, and saves the score so far", async () => {
+    const spy = mockFetch((url) =>
+      url.includes("/complete")
+        ? jsonResponse(resultPayload({ score: 20, clearedColumns: 2, tilesPlaced: 2 }))
+        : jsonResponse(sessionPayload(), 201),
+    );
+    await renderRuntime();
+    await startRun();
+
+    tapIndex(7, 1);
+    tapIndex(8, 2);
+    fireEvent.click(screen.getByRole("button", { name: "End run" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Your score of 20 is kept");
+    fireEvent.click(within(dialog).getByRole("button", { name: "End run" }));
+
+    await screen.findByRole("button", { name: /play again/i });
+    expect(screen.getByText("Run ended")).toBeInTheDocument();
+    const completion = spy.mock.calls.find((call) => String(call[0]).includes("/complete"));
+    const body = JSON.parse(String(completion?.[1]?.body ?? "{}"));
+    expect(body.progress.actions).toEqual([7, 8]);
+    expect(body.score).toBe(20);
   });
 
   it("starts a fresh run from the end-of-run screen, rules first", async () => {

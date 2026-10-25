@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bell, Heart, MessageCircle, Settings, Trophy, UserPlus, Zap } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EmptyState, ErrorState, ListSkeleton, Page, PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import {
   describeNotification,
-  markAllRead,
+  openInbox,
   useNotifications,
   type AppNotification,
 } from "@/lib/notifications/store";
@@ -48,11 +48,27 @@ function matchesFilter(item: AppNotification, filter: (typeof filters)[number]):
  * Real inbox: rows from `public.notifications` for the signed-in user. Guests
  * get a sign-in prompt, an empty inbox gets a clean empty state, and a failure
  * gets a retry — never fixture rows and never another user's count.
+ *
+ * Opening the inbox reads it: once the rows have loaded, every unread one is
+ * marked read and the badge in the navigation clears. The rows that were new
+ * keep their dot for the rest of this visit, so the player can still see what
+ * arrived; the next visit shows them as read.
  */
 function Notifications() {
   const state = useNotifications();
   const [filter, setFilter] = useState<(typeof filters)[number]>("All");
-  const [marking, setMarking] = useState(false);
+  const opened = useRef(false);
+  const hasUnread = state.status === "ready" && state.items.some((item) => !item.readAt);
+
+  useEffect(() => {
+    if (!hasUnread || opened.current) return;
+    opened.current = true;
+    // A failure leaves the rows unread on the server; the badge reads the real
+    // count again, and the next visit tries once more.
+    openInbox().catch(() => {
+      opened.current = false;
+    });
+  }, [hasUnread]);
 
   if (state.status === "anonymous") {
     return (
@@ -97,42 +113,19 @@ function Notifications() {
   }
 
   const list = state.items.filter((item) => matchesFilter(item, filter));
-  const unread = state.items.filter((item) => !item.readAt).length;
-
-  async function markAll() {
-    if (marking || unread === 0) return;
-    setMarking(true);
-    try {
-      await markAllRead();
-      state.retry();
-    } catch {
-      // The error surfaces on the next read; the button stays available.
-    } finally {
-      setMarking(false);
-    }
-  }
+  const fresh = state.items.filter((item) => !item.readAt).length;
 
   return (
     <Page>
       <PageHeader
         title="Notifications"
-        subtitle={unread > 0 ? `${unread} unread` : undefined}
+        subtitle={fresh > 0 ? `${fresh} new` : undefined}
         actions={
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void markAll()}
-              disabled={marking || unread === 0}
-            >
-              Mark all read
-            </Button>
-            <Button asChild variant="ghost" size="icon" aria-label="Notification settings">
-              <Link to="/settings/$section" params={{ section: "notifications" }}>
-                <Settings />
-              </Link>
-            </Button>
-          </>
+          <Button asChild variant="ghost" size="icon" aria-label="Notification settings">
+            <Link to="/settings/$section" params={{ section: "notifications" }}>
+              <Settings />
+            </Link>
+          </Button>
         }
       />
       <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-2 md:px-0">
@@ -211,7 +204,7 @@ function Notifications() {
                   </Button>
                 )}
                 {!item.readAt && (
-                  <span className="size-2 rounded-full bg-primary" aria-label="Unread" />
+                  <span className="size-2 rounded-full bg-primary" aria-label="New" />
                 )}
               </li>
             );

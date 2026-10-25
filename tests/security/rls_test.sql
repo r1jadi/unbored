@@ -2760,8 +2760,7 @@ select rls_test.ok(
 --
 -- Seed 1's retired perfect line is sixty tiles for 420; the endless rules keep
 -- playing, and seven more tiles end it at sixty-seven for 435. The retired line
--- on its own is now a *partial* run, which is the proof the deck no longer ends
--- anything.
+-- on its own no longer ends anything: it is a run the player stopped at sixty.
 select rls_test.ok(
   (select r.outcome = 'recorded'
       and r.score = 435
@@ -2784,10 +2783,12 @@ select rls_test.ok(
   'an endless Stack 10 score becomes the standing on its own board'
 );
 -- The retired perfect line, submitted to an endless session, stops at tile 60
--- with the board still able to take a tile: a partial run, not a complete one.
-select rls_test.says(
-  format($$public.complete_stack10_run('cccccccc-8888-4888-8888-cccccccccccc'::uuid, (%s)[1:60], 420, 45000)$$, :'stack10_endless'),
-  'invalid_actions', 'the retired sixty-tile line is a partial endless run'
+-- with the board still able to take a tile: the player ended the run, and it is
+-- scored as it stands (a wrong claim reports the score and keeps the session
+-- open for the assertions below).
+select rls_test.says_field(
+  format($$public.complete_stack10_run('cccccccc-8888-4888-8888-cccccccccccc'::uuid, (%s)[1:60], 999999, 45000)$$, :'stack10_endless'),
+  'score', '420', 'an endless Stack 10 run the player ends after sixty tiles is scored as it stands'
 );
 select rls_test.says_field(
   format($$public.complete_stack10_run('cccccccc-8888-4888-8888-cccccccccccc'::uuid, %s, 999, 45000)$$, :'stack10_endless'),
@@ -2910,15 +2911,15 @@ select rls_test.ok(
   'a run past ten rounds ranks on the endless board at its real score'
 );
 -- Refusals, each leaving the open session open for the next attempt. A
--- submission that does not end with a loss is not a finished endless run, even
--- when it is the old ten-round perfect line: there is no clear to reach any more.
-select rls_test.says(
-  format($$public.complete_chain_run('dddddddd-6666-4666-8666-dddddddddddd'::uuid, %s, 55, 45000)$$, :'chain_perfect'),
-  'invalid_actions', 'the old ten-round perfect line is a partial endless run, not a clear'
+-- submission that does not end with a loss is a run the player ended, and is
+-- scored as it stands; the wrong claims below keep the session open.
+select rls_test.says_field(
+  format($$public.complete_chain_run('dddddddd-6666-4666-8666-dddddddddddd'::uuid, %s, 999999, 45000)$$, :'chain_perfect'),
+  'score', '55', 'an endless Chain run the player ends after ten rounds is scored as it stands'
 );
-select rls_test.says(
-  $$public.complete_chain_run('dddddddd-6666-4666-8666-dddddddddddd'::uuid, array[0,0,0], 3, 45000)$$,
-  'invalid_actions', 'an endless run that stops mid-round is partial'
+select rls_test.says_field(
+  $$public.complete_chain_run('dddddddd-6666-4666-8666-dddddddddddd'::uuid, array[0,0,0], 999999, 45000)$$,
+  'score', '3', 'an endless Chain run the player ends mid-round is scored as it stands'
 );
 select rls_test.says(
   format($$public.complete_chain_run('dddddddd-6666-4666-8666-dddddddddddd'::uuid, %s || 0, 78, 45000)$$, :'chain_endless_line'),
@@ -3103,16 +3104,16 @@ select rls_test.ok(
   (select rank = 1 and score = 120 from public.game_standing('fixture-memory-endless', :'alice'::uuid, null)),
   'a run past ten patterns ranks on the endless board at its real score'
 );
--- Refusals, each leaving the open session open for the next attempt. An endless
--- run has to be submitted in the state it ended in: a run that stops before its
--- mistake is partial, even when it is the retired game's perfect line.
-select rls_test.says(
-  format($$public.complete_memory_flash_run('eeeeeeee-6666-4666-8666-eeeeeeeeeeee'::uuid, (%s::integer[])[1:78], 120, 45000)$$, :'memory_endless'),
-  'invalid_actions', 'the endless line cut before its losing tap is a partial run, not a clear'
+-- Refusals, each leaving the open session open for the next attempt. A run that
+-- stops before its mistake is a run the player ended, and is scored as it stands;
+-- the wrong claims below keep the session open.
+select rls_test.says_field(
+  format($$public.complete_memory_flash_run('eeeeeeee-6666-4666-8666-eeeeeeeeeeee'::uuid, (%s::integer[])[1:78], 999999, 45000)$$, :'memory_endless'),
+  'score', '120', 'an endless Memory Flash run ended before its losing tap is scored as it stands'
 );
-select rls_test.says(
-  format($$public.complete_memory_flash_run('eeeeeeee-6666-4666-8666-eeeeeeeeeeee'::uuid, %s, 80, 45000)$$, :'memory_eight_rounds'),
-  'invalid_actions', 'a run that stops after round eight is partial: there is no ten-round clear to reach'
+select rls_test.says_field(
+  format($$public.complete_memory_flash_run('eeeeeeee-6666-4666-8666-eeeeeeeeeeee'::uuid, %s, 999999, 45000)$$, :'memory_eight_rounds'),
+  'score', '80', 'an endless Memory Flash run the player ends after round eight is scored as it stands'
 );
 select rls_test.says(
   format($$public.complete_memory_flash_run('eeeeeeee-6666-4666-8666-eeeeeeeeeeee'::uuid, %s, 100, 45000)$$, :'memory_perfect'),
@@ -3252,9 +3253,9 @@ select rls_test.says_field(
   format($$public.complete_one_move_run('ffffffff-6666-4666-8666-ffffffffffff'::uuid, %s, 999, 45000)$$, :'one_move_endless'),
   'score', '200', 'the endless One Move replay is the score, and it is reported back'
 );
-select rls_test.says(
-  format($$public.complete_one_move_run('ffffffff-6666-4666-8666-ffffffffffff'::uuid, %s, 120, 45000)$$, :'one_move_perfect'),
-  'invalid_actions', 'a run that stops after the retired twelfth board is partial, not a clear'
+select rls_test.says_field(
+  format($$public.complete_one_move_run('ffffffff-6666-4666-8666-ffffffffffff'::uuid, %s, 999999, 45000)$$, :'one_move_perfect'),
+  'score', '120', 'an endless One Move run the player ends after twelve boards is scored as it stands'
 );
 select rls_test.says(
   format($$public.complete_one_move_run('ffffffff-6666-4666-8666-ffffffffffff'::uuid, %s || 36, 120, 45000)$$, :'one_move_perfect'),
@@ -3586,8 +3587,7 @@ select rls_test.ok(
 --
 -- Seed 1 plays sixty-four slides before its board locks: sixteen more than the
 -- old deck allowed, and 468 points. Seed 15 locks at fifty-two for 292. The
--- legacy forty-eight-slide line is now a *partial* endless run, which is the
--- clearest proof that the deck no longer ends anything.
+-- legacy forty-eight-slide line no longer ends anything.
 select rls_test.ok(
   (select r.outcome = 'recorded'
       and r.score = 468
@@ -3608,15 +3608,15 @@ select rls_test.ok(
   (select rank = 1 and score = 468 from public.game_standing('fixture-color-merge', '11111111-1111-4111-8111-111111111111', null)),
   'an endless Color Merge score becomes the standing, past the old deck best'
 );
--- The legacy deck line, submitted to an endless session, stops at slide 48 with
--- the board still playable: the run is partial, not complete.
+-- Seed 1's lines are not lines seed 15's board can produce: one of their slides
+-- changes nothing on it.
 select rls_test.says(
   format($$public.complete_color_merge_run('99999999-7777-4777-8777-999999999999'::uuid, %s, 272, 45000)$$, :'color_merge_deck'),
-  'invalid_actions', 'the retired forty-eight-slide deck is a partial endless run'
+  'invalid_actions', 'another seed''s deck line is impossible play on an endless board'
 );
-select rls_test.says(
-  format($$public.complete_color_merge_run('99999999-7777-4777-8777-999999999999'::uuid, (%s)[1:48], 272, 45000)$$, :'color_merge_endless_one'),
-  'invalid_actions', 'an endless Color Merge run that stops before its board locks is partial'
+select rls_test.says_field(
+  format($$public.complete_color_merge_run('99999999-7777-4777-8777-999999999999'::uuid, (%s)[1:40], 999999, 45000)$$, :'color_merge_endless_two'),
+  'score', '184', 'an endless Color Merge run the player ends before its board locks is scored as it stands'
 );
 select rls_test.says_field(
   format($$public.complete_color_merge_run('99999999-7777-4777-8777-999999999999'::uuid, %s, 999, 45000)$$, :'color_merge_endless_two'),

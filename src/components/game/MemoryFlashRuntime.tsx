@@ -3,6 +3,7 @@ import { Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } from "lucide-r
 import { useEffect, useState } from "react";
 
 import { ErrorState } from "@/components/common";
+import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -111,6 +112,7 @@ export function MemoryFlashRuntime({ slug, title }: { slug: string; title: strin
         session={state.session}
         verifying={state.status === "submitting"}
         onTap={state.tap}
+        onFinish={state.finish}
       />
     );
   }
@@ -135,11 +137,14 @@ function Board({
   session,
   verifying,
   onTap,
+  onFinish,
 }: {
   run: MemoryFlashRun;
   session: PlaySession;
   verifying: boolean;
   onTap: (cell: number) => void;
+  /** Ends the run where it stands and submits it. */
+  onFinish: () => void;
 }) {
   const round = run.round;
   const seed = run.seed;
@@ -165,7 +170,7 @@ function Board({
   const accepting = !showing && !verifying && run.outcome === "playing";
 
   // From the first showing beat the run is live: leaving loses it.
-  useReportRunProgress(!verifying && run.outcome === "playing");
+  useReportRunProgress(!verifying && run.outcome === "playing", onFinish);
 
   const pattern = patternAt(seed, round);
   const remaining = Math.max(0, round - run.entered.length);
@@ -258,6 +263,11 @@ function Board({
           ? "The cells entered so far are your score if the server agrees."
           : "Rebuild each pattern in any order. A wrong cell ends the run. Ten points a round, with no final pattern."}
       </p>
+      <EndRunButton
+        score={run.score}
+        disabled={verifying || run.outcome !== "playing"}
+        onEnd={onFinish}
+      />
     </div>
   );
 }
@@ -303,7 +313,9 @@ function Finished({
             <ShieldCheck className="size-5 text-muted-foreground" />
           )}
         </div>
-        <p className="text-sm text-muted-foreground">Pattern broken</p>
+        <p className="text-sm text-muted-foreground">
+          {run.stopped ? "Run ended" : "Pattern broken"}
+        </p>
         <p className="text-5xl font-semibold tabular">{result.score}</p>
         <p className="text-sm text-muted-foreground">
           {`${result.tilesPlaced} cells tapped, ${result.clearedColumns} rounds cleared.`}

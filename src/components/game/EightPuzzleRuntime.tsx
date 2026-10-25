@@ -216,7 +216,7 @@ function Board({
   const boardRef = useRef<HTMLDivElement>(null);
   const accepting = !verifying && run.outcome === "playing";
 
-  useReportRunProgress(accepting);
+  useReportRunProgress(accepting, onFinish);
 
   // The board takes focus so the arrow keys work straight away.
   useEffect(() => {

@@ -171,7 +171,7 @@ function Conveyor({
   const accepting = !verifying && run.outcome === "playing";
 
   // A started, unverified run is progress the player would lose by leaving.
-  useReportRunProgress(started && accepting);
+  useReportRunProgress(started && accepting, onFinish);
 
   const tap = useCallback(
     (cell: number) => {

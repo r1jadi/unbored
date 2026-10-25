@@ -140,6 +140,8 @@ export type ChainRun = {
   /** The round being played, 1-based. Unbounded. */
   readonly round: number;
   readonly outcome: ChainOutcome;
+  /** True when the player ended the run, rather than the game ending it. */
+  readonly stopped?: true;
 };
 
 /**
@@ -274,6 +276,17 @@ export function tap(run: ChainRun, pad: number): ChainRun {
     round: roundDone ? run.round + 1 : run.round,
     outcome: "playing",
   };
+}
+
+/**
+ * Ends the run where it stands: the player stopped. The score is kept, and the
+ * verifier accepts the line as it is, because the score only ever grows, so
+ * stopping early can never earn a point. A run that is already over is returned
+ * unchanged.
+ */
+export function finish(run: ChainRun): ChainRun {
+  if (run.outcome !== "playing") return run;
+  return { ...run, outcome: "over", stopped: true };
 }
 
 /**

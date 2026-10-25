@@ -3,6 +3,7 @@ import { Grid2x2, Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } from 
 import { useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
+import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -92,6 +93,7 @@ export function OneMoveRuntime({ slug, title }: { slug: string; title: string })
         session={state.session}
         verifying={state.status === "submitting"}
         onTap={state.tap}
+        onFinish={state.finish}
         onBegin={state.begin}
         slug={slug}
         title={title}
@@ -100,7 +102,14 @@ export function OneMoveRuntime({ slug, title }: { slug: string; title: string })
   }
 
   if (state.status === "finished") {
-    return <Finished slug={slug} result={state.result} onRestart={state.restart} />;
+    return (
+      <Finished
+        slug={slug}
+        result={state.result}
+        stopped={state.run.stopped === true}
+        onRestart={state.restart}
+      />
+    );
   }
 
   // The only remaining shape is an error with no run to show, which the branches
@@ -119,6 +128,7 @@ function Board({
   session,
   verifying,
   onTap,
+  onFinish,
   onBegin,
   slug,
   title,
@@ -127,6 +137,8 @@ function Board({
   session: PlaySession;
   verifying: boolean;
   onTap: (cell: number) => void;
+  /** Ends the run where it stands and submits it. */
+  onFinish: () => void;
   /** Starts the run's clock; the time spent on the rules is not the run's. */
   onBegin: () => void;
   slug: string;
@@ -146,7 +158,7 @@ function Board({
   }, [started]);
 
   // A started, unverified run is progress the player would lose by leaving.
-  useReportRunProgress(started && !verifying && run.outcome === "playing");
+  useReportRunProgress(started && !verifying && run.outcome === "playing", onFinish);
 
   if (!started) {
     return (
@@ -317,6 +329,11 @@ function Board({
           ? "The taps you made are your score if the server agrees."
           : "A move flips a cross. Find the one that restores the pattern. Ten points a board, with no final board."}
       </p>
+      <EndRunButton
+        score={run.score}
+        disabled={verifying || run.outcome !== "playing"}
+        onEnd={onFinish}
+      />
     </div>
   );
 }
@@ -341,10 +358,12 @@ function cellLabel(
 function Finished({
   slug,
   result,
+  stopped,
   onRestart,
 }: {
   slug: string;
   result: RunResult;
+  stopped: boolean;
   onRestart: () => void;
 }) {
   return (
@@ -357,7 +376,7 @@ function Finished({
             <ShieldCheck className="size-5 text-muted-foreground" />
           )}
         </div>
-        <p className="text-sm text-muted-foreground">One move missed</p>
+        <p className="text-sm text-muted-foreground">{stopped ? "Run ended" : "One move missed"}</p>
         <p className="text-5xl font-semibold tabular">{result.score}</p>
         <p className="text-sm text-muted-foreground">
           {`${result.tilesPlaced} ${result.tilesPlaced === 1 ? "tap" : "taps"}, ${

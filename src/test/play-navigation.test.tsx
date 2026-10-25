@@ -167,7 +167,7 @@ describe("quitting a game", () => {
     await waitFor(() => expect(pathname(router)).toBe("/games/one-move"));
   });
 
-  it("asks before discarding a live run and stays put when the player keeps playing", async () => {
+  it("asks before ending a live run and stays put when the player keeps playing", async () => {
     stubBackend();
     const router = renderPlay(ENTERED_A_GAME);
     await load(router);
@@ -177,7 +177,8 @@ describe("quitting a game", () => {
 
     await press(screen.getByRole("button", { name: "Quit game" }));
     const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent("Leave this run?");
+    expect(dialog).toHaveTextContent("End this run?");
+    expect(dialog).toHaveTextContent(/saves your score so far/);
 
     await press(screen.getByRole("button", { name: "Keep playing" }));
 
@@ -185,18 +186,33 @@ describe("quitting a game", () => {
     expect(screen.getByRole("group", { name: "Board 1, 3 by 3" })).toBeInTheDocument();
   });
 
-  it("goes to the feed once the player confirms, leaving no play entry behind", async () => {
+  it("ends and saves the run once the player confirms, then leaves in one tap", async () => {
     stubBackend();
     const router = renderPlay(ENTERED_A_GAME);
     await load(router);
 
     await press(await screen.findByRole("button", { name: "Start run" }));
     await screen.findByRole("group", { name: "Board 1, 3 by 3" });
+    // Board one restored: a run with a score worth keeping.
+    await press(screen.getByRole("button", { name: /^Row 3 column 2,/ }));
 
     await press(screen.getByRole("button", { name: "Quit game" }));
-    await press(await screen.findByRole("button", { name: "Leave run" }));
+    await press(await screen.findByRole("button", { name: "End run and save" }));
 
+    // The run was submitted as it stood, and the verified result is shown.
+    await screen.findByText("Run ended");
+    const fetchSpy = vi.mocked(fetch);
+    const completion = fetchSpy.mock.calls.find((call) => String(call[0]).includes("/complete"));
+    const body = JSON.parse(String(completion?.[1]?.body ?? "{}"));
+    expect(body.progress.actions).toEqual([7]);
+    expect(body.score).toBe(10);
+    expect(pathname(router)).toBe("/play/one-move");
+
+    // With the run saved there is nothing left to protect: quitting is one tap,
+    // and it replaces the game so Back does not land inside it.
+    await press(screen.getByRole("button", { name: "Quit game" }));
     await waitFor(() => expect(pathname(router)).toBe("/"));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await goBack(router);
     await waitFor(() => expect(pathname(router)).toBe("/games/one-move"));
   });
@@ -281,10 +297,11 @@ describe("the progress report", () => {
     });
 
     await screen.findByRole("button", { name: "Start run" });
-    expect(report).toHaveBeenLastCalledWith(false);
+    expect(report).toHaveBeenLastCalledWith(false, undefined);
 
+    // A live run is reported with the runtime's way to end it and save it.
     await press(screen.getByRole("button", { name: "Start run" }));
     await screen.findByRole("group", { name: "Board 1, 3 by 3" });
-    expect(report).toHaveBeenLastCalledWith(true);
+    expect(report).toHaveBeenLastCalledWith(true, expect.any(Function));
   });
 });

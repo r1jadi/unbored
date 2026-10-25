@@ -3,6 +3,7 @@ import { Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } from "lucide-r
 import { useEffect, useState } from "react";
 
 import { ErrorState } from "@/components/common";
+import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -105,12 +106,21 @@ export function ChainRuntime({ slug, title }: { slug: string; title: string }) {
         session={state.session}
         verifying={state.status === "submitting"}
         onTap={state.tap}
+        onFinish={state.finish}
       />
     );
   }
 
   if (state.status === "finished") {
-    return <Finished slug={slug} title={title} result={state.result} onRestart={state.restart} />;
+    return (
+      <Finished
+        slug={slug}
+        title={title}
+        result={state.result}
+        stopped={state.run.stopped === true}
+        onRestart={state.restart}
+      />
+    );
   }
 
   // The only remaining shape is an error with no run to show, which the branches
@@ -135,11 +145,14 @@ function Board({
   session,
   verifying,
   onTap,
+  onFinish,
 }: {
   run: ChainRun;
   session: PlaySession;
   verifying: boolean;
   onTap: (pad: number) => void;
+  /** Ends the run where it stands and submits it. */
+  onFinish: () => void;
 }) {
   const [showing, setShowing] = useState(true);
   const [lit, setLit] = useState<number | null>(null);
@@ -170,7 +183,7 @@ function Board({
   const accepting = !showing && !verifying && run.outcome === "playing";
 
   // From the first showing beat the run is live: leaving loses it.
-  useReportRunProgress(!verifying && run.outcome === "playing");
+  useReportRunProgress(!verifying && run.outcome === "playing", onFinish);
 
   // Taps taken in this round so far: the round replays the sequence from its
   // start, so this is also the position the next tap is checked against.
@@ -263,6 +276,11 @@ function Board({
           ? "The taps so far are your score if the server agrees."
           : "Every round adds a tap and tightens the beat. A wrong tap ends the run."}
       </p>
+      <EndRunButton
+        score={run.score}
+        disabled={verifying || run.outcome !== "playing"}
+        onEnd={onFinish}
+      />
     </div>
   );
 }
@@ -288,11 +306,13 @@ function Finished({
   slug,
   title,
   result,
+  stopped,
   onRestart,
 }: {
   slug: string;
   title: string;
   result: RunResult;
+  stopped: boolean;
   onRestart: () => void;
 }) {
   return (
@@ -305,7 +325,7 @@ function Finished({
             <ShieldCheck className="size-5 text-muted-foreground" />
           )}
         </div>
-        <p className="text-sm text-muted-foreground">Chain broken</p>
+        <p className="text-sm text-muted-foreground">{stopped ? "Run ended" : "Chain broken"}</p>
         <p className="text-5xl font-semibold tabular">{result.score}</p>
         <p className="text-sm text-muted-foreground">
           {`${result.tilesPlaced} taps placed, ${result.clearedColumns} rounds cleared.`}
