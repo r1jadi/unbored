@@ -54,6 +54,7 @@ export function GameArt({
       {id === "dont-break-the-chain" && <Chain />}
       {id === "memory-flash" && <MemoryFlash />}
       {id === "7-second" && <Seven />}
+      {id === "queens" && <Queens />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </div>
   );
@@ -68,6 +69,7 @@ const KNOWN = new Set([
   "dont-break-the-chain",
   "memory-flash",
   "7-second",
+  "queens",
 ]);
 
 /**
@@ -183,6 +185,26 @@ function OneMove() {
                 : "bg-surface-2",
           )}
         />
+      ))}
+    </div>
+  );
+}
+
+function Queens() {
+  // Seed 1's first board, solved: the regions read as shapes, and the Queens sit
+  // one per row, column and region without touching.
+  const regions = [0, 0, 0, 1, 1, 0, 0, 3, 1, 3, 2, 3, 3, 3, 3, 4, 4, 3, 3, 3, 4, 4, 4, 3, 3];
+  const queens = new Set([1, 8, 10, 19, 22]);
+  const fills = ["bg-game-1/50", "bg-game-2/50", "bg-game-4/50", "bg-game-6/50", "bg-game-5/50"];
+  return (
+    <div className="grid w-[min(66cqw,66cqh)] max-w-72 grid-cols-5 gap-[min(1cqw,1cqh,0.25rem)]">
+      {regions.map((region, i) => (
+        <div
+          key={i}
+          className={cn("flex aspect-square items-center justify-center rounded-sm", fills[region])}
+        >
+          {queens.has(i) && <div className="size-1/2 rounded-full bg-foreground" />}
+        </div>
       ))}
     </div>
   );

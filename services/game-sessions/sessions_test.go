@@ -54,7 +54,11 @@ const (
 	// Answering 0, 1, 2, 1 clears three of them for thirty points.
 	sevenSecondRules = "seven-second@1"
 	sevenSecondRun   = "[0,1,2,1]"
-	testUserID       = "3f7c2b1e-4d5a-4c9b-8e2f-1a2b3c4d5e6f"
+	// Seed 1's first board is solved by cells 1, 8, 10, 19 and 22, each tapped
+	// twice: an X, then a Queen. Fifty points and one solved board.
+	queensRules = "queens@1"
+	queensRun   = "[1,1,8,8,10,10,19,19,22,22]"
+	testUserID  = "3f7c2b1e-4d5a-4c9b-8e2f-1a2b3c4d5e6f"
 )
 
 // token signs a token the platform verifier accepts, with the given subject.
@@ -860,6 +864,90 @@ func TestCompleteSessionAcceptsAOneMoveCellBeyondMemoryFlash(t *testing.T) {
 	}
 	if len(backend.lastRun.Actions) != 1 || backend.lastRun.Actions[0] != 24 {
 		t.Fatalf("actions = %v, want the twenty-fifth cell", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionVerifiesAQueensRun(t *testing.T) {
+	backend := testBackend()
+	started := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	backend.result = supabaseplay.Result{
+		Outcome:        "recorded",
+		SessionID:      sessionID,
+		GameSlug:       "queens",
+		Score:          ptr(int64(50)),
+		ClearedColumns: ptr(1),
+		TilesPlaced:    ptr(10),
+		DurationMS:     ptr(30000),
+		Ranked:         ptr(true),
+		RecordedAt:     &started,
+		PersonalBest:   ptr(int64(50)),
+		Rank:           ptr(int64(1)),
+	}
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules(queensRules, "50", "30000", queensRun), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if body["score"] != float64(50) || body["gameSlug"] != "queens" {
+		t.Fatalf("body = %#v, want the verified Queens run", body)
+	}
+	if backend.lastRun.RulesVersion != queensRules {
+		t.Fatalf("rules version = %q, want the run's pinned queens@1", backend.lastRun.RulesVersion)
+	}
+	if len(backend.lastRun.Actions) != 10 || backend.lastRun.Actions[9] != 22 {
+		t.Fatalf("actions = %v, want the submitted taps", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionAcceptsALongQueensRunOnTheLargestBoard(t *testing.T) {
+	// Notes are taps, so a Queens run may carry up to 8192 of them — past the
+	// other endless games' 4096 — and address any cell of the 9×9 board.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	taps := make([]string, 8192)
+	for i := range taps {
+		taps[i] = "80"
+	}
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules(queensRules, "0", "45000", "["+strings.Join(taps, ",")+"]"), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if len(backend.lastRun.Actions) != 8192 || backend.lastRun.Actions[8191] != 80 {
+		t.Fatalf("actions = %d taps, want all 8192 on the 9×9 board", len(backend.lastRun.Actions))
+	}
+}
+
+func TestCompleteSessionRejectsAQueensRunPastItsBounds(t *testing.T) {
+	cases := map[string]string{
+		// The eighty-second cell is past the 9×9 board.
+		"a cell past the largest board": "[81]",
+		"more taps than a submission carries": "[" + strings.TrimSuffix(
+			strings.Repeat("0,", 8193), ",") + "]",
+	}
+	for name, actions := range cases {
+		t.Run(name, func(t *testing.T) {
+			backend := testBackend()
+			server := testServer(t, backend)
+
+			status, body := post(t, server,
+				"/api/v1/sessions/"+sessionID+"/complete",
+				completeBodyRules(queensRules, "0", "45000", actions), "")
+
+			if status != http.StatusBadRequest {
+				t.Fatalf("status = %d, want 400 (%#v)", status, body)
+			}
+			if backend.runCalls != 0 {
+				t.Fatal("a malformed Queens run reached the verifier")
+			}
+		})
 	}
 }
 

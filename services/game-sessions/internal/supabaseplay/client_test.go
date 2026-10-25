@@ -256,6 +256,26 @@ func TestCompleteRunRoutesOneMoveRulesToOneMoveVerifier(t *testing.T) {
 	}
 }
 
+func TestCompleteRunRoutesQueensRulesToQueensVerifier(t *testing.T) {
+	rec := newRecorder(t, http.StatusOK, resultRow)
+
+	if _, err := rec.client(t).CompleteRun(context.Background(), CompleteRequest{
+		SessionID:    "cccccccc-1111-4111-8111-cccccccccccc",
+		RulesVersion: "queens@1",
+		Actions:      []int32{1, 1, 8, 8, 10, 10, 19, 19, 22, 22},
+		Score:        50,
+		DurationMS:   30000,
+	}); err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+
+	// The pinned version selects the replay: a Queens run is verified by
+	// complete_queens_run.
+	if rec.path != "/rest/v1/rpc/complete_queens_run" {
+		t.Fatalf("path = %s, want the Queens verifier function", rec.path)
+	}
+}
+
 func TestCompleteRunRoutesColorMergeRulesToColorMergeVerifier(t *testing.T) {
 	rec := newRecorder(t, http.StatusOK, resultRow)
 
