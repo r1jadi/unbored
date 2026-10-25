@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { ErrorState } from "@/components/common";
+import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -49,7 +50,7 @@ export function Stack10Runtime({ slug, title }: { slug: string; title: string })
   const live = state.status === "playing";
 
   // A live run is progress the player would lose by leaving.
-  useReportRunProgress(live);
+  useReportRunProgress(live, state.finish);
   useEffect(() => {
     if (!live) return;
     const onKey = (event: KeyboardEvent) => {
@@ -120,6 +121,7 @@ export function Stack10Runtime({ slug, title }: { slug: string; title: string })
         session={state.session}
         verifying={state.status === "submitting"}
         onPlace={state.place}
+        onFinish={state.finish}
       />
     );
   }
@@ -152,11 +154,14 @@ function Board({
   session,
   verifying,
   onPlace,
+  onFinish,
 }: {
   run: Stack10Run;
   session: PlaySession;
   verifying: boolean;
   onPlace: (column: number) => void;
+  /** Ends the run where it stands and submits it. */
+  onFinish: () => void;
 }) {
   const tile = run.nextTile;
   const readout = progress(run);
@@ -256,6 +261,11 @@ function Board({
           ? "Verifying your run with the server…"
           : "Add up to exactly ten to clear a column. Past ten ends the run. There is no final tile."}
       </p>
+      <EndRunButton
+        score={run.score}
+        disabled={verifying || run.outcome !== "playing"}
+        onEnd={onFinish}
+      />
     </div>
   );
 }
@@ -311,11 +321,15 @@ function Finished({
           )}
         </div>
         <p className="text-sm text-muted-foreground">
-          {run.endReason === "limit" ? "Submission limit reached" : "Run over"}
+          {run.stopped
+            ? "Run ended"
+            : run.endReason === "limit"
+              ? "Submission limit reached"
+              : "Run over"}
         </p>
         <p className="text-5xl font-semibold tabular">{result.score}</p>
         <p className="text-sm text-muted-foreground">
-          {run.endReason === "limit"
+          {run.stopped || run.endReason === "limit"
             ? `${result.tilesPlaced} tiles placed, ${result.clearedColumns} columns cleared.`
             : `A column passed ten after ${result.tilesPlaced} tiles; ${result.clearedColumns} columns cleared.`}
         </p>

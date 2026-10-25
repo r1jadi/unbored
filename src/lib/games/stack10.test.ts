@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   canPlace,
   createRun,
+  finish,
   heavyBonus,
   place,
   pressurePercent,
@@ -314,5 +315,19 @@ describe("the submission is the run", () => {
       pressurePercent: 60,
       heavyBonus: 2,
     });
+  });
+});
+
+describe("ending a run", () => {
+  it("stops where the player ends it, keeping the score and the line as it stands", () => {
+    const run = createRun("1");
+    const stopped = finish(run);
+    expect(stopped).toMatchObject({ outcome: "over", stopped: true, score: run.score });
+    expect(submission(stopped)).toEqual(submission(run));
+  });
+
+  it("leaves a run that is already over exactly as it is", () => {
+    const stopped = finish(createRun("1"));
+    expect(finish(stopped)).toBe(stopped);
   });
 });

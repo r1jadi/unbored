@@ -186,7 +186,7 @@ function Table({
   const accepting = live && remaining > 0;
 
   // A started, unverified run is progress the player would lose by leaving.
-  useReportRunProgress(live);
+  useReportRunProgress(live, onFinish);
   const challenge = currentChallenge(run);
   const stats = progress(run);
 

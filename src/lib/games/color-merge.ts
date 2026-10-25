@@ -118,6 +118,8 @@ export type ColorMergeRun = {
   /** The score this run earns under the rules, as the server computes it too. */
   readonly score: number;
   readonly outcome: ColorMergeOutcome;
+  /** True when the player ended the run, rather than the game ending it. */
+  readonly stopped?: true;
   readonly endReason: ColorMergeEndReason;
 };
 
@@ -465,6 +467,17 @@ export function slide(run: ColorMergeRun, direction: ColorMergeDirection): Color
     outcome: locked ? "over" : "playing",
     endReason: locked ? "locked" : null,
   };
+}
+
+/**
+ * Ends the run where it stands: the player stopped. The score is kept, and the
+ * verifier accepts the line as it is, because the score only ever grows, so
+ * stopping early can never earn a point. A run that is already over is returned
+ * unchanged.
+ */
+export function finish(run: ColorMergeRun): ColorMergeRun {
+  if (run.outcome !== "playing") return run;
+  return { ...run, outcome: "over", stopped: true };
 }
 
 /**

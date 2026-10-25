@@ -140,6 +140,8 @@ export type Stack10Run = {
    */
   readonly nextTile: number | null;
   readonly outcome: Stack10Outcome;
+  /** True when the player ended the run, rather than the game ending it. */
+  readonly stopped?: true;
   readonly endReason: Stack10EndReason;
 };
 
@@ -308,6 +310,17 @@ export function place(run: Stack10Run, column: number): Stack10Run {
     outcome,
     endReason: overflowed ? "overflow" : limit ? "limit" : null,
   };
+}
+
+/**
+ * Ends the run where it stands: the player stopped. The score is kept, and the
+ * verifier accepts the line as it is, because the score only ever grows, so
+ * stopping early can never earn a point. A run that is already over is returned
+ * unchanged.
+ */
+export function finish(run: Stack10Run): Stack10Run {
+  if (run.outcome !== "playing") return run;
+  return { ...run, outcome: "over", stopped: true };
 }
 
 /**

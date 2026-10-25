@@ -227,7 +227,7 @@ function Board({
   const drawn = useMemo(() => drawBoard(run.seed, run.level), [run.seed, run.level]);
   const accepting = !verifying && run.outcome === "playing";
 
-  useReportRunProgress(accepting);
+  useReportRunProgress(accepting, onFinish);
 
   useEffect(() => {
     firstCell.current?.focus();

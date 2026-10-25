@@ -119,6 +119,8 @@ export type OneMoveRun = {
   /** The score this run earns under the rules, as the server computes it too. */
   readonly score: number;
   readonly outcome: OneMoveOutcome;
+  /** True when the player ended the run, rather than the game ending it. */
+  readonly stopped?: true;
 };
 
 /**
@@ -317,6 +319,17 @@ export function tap(run: OneMoveRun, cell: number): OneMoveRun {
     score: run.score + LEVEL_SCORE,
     outcome: taps.length >= ONE_MOVE_MAX_ACTIONS ? "over" : "playing",
   };
+}
+
+/**
+ * Ends the run where it stands: the player stopped. The score is kept, and the
+ * verifier accepts the line as it is, because the score only ever grows, so
+ * stopping early can never earn a point. A run that is already over is returned
+ * unchanged.
+ */
+export function finish(run: OneMoveRun): OneMoveRun {
+  if (run.outcome !== "playing") return run;
+  return { ...run, outcome: "over", stopped: true };
 }
 
 /**

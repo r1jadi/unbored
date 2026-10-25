@@ -145,6 +145,8 @@ export type MemoryFlashRun = {
   /** The score this run earns under the rules, as the server computes it too. */
   readonly score: number;
   readonly outcome: MemoryFlashOutcome;
+  /** True when the player ended the run, rather than the game ending it. */
+  readonly stopped?: true;
 };
 
 /**
@@ -340,6 +342,17 @@ export function tap(run: MemoryFlashRun, cell: number): MemoryFlashRun {
     score: run.score + ROUND_SCORE,
     outcome: taps.length >= MEMORY_FLASH_MAX_ACTIONS ? "over" : "playing",
   };
+}
+
+/**
+ * Ends the run where it stands: the player stopped. The score is kept, and the
+ * verifier accepts the line as it is, because the score only ever grows, so
+ * stopping early can never earn a point. A run that is already over is returned
+ * unchanged.
+ */
+export function finish(run: MemoryFlashRun): MemoryFlashRun {
+  if (run.outcome !== "playing") return run;
+  return { ...run, outcome: "over", stopped: true };
 }
 
 /**

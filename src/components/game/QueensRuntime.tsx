@@ -180,7 +180,7 @@ function Board({
     if (started) firstCell.current?.focus();
   }, [started]);
 
-  useReportRunProgress(started && !verifying && run.outcome === "playing");
+  useReportRunProgress(started && !verifying && run.outcome === "playing", onFinish);
 
   // Drawing a board runs the region search, so it is done once per board rather
   // than on every tap.

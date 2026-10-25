@@ -14,6 +14,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
+import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -122,6 +123,7 @@ export function ColorMergeRuntime({ slug, title }: { slug: string; title: string
         session={state.session}
         verifying={state.status === "submitting"}
         onSlide={state.slide}
+        onFinish={state.finish}
         onBegin={state.begin}
         slug={slug}
         title={title}
@@ -149,6 +151,7 @@ function Board({
   session,
   verifying,
   onSlide,
+  onFinish,
   onBegin,
   slug,
   title,
@@ -157,6 +160,8 @@ function Board({
   session: PlaySession;
   verifying: boolean;
   onSlide: (direction: ColorMergeDirection) => void;
+  /** Ends the run where it stands and submits it. */
+  onFinish: () => void;
   /** Starts the run's clock; the time spent on the rules is not the run's. */
   onBegin: () => void;
   slug: string;
@@ -179,7 +184,7 @@ function Board({
   const accepting = !verifying && run.outcome === "playing";
 
   // A started, unverified run is progress the player would lose by leaving.
-  useReportRunProgress(started && accepting);
+  useReportRunProgress(started && accepting, onFinish);
 
   const slide = useCallback(
     (direction: ColorMergeDirection) => {
@@ -447,6 +452,7 @@ function Board({
             ? "The run is over. Your result is on its way."
             : `Next tile: ${readout.promotionPercent}% chance it arrives as a ${readout.promotedValue}. Each tile merges once per slide.`}
       </p>
+      <EndRunButton score={run.score} disabled={!accepting} onEnd={onFinish} />
     </div>
   );
 }
@@ -549,7 +555,11 @@ function Finished({
           )}
         </div>
         <p className="text-sm text-muted-foreground">
-          {run.endReason === "locked" ? "The board locked" : "Submission limit reached"}
+          {run.stopped
+            ? "Run ended"
+            : run.endReason === "locked"
+              ? "The board locked"
+              : "Submission limit reached"}
         </p>
         <p className="text-5xl font-semibold tabular">{result.score}</p>
         <p className="text-sm text-muted-foreground">

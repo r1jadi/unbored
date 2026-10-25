@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Clock, X } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { ChainRuntime } from "@/components/game/ChainRuntime";
 import { ColorMergeRuntime } from "@/components/game/ColorMergeRuntime";
@@ -83,12 +83,18 @@ function PlayScreen() {
  * can mount the real composition without the generated route tree.
  */
 export function Play({ id }: { id: string }) {
-  // Whether a run is live, reported by the runtime below.
-  const [progress, setProgress] = useState(false);
+  // Whether a run is live, and how to end it, reported by the runtime below.
+  const [progress, setProgress] = useState<{ active: boolean; endRun?: () => void }>({
+    active: false,
+  });
+  const report = useCallback(
+    (active: boolean, endRun?: () => void) => setProgress({ active, endRun }),
+    [],
+  );
 
   return (
-    <RunProgressContext.Provider value={setProgress}>
-      <PlaySurface id={id} progress={progress} />
+    <RunProgressContext.Provider value={report}>
+      <PlaySurface id={id} progress={progress.active} endRun={progress.endRun} />
     </RunProgressContext.Provider>
   );
 }
@@ -96,8 +102,21 @@ export function Play({ id }: { id: string }) {
 /**
  * The screen itself, given the slug and whether a run is live. The quit control
  * and every exit from here are the navigation contract this file owns.
+ *
+ * Quitting a live run ends it rather than discarding it: when the runtime has
+ * handed over `endRun`, confirming submits the run and the runtime shows its
+ * verified score, from where leaving is a single tap. A runtime that offers no
+ * way to end its run keeps the old choice, to leave without a score.
  */
-export function PlaySurface({ id, progress }: { id: string; progress: boolean }) {
+export function PlaySurface({
+  id,
+  progress,
+  endRun,
+}: {
+  id: string;
+  progress: boolean;
+  endRun?: () => void;
+}) {
   const state = useGame(id);
   const title = state.status === "ready" ? state.game.title : titleFromSlug(id);
   useDocumentTitle(
@@ -240,19 +259,26 @@ export function PlaySurface({ id, progress }: { id: string; progress: boolean })
         </div>
       )}
 
-      {/* A started run is real progress, so leaving it is a decision the player
-          makes deliberately rather than by a mis-tap on the way out. */}
+      {/* A started run is real progress, so ending it is a decision the player
+          makes deliberately rather than by a mis-tap on the way out. Ending it
+          saves it: the score so far is submitted and verified. */}
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Leave this run?</AlertDialogTitle>
+            <AlertDialogTitle>{endRun ? "End this run?" : "Leave this run?"}</AlertDialogTitle>
             <AlertDialogDescription>
-              Your run is still going. Leaving now discards it, and it will not be scored.
+              {endRun
+                ? "Your run is still going. Ending it now saves your score so far: it is sent for verification, and the board you are on is not scored."
+                : "Your run is still going. Leaving now discards it, and it will not be scored."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep playing</AlertDialogCancel>
-            <AlertDialogAction onClick={quit}>Leave run</AlertDialogAction>
+            {endRun ? (
+              <AlertDialogAction onClick={endRun}>End run and save</AlertDialogAction>
+            ) : (
+              <AlertDialogAction onClick={quit}>Leave run</AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
