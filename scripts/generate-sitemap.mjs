@@ -34,6 +34,7 @@ const DYNAMIC_PATHS = [
     "7-second",
     "queens",
     "zip",
+    "8-puzzle",
   ].map((id) => `/games/${id}`),
 ];
 

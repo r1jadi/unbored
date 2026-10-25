@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { ChainRuntime } from "@/components/game/ChainRuntime";
 import { ColorMergeRuntime } from "@/components/game/ColorMergeRuntime";
+import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
 import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
@@ -34,6 +35,7 @@ import { RunProgressContext } from "@/lib/games/run-progress";
 import { prefetchPlay } from "@/lib/prefetch";
 import { QUEENS_RUNTIME } from "@/lib/games/queens";
 import { ZIP_RUNTIME } from "@/lib/games/zip";
+import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
 import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
 import { STACK10_RUNTIME } from "@/lib/games/stack10";
 
@@ -64,8 +66,8 @@ export const Route = createFileRoute("/play/$id")({
  * The runtime is chosen by the game's `runtime` identifier — `stack-10` plays Stack
  * 10, `chain` plays Chain, `memory-flash` plays Memory Flash, `one-move` plays One
  * Move, `color-merge` plays Color Merge, `dont-touch` plays Don't Touch the Black,
- * `seven-second` plays 7 Second, `queens` plays Queens, `zip` plays Zip, and
- * anything else gets the honest "no runtime
+ * `seven-second` plays 7 Second, `queens` plays Queens, `zip` plays Zip,
+ * `eight-puzzle` plays 8 Puzzle, and anything else gets the honest "no runtime
  * yet" screen rather than a board that does not follow that game's rules. Every
  * catalogue game now has a runtime, but the branch stays a feature rather than a
  * leftover: it is what stops a future catalogue entry from silently pretending.
@@ -118,7 +120,8 @@ export function PlaySurface({ id, progress }: { id: string; progress: boolean })
       state.game.runtime === DONT_TOUCH_RUNTIME ||
       state.game.runtime === SEVEN_SECOND_RUNTIME ||
       state.game.runtime === QUEENS_RUNTIME ||
-      state.game.runtime === ZIP_RUNTIME);
+      state.game.runtime === ZIP_RUNTIME ||
+      state.game.runtime === EIGHT_PUZZLE_RUNTIME);
 
   const nav = useNavigate();
   const [confirming, setConfirming] = useState(false);
@@ -186,6 +189,10 @@ export function PlaySurface({ id, progress }: { id: string; progress: boolean })
 
       {state.status === "ready" && state.game.runtime === ZIP_RUNTIME && playable && (
         <ZipRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
+      )}
+
+      {state.status === "ready" && state.game.runtime === EIGHT_PUZZLE_RUNTIME && playable && (
+        <EightPuzzleRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
       )}
 
       {state.status === "ready" && !(hasShippedRuntime && playable) && (

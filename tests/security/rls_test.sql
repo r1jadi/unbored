@@ -1483,6 +1483,19 @@ reset role;
 \set zip_late_session  'd1d1d1d1-3333-4333-8333-d1d1d1d1d1d1'
 \set zip_guest_session 'd1d1d1d1-4444-4444-8444-d1d1d1d1d1d1'
 \set zip_old_session   'd1d1d1d1-5555-4555-8555-d1d1d1d1d1d1'
+-- 8 Puzzle. Seed 1's first board is 1 6 _ / 5 3 2 / 4 7 8, solved by sliding the
+-- tiles on cells 5, 4, 1, 2, 5, 4, 3, 6, 7, 8; its second by 4, 7, 6, 3, 0, 1,
+-- 2, 5, 8. The line solves board one, slides twice more and stops: 10 points,
+-- twelve slides. See the 8 Puzzle section of docs/games/README.md.
+\set eight_line 'array[5,4,1,2,5,4,3,6,7,8,4,7]'
+\set eight_board_one 'array[5,4,1,2,5,4,3,6,7,8]'
+\set eight_two_boards 'array[5,4,1,2,5,4,3,6,7,8,4,7,6,3,0,1,2,5,8]'
+\set eight_game          'e2e2e2e2-aaaa-4aaa-8aaa-e2e2e2e2e2e2'
+\set eight_session       'e2e2e2e2-1111-4111-8111-e2e2e2e2e2e2'
+\set eight_open_session  'e2e2e2e2-2222-4222-8222-e2e2e2e2e2e2'
+\set eight_late_session  'e2e2e2e2-3333-4333-8333-e2e2e2e2e2e2'
+\set eight_guest_session 'e2e2e2e2-4444-4444-8444-e2e2e2e2e2e2'
+\set eight_old_session   'e2e2e2e2-5555-4555-8555-e2e2e2e2e2e2'
 
 insert into public.games (id, owner_id, slug, title, status, published_at, runtime, playable, category_id) values
   (:'runnable_game', :'alice', 'fixture-runnable', 'Fixture Runnable', 'published', now(), 'stack-10', true,
@@ -1512,6 +1525,8 @@ insert into public.games (id, owner_id, slug, title, status, published_at, runti
   (:'queens_game', :'alice', 'fixture-queens', 'Fixture Queens', 'published', now(), 'queens', true,
    (select id from public.categories where slug = 'logic')),
   (:'zip_game', :'alice', 'fixture-zip', 'Fixture Zip', 'published', now(), 'zip', true,
+   (select id from public.categories where slug = 'puzzle')),
+  (:'eight_game', :'alice', 'fixture-eight-puzzle', 'Fixture 8 Puzzle', 'published', now(), 'eight-puzzle', true,
    (select id from public.categories where slug = 'puzzle'));
 
 -- Runs that have been open for five minutes, which is what makes a claimed
@@ -1615,7 +1630,14 @@ insert into public.game_sessions (id, game_id, user_id, seed, rules_version, sta
   (:'zip_open_session',  :'zip_game', :'alice', 1, 'zip@1', now() - interval '30 seconds', now() + interval '2 hours', null),
   (:'zip_late_session',  :'zip_game', :'alice', 1, 'zip@1', now() - interval '2 minutes',  now() + interval '2 hours', null),
   (:'zip_guest_session', :'zip_game', null,     1, 'zip@1', now() - interval '30 seconds', now() + interval '2 hours', null),
-  (:'zip_old_session',   :'zip_game', :'alice', 1, 'zip@0', now() - interval '30 seconds', now() + interval '2 hours', null);
+  (:'zip_old_session',   :'zip_game', :'alice', 1, 'zip@0', now() - interval '30 seconds', now() + interval '2 hours', null),
+  -- 8 Puzzle fixtures, all on seed 1 and timed like Zip's: thirty seconds into
+  -- the sixty-second opening clock, except the late one at a hundred seconds.
+  (:'eight_session',       :'eight_game', :'alice', 1, 'eight-puzzle@1', now() - interval '30 seconds',  now() + interval '2 hours', null),
+  (:'eight_open_session',  :'eight_game', :'alice', 1, 'eight-puzzle@1', now() - interval '30 seconds',  now() + interval '2 hours', null),
+  (:'eight_late_session',  :'eight_game', :'alice', 1, 'eight-puzzle@1', now() - interval '100 seconds', now() + interval '2 hours', null),
+  (:'eight_guest_session', :'eight_game', null,     1, 'eight-puzzle@1', now() - interval '30 seconds',  now() + interval '2 hours', null),
+  (:'eight_old_session',   :'eight_game', :'alice', 1, 'eight-puzzle@0', now() - interval '30 seconds',  now() + interval '2 hours', null);
 
 insert into public.game_sessions
   (id, game_id, user_id, seed, rules_version, started_at, expires_at, completed_at, verified_score, verified_digest)
@@ -1724,6 +1746,37 @@ select rls_test.ok(
 select rls_test.raises(
   $$select public.zip_path(1, 0)$$,
   '22023', 'a Zip level before the first is a request error'
+);
+-- The 8 Puzzle board generator, asserted directly against the client engine.
+select rls_test.ok(
+  public.eight_puzzle_board(1, 1) = array[1,6,0,5,3,2,4,7,8]
+    and public.eight_puzzle_board(1, 2) = array[4,1,2,0,7,3,8,5,6],
+  'the 8 Puzzle generator draws seed 1''s first two boards'
+);
+select rls_test.ok(
+  public.eight_puzzle_board(9223372036854775807, 1) = array[2,3,6,1,0,8,7,4,5]
+    and public.eight_puzzle_board(9223372036854775807, 30) = array[1,3,7,6,0,4,8,5,2],
+  'the 8 Puzzle generator replays a full-width seed exactly'
+);
+select rls_test.ok(
+  public.eight_puzzle_board(0, 5) = public.eight_puzzle_board(2654435769, 5),
+  'a zero 8 Puzzle seed draws the fallback state''s boards'
+);
+select rls_test.ok(
+  public.eight_puzzle_scramble(1) = 10 and public.eight_puzzle_scramble(2) = 13
+    and public.eight_puzzle_scramble(500) = 80
+    and public.eight_puzzle_budget_ms(0) = 60000 and public.eight_puzzle_budget_ms(4) = 120000,
+  'an 8 Puzzle scramble grows to eighty steps, and the clock adds fifteen seconds a board'
+);
+select rls_test.ok(
+  (select bool_and(public.eight_puzzle_board(7, level) <> array[1,2,3,4,5,6,7,8,0]
+                   and (select count(distinct t) from unnest(public.eight_puzzle_board(7, level)) t) = 9)
+     from generate_series(1, 40) as level),
+  'every 8 Puzzle board holds each tile once and is never already solved'
+);
+select rls_test.raises(
+  $$select public.eight_puzzle_board(1, 0)$$,
+  '22023', 'an 8 Puzzle level before the first is a request error'
 );
 -- The Color Merge generator, asserted directly: the opening board and the
 -- spawns after it are the ones the client engine computes and the verifier
@@ -2034,8 +2087,8 @@ select rls_test.visible(
 -- ships, only the six with runtimes are playable.
 select rls_test.visible(
   $$select 1 from public.games
-     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'queens', 'zip') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
-  0, 'no shipped game besides the nine runtimes is marked playable'
+     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'queens', 'zip', '8-puzzle') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
+  0, 'no shipped game besides the ten runtimes is marked playable'
 );
 select rls_test.says_field(
   $$public.start_game_session('stack-10', 'stack-10@1', 'test/1.0')$$,
@@ -2217,6 +2270,24 @@ select rls_test.says(
 select rls_test.says(
   $$public.start_game_session('fixture-queens', 'zip@1', 'test/1.0')$$,
   'unsupported_runtime', 'a Queens game cannot start a Zip run'
+);
+-- The shipped 8 Puzzle game, same shape.
+select rls_test.visible(
+  $$select 1 from public.games where slug = '8-puzzle' and playable and runtime = 'eight-puzzle'
+       and status = 'published' and is_official$$,
+  1, 'the shipped 8 Puzzle game is published, playable and names its runtime'
+);
+select rls_test.says_field(
+  $$public.start_game_session('8-puzzle', 'eight-puzzle@1', 'test/1.0')$$,
+  'tile_count', '8192', 'an 8 Puzzle session reports its submission bound'
+);
+select rls_test.says(
+  $$public.start_game_session('fixture-eight-puzzle', 'zip@1', 'test/1.0')$$,
+  'unsupported_runtime', 'an 8 Puzzle game cannot start a Zip run'
+);
+select rls_test.says(
+  $$public.start_game_session('fixture-zip', 'eight-puzzle@1', 'test/1.0')$$,
+  'unsupported_runtime', 'a Zip game cannot start an 8 Puzzle run'
 );
 select rls_test.says_field(
   $$public.start_game_session('one-move', 'one-move@1', 'test/1.0')$$,
@@ -2577,6 +2648,13 @@ select rls_test.ok(
 select rls_test.says(
   format($$public.complete_zip_run('d1d1d1d1-4444-4444-8444-d1d1d1d1d1d1'::uuid, %s, 50, 25000)$$, :'zip_line'),
   'duplicate', 'a repeated guest Zip submission is recognised, not recorded again'
+);
+-- A guest 8 Puzzle run completes the same way: verified, recorded, unranked.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 10 and r.ranked = false
+     from public.complete_eight_puzzle_run(
+       'e2e2e2e2-4444-4444-8444-e2e2e2e2e2e2'::uuid, :eight_line, 10, 25000) r),
+  'a guest 8 Puzzle run is replayed and recorded at ten, unranked'
 );
 
 reset role;
@@ -3356,6 +3434,72 @@ select rls_test.ok(
 select rls_test.ok(
   (select rank = 1 and score = 100 from public.game_standing('fixture-zip', '11111111-1111-4111-8111-111111111111', null)),
   'your Zip standing is your recorded best at its real rank'
+);
+
+-- ── 8 Puzzle: slide the tiles home, against the clock ──
+select rls_test.ok(
+  (select r.outcome = 'recorded'
+      and r.score = 10
+      and r.cleared_columns = 1
+      and r.tiles_placed = 12
+     from public.complete_eight_puzzle_run(
+       'e2e2e2e2-1111-4111-8111-e2e2e2e2e2e2'::uuid, :eight_line, 10, 25000) r),
+  'an 8 Puzzle run is recorded: one board solved, twelve slides, 10 points'
+);
+select rls_test.says(
+  format($$public.complete_eight_puzzle_run('e2e2e2e2-1111-4111-8111-e2e2e2e2e2e2'::uuid, %s, 10, 25000)$$, :'eight_line'),
+  'duplicate', 'a retry of the same 8 Puzzle run is safe to repeat'
+);
+select rls_test.says(
+  $$public.complete_eight_puzzle_run('e2e2e2e2-1111-4111-8111-e2e2e2e2e2e2'::uuid, array[5], 0, 25000)$$,
+  'closed', 'a closed 8 Puzzle session does not accept a different run'
+);
+-- Refusals, all leaving the open fixture open for the run that follows.
+select rls_test.says_field(
+  format($$public.complete_eight_puzzle_run('e2e2e2e2-2222-4222-8222-e2e2e2e2e2e2'::uuid, %s, 999, 25000)$$, :'eight_two_boards'),
+  'score', '20', 'the 8 Puzzle replay is the score, and it is reported back'
+);
+select rls_test.says(
+  $$public.complete_eight_puzzle_run('e2e2e2e2-2222-4222-8222-e2e2e2e2e2e2'::uuid, array[0], 0, 25000)$$,
+  'invalid_actions', 'an 8 Puzzle tile that is not next to the gap cannot slide'
+);
+select rls_test.says(
+  $$public.complete_eight_puzzle_run('e2e2e2e2-2222-4222-8222-e2e2e2e2e2e2'::uuid, array[2], 0, 25000)$$,
+  'invalid_actions', 'the 8 Puzzle gap itself is not a slide'
+);
+select rls_test.says(
+  $$public.complete_eight_puzzle_run('e2e2e2e2-2222-4222-8222-e2e2e2e2e2e2'::uuid, array[9], 0, 25000)$$,
+  'invalid_actions', 'a cell past the 3×3 board is impossible play'
+);
+select rls_test.says(
+  $$public.complete_eight_puzzle_run('e2e2e2e2-2222-4222-8222-e2e2e2e2e2e2'::uuid, array[5,2], 10, 25000)$$,
+  'score_mismatch', 'sliding a tile back and forth is legal play, worth nothing until solved'
+);
+select rls_test.says(
+  $$public.complete_eight_puzzle_run('e2e2e2e2-5555-4555-8555-e2e2e2e2e2e2'::uuid, array[5], 0, 25000)$$,
+  'wrong_rules', 'an 8 Puzzle session pinned to other rules is refused by its own verifier'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 20 and r.cleared_columns = 2 and r.tiles_placed = 19
+     from public.complete_eight_puzzle_run(
+       'e2e2e2e2-2222-4222-8222-e2e2e2e2e2e2'::uuid, :eight_two_boards, 20, 25000) r),
+  'an 8 Puzzle run that solved two boards is recorded at 20'
+);
+-- The clock is the server's. The late session started a hundred seconds ago: one
+-- solved board earns 75 s (+20 s of slack), too late; two earn 90 s (+20), on time.
+select rls_test.says(
+  format($$public.complete_eight_puzzle_run('e2e2e2e2-3333-4333-8333-e2e2e2e2e2e2'::uuid, %s, 10, 90000)$$, :'eight_board_one'),
+  'out_of_time', 'an 8 Puzzle run that arrives after its clock ran out is refused'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 20
+     from public.complete_eight_puzzle_run(
+       'e2e2e2e2-3333-4333-8333-e2e2e2e2e2e2'::uuid, :eight_two_boards, 20, 90000) r),
+  'a solved 8 Puzzle board buys time: the same arrival with two solved is on time'
+);
+select rls_test.ok(
+  (select rank = 1 and score = 20 from public.game_standing('fixture-eight-puzzle', '11111111-1111-4111-8111-111111111111', null)),
+  'your 8 Puzzle standing is your recorded best at its real rank'
 );
 
 -- ── Color Merge: the same properties, replayed against a sliding board ──

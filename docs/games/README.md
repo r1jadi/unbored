@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Nine games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Ten games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
-**7 Second**, **Queens** and **Zip**. Eight of them — all but 7 Second — are
-endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
+**7 Second**, **Queens**, **Zip** and **8 Puzzle**. Nine of them — all but 7 Second
+— are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
 
@@ -1059,6 +1059,99 @@ Each vector is asserted by both the SQL suite and the client engine.
 4. **Seed 1, two boards** — both paths in order: **100 points**, 50 cells.
 5. **The clock** — a session started two minutes earlier: board one alone (85 s
    earned + 20 s slack) is `out_of_time`; both boards (110 s + 20 s) are on time.
+
+## 8 Puzzle
+
+The classic sliding puzzle as an endless run against a clock: eight numbered tiles
+and one gap on a 3×3 board. Slide a tile next to the gap into it, until the tiles
+read 1 to 8 in reading order with the gap in the bottom-right corner.
+
+### The board
+
+| Thing    | Value                                                           |
+| -------- | --------------------------------------------------------------- |
+| Board    | 3×3, always                                                     |
+| Scramble | 10 gap steps on board one, +3 a board, up to 80                 |
+| Clock    | 60 s to start, +15 s per solved board; 20 s of slack            |
+| Slides   | 8192 at most in one submission: a request bound, not a level    |
+| Rules    | `eight-puzzle@1`                                                |
+| Runtime  | `eight-puzzle` (the catalogue's `games.runtime` value; slug `8-puzzle`) |
+
+### The boards
+
+Half of all arrangements of the tiles cannot be solved, so a board is never a
+random arrangement: it is the solved board scrambled by a **random walk of the
+gap**, which only reaches boards that can be solved.
+
+```
+side = 3; solved = 1 2 3 / 4 5 6 / 7 8 _
+state₀ = ((seed mod 2³²) + 2³²) mod 2³²            // as One Move, Queens and Zip
+if state₀ = 0 then state₀ = 2654435769
+stateₙ = (stateₙ₋₁ × 1664525 + 1013904223) mod 2³²  // advanced once per level
+t = stateₙ; draw() = t ← (t × 22695477 + 1) mod 2³²; t >> 16
+steps(n) = min(80, 10 + 3 × (n − 1))
+repeat steps(n) times, then until the board is not solved:
+  options = the gap's moves in the order up, down, left, right,
+            leaving out the board's edges and the move straight back
+  move the gap by options[draw() mod |options|]
+```
+
+The walk never steps straight back, so its length is a real measure of the
+scramble. The fewest slides that solve a board are never more than its scramble,
+and never more than 31 (the hardest 3×3 boards). Eighty steps is as good as a
+uniformly random solvable board.
+
+The screen shows each board's **par**, the fewest slides that solve it, found by
+iterative-deepening A* with the Manhattan distance (a few milliseconds). The
+score does not use it.
+
+### A slide, scoring and the clock
+
+A slide is the **cell of a tile next to the gap**; that tile moves into the gap.
+The gap itself, a cell off the board, or a tile not next to the gap is not a move.
+Tapping a tile slides it, and the arrow keys slide the tile on the far side of the
+gap (ArrowUp moves the tile below the gap up).
+
+A slide that leaves the board solved scores **ten points**, adds fifteen seconds
+to the clock and deals the next board, scrambled three steps more. The run ends
+when the clock reaches zero or the player ends it; any prefix of a legal line is
+valid, because the score never goes down.
+
+The clock works exactly as Zip's: the session is issued when the player presses
+Start, and the verifier refuses a run that reaches it more than
+`eight_puzzle_budget_ms(boards solved) + eight_puzzle_slack_ms()` after the
+session started (`out_of_time`, a `422`).
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261106120000_eight_puzzle_sessions.sql`.
+
+- `public.eight_puzzle_board(seed, level)` draws a level's board;
+  `eight_puzzle_scramble(level)` and `eight_puzzle_budget_ms(cleared)` are the
+  scramble and the clock. The board generator is internals.
+- `public.start_game_session` accepts (`eight-puzzle`, `eight-puzzle@1`); the
+  session reports `tile_count` 8192 and lives twelve hours.
+- `public.complete_eight_puzzle_run(session, actions, score, duration)` replays the
+  slides, derives the score, compares it with the claim, checks the clock and only
+  then records it. The Go service routes `eight-puzzle@` runs to it and accepts up
+  to 8192 slides on cells 0 to 8.
+- `20261106120100_eight_puzzle_playable.sql` inserts the catalogue record
+  (Puzzle), applied after the deployment carrying the runtime is live.
+
+### Test vectors
+
+Each vector is asserted by both the SQL suite and the client engine.
+
+1. **Seed 1's first two boards** — `1 6 _ / 5 3 2 / 4 7 8` and
+   `4 1 2 / _ 7 3 / 8 5 6`, solved in 10 and 9 slides by sliding the tiles on
+   cells `5,4,1,2,5,4,3,6,7,8` and `4,7,6,3,0,1,2,5,8`.
+2. **A full-width seed** — `9223372036854775807`'s first board is
+   `2 3 6 / 1 _ 8 / 7 4 5` and its thirtieth `1 3 7 / 6 _ 4 / 8 5 2`.
+3. **Seed 1, a stopped line** — board one's slides, then `4,7`: **10 points**,
+   twelve slides. Both boards' slides: **20 points**, nineteen slides.
+4. **The clock** — a session started a hundred seconds earlier: board one alone
+   (75 s + 20 s) is `out_of_time`; both boards (90 s + 20 s) are on time.
 
 ## Color Merge
 

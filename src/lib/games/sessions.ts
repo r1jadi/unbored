@@ -101,6 +101,15 @@ import {
   type ZipRun,
 } from "@/lib/games/zip";
 import {
+  budgetMs as eightPuzzleBudgetMs,
+  createRun as createEightPuzzleRun,
+  finish as finishEightPuzzleRun,
+  submission as eightPuzzleSubmission,
+  tap as tapEightPuzzle,
+  EIGHT_PUZZLE_RULES_VERSION,
+  type EightPuzzleRun,
+} from "@/lib/games/eight-puzzle";
+import {
   createRun,
   place as placeTile,
   submission,
@@ -1085,7 +1094,7 @@ export type ZipRunControls = ZipRunState & {
 /**
  * Plays one run of Zip against the session API.
  *
- * Zip is the one game whose session is not issued when the screen opens: its run
+ * Zip's session is not issued when the screen opens (8 Puzzle's neither): its run
  * is against a clock, and the verifier times that clock from the session's own
  * start (`out_of_time`). So the rules show first with no session behind them, and
  * Start is what asks for one. The clock starts when the session arrives, and the
@@ -1214,6 +1223,201 @@ export function useZipRun(gameSlug: string): ZipRunControls {
     setState((current) => {
       if (current.status !== "playing") return current;
       const next = finishZipRun(current.run, "stopped");
+      if (next === current.run) return current;
+      endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    setState({ status: "intro" });
+  }, []);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again. The clock is already over, so the
+      // deadline only has to exist; it no longer moves.
+      submitting.current = false;
+      setState({ status: "playing", session: state.session, run: state.run, deadline: 0 });
+      return;
+    }
+
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, signedIn, begin, tap, finish, restart, retry };
+}
+
+// ── A run of 8 Puzzle, from Start to score ──────────────────────────────────────
+
+export type EightPuzzleRunState =
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | {
+      status: "playing";
+      session: PlaySession;
+      run: EightPuzzleRun;
+      /** When the clock runs out, as a `Date.now()` timestamp. */
+      deadline: number;
+    }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: EightPuzzleRun; deadline: number }
+  | { status: "finished"; session: PlaySession; run: EightPuzzleRun; result: RunResult }
+  | {
+      status: "error";
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: EightPuzzleRun;
+    };
+
+export type EightPuzzleRunControls = EightPuzzleRunState & {
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
+  begin: () => void;
+  /** Slides the tile on a cell into the gap. Ignored unless the run is live and it can. */
+  tap: (cell: number) => void;
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
+  /** Back to the rules, for a fresh run. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of 8 Puzzle against the session API.
+ *
+ * The same lifecycle as Zip, for the same reason: the run is against a clock the
+ * verifier times from the session's start (`out_of_time`), so the session is
+ * issued when the player presses Start, the clock starts when it arrives, and the
+ * run ends by itself when the clock reaches zero.
+ */
+export function useEightPuzzleRun(gameSlug: string): EightPuzzleRunControls {
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<EightPuzzleRunState>({ status: "intro" });
+  const startedAt = useRef(0);
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  const signedIn = !!getAccessToken();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // A session is requested only once Start has been pressed (`attempt` > 0).
+  useEffect(() => {
+    if (attempt === 0) return;
+    const controller = new AbortController();
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    startSession(gameSlug, { signal: controller.signal, rulesVersion: EIGHT_PUZZLE_RULES_VERSION })
+      .then((session) => {
+        if (controller.signal.aborted) return;
+        const run = createEightPuzzleRun(session.seed);
+        startedAt.current = Date.now();
+        setState({
+          status: "playing",
+          session,
+          run,
+          deadline: startedAt.current + eightPuzzleBudgetMs(0),
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // The clock. When it reaches zero the run is over, and verification follows.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome !== "playing") return;
+    const remaining = state.deadline - Date.now();
+    const timer = setTimeout(
+      () => {
+        setState((current) => {
+          if (current.status !== "playing" || current.run.outcome !== "playing") return current;
+          if (Date.now() < current.deadline) return { ...current };
+          endedAt.current = current.deadline;
+          return { ...current, run: finishEightPuzzleRun(current.run, "time") };
+        });
+      },
+      Math.max(0, remaining),
+    );
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  // Verification: once, when a run has ended.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run, deadline } = state;
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run, deadline });
+
+    completeRun(
+      session.id,
+      { ...eightPuzzleSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const tap = useCallback((cell: number) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      // A tap after the deadline — a backgrounded tab can hold its timer back —
+      // ends the run instead of moving: the clock has already run out.
+      if (Date.now() >= current.deadline) {
+        if (current.run.outcome !== "playing") return current;
+        endedAt.current = current.deadline;
+        return { ...current, run: finishEightPuzzleRun(current.run, "time") };
+      }
+      const next = tapEightPuzzle(current.run, cell);
+      if (next === current.run) return current;
+      // A solved board buys time: the deadline follows the boards solved.
+      return {
+        ...current,
+        run: next,
+        deadline: startedAt.current + eightPuzzleBudgetMs(next.levelsCleared),
+      };
+    });
+  }, []);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishEightPuzzleRun(current.run, "stopped");
       if (next === current.run) return current;
       endedAt.current = Date.now();
       return { ...current, run: next };

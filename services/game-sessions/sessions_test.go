@@ -60,9 +60,13 @@ const (
 	queensRun   = "[1,1,8,8,10,10,19,19,22,22]"
 	// Seed 1's first Zip board is solved by one path through all twenty-five
 	// cells: fifty points and one solved board.
-	zipRules   = "zip@1"
-	zipRun     = "[8,7,6,5,10,15,20,21,16,11,12,17,22,23,24,19,18,13,14,9,4,3,2,1,0]"
-	testUserID = "3f7c2b1e-4d5a-4c9b-8e2f-1a2b3c4d5e6f"
+	zipRules = "zip@1"
+	// Seed 1's first 8 Puzzle board is solved by sliding the tiles on these
+	// cells: ten points and one solved board.
+	eightPuzzleRules = "eight-puzzle@1"
+	eightPuzzleRun   = "[5,4,1,2,5,4,3,6,7,8]"
+	zipRun           = "[8,7,6,5,10,15,20,21,16,11,12,17,22,23,24,19,18,13,14,9,4,3,2,1,0]"
+	testUserID       = "3f7c2b1e-4d5a-4c9b-8e2f-1a2b3c4d5e6f"
 )
 
 // token signs a token the platform verifier accepts, with the given subject.
@@ -1004,6 +1008,42 @@ func TestCompleteSessionRejectsAZipCellPastTheLargestBoard(t *testing.T) {
 	}
 	if backend.runCalls != 0 {
 		t.Fatal("a cell outside the Zip board reached the verifier")
+	}
+}
+
+func TestCompleteSessionVerifiesAnEightPuzzleRun(t *testing.T) {
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules(eightPuzzleRules, "10", "20000", eightPuzzleRun), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if backend.lastRun.RulesVersion != eightPuzzleRules {
+		t.Fatalf("rules version = %q, want the run's pinned eight-puzzle@1", backend.lastRun.RulesVersion)
+	}
+	if len(backend.lastRun.Actions) != 10 || backend.lastRun.Actions[9] != 8 {
+		t.Fatalf("actions = %v, want the submitted slides", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionRejectsAnEightPuzzleCellPastTheBoard(t *testing.T) {
+	// The board is 3×3, so cell 9 is malformed input.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules(eightPuzzleRules, "0", "20000", "[5,9]"), "")
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (%#v)", status, body)
+	}
+	if backend.runCalls != 0 {
+		t.Fatal("a cell outside the 8 Puzzle board reached the verifier")
 	}
 }
 

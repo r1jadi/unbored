@@ -294,6 +294,24 @@ func TestCompleteRunRoutesZipRulesToZipVerifier(t *testing.T) {
 	}
 }
 
+func TestCompleteRunRoutesEightPuzzleRulesToEightPuzzleVerifier(t *testing.T) {
+	rec := newRecorder(t, http.StatusOK, resultRow)
+
+	if _, err := rec.client(t).CompleteRun(context.Background(), CompleteRequest{
+		SessionID:    "cccccccc-1111-4111-8111-cccccccccccc",
+		RulesVersion: "eight-puzzle@1",
+		Actions:      []int32{5, 4},
+		Score:        0,
+		DurationMS:   20000,
+	}); err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+
+	if rec.path != "/rest/v1/rpc/complete_eight_puzzle_run" {
+		t.Fatalf("path = %s, want the 8 Puzzle verifier function", rec.path)
+	}
+}
+
 func TestCompleteRunRoutesColorMergeRulesToColorMergeVerifier(t *testing.T) {
 	rec := newRecorder(t, http.StatusOK, resultRow)
 

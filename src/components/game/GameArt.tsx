@@ -56,6 +56,7 @@ export function GameArt({
       {id === "7-second" && <Seven />}
       {id === "queens" && <Queens />}
       {id === "zip" && <Zip />}
+      {id === "8-puzzle" && <EightPuzzle />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </div>
   );
@@ -72,6 +73,7 @@ const KNOWN = new Set([
   "7-second",
   "queens",
   "zip",
+  "8-puzzle",
 ]);
 
 /**
@@ -251,6 +253,30 @@ function Zip() {
         </g>
       ))}
     </svg>
+  );
+}
+
+function EightPuzzle() {
+  // Nearly home: one slide from solved, the gap beside the last tile.
+  const tiles = [1, 2, 3, 4, 5, 6, 7, 0, 8];
+  return (
+    <div className="grid w-[min(60cqw,60cqh)] max-w-64 grid-cols-3 gap-[min(1.5cqw,1.5cqh,0.375rem)] rounded-xl bg-surface-2 p-[min(1.5cqw,1.5cqh,0.375rem)]">
+      {tiles.map((tile, i) =>
+        tile === 0 ? (
+          <div key={i} className="aspect-square" />
+        ) : (
+          <div
+            key={i}
+            className={cn(
+              "flex aspect-square items-center justify-center rounded-md text-[min(8cqw,8cqh,2rem)] font-semibold",
+              tile === 8 ? "bg-game-1 text-background" : "bg-surface text-foreground",
+            )}
+          >
+            {tile}
+          </div>
+        ),
+      )}
+    </div>
   );
 }
 
