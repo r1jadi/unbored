@@ -51,6 +51,15 @@
   --color-game-5: var(--game-5);
   --color-game-6: var(--game-6);
   --color-game-7: var(--game-7);
+  --color-queens-1: var(--queens-1);
+  --color-queens-2: var(--queens-2);
+  --color-queens-3: var(--queens-3);
+  --color-queens-4: var(--queens-4);
+  --color-queens-5: var(--queens-5);
+  --color-queens-6: var(--queens-6);
+  --color-queens-7: var(--queens-7);
+  --color-queens-8: var(--queens-8);
+  --color-queens-9: var(--queens-9);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -103,6 +112,18 @@
   --game-5: oklch(0.63 0.15 15);
   --game-6: oklch(0.65 0.11 205);
   --game-7: oklch(0.7 0.18 40);
+  /* Queens regions: nine hues about 40° apart, alternating light and dark so that
+     two neighbouring hues still differ in value. Deep on the dark theme so the
+     light Queen on top keeps its contrast. */
+  --queens-1: oklch(0.56 0.13 25);
+  --queens-2: oklch(0.42 0.09 65);
+  --queens-3: oklch(0.6 0.11 105);
+  --queens-4: oklch(0.42 0.09 145);
+  --queens-5: oklch(0.57 0.09 185);
+  --queens-6: oklch(0.4 0.08 230);
+  --queens-7: oklch(0.58 0.12 268);
+  --queens-8: oklch(0.4 0.1 305);
+  --queens-9: oklch(0.5 0.13 345);
   --chart-1: oklch(0.7 0.18 40);
   --chart-2: oklch(0.72 0.11 235);
   --chart-3: oklch(0.74 0.14 155);
@@ -231,6 +252,16 @@
   --sidebar-accent: oklch(0.9 0.004 270);
   --sidebar-accent-foreground: oklch(0.2 0.006 270);
   --sidebar-border: oklch(0.2 0.006 270 / 0.08);
+  /* Queens regions: the same hues as pastels, so the dark Queen reads on top. */
+  --queens-1: oklch(0.8 0.1 25);
+  --queens-2: oklch(0.9 0.08 70);
+  --queens-3: oklch(0.86 0.11 105);
+  --queens-4: oklch(0.78 0.09 145);
+  --queens-5: oklch(0.9 0.06 185);
+  --queens-6: oklch(0.78 0.07 230);
+  --queens-7: oklch(0.87 0.06 268);
+  --queens-8: oklch(0.77 0.09 305);
+  --queens-9: oklch(0.86 0.08 345);
 }
 
 /* Accessibility preferences applied by the settings store. */

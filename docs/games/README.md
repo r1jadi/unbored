@@ -3,11 +3,11 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Seven games are implemented today: **Stack 10**, **Chain** (Don't Break the
-Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**
-and **7 Second**. Six of them — Stack 10, Chain, Memory Flash, One Move, Color
-Merge and Don't Touch the Black — are endless, with no final tile, round, pattern,
-board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
+Eight games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
+**7 Second** and **Queens**. Seven of them — Stack 10, Chain, Memory Flash, One
+Move, Color Merge, Don't Touch the Black and Queens — are endless, with no final
+tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
 
@@ -736,6 +736,184 @@ drifts, one of the two suites fails.
 6. **A full-width seed** — `9223372036854775807` wins on
    `1, 8, 6, 6, 5, 4, 5, 0, 24, 13, 3, 7, 20, 0, 2, 20, 35, 25, 13, 32`, which is
    what catches a client that rounded the seed to a double.
+
+## Queens
+
+LinkedIn's Queens puzzle as an endless run. Every board is an N×N grid split into
+N coloured regions: place exactly one Queen in each row, each column and each
+region, with no two Queens touching — not even diagonally. Every board has exactly
+one solution. Solve it and the next one is dealt; **there is no final board**.
+
+### The board
+
+| Thing    | Value                                                              |
+| -------- | ------------------------------------------------------------------ |
+| Board    | 5×5, growing to 9×9 by level eleven, then 9×9 for every board      |
+| Levels   | none — boards keep coming until the run ends                       |
+| Mistakes | 3 per run: the third Queen placed off the solution ends the run    |
+| Taps     | 8192 at most in one submission: a request bound, not a level       |
+| Rules    | `queens@1`                                                         |
+| Runtime  | `queens` (the catalogue's `games.runtime` value)                   |
+
+### How the real game works, and what this one keeps
+
+LinkedIn's daily Queens is the "one star" variant of Star Battle. Its rules are
+the ones above; a tap cycles a cell through an X (a note), a Queen and empty;
+clashing Queens are highlighted rather than refused; and there is an optional
+automatic X that fills in the cells a Queen rules out. Its boards are mostly 7×7
+to 10×10, hand-checked to have one solution that can be reached by deduction.
+
+Unbored keeps the rules, the tap cycle and the automatic X — shown as faint Xs,
+a display aid rather than state, so it changes no tap. It changes one thing: a
+Queen placed off the solution is a **mistake**, not a clash to fix later. A daily
+puzzle can let a player shuffle Queens freely because nothing is ranked; an
+endless, ranked run needs a way to end and a skill a replay can measure, and a
+wrong Queen is both. With a unique solution, "off the solution" and "breaks the
+rules eventually" are the same thing, so the mistake rule only makes the board say
+so at once. Because a wrong Queen is refused, two Queens on the board can never
+clash, which is why there is no clash highlight.
+
+### The boards
+
+A board is drawn in two steps from one random stream, both functions of the
+run's seed, which the **server** chooses:
+
+1. **The solution** — a placement of N Queens, one per row and column, none
+   touching. This is what the verifier needs, so it is written out in full:
+
+   ```
+   side(n) = 5, 6, 6, 7, 7, 7, 8, 8, 8, 8, then 9      // levels 1, 2–3, 4–6, 7–10, 11+
+   state₀ = ((seed mod 2³²) + 2³²) mod 2³²            // the seed is a bigint, reduced to 32 bits
+   if state₀ = 0 then state₀ = 2654435769             // 0x9E3779B9: a zero state would be degenerate
+   stateₙ = (stateₙ₋₁ × 1664525 + 1013904223) mod 2³²  // advanced once per level
+   t = stateₙ                                         // board n's inner stream starts here
+   draw() = t ← (t × 22695477 + 1) mod 2³²; t >> 16   // a second LCG, high sixteen bits
+   repeat:
+     columns = [0, 1, …, side − 1]
+     for i = side − 1 down to 1: swap columns[i], columns[draw() mod (i + 1)]
+   until no two neighbouring rows' columns differ by less than 2
+   ```
+
+   The outer LCG and its seed handling are One Move's. A board draws from a
+   second LCG started at the outer state, because drawing from the outer sequence
+   itself would walk into the next board's starting state, and two neighbouring
+   boards would share their draws. About one shuffle in eight passes, at every
+   size.
+
+2. **The regions** — grown outwards from the solution's Queens, region _r_ holding
+   row _r_'s Queen. Each step picks a random unassigned cell that touches a region
+   (in board order, `draw() mod count`) and joins it to one of the regions it
+   touches. Large regions touch more cells, so they grow faster and leave a mix of
+   large and small regions, the way a hand-made board does. A fresh layout usually
+   has several solutions, so the generator **repairs** it: a row-by-row solver
+   finds another solution, the generator takes a cell where that solution has a
+   Queen the planted one does not, and hands the cell to a neighbouring region
+   (keeping its old region connected). That solution now has two Queens in one
+   region and is gone; the planted solution is untouched, because none of its
+   Queens moved. The loop ends when the solver finds exactly one solution, and a
+   layout that runs out of repairs is regrown. Growth plus repair produces a
+   unique 9×9 board in a few milliseconds on average; a fallback that is always
+   unique (every Queen but the last alone in its region) exists so the generator
+   is total, and has never been needed.
+
+Only the client grows regions. The verifier needs only the solution: a Queen is
+right exactly when it sits on it, and no region a client could draw changes which
+Queens are mistakes. That keeps the database's copy to a shuffle.
+
+The seed travels as a **decimal string**, as every game's does.
+
+### Difficulty
+
+| Level | Board | Points for solving it |
+| ----- | ----- | --------------------- |
+| 1     | 5×5   | 50                    |
+| 2–3   | 6×6   | 60                    |
+| 4–6   | 7×7   | 70                    |
+| 7–10  | 8×8   | 80                    |
+| 11+   | 9×9   | 90                    |
+
+The board stops growing at 9×9. Past that, growing and repairing a unique board
+takes long enough to stall a phone (10×10 averaged about 90 ms and peaked near two
+seconds in testing), and the real game's boards sit in the same range. From level
+eleven on the difficulty comes from the layouts, which differ every board.
+
+### A move
+
+A move is a **cell index on the current board**. The cell cycles:
+
+1. **Empty → X.** A note. Free.
+2. **X → Queen.** If the cell is on the solution, the Queen stays. If not, it is a
+   **mistake**: the cell is ruled out and locked, and the third mistake of the run
+   ends it.
+3. **Queen → empty.**
+
+The board's last Queen solves it: it scores ten points a row and the next board is
+dealt, empty. Mistakes carry from board to board. A tap on a ruled-out cell, a cell
+off the board, or a tap after the run ended is not a move: the submission is
+impossible and is refused.
+
+### Scoring
+
+Each solved board scores **ten points per row** — 50 for a 5×5 board, 90 for a
+9×9. Larger boards take far longer, and the score says so; within a size, every
+board is worth the same. An unsolved board scores nothing, and there is no maximum.
+
+### How a run ends
+
+| Outcome        | When                                                                  |
+| -------------- | --------------------------------------------------------------------- |
+| `over`         | The third mistake.                                                    |
+| `over` (ended) | The player pressed End run. The score so far is kept.                 |
+| `over` (bound) | The submission reached 8192 taps.                                     |
+
+Ending a run is always allowed, and the verifier therefore accepts **any prefix
+of a legal line**. That is safe because a run never loses points: cutting a line
+short can only drop boards the player did not solve, and cannot avoid a mistake —
+the session is closed once the run is submitted.
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261104120000_queens_sessions.sql`.
+
+- `public.queens_solution(seed, level)` draws one board's solution and
+  `public.queens_side(level)` its size. Internals: execute is not granted to a
+  client, and the verifier is the only caller.
+- `public.start_game_session(slug, rules, client)` accepts the pair (`queens`,
+  `queens@1`). A Queens session reports `tile_count` 8192 — the submission bound —
+  and lives twelve hours, like every endless run.
+- `public.complete_queens_run(session, actions, score, duration)` replays the taps
+  cell by cell as above, derives the score, compares it with the claim, and only
+  then closes the session and records it. Its outcome vocabulary and ledger
+  behaviour are the other verifiers'. The Go service routes `queens@` runs to it
+  and accepts up to 8192 taps on cells 0 to 80, the 9×9 board.
+- `20261104120100_queens_playable.sql` inserts the catalogue record — published,
+  official, playable, runtime `queens`, category Logic — and is applied after the
+  deployment carrying the runtime is live.
+
+A guest can play. Their run is verified and closed exactly like a signed-in
+player's, and it is never ranked.
+
+### Test vectors
+
+Each vector is asserted by both the SQL suite and the client engine.
+
+1. **Seed 1's first four solutions** — `[1,3,0,4,2]`, `[4,1,3,0,5,2]`,
+   `[0,3,5,1,4,2]`, `[0,6,1,4,2,5,3]` (the Queen's column in each row).
+2. **A full-width seed** — `9223372036854775807` draws `[4,1,3,0,2]` on board one
+   and `[5,8,3,0,2,6,1,4,7]` on board eleven, which is what catches a client that
+   rounded the seed to a double.
+3. **The zero-state fallback** — seed `0` draws the same boards as `2654435769`.
+4. **Seed 1, a mistaken line** —
+   `1,1,8,8,10,10,19,19,22,22,4,4,4,0,0,1,1,2,2`: board one solved (each Queen an
+   X, then a Queen), cell 4 of board two cycled back to empty, then three Queens
+   off the solution. **50 points**, 19 taps, 1 board solved, and the third mistake
+   ends the run. Asserted in
+   [`tests/security/rls_test.sql`](../../tests/security/rls_test.sql) and in
+   [`src/lib/games/queens.test.ts`](../../src/lib/games/queens.test.ts).
+5. **Seed 1, an ended line** —
+   `1,1,8,8,10,10,19,19,22,22,4,4,7,7,15,15,18,18,29,29,32,32`: boards one and two
+   solved, then the player ends the run. **110 points**, 22 taps.
 
 ## Color Merge
 

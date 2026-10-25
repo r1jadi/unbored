@@ -8,7 +8,8 @@
 //     pinned rules (`complete_stack10_run`, `complete_chain_run`,
 //     `complete_memory_flash_run`, `complete_one_move_run`,
 //     `complete_color_merge_run`, `complete_dont_touch_run`,
-//     `complete_seven_second_run`) replays the submitted actions, derives the
+//     `complete_seven_second_run`, `complete_queens_run`) replays the submitted
+//     actions, derives the
 //     score and writes the ledger. This service validates
 //     the request shape, maps the verifier's outcome onto an HTTP answer, and
 //     never sees a score it can change. That is why there is no service_role key
@@ -50,9 +51,10 @@ import (
 const Name = "game-sessions"
 
 const (
-	// maxBodyBytes bounds a request body: a finite run is a few hundred bytes, and
-	// the longest endless run a submission may carry is 4096 moves — about 20 KiB
-	// of JSON — so the ceiling has room without inviting an absurd body.
+	// maxBodyBytes bounds a request body: a finite run is a few hundred bytes, the
+	// longest endless run is 4096 moves — about 20 KiB of JSON — and a Queens run
+	// may carry 8192 cell taps of at most two digits, about 25 KiB, so the
+	// ceiling has room without inviting an absurd body.
 	maxBodyBytes = 64 * 1024
 	// maxActions bounds the moves in an ordinary run: sixty tiles for Stack 10,
 	// fifty-five taps for a perfect Memory Flash or legacy Chain run, twelve taps
@@ -72,6 +74,9 @@ const (
 	memoryFlashMaxActions = 4096
 	oneMoveMaxActions     = 4096
 	dontTouchMaxActions   = 4095
+	// queens@1 carries at most 8192 taps: notes (Xs) are taps too, so a long run
+	// spends more of them per board than the other endless games do.
+	queensMaxActions = 8192
 	// The bounds a move has to fit. Stack 10 addresses a column and Chain a pad,
 	// both 0 to 3; Color Merge addresses one of its four directions, also 0 to 3;
 	// Memory Flash addresses a cell of its board — sixteen for the retired 4×4
@@ -95,6 +100,9 @@ const (
 	dontTouchCells     = 60
 	dontTouchMaxCells  = 4095
 	sevenSecondChoices = 3
+	// queensCells is the largest Queens board, 9×9: boards grow from 5×5 and stop
+	// there.
+	queensCells = 81
 )
 
 // Patterns mirror the database constraints, so a bad request is a 400 that names
@@ -336,6 +344,8 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 		limit = oneMoveMaxActions
 	case strings.HasPrefix(rules, "dont-touch@") && rules != "dont-touch@1":
 		limit = dontTouchMaxActions
+	case strings.HasPrefix(rules, "queens@"):
+		limit = queensMaxActions
 	}
 	if len(actions) > limit {
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
@@ -443,6 +453,8 @@ func boardSize(rulesVersion string) int {
 		return dontTouchMaxCells
 	case strings.HasPrefix(rulesVersion, "seven-second@"):
 		return sevenSecondChoices
+	case strings.HasPrefix(rulesVersion, "queens@"):
+		return queensCells
 	default:
 		return stackChainPositions
 	}

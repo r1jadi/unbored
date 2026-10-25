@@ -40,7 +40,8 @@ the score row. This service:
 - validates the request's _shape_ — a slug, a rules version, an action list within
   the board the rules version plays on (four positions for Stack 10, Chain and
   Color Merge's directions, sixteen cells for Memory Flash, twenty-five for One
-  Move, sixty for Don't Touch the Black, three answer buttons for 7 Second), a
+  Move, sixty for Don't Touch the Black, three answer buttons for 7 Second,
+  eighty-one cells for Queens' 9×9 board), a
   positive duration —
   so a malformed request is a `400` that names the field rather than a `500` from a
   function;

@@ -83,6 +83,14 @@ import {
   type OneMoveRun,
 } from "@/lib/games/one-move";
 import {
+  createRun as createQueensRun,
+  finish as finishQueensRun,
+  submission as queensSubmission,
+  QUEENS_RULES_VERSION,
+  tap as tapQueensCell,
+  type QueensRun,
+} from "@/lib/games/queens";
+import {
   createRun,
   place as placeTile,
   submission,
@@ -860,6 +868,169 @@ export function useOneMoveRun(gameSlug: string): OneMoveRunControls {
   }, [state]);
 
   return { ...state, begin, tap, restart, retry };
+}
+
+// ── A run of Queens, from session to score ───────────────────────────────
+
+export type QueensRunState =
+  | { status: "starting" }
+  | { status: "playing"; session: PlaySession; run: QueensRun }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: QueensRun }
+  | { status: "finished"; session: PlaySession; run: QueensRun; result: RunResult }
+  | {
+      status: "error";
+      /** Which half failed: the start of a run, or the submission of one. */
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: QueensRun;
+    };
+
+export type QueensRunControls = QueensRunState & {
+  /**
+   * Marks the moment the player pressed Start, so the submitted duration is the
+   * run's and not the time spent reading the rules.
+   */
+  begin: () => void;
+  /** Taps a cell: empty, X, Queen, empty. Ignored unless the run is live. */
+  tap: (cell: number) => void;
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
+  /** Starts a fresh run, replacing whatever is on the board. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of Queens against the session API.
+ *
+ * The same lifecycle as the other runtimes, because the server treats every
+ * game the same way: a run exists only after the server issued a session under the
+ * game's own rules version, a result exists only after the server verified the
+ * submission, and an error is reported as an error rather than as a score of
+ * zero. A submission is attempted exactly once per run — the effect that triggers
+ * it is guarded — so a re-render cannot send it twice, and a player who retries a
+ * failed submission sends the identical body, which the server recognises.
+ */
+export function useQueensRun(gameSlug: string): QueensRunControls {
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<QueensRunState>({ status: "starting" });
+  const startedAt = useRef(0);
+  // When the run ended, captured once. A retry must send the duration the run
+  // actually took, not the time the retry happened to be made: the submission is
+  // meant to be the same submission, and a number that grows on every attempt
+  // would describe a run that did not happen.
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // A new run starts from nothing: keeping the previous board on screen while a
+    // session is issued would show a board with no session behind it.
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    startSession(gameSlug, { signal: controller.signal, rulesVersion: QUEENS_RULES_VERSION })
+      .then((session) => {
+        if (controller.signal.aborted) return;
+        // The clock starts when the player presses Start (`begin`), not when the
+        // session arrives: reading the rules is not part of the run.
+        setState({ status: "playing", session, run: createQueensRun(session.seed) });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // Verification. It runs when a run has ended, once, and never for a run that is
+  // still in progress.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run } = state;
+    // Defensive: every run is begun before it can end, but a missing mark must
+    // never turn into a duration measured from the epoch.
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run });
+
+    completeRun(
+      session.id,
+      { ...queensSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const tap = useCallback((cell: number) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = tapQueensCell(current.run, cell);
+      // An impossible tap returns the same run, and the same reference means
+      // there is nothing to re-render.
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishQueensRun(current.run);
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
+  const begin = useCallback(() => {
+    if (startedAt.current === 0) startedAt.current = Date.now();
+  }, []);
+
+  const restart = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again. The server recognises a repeated
+      // body as the run it already recorded, so this cannot score twice — and a
+      // new session here would abandon a run that was only a retry away.
+      submitting.current = false;
+      setState({ status: "playing", session: state.session, run: state.run });
+      return;
+    }
+
+    // The run never started: ask for a new session.
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, begin, tap, finish, restart, retry };
 }
 
 // ── A run of Color Merge, from session to score ────────────────────────────
