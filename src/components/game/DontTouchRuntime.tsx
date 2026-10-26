@@ -30,6 +30,9 @@ import {
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["dont-touch"];
 
+/** Rows on screen at once. Four, as in Piano Tiles, keeps each tile tall like a key. */
+const VISIBLE_ROWS = 4;
+
 /**
  * Don't Touch the Black, playing for real.
  *
@@ -333,18 +336,19 @@ function Conveyor({
             : "Tap the white tiles in the row at the line."}
       </p>
 
-      {/* The conveyor. Five rows are visible at a time; the bottom one is at the
-          line and is the only one that can be touched. Percentages rather than
-          pixels keep the field square-ish on any viewport, and the rows move by
-          one fifth per tick, which is what makes the slowdown visible. */}
+      {/* The conveyor. Four rows are visible at a time, as in Piano Tiles, so
+          each tile is tall like a key; the bottom one is at the line and is the
+          only one that can be touched. Percentages rather than pixels fill the
+          field on any viewport, and the rows move by one row per tick, which is
+          what makes the slowdown visible. */}
       <div className="relative flex min-h-0 flex-1 justify-center py-2">
         <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface">
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-1/5 border-t-2 border-dashed border-primary/60 bg-primary/5"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-1/4 border-t-2 border-dashed border-primary/60 bg-primary/5"
             aria-hidden="true"
           />
 
-          {Array.from({ length: 5 }, (_, offset) => {
+          {Array.from({ length: VISIBLE_ROWS }, (_, offset) => {
             const row = step + offset;
             // At the representable ceiling there is no next row to name; the run
             // ends on this tick, so the empty slots above the line are honest.
@@ -354,8 +358,11 @@ function Conveyor({
             return (
               <div
                 key={row}
-                className="absolute inset-x-0 grid grid-cols-3 gap-1.5 px-1.5 transition-[top] duration-300 ease-linear motion-reduce:transition-none"
-                style={{ top: `${(4 - offset) * 20}%`, height: "20%" }}
+                className="absolute inset-x-0 grid grid-cols-3 gap-1 px-1 py-0.5 transition-[top] duration-300 ease-linear motion-reduce:transition-none"
+                style={{
+                  top: `${((VISIBLE_ROWS - 1 - offset) * 100) / VISIBLE_ROWS}%`,
+                  height: `${100 / VISIBLE_ROWS}%`,
+                }}
               >
                 {Array.from({ length: DONT_TOUCH_LANES }, (_, lane) => {
                   const cell = cellAt(row, lane);
@@ -372,7 +379,7 @@ function Conveyor({
                       }${alreadyCleared ? ", cleared" : ""}`}
                       onClick={atLine && accepting && !alreadyCleared ? () => tap(cell) : undefined}
                       className={cn(
-                        "h-full rounded-lg transition-colors duration-150 motion-reduce:transition-none",
+                        "h-full rounded-md transition-colors duration-150 motion-reduce:transition-none",
                         black
                           ? "border border-zinc-700 bg-zinc-950"
                           : "bg-zinc-100 shadow-sm dark:bg-zinc-100",

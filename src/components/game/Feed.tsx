@@ -1,8 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
+import { useRef } from "react";
 import { FeedItem, FeedSkeleton } from "./FeedItem";
 import { EmptyState, ErrorState } from "@/components/common";
 import { LogoMark } from "@/components/layout/Logo";
+import { requestFeedRefresh, useFeedRefresh } from "@/lib/feed-refresh";
 import { catalogErrorMessage, type Game } from "@/lib/games/catalog";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +23,7 @@ export function Feed({
   loading = false,
   error,
   onRetry,
+  onRefresh,
   empty = {
     title: "Nothing here yet",
     body: "As soon as games are published they show up in this feed.",
@@ -31,8 +34,19 @@ export function Feed({
   loading?: boolean;
   error?: unknown;
   onRetry?: () => void;
+  /** Reads the feed again: a tap on Home or For You while already here. */
+  onRefresh?: () => void;
   empty?: { title: string; body?: string };
 }) {
+  const scroller = useRef<HTMLDivElement>(null);
+
+  // Home or For You tapped while already on this feed: back to the first game,
+  // and a fresh read of the list behind it.
+  useFeedRefresh(() => {
+    scroller.current?.scrollTo({ top: 0, behavior: "smooth" });
+    onRefresh?.();
+  });
+
   return (
     <div className="relative">
       <div className="pointer-events-none fixed inset-x-0 top-0 z-20 md:left-60 lg:left-64">
@@ -48,6 +62,11 @@ export function Feed({
               <Link
                 key={key}
                 to={to}
+                onClick={(event) => {
+                  if (tab !== key || key !== "for-you") return;
+                  event.preventDefault();
+                  requestFeedRefresh();
+                }}
                 className={cn(
                   "press rounded-full px-3.5 py-1.5 text-sm",
                   tab === key
@@ -68,7 +87,10 @@ export function Feed({
           </Link>
         </div>
       </div>
-      <div className="no-scrollbar h-dvh snap-y snap-mandatory overflow-y-auto overscroll-contain">
+      <div
+        ref={scroller}
+        className="no-scrollbar h-dvh snap-y snap-mandatory overflow-y-auto overscroll-contain"
+      >
         {loading ? (
           <FeedSkeleton />
         ) : error ? (

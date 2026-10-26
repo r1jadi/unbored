@@ -12,9 +12,10 @@ import {
   User,
   Users,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { Logo } from "./Logo";
 import { cn } from "@/lib/utils";
+import { requestFeedRefresh } from "@/lib/feed-refresh";
 import { useAuth } from "@/lib/auth/session";
 import { useUnreadCount } from "@/lib/notifications/store";
 import { useAdminVisibility } from "@/lib/admin/visibility";
@@ -66,6 +67,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const showBadge = unread.status === "ready" && unread.count > 0;
   const isActive = (to: string) => (to === "/" ? path === "/" : path.startsWith(to));
   const feed = path === "/" || path === "/following";
+  // Home while already on the feed refreshes it instead of navigating nowhere.
+  const onNavClick = (to: string) => (event: MouseEvent) => {
+    if (to !== "/" || path !== "/") return;
+    event.preventDefault();
+    requestFeedRefresh();
+  };
 
   return (
     <div className="min-h-dvh md:flex">
@@ -78,6 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link
               key={to}
               to={to}
+              onClick={onNavClick(to)}
               className={cn(
                 "press flex h-10 items-center gap-3 rounded-lg px-3 text-sm text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground",
                 isActive(to) && "bg-sidebar-accent font-medium text-sidebar-foreground",
@@ -161,6 +169,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <li key={to}>
               <Link
                 to={to}
+                onClick={onNavClick(to)}
                 className={cn(
                   "press relative flex h-full flex-col items-center justify-center gap-1 text-[11px] text-muted-foreground",
                   isActive(to) && "text-foreground",

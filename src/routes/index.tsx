@@ -29,6 +29,7 @@ function ForYou() {
       loading={status === "loading"}
       error={status === "error" ? error : undefined}
       onRetry={retry}
+      onRefresh={retry}
     />
   );
 }

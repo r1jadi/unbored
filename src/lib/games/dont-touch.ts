@@ -191,7 +191,7 @@ export function isBlack(seed: string | number | bigint, cell: number): boolean {
 /**
  * One row's three colours, in lane order.
  *
- * The runtime asks for the five rows it shows on every step, so this reads the
+ * The runtime asks for the four rows it shows on every step, so this reads the
  * generator once per row rather than three times. It is still a pure function of
  * the seed and the row.
  */
