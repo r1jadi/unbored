@@ -161,6 +161,26 @@
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
   }
+
+  /* Installed on the Home Screen (iOS 26+), WebKit sizes the viewport short by
+     the status bar's height whenever the page is shorter than the screen
+     (WebKit bug 301108). The feed scrolls inside its own box, so the page is
+     exactly that short: the fixed bottom nav stopped above a strip of empty
+     background. A page at least as tall as the screen gets the full viewport,
+     so `html` gets that floor; the `min()` cap keeps an opaque status bar
+     (inset 0, where `100lvh` is already the full screen) from scrolling.
+
+     The document also stops rubber-banding there (long pages still scroll):
+     the bounce let the whole screen, nav included, be dragged up and down. */
+  @media (display-mode: standalone) {
+    html {
+      min-height: min(100lvh, calc(100% + env(safe-area-inset-top)));
+    }
+    html,
+    body {
+      overscroll-behavior: none;
+    }
+  }
 }
 
 @utility glass {

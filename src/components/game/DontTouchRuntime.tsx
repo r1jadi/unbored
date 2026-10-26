@@ -343,12 +343,6 @@ function Conveyor({
             className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-1/5 border-t-2 border-dashed border-primary/60 bg-primary/5"
             aria-hidden="true"
           />
-          <span
-            className="pointer-events-none absolute right-2 bottom-1 z-20 text-[10px] font-medium tracking-wide text-primary uppercase"
-            aria-hidden="true"
-          >
-            The line
-          </span>
 
           {Array.from({ length: 5 }, (_, offset) => {
             const row = step + offset;
