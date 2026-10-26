@@ -221,38 +221,33 @@ function Zip() {
   ];
   const numbers: Record<number, number> = { 8: 1, 6: 2, 16: 3, 12: 4, 24: 5, 14: 6, 2: 7, 0: 8 };
   return (
-    <svg viewBox="0 0 5 5" className="w-[min(66cqw,66cqh)] max-w-72" aria-hidden>
-      <rect width="5" height="5" rx="0.3" className="fill-surface-2" />
-      <polyline
-        points={path.map((c) => `${(c % 5) + 0.5},${Math.floor(c / 5) + 0.5}`).join(" ")}
-        fill="none"
-        className="stroke-game-7"
-        strokeWidth={0.34}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {Object.entries(numbers).map(([cell, n]) => (
-        <g key={cell}>
-          <circle
-            cx={(+cell % 5) + 0.5}
-            cy={Math.floor(+cell / 5) + 0.5}
-            r={0.28}
-            className="fill-foreground"
-          />
-          <text
-            x={(+cell % 5) + 0.5}
-            y={Math.floor(+cell / 5) + 0.5}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={0.3}
-            fontWeight={600}
-            className="fill-background"
+    <div className="relative aspect-square w-[min(66cqw,66cqh)] max-w-72">
+      <svg viewBox="0 0 5 5" className="absolute inset-0 size-full">
+        <rect width="5" height="5" rx="0.3" className="fill-surface-2" />
+        <polyline
+          points={path.map((c) => `${(c % 5) + 0.5},${Math.floor(c / 5) + 0.5}`).join(" ")}
+          fill="none"
+          className="stroke-game-7"
+          strokeWidth={0.34}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      {/* HTML rather than SVG text, so the digits stay centred on every browser. */}
+      <div className="absolute inset-0 grid grid-cols-5 grid-rows-5 [container-type:inline-size]">
+        {Object.entries(numbers).map(([cell, n]) => (
+          <span
+            key={cell}
+            className="flex items-center justify-center"
+            style={{ gridColumn: (+cell % 5) + 1, gridRow: Math.floor(+cell / 5) + 1 }}
           >
-            {n}
-          </text>
-        </g>
-      ))}
-    </svg>
+            <span className="flex aspect-square w-[56%] items-center justify-center rounded-full bg-foreground text-[6cqw] font-semibold leading-none text-background">
+              {n}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

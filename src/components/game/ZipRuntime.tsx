@@ -418,32 +418,46 @@ function Board({
                   />
                 );
               })}
+            </svg>
+
+            {/* The numbers sit in their own HTML layer over the path, centred by
+                flexbox. As SVG text they relied on `dominant-baseline` and a
+                fraction-of-a-unit font size, which mobile browsers round and
+                place differently, so the digits drifted off the circles' centres.
+                Sizes are in container units, so the badges scale with the board. */}
+            <div
+              className="pointer-events-none absolute inset-0 grid [container-type:inline-size]"
+              style={{
+                gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`,
+                gridTemplateRows: `repeat(${size}, minmax(0, 1fr))`,
+              }}
+              aria-hidden
+            >
               {drawn.numbers.map((number, index) =>
                 number > 0 ? (
-                  <g key={index}>
-                    <circle
-                      cx={(index % size) + 0.5}
-                      cy={Math.floor(index / size) + 0.5}
-                      r={0.3}
-                      fill="var(--foreground)"
-                      stroke={number <= reached ? "var(--primary)" : "none"}
-                      strokeWidth={0.07}
-                    />
-                    <text
-                      x={(index % size) + 0.5}
-                      y={Math.floor(index / size) + 0.5}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fontSize={0.32}
-                      fontWeight={600}
-                      fill="var(--background)"
+                  <span
+                    key={index}
+                    className="flex items-center justify-center"
+                    style={{
+                      gridColumn: (index % size) + 1,
+                      gridRow: Math.floor(index / size) + 1,
+                    }}
+                  >
+                    <span
+                      className="flex aspect-square w-[60%] items-center justify-center rounded-full bg-foreground font-semibold leading-none text-background tabular"
+                      style={{
+                        fontSize: `${32 / size}cqw`,
+                        // The ring marks a number the path has already reached.
+                        boxShadow:
+                          number <= reached ? `0 0 0 ${7 / size}cqw var(--primary)` : undefined,
+                      }}
                     >
                       {number}
-                    </text>
-                  </g>
+                    </span>
+                  </span>
                 ) : null,
               )}
-            </svg>
+            </div>
             {levelUp && (
               <LevelUpOverlay
                 levelUp={levelUp}
