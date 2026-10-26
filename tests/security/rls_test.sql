@@ -3980,6 +3980,21 @@ select rls_test.ok(
   (select score = 100 and rank = 1 and plays = 2 from public.game_leaderboard('fixture-memory', null, 10, 0)),
   'the top of the Memory Flash board is the verified score, at rank one, with two scored runs'
 );
+-- The all-games board is public too, and is derived from the same scores: the
+-- player on top of the three boards above is rated in at least three games, and
+-- a rating is never more than 100 per game.
+select rls_test.ok(
+  (select count(*) >= 1 from public.overall_leaderboard(null, 10, 0)),
+  'the all-games board ranks a player rated in three games'
+);
+select rls_test.ok(
+  (select bool_and(games >= 3 and rating between 0 and 100 * games and rank >= 1)
+     from public.overall_leaderboard(null, 10, 0)),
+  'every all-games row covers at least three games, at most 100 points each'
+);
+select rls_test.visible($$select * from public.overall_standing('22222222-2222-4222-8222-222222222222', null)$$, 0,
+  'a player with no recorded score has no all-games standing'
+);
 
 reset role;
 

@@ -687,6 +687,49 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "501": { $ref: "#/components/responses/NotImplemented" }
 
+  /games/leaderboard:
+    get:
+      operationId: getOverallLeaderboard
+      tags: [leaderboards]
+      summary: Read the all-games leaderboard
+      description: |
+        One rating across every published game. Scores cannot be added across
+        games, so each player's best score in a game is first turned into a
+        percentile — the share of that game's players they matched or beat, 1 to
+        100 — and the rating is the sum of their percentiles. It rewards both
+        playing well and playing more games.
+
+        A player is ranked once they have a percentile in at least `minGames`
+        games (three). Below that, a signed-in caller still gets their rating as
+        `me`, with a `null` rank, so the client can say how many games are left.
+
+        The window applies before the percentiles: a weekly board compares this
+        week's players with each other. Ties share a rank. Authentication is
+        optional and only adds `me`.
+      security:
+        - {}
+        - bearerAuth: []
+      x-status: available
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - name: offset
+          in: query
+          description: How many ranked players to skip, at most 10000.
+          schema: { type: integer, minimum: 0, maximum: 10000, default: 0 }
+        - name: period
+          in: query
+          description: The window over the scores, by their recorded time.
+          schema: { type: string, enum: [all, day, week], default: all }
+      responses:
+        "200":
+          description: One page of the all-games board, plus the caller's own rating.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OverallBoard" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
   /games/{slug}/leaderboard:
     parameters:
       - $ref: "#/components/parameters/GameSlug"
@@ -2243,6 +2286,50 @@ components:
             The caller's own standing, or null when they are anonymous or have no
             scored run in the window. A player with no score has no rank; zero
             would read as last place.
+    OverallBoard:
+      type: object
+      required: [scope, period, minGames, entries, hasMore, me]
+      description: The all-games ranking, as `GET /games/leaderboard` returns it.
+      properties:
+        scope: { type: string, enum: [global] }
+        period: { type: string, enum: [all, day, week] }
+        minGames:
+          type: integer
+          minimum: 1
+          description: How many games a player needs a percentile in to be ranked.
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/OverallEntry" }
+        hasMore: { type: boolean }
+        me:
+          oneOf:
+            - $ref: "#/components/schemas/OverallStanding"
+            - type: "null"
+          description: The caller's rating, or null when anonymous or without a scored run in the window.
+    OverallEntry:
+      type: object
+      required: [rank, username, rating, games]
+      properties:
+        rank: { type: integer, minimum: 1 }
+        username: { type: string }
+        rating:
+          type: integer
+          minimum: 0
+          description: The sum of the player's per-game percentiles, each 1 to 100.
+        games:
+          type: integer
+          minimum: 1
+          description: How many games the rating covers.
+    OverallStanding:
+      type: object
+      required: [rank, rating, games]
+      properties:
+        rank:
+          type: [integer, "null"]
+          minimum: 1
+          description: Null while the caller is rated in fewer than minGames games.
+        rating: { type: integer, minimum: 0 }
+        games: { type: integer, minimum: 0 }
     LeaderboardEntry:
       type: object
       required: [rank, username, score, achievedAt, plays]

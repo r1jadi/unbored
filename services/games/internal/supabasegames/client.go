@@ -144,6 +144,24 @@ type Standing struct {
 	Plays      int64
 }
 
+// OverallEntry is one row of the all-games board: a player's rating — the sum
+// of their per-game percentiles — and how many games it covers.
+type OverallEntry struct {
+	Rank     int64
+	Username string
+	Rating   int64
+	Games    int64
+}
+
+// OverallStanding is one player's place on the all-games board. Rank is nil
+// while they are rated in fewer games than the board requires: they have a
+// rating, but no place on it yet.
+type OverallStanding struct {
+	Rank   *int64
+	Rating int64
+	Games  int64
+}
+
 // BoardQuery describes one page of a board. Since is exclusive of everything
 // before it; nil means all time. HasSince distinguishes "all time" from a zero
 // timestamp, the same way the catalogue's cursor does.
@@ -466,6 +484,59 @@ func (c *Client) Standing(ctx context.Context, slug, userID string, query BoardQ
 	}, true, nil
 }
 
+// OverallLeaderboard reads one page of the all-games board. Like Leaderboard it
+// returns at most `query.Limit + 1` entries, so the caller learns whether
+// another page exists.
+func (c *Client) OverallLeaderboard(ctx context.Context, query BoardQuery) ([]OverallEntry, error) {
+	if query.Limit < 1 {
+		return nil, errors.New("a board page needs a positive limit")
+	}
+
+	payload := map[string]any{
+		"p_since":  sinceArgument(query),
+		"p_limit":  query.Limit + 1,
+		"p_offset": query.Offset,
+	}
+
+	var rows []overallRow
+	if err := c.rpc(ctx, "overall-leaderboard", "overall_leaderboard", payload, &rows); err != nil {
+		return nil, err
+	}
+
+	entries := make([]OverallEntry, 0, len(rows))
+	for _, row := range rows {
+		entry := OverallEntry{Rank: row.Rank, Rating: row.Rating, Games: row.Games}
+		if row.Username != nil {
+			entry.Username = *row.Username
+		}
+		entries = append(entries, entry)
+	}
+	return entries, nil
+}
+
+// OverallStanding reads one player's all-games rating. `found` is false when
+// they have no scored run in the window at all.
+func (c *Client) OverallStanding(ctx context.Context, userID string, query BoardQuery) (OverallStanding, bool, error) {
+	if userID == "" {
+		return OverallStanding{}, false, nil
+	}
+
+	payload := map[string]any{
+		"p_user_id": userID,
+		"p_since":   sinceArgument(query),
+	}
+
+	var rows []overallStandingRow
+	if err := c.rpc(ctx, "overall-standing", "overall_standing", payload, &rows); err != nil {
+		return OverallStanding{}, false, err
+	}
+	if len(rows) == 0 {
+		return OverallStanding{}, false, nil
+	}
+	row := rows[0]
+	return OverallStanding{Rank: row.Rank, Rating: row.Rating, Games: row.Games}, true, nil
+}
+
 // sinceArgument sends NULL for all time rather than a zero timestamp, which the
 // function would read as "everything before 1 AD" and answer the same way by
 // accident.
@@ -696,6 +767,22 @@ type standingRow struct {
 	Score      int64      `json:"score"`
 	AchievedAt *time.Time `json:"achieved_at"`
 	Plays      int64      `json:"plays"`
+}
+
+// overallRow is one `overall_leaderboard` row.
+type overallRow struct {
+	Rank     int64   `json:"rank"`
+	Username *string `json:"username"`
+	Rating   int64   `json:"rating"`
+	Games    int64   `json:"games"`
+}
+
+// overallStandingRow is one `overall_standing` row; rank is null below the
+// board's game minimum.
+type overallStandingRow struct {
+	Rank   *int64 `json:"rank"`
+	Rating int64  `json:"rating"`
+	Games  int64  `json:"games"`
 }
 
 func (r row) game() Game {

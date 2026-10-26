@@ -253,6 +253,7 @@ export function completeRun(
     // own stats; the next visit to any of them should read them fresh.
     const client = getQueryClient();
     void client.invalidateQueries({ queryKey: ["leaderboard", result.gameSlug] });
+    void client.invalidateQueries({ queryKey: ["leaderboard", "all-games"] });
     void client.invalidateQueries({ queryKey: ["games"] });
     void client.invalidateQueries({ queryKey: ["my-game-stats", result.gameSlug] });
     return result;

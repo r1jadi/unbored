@@ -67,6 +67,11 @@ const (
 	// an anonymous caller sees the board, a signed-in one also sees their own
 	// standing on it.
 	LeaderboardPath = "/api/v1/games/{slug}/leaderboard"
+	// OverallLeaderboardPath reads the all-games board: each player's per-game
+	// percentiles, summed. Like FollowingPath it is a static segment under
+	// /games, so the gateway's games binding routes it and Go's mux prefers it
+	// over {slug}. Optional-auth, like a game's board.
+	OverallLeaderboardPath = "/api/v1/games/leaderboard"
 	// CategoriesPath lists categories with their real published-game counts.
 	CategoriesPath = "/api/v1/categories"
 )
@@ -144,6 +149,10 @@ type Backend interface {
 	// caller's own place on it.
 	Leaderboard(ctx context.Context, slug string, query supabasegames.BoardQuery) ([]supabasegames.LeaderboardEntry, error)
 	Standing(ctx context.Context, slug, userID string, query supabasegames.BoardQuery) (supabasegames.Standing, bool, error)
+	// OverallLeaderboard reads one page of the all-games board, and
+	// OverallStanding the caller's own rating on it.
+	OverallLeaderboard(ctx context.Context, query supabasegames.BoardQuery) ([]supabasegames.OverallEntry, error)
+	OverallStanding(ctx context.Context, userID string, query supabasegames.BoardQuery) (supabasegames.OverallStanding, bool, error)
 }
 
 // ── Response shapes ─────────────────────────────────────────────────────────
@@ -266,6 +275,40 @@ type leaderboardResponse struct {
 	Me *standingView `json:"me"`
 }
 
+// overallMinGames is how many games a player needs a percentile in before the
+// all-games board ranks them. It mirrors `public.overall_leaderboard`, which is
+// the authority; the response carries it so the client never hard-codes it.
+const overallMinGames = 3
+
+// overallEntryView is one row of the all-games board.
+type overallEntryView struct {
+	Rank     int64  `json:"rank"`
+	Username string `json:"username"`
+	// Rating is the sum of the player's per-game percentiles (each 1–100).
+	Rating int64 `json:"rating"`
+	// Games is how many games the rating covers.
+	Games int64 `json:"games"`
+}
+
+// overallStandingView is the caller's own all-games rating. Rank is null while
+// they are rated in fewer than MinGames games.
+type overallStandingView struct {
+	Rank   *int64 `json:"rank"`
+	Rating int64  `json:"rating"`
+	Games  int64  `json:"games"`
+}
+
+type overallLeaderboardResponse struct {
+	Scope    string             `json:"scope"`
+	Period   string             `json:"period"`
+	MinGames int                `json:"minGames"`
+	Entries  []overallEntryView `json:"entries"`
+	HasMore  bool               `json:"hasMore"`
+	// Me is null for an anonymous caller and for one with no scored run in this
+	// window.
+	Me *overallStandingView `json:"me"`
+}
+
 // ── Handlers ────────────────────────────────────────────────────────────────
 
 // service holds the handlers' dependencies. `backend` is nil when the deployment
@@ -295,6 +338,7 @@ func (s *service) register(router *httpx.Router) {
 	// Optional auth: the board is public, and a token only adds the caller's own
 	// standing to the same response.
 	router.OptionalAuthFunc("GET "+LeaderboardPath, s.leaderboard)
+	router.OptionalAuthFunc("GET "+OverallLeaderboardPath, s.overallLeaderboard)
 
 	router.AuthenticatedFunc("POST "+GamesPath, httpx.NotImplemented(Name, "Creating a game"))
 	router.AuthenticatedFunc("PATCH "+GamePath, httpx.NotImplemented(Name, "Updating an owned game"))
@@ -543,6 +587,63 @@ func (s *service) leaderboard(w http.ResponseWriter, r *http.Request) {
 				Score:      standing.Score,
 				AchievedAt: standing.AchievedAt,
 				Plays:      standing.Plays,
+			}
+		}
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, response)
+}
+
+// overallLeaderboard answers the all-games board. As with a game's board, the
+// ranking is the database's — this handler pages and presents it.
+func (s *service) overallLeaderboard(w http.ResponseWriter, r *http.Request) {
+	if s.backend == nil {
+		s.notConfigured(w, r, "read the all-games leaderboard")
+		return
+	}
+
+	query, failure := parseBoardQuery(r, time.Now().UTC())
+	if failure != nil {
+		httpx.WriteError(w, r, failure)
+		return
+	}
+
+	entries, err := s.backend.OverallLeaderboard(r.Context(), query.BoardQuery)
+	if err != nil {
+		s.dataFailure(w, r, "read the all-games leaderboard", err)
+		return
+	}
+
+	limit := query.Limit
+	items := make([]overallEntryView, 0, min(len(entries), limit))
+	for _, entry := range entries[:min(len(entries), limit)] {
+		items = append(items, overallEntryView{
+			Rank:     entry.Rank,
+			Username: entry.Username,
+			Rating:   entry.Rating,
+			Games:    entry.Games,
+		})
+	}
+
+	response := overallLeaderboardResponse{
+		Scope:    query.Scope,
+		Period:   query.Period,
+		MinGames: overallMinGames,
+		Entries:  items,
+		HasMore:  len(entries) > limit,
+	}
+
+	if id, ok := identity.FromContext(r.Context()); ok && !id.Anonymous && id.UserID != "" {
+		standing, found, standingErr := s.backend.OverallStanding(r.Context(), id.UserID, query.BoardQuery)
+		if standingErr != nil {
+			s.dataFailure(w, r, "read an all-games standing", standingErr)
+			return
+		}
+		if found {
+			response.Me = &overallStandingView{
+				Rank:   standing.Rank,
+				Rating: standing.Rating,
+				Games:  standing.Games,
 			}
 		}
 	}

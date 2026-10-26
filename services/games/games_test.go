@@ -77,6 +77,13 @@ type fakeBackend struct {
 	// lastFollowing records the FollowingQuery the handler built, so tests
 	// assert the follower came from the token rather than a parameter.
 	lastFollowing supabasegames.FollowingQuery
+
+	// The all-games board: its rows, the caller's rating (nil when they have
+	// none), and what the handler asked for.
+	overall         []supabasegames.OverallEntry
+	overallStanding *supabasegames.OverallStanding
+	overallCalls    int
+	overallUser     string
 }
 
 func (b *fakeBackend) ListGames(_ context.Context, query supabasegames.ListQuery) ([]supabasegames.Game, error) {

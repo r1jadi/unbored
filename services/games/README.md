@@ -12,6 +12,7 @@ open and rank a game.
 | `GET /api/v1/games`                    | public        | A page of published games, newest first. Filters: `category` (slug), `q` (substring over title, tagline and description), `sort` (only `latest`), `limit` (1–100, default 20), `cursor`. |
 | `GET /api/v1/games/{slug}`             | public        | One published game, by its stable slug (`stack-10`), with its real play count.                                                                                                           |
 | `GET /api/v1/games/{slug}/leaderboard` | optional      | The game's persisted ranking. A token only adds the caller's own standing as `me`.                                                                                                       |
+| `GET /api/v1/games/leaderboard`        | optional      | The all-games board: each player's per-game percentiles, summed, for players rated in at least three games. A token adds the caller's rating as `me`.                                    |
 | `GET /api/v1/categories`               | public        | Every category with its real published-game count.                                                                                                                                       |
 | `POST /api/v1/games`                   | authenticated | **Planned** — answers `501`. Creating a game is a separate feature.                                                                                                                      |
 | `PATCH /api/v1/games/{slug}`           | authenticated | **Planned** — answers `501`.                                                                                                                                                             |
@@ -42,6 +43,14 @@ so RLS still decides what a caller may see, and the service presents what the
 database ranked without recomputing or caching it. A game nobody has played is an
 empty board — an answer — while an unknown or unpublished game is a `404`, the same
 answer as reading it.
+
+The all-games board (`public.overall_leaderboard`, `public.overall_standing`) is
+derived from the same scores. A score cannot be compared across games, so each
+player's best in a game becomes a percentile of that game's players (`cume_dist`,
+1–100), and the rating is their sum. A player is ranked once they have a
+percentile in three games; below that, `me` still carries their rating with a
+`null` rank. The window applies before the percentiles, so a weekly board compares
+this week's players with each other.
 
 `scope=friends` is refused with a `400` that explains itself: a friends board needs
 a following graph, which does not exist yet.

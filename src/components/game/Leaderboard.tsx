@@ -12,6 +12,7 @@ import {
   type BoardPeriod,
   type BoardScope,
 } from "@/lib/games/sessions";
+import { useOverallBoard } from "@/lib/games/overall-board";
 
 /**
  * A game's leaderboard.
@@ -264,5 +265,141 @@ function FollowingBoard({ gameSlug, period }: { gameSlug: string; period: BoardP
         </li>
       ))}
     </ol>
+  );
+}
+
+/**
+ * The all-games board.
+ *
+ * Each row is a player's rating: their best score in every game, turned into a
+ * percentile of that game's players, summed. The server ranks it; this renders
+ * it. The Following tab narrows the same global board to the caller and the
+ * people they follow, keeping global ranks, exactly as a game's board does.
+ */
+export function OverallBoardList({
+  period = "all",
+  scope = "global",
+}: {
+  period?: BoardPeriod;
+  scope?: BoardScope;
+}) {
+  const auth = useAuth();
+  const userId = auth.status === "authenticated" ? auth.session.userId : undefined;
+  const following = scope === "friends";
+  const followed = useFollowedUsernames(following ? userId : undefined);
+  const state = useOverallBoard({
+    period,
+    limit: following ? FOLLOWING_SCAN : undefined,
+    enabled: !following || userId !== undefined,
+  });
+
+  if (following && auth.status === "restoring") return <ListSkeleton rows={5} />;
+
+  if (following && !userId) {
+    return (
+      <EmptyState
+        icon={Users}
+        title="See how the people you follow did"
+        body="Sign in, follow a few players, and their ratings show up here next to yours."
+        action={
+          <Button asChild variant="secondary">
+            <Link to="/login" search={{ redirect: "/leaderboards" }}>
+              Log in
+            </Link>
+          </Button>
+        }
+      />
+    );
+  }
+
+  if (state.status === "error" || (following && followed.status === "error")) {
+    return (
+      <ErrorState
+        title="Couldn't load the leaderboard"
+        body={state.status === "error" ? playErrorMessage(state.error) : undefined}
+        onRetry={() => {
+          state.retry();
+          if (following) followed.retry();
+        }}
+      />
+    );
+  }
+
+  if (state.status === "loading" || (following && followed.status === "loading")) {
+    return <ListSkeleton rows={7} />;
+  }
+
+  const { entries, me, minGames } = state.board;
+  const rows =
+    following && followed.status === "ready"
+      ? entries.filter((row) => followed.usernames.has(row.username))
+      : entries;
+
+  const lastVisibleRank = rows.length > 0 ? rows[rows.length - 1].rank : 0;
+  const pinMe = !following && me !== null && me.rank !== null && me.rank > lastVisibleRank;
+  const gamesLeft = me && me.rank === null ? Math.max(0, minGames - me.games) : 0;
+
+  return (
+    <div>
+      <p className="px-4 pb-3 text-xs text-muted-foreground md:px-2">
+        Your best score in each game becomes a percentile of everyone who played it, up to 100 per
+        game. Your rating adds them up. Play {minGames} games to get ranked.
+      </p>
+
+      {gamesLeft > 0 && me && (
+        <div className="mx-4 mb-3 rounded-lg border border-primary/30 bg-surface px-3 py-2.5 text-sm md:mx-2">
+          You're rated in {me.games} of {minGames} games ({me.rating} points).{" "}
+          {gamesLeft === 1 ? "Play 1 more game" : `Play ${gamesLeft} more games`} to get on the
+          board.
+        </div>
+      )}
+
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={CircleSlash}
+          title={
+            following
+              ? "Nobody you follow is ranked yet"
+              : period === "all"
+                ? "No one is ranked yet"
+                : "No one is ranked in this window"
+          }
+          body={`A player is ranked once they have verified scores in ${minGames} different games.`}
+        />
+      ) : (
+        <ol className="divide-y divide-border">
+          {rows.map((row) => (
+            <li
+              key={`${row.rank}-${row.username}`}
+              className="enter flex items-center gap-3 px-4 py-2.5 md:rounded-lg md:px-2"
+            >
+              <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
+                {row.rank}
+              </span>
+              <Avatar name={row.username || "player"} size="sm" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm">
+                  {row.username ? `@${row.username}` : "A former player"}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {row.games === 1 ? "1 game" : `${row.games} games`}
+                </span>
+              </span>
+              <span className="font-semibold tabular">{row.rating}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {pinMe && me && (
+        <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] mt-2 flex items-center gap-3 border-y border-primary/30 bg-surface px-4 py-3 md:bottom-0 md:rounded-lg md:border md:px-2">
+          <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
+            {me.rank}
+          </span>
+          <span className="flex-1 text-sm font-medium">You</span>
+          <span className="font-semibold tabular">{me.rating}</span>
+        </div>
+      )}
+    </div>
   );
 }
