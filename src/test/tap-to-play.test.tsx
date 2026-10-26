@@ -5,7 +5,15 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
@@ -15,6 +23,7 @@ import { ZipRuntime } from "@/components/game/ZipRuntime";
 import { clearSession } from "@/lib/auth/session";
 import type { Game } from "@/lib/games/catalog";
 import { GAME_RULES } from "@/lib/games/rules";
+import { useEightPuzzleRun, useZipRun } from "@/lib/games/sessions";
 import { Route as PlayRoute } from "@/routes/play.$id";
 
 /**
@@ -182,6 +191,27 @@ describe("starting straight away", () => {
     expect(
       spy.mock.calls.filter((call) => String(call[0]).endsWith("/api/v1/sessions")),
     ).toHaveLength(1);
+  });
+
+  // The rules used to render for one frame before an effect pressed Start, which
+  // showed as a flash of the Start run screen when the play screen's code had to
+  // load first. No render of a Tap to play run may be the rules.
+  it.each([
+    ["Zip", useZipRun, "zip", "zip@1"],
+    ["8 Puzzle", useEightPuzzleRun, "eight-puzzle", "eight-puzzle@1"],
+  ] as const)("never renders %s's rules, even for a frame", async (_name, hook, slug, rules) => {
+    stubSessions(slug, rules);
+    const seen: string[] = [];
+    const { result } = renderHook(() => {
+      const state = hook(slug, true);
+      seen.push(state.status);
+      return state;
+    });
+    await waitFor(() => expect(result.current.status).toBe("playing"));
+
+    act(() => result.current.restart());
+    await waitFor(() => expect(result.current.status).toBe("playing"));
+    expect(seen).not.toContain("intro");
   });
 
   it("still shows the rules first when the game is opened without ?start", async () => {

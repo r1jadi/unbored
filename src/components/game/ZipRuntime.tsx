@@ -70,15 +70,8 @@ export function ZipRuntime({
   /** Skip the rules and start the run as soon as it exists: the feed's Tap to play. */
   autoStart?: boolean;
 }) {
-  const state = useZipRun(slug);
-
-  // Tap to play skips the rules: the session is asked for straight away, and
-  // again when Play again brings the screen back to its start.
-  const begin = state.begin;
-  const atIntro = state.status === "intro";
-  useEffect(() => {
-    if (autoStart && atIntro) begin();
-  }, [autoStart, atIntro, begin]);
+  // Tap to play skips the rules, on the first run and on Play again.
+  const state = useZipRun(slug, autoStart);
 
   if (state.status === "intro") {
     return <Intro signedIn={state.signedIn} onBegin={state.begin} slug={slug} title={title} />;

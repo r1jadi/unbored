@@ -1478,9 +1478,13 @@ export type ZipRunControls = ZipRunState & {
  * the server verified the submission, the submission is sent once per run, and a
  * retry sends the identical body.
  */
-export function useZipRun(gameSlug: string): ZipRunControls {
-  const [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<ZipRunState>({ status: "intro" });
+export function useZipRun(gameSlug: string, autoStart = false): ZipRunControls {
+  // Tap to play skips the rules: the first render is already "starting", so the
+  // rules never paint for a frame before an effect could press Start for them.
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<ZipRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
   const startedAt = useRef(0);
   const endedAt = useRef(0);
   const submitting = useRef(false);
@@ -1607,8 +1611,14 @@ export function useZipRun(gameSlug: string): ZipRunControls {
 
   const restart = useCallback(() => {
     submitting.current = false;
-    setState({ status: "intro" });
-  }, []);
+    // Tap to play skips the rules on Play again too: straight to a new session.
+    if (autoStart) {
+      setState({ status: "starting" });
+      setAttempt((n) => n + 1);
+    } else {
+      setState({ status: "intro" });
+    }
+  }, [autoStart]);
 
   const retry = useCallback(() => {
     if (state.status !== "error") return;
@@ -1674,9 +1684,13 @@ export type EightPuzzleRunControls = EightPuzzleRunState & {
  * issued when the player presses Start, the clock starts when it arrives, and the
  * run ends by itself when the clock reaches zero.
  */
-export function useEightPuzzleRun(gameSlug: string): EightPuzzleRunControls {
-  const [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<EightPuzzleRunState>({ status: "intro" });
+export function useEightPuzzleRun(gameSlug: string, autoStart = false): EightPuzzleRunControls {
+  // Tap to play skips the rules: the first render is already "starting", so the
+  // rules never paint for a frame before an effect could press Start for them.
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<EightPuzzleRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
   const startedAt = useRef(0);
   const endedAt = useRef(0);
   const submitting = useRef(false);
@@ -1802,8 +1816,14 @@ export function useEightPuzzleRun(gameSlug: string): EightPuzzleRunControls {
 
   const restart = useCallback(() => {
     submitting.current = false;
-    setState({ status: "intro" });
-  }, []);
+    // Tap to play skips the rules on Play again too: straight to a new session.
+    if (autoStart) {
+      setState({ status: "starting" });
+      setAttempt((n) => n + 1);
+    } else {
+      setState({ status: "intro" });
+    }
+  }, [autoStart]);
 
   const retry = useCallback(() => {
     if (state.status !== "error") return;
