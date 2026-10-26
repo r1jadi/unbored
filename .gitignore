@@ -55,3 +55,6 @@ dist-ssr
 # captured while testing must never be committed: the secret scan reads history
 # and a deleted file is still a leaked credential.
 .qa-logs/
+
+# /brag launch videos and their render scratch
+brag-output*/
