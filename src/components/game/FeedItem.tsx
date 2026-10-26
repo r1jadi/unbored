@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
  *
  * A playable game starts from here in one tap. Tap to play (the board or the
  * button) opens the game with `?start=1`, which skips the game's own rules
- * screen and starts the run at once; How to play shows the full rules in a sheet
+ * screen and starts the run at once; Rules shows the full rules in a sheet
  * without leaving the feed.
  */
 function Action({
@@ -145,18 +145,11 @@ export function FeedItem({ game }: { game: Game }) {
               )}
             </span>
           </div>
-          <div className="absolute top-0 inset-x-0 flex items-center justify-between p-4 pt-[max(4rem,calc(env(safe-area-inset-top)+3rem))] md:pt-4">
-            {category ? (
+          {category && (
+            <div className="absolute top-0 inset-x-0 flex items-center p-4 pt-[max(4rem,calc(env(safe-area-inset-top)+3rem))] md:pt-4">
               <span className="rounded-md glass px-2 py-1 text-xs font-medium">{category}</span>
-            ) : (
-              <span />
-            )}
-            {game.playable ? (
-              <span className="rounded-md glass px-2 py-1 text-xs font-medium">Playable</span>
-            ) : (
-              <span />
-            )}
-          </div>
+            </div>
+          )}
         </BoardLink>
 
         {/* Info */}
@@ -177,15 +170,6 @@ export function FeedItem({ game }: { game: Game }) {
               </h2>
               {game.tagline && <p className="text-sm text-muted-foreground">{game.tagline}</p>}
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span>{game.playable ? "Ready to play" : "Not playable yet"}</span>
-              {category && (
-                <>
-                  <span aria-hidden>·</span>
-                  <span>{category}</span>
-                </>
-              )}
-            </div>
             <div className="flex gap-2">
               {game.playable ? (
                 <>
@@ -194,13 +178,9 @@ export function FeedItem({ game }: { game: Game }) {
                       <Play className="fill-current" /> Tap to play
                     </Link>
                   </Button>
-                  <Button
-                    variant="glass"
-                    size="lg"
-                    className="flex-1"
-                    onClick={() => setHowTo(true)}
-                  >
-                    <BookOpen /> How to play
+                  {/* Sized to its label, so Tap to play keeps the width. */}
+                  <Button variant="glass" size="lg" className="px-4" onClick={() => setHowTo(true)}>
+                    <BookOpen /> Rules
                   </Button>
                 </>
               ) : (

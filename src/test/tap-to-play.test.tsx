@@ -27,7 +27,7 @@ import { useEightPuzzleRun, useZipRun } from "@/lib/games/sessions";
 import { Route as PlayRoute } from "@/routes/play.$id";
 
 /**
- * Tap to play starts the game; How to play shows its rules.
+ * Tap to play starts the game; Rules shows how to play it.
  *
  * From the feed, a player who taps to play has already chosen to play, so the
  * game opens with `?start=1` and skips its own rules screen — and Play again
@@ -124,7 +124,7 @@ afterEach(() => {
 });
 
 describe("the feed card", () => {
-  it("offers Tap to play, which starts the game, and How to play", async () => {
+  it("offers Tap to play, which starts the game, and the rules", async () => {
     stubSessions("queens", "queens@1");
     await renderAt(<FeedItem game={queens} />);
 
@@ -137,14 +137,14 @@ describe("the feed card", () => {
     );
     // The title is the way to the game's page.
     expect(screen.getByRole("link", { name: "Queens" })).toHaveAttribute("href", "/games/queens");
-    expect(screen.getByRole("button", { name: /How to play/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Rules$/ })).toBeInTheDocument();
   });
 
   it("shows the game's full rules in a sheet, with Tap to play at the bottom", async () => {
     stubSessions("queens", "queens@1");
     await renderAt(<FeedItem game={queens} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /How to play/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Rules$/ }));
     const sheet = await screen.findByRole("dialog");
     expect(within(sheet).getByText("How to play Queens")).toBeInTheDocument();
     expect(within(sheet).getByText(GAME_RULES.queens.summary)).toBeInTheDocument();
