@@ -9,6 +9,8 @@ import {
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 
 import { ErrorState } from "@/components/common";
+import { GameExits } from "@/components/game/GameExits";
+import { HintButton } from "@/components/game/Hint";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { RulesList } from "@/components/game/RulesList";
 import { RunEndActions } from "@/components/game/RunEndActions";
@@ -25,7 +27,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { zipAgreement, zipHint } from "@/lib/games/hints";
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
+import { useHint } from "@/lib/games/use-hint";
 import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
@@ -94,6 +98,7 @@ export function ZipRuntime({
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
+        <GameExits slug={slug} title={title} />
       </div>
     );
   }
@@ -117,9 +122,7 @@ export function ZipRuntime({
             <RotateCcw />
             Start a new run
           </Button>
-          <Button asChild variant="ghost" size="lg">
-            <ExitGameLink slug={slug}>{title}</ExitGameLink>
-          </Button>
+          <GameExits slug={slug} title={title} />
         </div>
       </div>
     );
@@ -278,6 +281,13 @@ function Board({
     lastCell.current = null;
   };
 
+  // A right move is a cell that follows the solution further than the path did.
+  const hints = useHint({
+    progress: `${run.level}:${zipAgreement(run)}`,
+    active: accepting,
+    compute: () => zipHint(run),
+  });
+
   const onPath = new Set(run.path);
   const reached = Math.max(0, ...run.path.map((cell) => drawn.numbers[cell]));
 
@@ -353,6 +363,7 @@ function Board({
               const row = Math.floor(index / size);
               const column = index % size;
               const visited = onPath.has(index);
+              const hinted = hints.hint?.cell === index;
               return (
                 <button
                   key={index}
@@ -365,7 +376,13 @@ function Board({
                   onClick={(event) => {
                     if (event.detail === 0) onTap(index);
                   }}
-                  aria-label={cellLabel(row, column, number, visited, run, drawn, verifying, index)}
+                  aria-label={`${cellLabel(row, column, number, visited, run, drawn, verifying, index)}${
+                    hinted
+                      ? hints.hint?.back
+                        ? " Hint: go back to here."
+                        : " Hint: go here next."
+                      : ""
+                  }`}
                   style={{
                     borderRightWidth: column < size - 1 ? 1 : 0,
                     borderBottomWidth: row < size - 1 ? 1 : 0,
@@ -377,6 +394,7 @@ function Board({
                     "focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                     visited ? "bg-primary/20" : "bg-transparent",
                     !accepting && "opacity-70",
+                    hinted && "animate-pulse bg-primary/40 ring-2 ring-inset ring-primary",
                   )}
                 />
               );
@@ -471,6 +489,7 @@ function Board({
       </div>
 
       <div className="flex flex-col items-center gap-1 pt-1">
+        <HintButton offered={hints.offered} waitSeconds={hints.waitSeconds} onAsk={hints.ask} />
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
             ? "The path you drew is your score if the server agrees."

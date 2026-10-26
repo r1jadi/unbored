@@ -2,8 +2,8 @@ import { Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } from "lucide-r
 import { useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
+import { GameExits } from "@/components/game/GameExits";
 import { EndRunButton } from "@/components/game/EndRunButton";
-import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { SavedRunCard } from "@/components/game/SavedRunCard";
 import { RunEndActions } from "@/components/game/RunEndActions";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
@@ -86,6 +86,7 @@ export function MemoryFlashRuntime({ slug, title }: { slug: string; title: strin
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
+        <GameExits slug={slug} title={title} />
       </div>
     );
   }
@@ -111,9 +112,7 @@ export function MemoryFlashRuntime({ slug, title }: { slug: string; title: strin
             <RotateCcw />
             Start a new run
           </Button>
-          <Button asChild variant="ghost" size="lg">
-            <ExitGameLink slug={slug}>{title}</ExitGameLink>
-          </Button>
+          <GameExits slug={slug} title={title} />
         </div>
       </div>
     );

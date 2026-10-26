@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Clock, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { titleFromSlug, useGame } from "@/lib/games/catalog";
+import { GameExits } from "@/components/game/GameExits";
 
 export const Route = createFileRoute("/results/$id")({
   head: ({ params }) => {
@@ -57,11 +58,9 @@ function Results() {
               </Link>
             </Button>
           )}
-          <Button asChild variant="secondary" size="lg">
-            <Link to="/games/$id" params={{ id }}>
-              Back to the game
-            </Link>
-          </Button>
+          <div className="w-full">
+            <GameExits slug={id} title={title} />
+          </div>
         </div>
       </div>
     </div>

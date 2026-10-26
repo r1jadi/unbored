@@ -175,20 +175,34 @@ describe("starting a run", () => {
 });
 
 describe("sliding tiles", () => {
-  it("slides a tile next to the gap, and only those", async () => {
+  it("slides a tile next to the gap, and nothing off the gap's row and column", async () => {
     mockPlayback();
     await renderRuntime();
     await startRun();
 
-    // The gap is on cell 2; the 1 on cell 0 is not next to it.
-    expect(tileAt(0)).toHaveAccessibleName("Tile 1, row 1 column 1, in place.");
-    fireEvent.click(tileAt(0));
+    // The gap is on cell 2; cell 3 is neither in its row nor in its column.
+    fireEvent.click(tileAt(3));
     expect(screen.getByText("0 moves · par 10")).toBeInTheDocument();
 
     expect(tileAt(5)).toHaveAccessibleName(/^Tile 2, .*Tap to slide it into the gap\./);
     slide([5]);
     expect(tileAt(2)).toHaveAccessibleName(/^Tile 2, row 1 column 3/);
     expect(screen.getByText("1 move · par 10")).toBeInTheDocument();
+  });
+
+  it("slides two tiles at once from the far end of the gap's row", async () => {
+    mockPlayback();
+    await renderRuntime();
+    await startRun();
+
+    // The gap is on cell 2. Tapping the 1 on cell 0 slides it and the tile on
+    // cell 1 one cell right, as two ordinary slides; the gap ends on cell 0.
+    expect(tileAt(0)).toHaveAccessibleName(
+      "Tile 1, row 1 column 1, in place. Tap to slide it and the tiles between it and the gap.",
+    );
+    fireEvent.click(tileAt(0));
+    expect(tileAt(1)).toHaveAccessibleName(/^Tile 1, row 1 column 2/);
+    expect(screen.getByText("2 moves · par 10")).toBeInTheDocument();
   });
 
   it("slides with the arrow keys: ArrowUp moves the tile below the gap up", async () => {

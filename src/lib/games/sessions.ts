@@ -256,6 +256,7 @@ export function completeRun(
     void client.invalidateQueries({ queryKey: ["leaderboard", "all-games"] });
     void client.invalidateQueries({ queryKey: ["games"] });
     void client.invalidateQueries({ queryKey: ["my-game-stats", result.gameSlug] });
+    void client.invalidateQueries({ queryKey: ["my-game-streak", result.gameSlug] });
     return result;
   });
 }

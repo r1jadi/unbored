@@ -2,6 +2,8 @@ import { Crown, Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert, X } from
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { ErrorState } from "@/components/common";
+import { GameExits } from "@/components/game/GameExits";
+import { HintButton } from "@/components/game/Hint";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { SavedRunCard } from "@/components/game/SavedRunCard";
 import { RulesList } from "@/components/game/RulesList";
@@ -30,6 +32,8 @@ import {
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
+import { queensHint, queensPlaced } from "@/lib/games/hints";
+import { useHint } from "@/lib/games/use-hint";
 import {
   playErrorMessage,
   useQueensRun,
@@ -95,6 +99,7 @@ export function QueensRuntime({
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
+        <GameExits slug={slug} title={title} />
       </div>
     );
   }
@@ -119,9 +124,7 @@ export function QueensRuntime({
             <RotateCcw />
             Start a new run
           </Button>
-          <Button asChild variant="ghost" size="lg">
-            <ExitGameLink slug={slug}>{title}</ExitGameLink>
-          </Button>
+          <GameExits slug={slug} title={title} />
         </div>
       </div>
     );
@@ -228,6 +231,13 @@ function Board({
   const nextSide = boardSize(run.level);
   const grew = run.level > 1 && nextSide > boardSize(run.level - 1);
   const levelUp = useLevelUp(run.level, run.score, levelUpHold(grew));
+
+  // A right move is a Queen placed: Xs are notes, not progress.
+  const hints = useHint({
+    progress: `${run.level}:${queensPlaced(run)}`,
+    active: started && !verifying && run.outcome === "playing" && !levelUp,
+    compute: () => queensHint(run),
+  });
 
   // Drawing a board runs the region search, so it is done once per board rather
   // than on every tap.
@@ -365,6 +375,7 @@ function Board({
                 borderBottomColor: below !== region ? REGION_EDGE : CELL_EDGE,
               };
               const auto = cell === "empty" && blocked.has(index);
+              const hinted = hints.hint === index;
               return (
                 <button
                   key={index}
@@ -372,7 +383,9 @@ function Board({
                   type="button"
                   disabled={!accepting || cell === "ruled-out"}
                   onClick={() => onTap(index)}
-                  aria-label={cellLabel(row, column, region, cell, auto, run, verifying)}
+                  aria-label={`${cellLabel(row, column, region, cell, auto, run, verifying)}${
+                    hinted ? " Hint: a Queen goes here." : ""
+                  }`}
                   style={edges}
                   className={cn(
                     "flex items-center justify-center border-solid transition-colors",
@@ -380,6 +393,7 @@ function Board({
                     "focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                     REGION_COLOURS[region % REGION_COLOURS.length],
                     accepting ? "hover:brightness-110" : "opacity-70",
+                    hinted && "animate-pulse ring-2 ring-inset ring-primary",
                   )}
                 >
                   <CellMark cell={cell} auto={auto} />
@@ -399,6 +413,7 @@ function Board({
       </div>
 
       <div className="flex flex-col items-center gap-1 pt-1">
+        <HintButton offered={hints.offered} waitSeconds={hints.waitSeconds} onAsk={hints.ask} />
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
             ? "The taps you made are your score if the server agrees."

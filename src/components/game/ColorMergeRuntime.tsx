@@ -13,6 +13,10 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
+import { GameExits } from "@/components/game/GameExits";
+import { HintButton } from "@/components/game/Hint";
+import { colorMergeHint } from "@/lib/games/hints";
+import { useHint } from "@/lib/games/use-hint";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { RunEndActions } from "@/components/game/RunEndActions";
@@ -109,6 +113,7 @@ export function ColorMergeRuntime({
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
+        <GameExits slug={slug} title={title} />
       </div>
     );
   }
@@ -134,9 +139,7 @@ export function ColorMergeRuntime({
             <RotateCcw />
             Start a new run
           </Button>
-          <Button asChild variant="ghost" size="lg">
-            <ExitGameLink slug={slug}>{title}</ExitGameLink>
-          </Button>
+          <GameExits slug={slug} title={title} />
         </div>
       </div>
     );
@@ -211,6 +214,12 @@ function Board({
     // Once, on the first board: a retried submission remounts with a started run.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Every slide is a move made; the hint is for a player still deciding.
+  const hints = useHint({
+    progress: run.moves.length,
+    active: started && !verifying && run.outcome === "playing",
+    compute: () => colorMergeHint(run),
+  });
   const boardRef = useRef<HTMLDivElement>(null);
   const pressed = useRef<{ x: number; y: number; pointer: number } | null>(null);
 
@@ -434,6 +443,7 @@ function Board({
           icon={<ArrowUp />}
           run={run}
           accepting={accepting}
+          hinted={hints.hint}
           onSlide={slide}
           className="col-start-2 row-start-1"
         />
@@ -443,6 +453,7 @@ function Board({
           icon={<ArrowLeft />}
           run={run}
           accepting={accepting}
+          hinted={hints.hint}
           onSlide={slide}
           className="col-start-1 row-start-2"
         />
@@ -452,6 +463,7 @@ function Board({
           icon={<ArrowDown />}
           run={run}
           accepting={accepting}
+          hinted={hints.hint}
           onSlide={slide}
           className="col-start-2 row-start-2"
         />
@@ -461,11 +473,15 @@ function Board({
           icon={<ArrowRight />}
           run={run}
           accepting={accepting}
+          hinted={hints.hint}
           onSlide={slide}
           className="col-start-3 row-start-2"
         />
       </div>
 
+      <div className="flex justify-center pt-2">
+        <HintButton offered={hints.offered} waitSeconds={hints.waitSeconds} onAsk={hints.ask} />
+      </div>
       <p className={cn("pt-2 text-center text-xs", muted)} aria-live="polite">
         {verifying
           ? "The slides you made are your score if the server agrees."
@@ -485,6 +501,7 @@ function DirectionButton({
   icon,
   run,
   accepting,
+  hinted,
   onSlide,
   className,
 }: {
@@ -493,6 +510,8 @@ function DirectionButton({
   icon: React.ReactNode;
   run: ColorMergeRun;
   accepting: boolean;
+  /** The direction a hint points at, if any. */
+  hinted: ColorMergeDirection | null;
   onSlide: (direction: ColorMergeDirection) => void;
   className?: string;
 }) {
@@ -502,10 +521,14 @@ function DirectionButton({
       type="button"
       variant="secondary"
       size="icon"
-      aria-label={label}
+      aria-label={hinted === direction ? `${label}. Hint: slide this way.` : label}
       disabled={!enabled}
       onClick={() => onSlide(direction)}
-      className={cn("size-12 rounded-xl", className)}
+      className={cn(
+        "size-12 rounded-xl",
+        hinted === direction && "animate-pulse ring-2 ring-primary",
+        className,
+      )}
     >
       {icon}
     </Button>

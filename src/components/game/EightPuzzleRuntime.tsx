@@ -2,6 +2,9 @@ import { Grid3x3, Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } from 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { ErrorState } from "@/components/common";
+import { GameExits } from "@/components/game/GameExits";
+import { HintButton } from "@/components/game/Hint";
+import { useHint } from "@/lib/games/use-hint";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { RulesList } from "@/components/game/RulesList";
 import { RunEndActions } from "@/components/game/RunEndActions";
@@ -21,14 +24,15 @@ import { cn } from "@/lib/utils";
 import {
   board as drawBoard,
   budgetMs,
-  canTap,
   cellForArrow,
   EIGHT_PUZZLE_BONUS_MS,
   EIGHT_PUZZLE_SIDE,
   fewestMoves,
+  lineTaps,
   scrambleLength,
   type EightPuzzleRun,
 } from "@/lib/games/eight-puzzle";
+import { eightPuzzleHint } from "@/lib/games/hints";
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
@@ -88,6 +92,7 @@ export function EightPuzzleRuntime({
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
+        <GameExits slug={slug} title={title} />
       </div>
     );
   }
@@ -111,9 +116,7 @@ export function EightPuzzleRuntime({
             <RotateCcw />
             Start a new run
           </Button>
-          <Button asChild variant="ghost" size="lg">
-            <ExitGameLink slug={slug}>{title}</ExitGameLink>
-          </Button>
+          <GameExits slug={slug} title={title} />
         </div>
       </div>
     );
@@ -240,6 +243,20 @@ function Board({
   // The par is the board's own, computed once when it is dealt.
   const par = useMemo(() => fewestMoves(drawBoard(run.seed, run.level)), [run.seed, run.level]);
 
+  // A right move is one that brings the board closer to solved than it has been:
+  // shuffling tiles back and forth does not count, so a stuck player still gets
+  // a hint. A new board starts from its own distance.
+  const left = useMemo(() => fewestMoves(run.tiles), [run.tiles]);
+  const [closest, setClosest] = useState({ level: run.level, left });
+  if (closest.level !== run.level || left < closest.left) {
+    setClosest({ level: run.level, left });
+  }
+  const hints = useHint({
+    progress: `${closest.level}:${closest.left}`,
+    active: accepting,
+    compute: () => eightPuzzleHint(run),
+  });
+
   const remaining = Math.max(0, deadline - now);
   const earned = budgetMs(run.levelsCleared);
 
@@ -318,8 +335,12 @@ function Board({
                 if (tile === 0) return null;
                 const row = Math.floor(cell / EIGHT_PUZZLE_SIDE);
                 const column = cell % EIGHT_PUZZLE_SIDE;
-                const movable = accepting && canTap(run, cell);
+                // Any tile in the gap's row or column moves: the tiles between it
+                // and the gap slide along with it.
+                const slides = accepting ? lineTaps(run, cell) : [];
+                const movable = slides.length > 0;
                 const home = tile - 1 === cell;
+                const hinted = hints.hint === cell;
                 return (
                   <button
                     // Keyed by tile, not by cell, so a tile keeps its element and
@@ -328,9 +349,9 @@ function Board({
                     type="button"
                     aria-disabled={!movable}
                     onClick={() => {
-                      if (movable) onTap(cell);
+                      for (const slide of slides) onTap(slide);
                     }}
-                    aria-label={tileLabel(tile, row, column, movable, home, run, verifying)}
+                    aria-label={`${tileLabel(tile, row, column, movable, slides.length, home, run, verifying)}${hinted ? " Hint: slide this tile." : ""}`}
                     className={cn(
                       "absolute left-0 top-0 flex size-1/3 items-center justify-center p-1",
                       "transition-transform duration-150 ease-out motion-reduce:transition-none",
@@ -343,6 +364,7 @@ function Board({
                         "flex size-full items-center justify-center rounded-xl text-[clamp(1.5rem,9vmin,3rem)] font-semibold tabular shadow-sm",
                         home ? "bg-primary/20 text-foreground" : "bg-surface-2 text-foreground",
                         movable ? "press hover:brightness-110" : !accepting && "opacity-70",
+                        hinted && "animate-pulse ring-2 ring-primary",
                       )}
                     >
                       {tile}
@@ -364,6 +386,7 @@ function Board({
       </div>
 
       <div className="flex flex-col items-center gap-1 pt-1">
+        <HintButton offered={hints.offered} waitSeconds={hints.waitSeconds} onAsk={hints.ask} />
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
             ? "The slides you made are your score if the server agrees."
@@ -408,6 +431,7 @@ function tileLabel(
   row: number,
   column: number,
   movable: boolean,
+  slides: number,
   home: boolean,
   run: EightPuzzleRun,
   verifying: boolean,
@@ -415,7 +439,10 @@ function tileLabel(
   const position = `Tile ${tile}, row ${row + 1} column ${column + 1}${home ? ", in place" : ""}`;
   if (verifying) return `${position}. The run is being verified.`;
   if (run.outcome !== "playing") return `${position}. The run has ended.`;
-  return movable ? `${position}. Tap to slide it into the gap.` : `${position}.`;
+  if (!movable) return `${position}.`;
+  return slides > 1
+    ? `${position}. Tap to slide it and the tiles between it and the gap.`
+    : `${position}. Tap to slide it into the gap.`;
 }
 
 /** The end of a run: the score the server verified, or a guest's unranked result. */

@@ -2,6 +2,8 @@ import { Grid2x2, Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } from 
 import { useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
+import { GameExits } from "@/components/game/GameExits";
+import { HintButton } from "@/components/game/Hint";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { SavedRunCard } from "@/components/game/SavedRunCard";
@@ -14,6 +16,8 @@ import { boardPattern, boardSize, type OneMoveRun } from "@/lib/games/one-move";
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
+import { oneMoveHint } from "@/lib/games/hints";
+import { useHint } from "@/lib/games/use-hint";
 import {
   playErrorMessage,
   useOneMoveRun,
@@ -81,6 +85,7 @@ export function OneMoveRuntime({
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
+        <GameExits slug={slug} title={title} />
       </div>
     );
   }
@@ -106,9 +111,7 @@ export function OneMoveRuntime({
             <RotateCcw />
             Start a new run
           </Button>
-          <Button asChild variant="ghost" size="lg">
-            <ExitGameLink slug={slug}>{title}</ExitGameLink>
-          </Button>
+          <GameExits slug={slug} title={title} />
         </div>
       </div>
     );
@@ -206,6 +209,14 @@ function Board({
   const nextSide = boardSize(run.level);
   const grew = run.level > 1 && nextSide > boardSize(run.level - 1);
   const levelUp = useLevelUp(run.level, run.score, levelUpHold(grew));
+
+  // A right move restores the board, so the board number is the progress. The
+  // first hint on a board names the row; the next one names the cell.
+  const hints = useHint({
+    progress: run.level,
+    active: started && !verifying && run.outcome === "playing" && !levelUp,
+    compute: (asked) => oneMoveHint(run, asked),
+  });
 
   if (!started) {
     return (
@@ -328,29 +339,44 @@ function Board({
             role="group"
             aria-label={`Board ${run.level}, ${board.size} by ${board.size}`}
           >
-            {board.cells.map((dark, index) => (
-              <button
-                key={index}
-                ref={index === 0 ? firstCell : undefined}
-                type="button"
-                disabled={!accepting}
-                onClick={() => onTap(index)}
-                aria-label={cellLabel(index, board.size, dark, run, verifying)}
-                className={cn(
-                  "press border transition-colors",
-                  board.size > 12 ? "rounded-sm" : board.size > 9 ? "rounded-md" : "rounded-lg",
-                  "motion-reduce:transition-none",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  "active:scale-[0.97]",
-                  dark ? "border-transparent bg-foreground" : "border-border bg-surface-2",
-                  accepting ? "hover:opacity-90" : "opacity-60",
-                )}
-              >
-                <span className="sr-only">{`Row ${Math.floor(index / board.size) + 1} column ${
-                  (index % board.size) + 1
-                }`}</span>
-              </button>
-            ))}
+            {board.cells.map((dark, index) => {
+              const hint = hints.hint;
+              const hinted =
+                hint !== null &&
+                (hint.kind === "cell"
+                  ? hint.cell === index
+                  : Math.floor(index / board.size) === hint.row);
+              return (
+                <button
+                  key={index}
+                  ref={index === 0 ? firstCell : undefined}
+                  type="button"
+                  disabled={!accepting}
+                  onClick={() => onTap(index)}
+                  aria-label={`${cellLabel(index, board.size, dark, run, verifying)}${
+                    hinted
+                      ? hint?.kind === "cell"
+                        ? " Hint: tap here."
+                        : " Hint: the move is in this row."
+                      : ""
+                  }`}
+                  className={cn(
+                    "press border transition-colors",
+                    board.size > 12 ? "rounded-sm" : board.size > 9 ? "rounded-md" : "rounded-lg",
+                    "motion-reduce:transition-none",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "active:scale-[0.97]",
+                    dark ? "border-transparent bg-foreground" : "border-border bg-surface-2",
+                    accepting ? "hover:opacity-90" : "opacity-60",
+                    hinted && "animate-pulse ring-2 ring-primary",
+                  )}
+                >
+                  <span className="sr-only">{`Row ${Math.floor(index / board.size) + 1} column ${
+                    (index % board.size) + 1
+                  }`}</span>
+                </button>
+              );
+            })}
             {levelUp && (
               <LevelUpOverlay
                 levelUp={levelUp}
@@ -363,6 +389,9 @@ function Board({
         </div>
       </div>
 
+      <div className="flex justify-center pt-1">
+        <HintButton offered={hints.offered} waitSeconds={hints.waitSeconds} onAsk={hints.ask} />
+      </div>
       <p className="pt-1 text-center text-xs text-muted-foreground" aria-live="polite">
         {verifying
           ? "The taps you made are your score if the server agrees."

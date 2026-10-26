@@ -2,8 +2,11 @@ import { Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } from "lucide-r
 import { useEffect } from "react";
 
 import { ErrorState } from "@/components/common";
+import { GameExits } from "@/components/game/GameExits";
 import { EndRunButton } from "@/components/game/EndRunButton";
-import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { HintButton } from "@/components/game/Hint";
+import { stack10Hint } from "@/lib/games/hints";
+import { useHint } from "@/lib/games/use-hint";
 import { RunEndActions } from "@/components/game/RunEndActions";
 import { SavedRunCard } from "@/components/game/SavedRunCard";
 import { Button } from "@/components/ui/button";
@@ -96,6 +99,7 @@ export function Stack10Runtime({ slug, title }: { slug: string; title: string })
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
+        <GameExits slug={slug} title={title} />
       </div>
     );
   }
@@ -121,9 +125,7 @@ export function Stack10Runtime({ slug, title }: { slug: string; title: string })
             <RotateCcw />
             Start a new run
           </Button>
-          <Button asChild variant="ghost" size="lg">
-            <ExitGameLink slug={slug}>{title}</ExitGameLink>
-          </Button>
+          <GameExits slug={slug} title={title} />
         </div>
       </div>
     );
@@ -181,6 +183,12 @@ function Board({
   const tile = run.nextTile;
   const readout = progress(run);
   const placed = readout.placed;
+  // Every tile placed is a move made; the hint is for a player still deciding.
+  const hints = useHint({
+    progress: run.actions.length,
+    active: !verifying && run.outcome === "playing",
+    compute: () => stack10Hint(run),
+  });
 
   return (
     <div className="flex flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -226,13 +234,16 @@ function Board({
           const playable = canPlace(run, index) && !verifying;
           const clears = tile !== null && column.sum + tile === 10;
           const over = tile !== null && column.sum + tile > 10;
+          const hinted = hints.hint === index;
           return (
             <button
               key={index}
               type="button"
               disabled={!playable}
               onClick={() => onPlace(index)}
-              aria-label={columnLabel(index, column, tile, playable)}
+              aria-label={`${columnLabel(index, column, tile, playable)}${
+                hinted ? " Hint: place the tile here." : ""
+              }`}
               className={cn(
                 "flex flex-1 flex-col items-center justify-end gap-1 rounded-xl border p-2 transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -241,6 +252,7 @@ function Board({
                   : "border-transparent bg-surface/40 opacity-50",
                 playable && clears && "border-primary/60 bg-primary/10",
                 playable && over && "border-destructive/60 bg-destructive/10",
+                hinted && "animate-pulse ring-2 ring-primary",
               )}
             >
               <div className="flex w-full flex-1 flex-col-reverse items-center justify-start gap-1">
@@ -271,6 +283,9 @@ function Board({
         })}
       </div>
 
+      <div className="flex justify-center pt-3">
+        <HintButton offered={hints.offered} waitSeconds={hints.waitSeconds} onAsk={hints.ask} />
+      </div>
       <p className="pt-3 text-center text-xs text-muted-foreground" aria-live="polite">
         {verifying
           ? "Verifying your run with the server…"

@@ -12,6 +12,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
+import { GameExits } from "@/components/game/GameExits";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { RunEndActions } from "@/components/game/RunEndActions";
 import { RulesList } from "@/components/game/RulesList";
@@ -99,6 +100,7 @@ export function SevenSecondRuntime({
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
+        <GameExits slug={slug} title={title} />
       </div>
     );
   }
@@ -124,9 +126,7 @@ export function SevenSecondRuntime({
             <RotateCcw />
             Start a new run
           </Button>
-          <Button asChild variant="ghost" size="lg">
-            <ExitGameLink slug={slug}>{title}</ExitGameLink>
-          </Button>
+          <GameExits slug={slug} title={title} />
         </div>
       </div>
     );
@@ -542,9 +542,7 @@ function DailyDone({ slug, title, message }: { slug: string; title: string; mess
             See the leaderboard
           </Link>
         </Button>
-        <Button asChild variant="ghost" size="lg">
-          <ExitGameLink slug={slug}>Back to {title}</ExitGameLink>
-        </Button>
+        <GameExits slug={slug} title={title} />
       </div>
     </div>
   );

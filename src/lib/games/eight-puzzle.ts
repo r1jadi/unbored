@@ -265,6 +265,40 @@ export function tap(run: EightPuzzleRun, cell: number): EightPuzzleRun {
 }
 
 /**
+ * The slides a tap on any tile in the gap's row or column stands for.
+ *
+ * Tapping a tile two cells from the gap slides it and the tile between them
+ * together: with the gap at the end of a row, tapping the row's far tile moves
+ * both one cell along and leaves the gap where the tapped tile was. That is two
+ * ordinary slides, nearest the gap first, so the submission and the verifier are
+ * unchanged — each one is a single adjacent slide the rules already accept.
+ *
+ * A tile next to the gap is the one slide it always was. A tile off the gap's row
+ * and column has none. The list stops after a slide that solves the board, since
+ * the next board is dealt there and the rest of the line no longer exists.
+ */
+export function lineTaps(run: EightPuzzleRun, cell: number): number[] {
+  if (run.outcome !== "playing") return [];
+  if (!Number.isInteger(cell) || cell < 0 || cell >= CELLS || run.tiles[cell] === 0) return [];
+  const gap = run.tiles.indexOf(0);
+  const sameRow = Math.floor(gap / EIGHT_PUZZLE_SIDE) === Math.floor(cell / EIGHT_PUZZLE_SIDE);
+  const sameColumn = gap % EIGHT_PUZZLE_SIDE === cell % EIGHT_PUZZLE_SIDE;
+  if (!sameRow && !sameColumn) return [];
+
+  const step = sameRow ? 1 : EIGHT_PUZZLE_SIDE;
+  const direction = cell > gap ? step : -step;
+  const taps: number[] = [];
+  let current = run;
+  for (let next = gap + direction; ; next += direction) {
+    const after = tap(current, next);
+    if (after === current) return [];
+    taps.push(next);
+    if (next === cell || after.level !== current.level) return taps;
+    current = after;
+  }
+}
+
+/**
  * The cell whose tile an arrow key slides: the tile on the far side of the gap
  * from the arrow, so ArrowUp moves the tile below the gap up. Null at an edge.
  */

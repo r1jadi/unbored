@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth/session";
 import { fmtDate } from "@/lib/format";
 import { useMyGameStats } from "@/lib/games/saved-runs";
+import { StreakNote } from "@/components/game/StreakNote";
 
 /**
  * The signed-in player's own record for one game: runs played, best score,
@@ -65,6 +66,7 @@ export function YourStats({ slug }: { slug: string }) {
           ))}
         </dl>
       )}
+      <StreakNote slug={slug} className="mt-3 flex justify-start text-left" />
       {lastPlayedAt && (
         <p className="mt-2 text-xs text-muted-foreground">Last played {fmtDate(lastPlayedAt)}</p>
       )}

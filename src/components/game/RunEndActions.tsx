@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Home, RotateCcw, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { StreakNote } from "@/components/game/StreakNote";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -30,6 +31,8 @@ export function RunEndActions({
 }) {
   return (
     <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
+      {/* A ranked run is a day played: the streak it just kept goes first. */}
+      {ranked && <StreakNote slug={slug} className="pb-1" />}
       {children ||
         (onRestart && (
           <Button variant="play" size="lg" onClick={onRestart} autoFocus={autoFocus}>

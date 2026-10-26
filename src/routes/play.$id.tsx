@@ -6,7 +6,7 @@ import { ChainRuntime } from "@/components/game/ChainRuntime";
 import { ColorMergeRuntime } from "@/components/game/ColorMergeRuntime";
 import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
 import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
-import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { GameExits } from "@/components/game/GameExits";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
 import { OneMoveRuntime } from "@/components/game/OneMoveRuntime";
 import { QueensRuntime } from "@/components/game/QueensRuntime";
@@ -279,9 +279,9 @@ export function PlaySurface({
             {title} has no runtime yet, so there is nothing to start. It is listed because it is
             part of the catalogue.
           </p>
-          <Button asChild variant="play" size="lg" className="mt-2">
-            <ExitGameLink slug={id}>Back to the game</ExitGameLink>
-          </Button>
+          <div className="mt-2 w-full">
+            <GameExits slug={id} title={title} />
+          </div>
         </div>
       )}
 
@@ -299,6 +299,9 @@ export function PlaySurface({
               <Link to="/explore">Browse games</Link>
             </Button>
           </div>
+          <div className="w-full">
+            <GameExits />
+          </div>
         </div>
       )}
 
@@ -311,6 +314,9 @@ export function PlaySurface({
           <Button asChild variant="play" size="lg" className="mt-2">
             <Link to="/explore">Browse games</Link>
           </Button>
+          <div className="w-full">
+            <GameExits />
+          </div>
         </div>
       )}
 
