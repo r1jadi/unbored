@@ -39,7 +39,18 @@ import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
 import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
 import { STACK10_RUNTIME } from "@/lib/games/stack10";
 
+/**
+ * `?start=1` starts the run straight away instead of showing the game's rules
+ * first: the feed's Tap to play sends it, because a player who tapped Play has
+ * already chosen to play. A link without it shows the rules, as before.
+ */
+type PlaySearch = { start?: boolean };
+
 export const Route = createFileRoute("/play/$id")({
+  validateSearch: (search: Record<string, unknown>): PlaySearch =>
+    search["start"] === 1 || search["start"] === "1" || search["start"] === true
+      ? { start: true }
+      : {},
   loader: ({ context, params }) => prefetchPlay(context.queryClient, params.id),
   head: ({ params }) => {
     const title = titleFromSlug(params.id);
@@ -74,7 +85,8 @@ export const Route = createFileRoute("/play/$id")({
  */
 function PlayScreen() {
   const { id } = Route.useParams();
-  return <Play id={id} />;
+  const { start } = Route.useSearch();
+  return <Play id={id} autoStart={start === true} />;
 }
 
 /**
@@ -82,7 +94,7 @@ function PlayScreen() {
  * whether leaving would cost the player a run. Exported so the navigation tests
  * can mount the real composition without the generated route tree.
  */
-export function Play({ id }: { id: string }) {
+export function Play({ id, autoStart = false }: { id: string; autoStart?: boolean }) {
   // Whether a run is live, and how to end it, reported by the runtime below.
   const [progress, setProgress] = useState<{ active: boolean; endRun?: () => void }>({
     active: false,
@@ -94,7 +106,12 @@ export function Play({ id }: { id: string }) {
 
   return (
     <RunProgressContext.Provider value={report}>
-      <PlaySurface id={id} progress={progress.active} endRun={progress.endRun} />
+      <PlaySurface
+        id={id}
+        progress={progress.active}
+        endRun={progress.endRun}
+        autoStart={autoStart}
+      />
     </RunProgressContext.Provider>
   );
 }
@@ -112,10 +129,13 @@ export function PlaySurface({
   id,
   progress,
   endRun,
+  autoStart = false,
 }: {
   id: string;
   progress: boolean;
   endRun?: () => void;
+  /** Start the run without the rules screen (`?start=1`). */
+  autoStart?: boolean;
 }) {
   const state = useGame(id);
   const title = state.status === "ready" ? state.game.title : titleFromSlug(id);
@@ -187,31 +207,66 @@ export function PlaySurface({
       )}
 
       {state.status === "ready" && state.game.runtime === ONE_MOVE_RUNTIME && playable && (
-        <OneMoveRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
+        <OneMoveRuntime
+          key={state.game.slug}
+          slug={state.game.slug}
+          title={state.game.title}
+          autoStart={autoStart}
+        />
       )}
 
       {state.status === "ready" && state.game.runtime === COLOR_MERGE_RUNTIME && playable && (
-        <ColorMergeRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
+        <ColorMergeRuntime
+          key={state.game.slug}
+          slug={state.game.slug}
+          title={state.game.title}
+          autoStart={autoStart}
+        />
       )}
 
       {state.status === "ready" && state.game.runtime === DONT_TOUCH_RUNTIME && playable && (
-        <DontTouchRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
+        <DontTouchRuntime
+          key={state.game.slug}
+          slug={state.game.slug}
+          title={state.game.title}
+          autoStart={autoStart}
+        />
       )}
 
       {state.status === "ready" && state.game.runtime === SEVEN_SECOND_RUNTIME && playable && (
-        <SevenSecondRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
+        <SevenSecondRuntime
+          key={state.game.slug}
+          slug={state.game.slug}
+          title={state.game.title}
+          autoStart={autoStart}
+        />
       )}
 
       {state.status === "ready" && state.game.runtime === QUEENS_RUNTIME && playable && (
-        <QueensRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
+        <QueensRuntime
+          key={state.game.slug}
+          slug={state.game.slug}
+          title={state.game.title}
+          autoStart={autoStart}
+        />
       )}
 
       {state.status === "ready" && state.game.runtime === ZIP_RUNTIME && playable && (
-        <ZipRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
+        <ZipRuntime
+          key={state.game.slug}
+          slug={state.game.slug}
+          title={state.game.title}
+          autoStart={autoStart}
+        />
       )}
 
       {state.status === "ready" && state.game.runtime === EIGHT_PUZZLE_RUNTIME && playable && (
-        <EightPuzzleRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
+        <EightPuzzleRuntime
+          key={state.game.slug}
+          slug={state.game.slug}
+          title={state.game.title}
+          autoStart={autoStart}
+        />
       )}
 
       {state.status === "ready" && !(hasShippedRuntime && playable) && (

@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { RulesList } from "@/components/game/RulesList";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import {
   AlertDialog,
@@ -25,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
+import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -42,6 +44,9 @@ import {
   type ZipRun,
 } from "@/lib/games/zip";
 
+/** This game's rules, shared with the feed's How to play sheet. */
+const RULES = GAME_RULES["zip"];
+
 /**
  * Zip, playing for real.
  *
@@ -55,8 +60,25 @@ import {
  * how a player undoes. Every cell is a real button, so the board also plays from
  * a keyboard.
  */
-export function ZipRuntime({ slug, title }: { slug: string; title: string }) {
+export function ZipRuntime({
+  slug,
+  title,
+  autoStart = false,
+}: {
+  slug: string;
+  title: string;
+  /** Skip the rules and start the run as soon as it exists: the feed's Tap to play. */
+  autoStart?: boolean;
+}) {
   const state = useZipRun(slug);
+
+  // Tap to play skips the rules: the session is asked for straight away, and
+  // again when Play again brings the screen back to its start.
+  const begin = state.begin;
+  const atIntro = state.status === "intro";
+  useEffect(() => {
+    if (autoStart && atIntro) begin();
+  }, [autoStart, atIntro, begin]);
 
   if (state.status === "intro") {
     return <Intro signedIn={state.signedIn} onBegin={state.begin} slug={slug} title={title} />;
@@ -161,28 +183,11 @@ function Intro({
           <RouteIcon className="size-5 text-muted-foreground" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold">Fill the grid</h1>
-          <p className="text-sm text-muted-foreground">
-            One path, every cell, the numbers in order. Beat the clock.
-          </p>
+          <h1 className="text-2xl font-semibold">{RULES.heading}</h1>
+          <p className="text-sm text-muted-foreground">{RULES.summary}</p>
         </div>
 
-        <div className="w-full space-y-2 rounded-2xl bg-surface p-4 text-left text-sm">
-          <p>
-            <span className="font-medium text-foreground">Draw one path</span> from 1 through every
-            number in order, ending on the highest. It must visit every cell exactly once, moving
-            up, down, left or right, and never through a wall.
-          </p>
-          <p>
-            <span className="font-medium text-foreground">Drag or tap</span> to extend the path. Go
-            back over it to undo.
-          </p>
-          <p>
-            <span className="font-medium text-foreground">The clock</span> starts at 60 seconds, and
-            every solved board adds five seconds a row. Each board is worth ten points a row, the
-            boards grow as you go, and the run ends when the clock does.
-          </p>
-        </div>
+        <RulesList rules={RULES.rules} />
 
         <div className="flex w-full flex-col gap-2">
           <Button variant="play" size="lg" onClick={onBegin} autoFocus>

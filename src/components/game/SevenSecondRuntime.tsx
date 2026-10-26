@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { RulesList } from "@/components/game/RulesList";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -24,6 +25,7 @@ import {
   SEVEN_SECOND_PENALTY_MS,
   type SevenSecondRun,
 } from "@/lib/games/seven-second";
+import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -55,10 +57,22 @@ import {
  *     daily limit, not as a broken game.
  */
 
+/** This game's rules, shared with the feed's How to play sheet. */
+const RULES = GAME_RULES["seven-second"];
+
 /** One clock tick. The clock is shown to a tenth of a second, so 100 ms is enough. */
 const TICK_MS = 100;
 
-export function SevenSecondRuntime({ slug, title }: { slug: string; title: string }) {
+export function SevenSecondRuntime({
+  slug,
+  title,
+  autoStart = false,
+}: {
+  slug: string;
+  title: string;
+  /** Skip the rules and start the run as soon as it exists: the feed's Tap to play. */
+  autoStart?: boolean;
+}) {
   const state = useSevenSecondRun(slug);
 
   if (state.status === "starting") {
@@ -127,6 +141,7 @@ export function SevenSecondRuntime({ slug, title }: { slug: string; title: strin
         session={state.session}
         verifying={state.status === "submitting"}
         onBegin={state.begin}
+        autoStart={autoStart}
         onAnswer={state.answer}
         onFinish={state.finish}
         slug={slug}
@@ -155,6 +170,7 @@ function Table({
   session,
   verifying,
   onBegin,
+  autoStart,
   onAnswer,
   onFinish,
   slug,
@@ -164,6 +180,8 @@ function Table({
   session: PlaySession;
   verifying: boolean;
   onBegin: () => void;
+  /** Start without the rules screen (Tap to play). */
+  autoStart: boolean;
   onAnswer: (option: number) => void;
   onFinish: () => void;
   slug: string;
@@ -171,7 +189,14 @@ function Table({
 }) {
   // A retry of a failed submission re-mounts this table with the run it already
   // has; a run with answers has started, so the rules must not reappear.
-  const [started, setStarted] = useState(run.answers.length > 0);
+  const [started, setStarted] = useState(autoStart || run.answers.length > 0);
+
+  // Tap to play skips the rules: the run, and its clock, start at once.
+  useEffect(() => {
+    if (autoStart && run.answers.length === 0) onBegin();
+    // Once, on the first board: a retried submission remounts with a started run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [remaining, setRemaining] = useState(SEVEN_SECOND_BASE_MS);
   const [lastResult, setLastResult] = useState<"right" | "wrong" | null>(null);
   const buttonsRef = useRef<HTMLDivElement>(null);
@@ -270,30 +295,11 @@ function Table({
             <Timer className="size-5 text-muted-foreground" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">Seven seconds. Answer everything.</h1>
-            <p className="text-sm text-muted-foreground">
-              Arithmetic with three answers and one shrinking clock. Keep it alive.
-            </p>
+            <h1 className="text-2xl font-semibold">{RULES.heading}</h1>
+            <p className="text-sm text-muted-foreground">{RULES.summary}</p>
           </div>
 
-          <div className="w-full space-y-2 rounded-2xl bg-surface p-4 text-left text-sm">
-            <p>
-              <span className="font-medium text-foreground">Seven seconds</span> on the clock.
-              Answer as many challenges as you can before it empties.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">A right answer</span> adds 1.5 seconds
-              and scores 10 points.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">A wrong answer</span> costs 2 seconds.
-              Three of them can empty a fresh clock.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">One ranked attempt</span> per UTC day.
-              Everyone plays the same deck; the next one arrives at midnight UTC.
-            </p>
-          </div>
+          <RulesList rules={RULES.rules} />
 
           <div className="flex w-full flex-col gap-2">
             <Button variant="play" size="lg" onClick={start} autoFocus>

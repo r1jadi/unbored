@@ -1,8 +1,19 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Bookmark, Clock, Heart, Info, MessageCircle, Play, Share2, Trophy } from "lucide-react";
+import {
+  BookOpen,
+  Bookmark,
+  Clock,
+  Heart,
+  Info,
+  MessageCircle,
+  Play,
+  Share2,
+  Trophy,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { GameArt } from "./GameArt";
+import { HowToPlaySheet } from "./HowToPlaySheet";
 import { Avatar } from "@/components/common";
 import { CommentsSheet, ShareSheet } from "@/components/social/Sheets";
 import { Button } from "@/components/ui/button";
@@ -22,9 +33,13 @@ import { cn } from "@/lib/utils";
  *     the database and read back with exact counts; a count the server did not
  *     report is omitted rather than zeroed, because a zero is a measurement
  *     and nothing was measured.
- *   - **Playability is stated.** No game has a runtime yet, so "Tap to play" would
- *     be a promise the product cannot keep. The board is a link to the game's
- *     page instead, and the button says what it does.
+ *   - **Playability is stated.** A game without a runtime is never offered as
+ *     playable: its board links to the game's page, and the button says so.
+ *
+ * A playable game starts from here in one tap. Tap to play (the board or the
+ * button) opens the game with `?start=1`, which skips the game's own rules
+ * screen and starts the run at once; How to play shows the full rules in a sheet
+ * without leaving the feed.
  */
 function Action({
   icon: Icon,
@@ -81,6 +96,7 @@ function Action({
 export function FeedItem({ game }: { game: Game }) {
   const [comments, setComments] = useState(false);
   const [share, setShare] = useState(false);
+  const [howTo, setHowTo] = useState(false);
   const nav = useNavigate();
   // Where the visitor is now — the feed they were scrolling, with its query.
   const here = useRouterState({ select: (s) => s.location.href });
@@ -110,12 +126,7 @@ export function FeedItem({ game }: { game: Game }) {
     >
       <div className="relative flex w-full max-w-[460px] flex-col overflow-hidden md:rounded-2xl md:border md:border-glass-border">
         {/* Board — a playable game starts, an unplayable one opens its page. */}
-        <Link
-          to={game.playable ? "/play/$id" : "/games/$id"}
-          params={{ id: game.slug }}
-          className="group relative flex-1 bg-surface"
-          aria-label={game.playable ? `Play ${game.title}` : `View ${game.title}`}
-        >
+        <BoardLink game={game}>
           {/* The art gets the space the overlays leave free: below the badges,
               above the title block, and — on a phone — left of the action rail.
               The "Tap to play" pill sits under the board rather than on it, so
@@ -146,7 +157,7 @@ export function FeedItem({ game }: { game: Game }) {
               <span />
             )}
           </div>
-        </Link>
+        </BoardLink>
 
         {/* Info */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 scrim-bottom">
@@ -158,7 +169,12 @@ export function FeedItem({ game }: { game: Game }) {
               </div>
             )}
             <div>
-              <h2 className="text-2xl font-semibold">{game.title}</h2>
+              <h2 className="text-2xl font-semibold">
+                {/* The title opens the game's page: its details, scores and comments. */}
+                <Link to="/games/$id" params={{ id: game.slug }} className="hover:underline">
+                  {game.title}
+                </Link>
+              </h2>
               {game.tagline && <p className="text-sm text-muted-foreground">{game.tagline}</p>}
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -174,14 +190,17 @@ export function FeedItem({ game }: { game: Game }) {
               {game.playable ? (
                 <>
                   <Button asChild variant="play" size="lg" className="flex-1">
-                    <Link to="/play/$id" params={{ id: game.slug }}>
-                      <Play className="fill-current" /> Play
+                    <Link to="/play/$id" params={{ id: game.slug }} search={{ start: true }}>
+                      <Play className="fill-current" /> Tap to play
                     </Link>
                   </Button>
-                  <Button asChild variant="glass" size="lg" aria-label="Game details">
-                    <Link to="/games/$id" params={{ id: game.slug }}>
-                      <Info />
-                    </Link>
+                  <Button
+                    variant="glass"
+                    size="lg"
+                    className="flex-1"
+                    onClick={() => setHowTo(true)}
+                  >
+                    <BookOpen /> How to play
                   </Button>
                 </>
               ) : (
@@ -222,6 +241,7 @@ export function FeedItem({ game }: { game: Game }) {
         <Action icon={Share2} label="Share" onClick={() => setShare(true)} />
       </div>
 
+      <HowToPlaySheet open={howTo} onOpenChange={setHowTo} game={game} />
       <CommentsSheet
         open={comments}
         onOpenChange={setComments}
@@ -255,5 +275,33 @@ export function FeedSkeleton() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The board: a playable game starts at once (Tap to play), an unplayable one
+ * opens its page.
+ */
+function BoardLink({ game, children }: { game: Game; children: React.ReactNode }) {
+  const className = "group relative flex-1 bg-surface";
+  return game.playable ? (
+    <Link
+      to="/play/$id"
+      params={{ id: game.slug }}
+      search={{ start: true }}
+      className={className}
+      aria-label={`Play ${game.title}`}
+    >
+      {children}
+    </Link>
+  ) : (
+    <Link
+      to="/games/$id"
+      params={{ id: game.slug }}
+      className={className}
+      aria-label={`View ${game.title}`}
+    >
+      {children}
+    </Link>
   );
 }

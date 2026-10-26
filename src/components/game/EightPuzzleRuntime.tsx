@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { RulesList } from "@/components/game/RulesList";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import {
   AlertDialog,
@@ -29,6 +30,7 @@ import {
   type EightPuzzleRun,
 } from "@/lib/games/eight-puzzle";
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
+import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -36,6 +38,9 @@ import {
   type PlaySession,
   type RunResult,
 } from "@/lib/games/sessions";
+
+/** This game's rules, shared with the feed's How to play sheet. */
+const RULES = GAME_RULES["eight-puzzle"];
 
 /**
  * 8 Puzzle, playing for real.
@@ -49,8 +54,25 @@ import {
  * real button, and the board answers arrows by sliding the tile on the far side
  * of the gap in that direction.
  */
-export function EightPuzzleRuntime({ slug, title }: { slug: string; title: string }) {
+export function EightPuzzleRuntime({
+  slug,
+  title,
+  autoStart = false,
+}: {
+  slug: string;
+  title: string;
+  /** Skip the rules and start the run as soon as it exists: the feed's Tap to play. */
+  autoStart?: boolean;
+}) {
   const state = useEightPuzzleRun(slug);
+
+  // Tap to play skips the rules: the session is asked for straight away, and
+  // again when Play again brings the screen back to its start.
+  const begin = state.begin;
+  const atIntro = state.status === "intro";
+  useEffect(() => {
+    if (autoStart && atIntro) begin();
+  }, [autoStart, atIntro, begin]);
 
   if (state.status === "intro") {
     return <Intro signedIn={state.signedIn} onBegin={state.begin} slug={slug} title={title} />;
@@ -155,27 +177,11 @@ function Intro({
           <Grid3x3 className="size-5 text-muted-foreground" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold">Slide it home</h1>
-          <p className="text-sm text-muted-foreground">
-            Eight tiles, one gap. Put them back in order before the clock runs out.
-          </p>
+          <h1 className="text-2xl font-semibold">{RULES.heading}</h1>
+          <p className="text-sm text-muted-foreground">{RULES.summary}</p>
         </div>
 
-        <div className="w-full space-y-2 rounded-2xl bg-surface p-4 text-left text-sm">
-          <p>
-            <span className="font-medium text-foreground">Tap a tile</span> next to the gap to slide
-            it in, or use the arrow keys.
-          </p>
-          <p>
-            <span className="font-medium text-foreground">The goal</span> is 1 to 8 in reading
-            order, with the gap in the bottom-right corner. Every board can be solved; each one is
-            scrambled a little more than the last.
-          </p>
-          <p>
-            <span className="font-medium text-foreground">The clock</span> starts at 60 seconds, and
-            every solved board adds 15 seconds and ten points. The run ends when the clock does.
-          </p>
-        </div>
+        <RulesList rules={RULES.rules} />
 
         <div className="flex w-full flex-col gap-2">
           <Button variant="play" size="lg" onClick={onBegin} autoFocus>

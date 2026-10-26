@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorState } from "@/components/common";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { RulesList } from "@/components/game/RulesList";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -31,6 +32,7 @@ import {
   type ColorMergeDirection,
   type ColorMergeRun,
 } from "@/lib/games/color-merge";
+import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -38,6 +40,9 @@ import {
   type PlaySession,
   type RunResult,
 } from "@/lib/games/sessions";
+
+/** This game's rules, shared with the feed's How to play sheet. */
+const RULES = GAME_RULES["color-merge"];
 
 /**
  * Color Merge, playing for real.
@@ -60,7 +65,16 @@ import {
  *     the server's own message and a retry that re-sends the identical run, not a
  *     local "saved" that a reload would disprove.
  */
-export function ColorMergeRuntime({ slug, title }: { slug: string; title: string }) {
+export function ColorMergeRuntime({
+  slug,
+  title,
+  autoStart = false,
+}: {
+  slug: string;
+  title: string;
+  /** Skip the rules and start the run as soon as it exists: the feed's Tap to play. */
+  autoStart?: boolean;
+}) {
   const state = useColorMergeRun(slug);
 
   if (state.status === "starting") {
@@ -125,6 +139,7 @@ export function ColorMergeRuntime({ slug, title }: { slug: string; title: string
         onSlide={state.slide}
         onFinish={state.finish}
         onBegin={state.begin}
+        autoStart={autoStart}
         slug={slug}
         title={title}
       />
@@ -153,6 +168,7 @@ function Board({
   onSlide,
   onFinish,
   onBegin,
+  autoStart,
   slug,
   title,
 }: {
@@ -164,13 +180,22 @@ function Board({
   onFinish: () => void;
   /** Starts the run's clock; the time spent on the rules is not the run's. */
   onBegin: () => void;
+  /** Start without the rules screen (Tap to play). */
+  autoStart: boolean;
   slug: string;
   title: string;
 }) {
   // A retry of a failed submission re-mounts this board with the run it already
   // has; a run with slides has started, so the rules must not reappear. A fresh
   // run has no slides and does see them.
-  const [started, setStarted] = useState(run.moves.length > 0);
+  const [started, setStarted] = useState(autoStart || run.moves.length > 0);
+
+  // Tap to play skips the rules: the run, and its clock, start at once.
+  useEffect(() => {
+    if (autoStart && run.moves.length === 0) onBegin();
+    // Once, on the first board: a retried submission remounts with a started run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const boardRef = useRef<HTMLDivElement>(null);
   const pressed = useRef<{ x: number; y: number; pointer: number } | null>(null);
 
@@ -221,30 +246,11 @@ function Board({
             <Layers className="size-5 text-muted-foreground" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">Merge the shades</h1>
-            <p className="text-sm text-muted-foreground">
-              Two equal colours become the next shade. Keep the board moving.
-            </p>
+            <h1 className="text-2xl font-semibold">{RULES.heading}</h1>
+            <p className="text-sm text-muted-foreground">{RULES.summary}</p>
           </div>
 
-          <div className="w-full space-y-2 rounded-2xl bg-surface p-4 text-left text-sm">
-            <p>
-              <span className="font-medium text-foreground">Slide</span> the whole board with the
-              arrow keys, WASD, a swipe, or the buttons below the board.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">Merge</span> equal neighbours — two{" "}
-              <span className="tabular">2</span>s make a <span className="tabular">4</span>, two{" "}
-              <span className="tabular">4</span>s make an <span className="tabular">8</span>. Each
-              tile merges once per slide.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">No final slide.</span> The run ends only
-              when the board locks — every cell full with no matching neighbours. New tiles arrive
-              with a growing chance of a higher shade, so the space you have to work with keeps
-              shrinking.
-            </p>
-          </div>
+          <RulesList rules={RULES.rules} />
 
           <div className="flex w-full flex-col gap-2">
             <Button

@@ -5,11 +5,13 @@ import { useEffect, useRef, useState } from "react";
 import { ErrorState } from "@/components/common";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { RulesList } from "@/components/game/RulesList";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { boardPattern, boardSize, type OneMoveRun } from "@/lib/games/one-move";
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
+import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -17,6 +19,9 @@ import {
   type PlaySession,
   type RunResult,
 } from "@/lib/games/sessions";
+
+/** This game's rules, shared with the feed's How to play sheet. */
+const RULES = GAME_RULES["one-move"];
 
 /**
  * One Move, playing for real.
@@ -32,7 +37,16 @@ import {
  * seen this game should not have to guess what a tap does. The intro is local to
  * the run, so restarting shows it again.
  */
-export function OneMoveRuntime({ slug, title }: { slug: string; title: string }) {
+export function OneMoveRuntime({
+  slug,
+  title,
+  autoStart = false,
+}: {
+  slug: string;
+  title: string;
+  /** Skip the rules and start the run as soon as it exists: the feed's Tap to play. */
+  autoStart?: boolean;
+}) {
   const state = useOneMoveRun(slug);
 
   if (state.status === "starting") {
@@ -97,6 +111,7 @@ export function OneMoveRuntime({ slug, title }: { slug: string; title: string })
         onTap={state.tap}
         onFinish={state.finish}
         onBegin={state.begin}
+        autoStart={autoStart}
         slug={slug}
         title={title}
       />
@@ -132,6 +147,7 @@ function Board({
   onTap,
   onFinish,
   onBegin,
+  autoStart,
   slug,
   title,
 }: {
@@ -143,13 +159,22 @@ function Board({
   onFinish: () => void;
   /** Starts the run's clock; the time spent on the rules is not the run's. */
   onBegin: () => void;
+  /** Start without the rules screen (Tap to play). */
+  autoStart: boolean;
   slug: string;
   title: string;
 }) {
   // A retry of a failed submission re-mounts this board with the run it already
   // has; a run with taps has started, so the intro must not reappear. A fresh run
   // has no taps and does see it.
-  const [started, setStarted] = useState(run.taps.length > 0);
+  const [started, setStarted] = useState(autoStart || run.taps.length > 0);
+
+  // Tap to play skips the rules: the run, and its clock, start at once.
+  useEffect(() => {
+    if (autoStart && run.taps.length === 0) onBegin();
+    // Once, on the first board: a retried submission remounts with a started run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const firstCell = useRef<HTMLButtonElement>(null);
 
   // Pressing Start removes the button that had focus. Moving focus to the first
@@ -175,27 +200,11 @@ function Board({
             <Grid2x2 className="size-5 text-muted-foreground" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">One move away</h1>
-            <p className="text-sm text-muted-foreground">
-              Every board is a checkerboard with exactly one move already made.
-            </p>
+            <h1 className="text-2xl font-semibold">{RULES.heading}</h1>
+            <p className="text-sm text-muted-foreground">{RULES.summary}</p>
           </div>
 
-          <div className="w-full space-y-2 rounded-2xl bg-surface p-4 text-left text-sm">
-            <p>
-              <span className="font-medium text-foreground">A move</span> flips one cell and the
-              cells above, below, left and right of it that are on the board.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">Your move</span> is the one that puts
-              the checkerboard back. Tap that cell.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">A wrong tap</span> ends the run. The
-              board grows as you go; every restored board is ten points, and there is no final
-              board.
-            </p>
-          </div>
+          <RulesList rules={RULES.rules} />
 
           <div className="flex w-full flex-col gap-2">
             <Button

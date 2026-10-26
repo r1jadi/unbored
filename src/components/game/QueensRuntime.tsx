@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { RulesList } from "@/components/game/RulesList";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import {
   AlertDialog,
@@ -26,6 +27,7 @@ import {
   type QueensRun,
 } from "@/lib/games/queens";
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
+import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -33,6 +35,9 @@ import {
   type PlaySession,
   type RunResult,
 } from "@/lib/games/sessions";
+
+/** This game's rules, shared with the feed's How to play sheet. */
+const RULES = GAME_RULES["queens"];
 
 /**
  * Queens, playing for real.
@@ -46,7 +51,16 @@ import {
  * board is drawn from the engine: the regions and the automatic X are display, the
  * taps are the run.
  */
-export function QueensRuntime({ slug, title }: { slug: string; title: string }) {
+export function QueensRuntime({
+  slug,
+  title,
+  autoStart = false,
+}: {
+  slug: string;
+  title: string;
+  /** Skip the rules and start the run as soon as it exists: the feed's Tap to play. */
+  autoStart?: boolean;
+}) {
   const state = useQueensRun(slug);
 
   if (state.status === "starting") {
@@ -108,6 +122,7 @@ export function QueensRuntime({ slug, title }: { slug: string; title: string }) 
         onTap={state.tap}
         onFinish={state.finish}
         onBegin={state.begin}
+        autoStart={autoStart}
         slug={slug}
         title={title}
       />
@@ -161,6 +176,7 @@ function Board({
   onTap,
   onFinish,
   onBegin,
+  autoStart,
   slug,
   title,
 }: {
@@ -171,10 +187,19 @@ function Board({
   onFinish: () => void;
   /** Starts the run's clock; the time spent on the rules is not the run's. */
   onBegin: () => void;
+  /** Start without the rules screen (Tap to play). */
+  autoStart: boolean;
   slug: string;
   title: string;
 }) {
-  const [started, setStarted] = useState(run.taps.length > 0);
+  const [started, setStarted] = useState(autoStart || run.taps.length > 0);
+
+  // Tap to play skips the rules: the run, and its clock, start at once.
+  useEffect(() => {
+    if (autoStart && run.taps.length === 0) onBegin();
+    // Once, on the first board: a retried submission remounts with a started run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [confirming, setConfirming] = useState(false);
   const firstCell = useRef<HTMLButtonElement>(null);
 
@@ -204,28 +229,11 @@ function Board({
             <Crown className="size-5 text-muted-foreground" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">One Queen each</h1>
-            <p className="text-sm text-muted-foreground">
-              Every board is split into coloured regions, one for each row.
-            </p>
+            <h1 className="text-2xl font-semibold">{RULES.heading}</h1>
+            <p className="text-sm text-muted-foreground">{RULES.summary}</p>
           </div>
 
-          <div className="w-full space-y-2 rounded-2xl bg-surface p-4 text-left text-sm">
-            <p>
-              <span className="font-medium text-foreground">The goal</span> is exactly one Queen in
-              every row, every column and every colour region. Two Queens can never touch, not even
-              diagonally.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">Tap a cell</span> once for an X — a note
-              that no Queen goes there — twice for a Queen, and a third time to clear it.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">A wrong Queen</span> is a mistake, and
-              the third one ends the run. Every board has one solution and is worth ten points a
-              row; the boards grow as you go, and you can end the run whenever you like.
-            </p>
-          </div>
+          <RulesList rules={RULES.rules} />
 
           <div className="flex w-full flex-col gap-2">
             <Button

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { RulesList } from "@/components/game/RulesList";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -17,6 +18,7 @@ import {
   rowWindow,
   type DontTouchRun,
 } from "@/lib/games/dont-touch";
+import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -24,6 +26,9 @@ import {
   type PlaySession,
   type RunResult,
 } from "@/lib/games/sessions";
+
+/** This game's rules, shared with the feed's How to play sheet. */
+const RULES = GAME_RULES["dont-touch"];
 
 /**
  * Don't Touch the Black, playing for real.
@@ -46,7 +51,16 @@ import {
  *     local "saved" that a reload would disprove.
  */
 
-export function DontTouchRuntime({ slug, title }: { slug: string; title: string }) {
+export function DontTouchRuntime({
+  slug,
+  title,
+  autoStart = false,
+}: {
+  slug: string;
+  title: string;
+  /** Skip the rules and start the run as soon as it exists: the feed's Tap to play. */
+  autoStart?: boolean;
+}) {
   const state = useDontTouchRun(slug);
 
   if (state.status === "starting") {
@@ -112,6 +126,7 @@ export function DontTouchRuntime({ slug, title }: { slug: string; title: string 
         onFinish={state.finish}
         onMiss={state.miss}
         onBegin={state.begin}
+        autoStart={autoStart}
         slug={slug}
         title={title}
       />
@@ -141,6 +156,7 @@ function Conveyor({
   onFinish,
   onMiss,
   onBegin,
+  autoStart,
   slug,
   title,
 }: {
@@ -153,12 +169,21 @@ function Conveyor({
   onMiss: (row: number) => void;
   /** Starts the run's clock; the time spent on the rules is not the run's. */
   onBegin: () => void;
+  /** Start without the rules screen (Tap to play). */
+  autoStart: boolean;
   slug: string;
   title: string;
 }) {
   // A retry of a failed submission re-mounts this conveyor with the run it
   // already has; a run with taps has started, so the rules must not reappear.
-  const [started, setStarted] = useState(run.taps.length > 0);
+  const [started, setStarted] = useState(autoStart || run.taps.length > 0);
+
+  // Tap to play skips the rules: the run, and its clock, start at once.
+  useEffect(() => {
+    if (autoStart && run.taps.length === 0) onBegin();
+    // Once, on the first board: a retried submission remounts with a started run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [step, setStep] = useState(0);
   const boardRef = useRef<HTMLDivElement>(null);
 
@@ -223,32 +248,11 @@ function Conveyor({
             <Hand className="size-5 text-muted-foreground" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">Tap white. Only white.</h1>
-            <p className="text-sm text-muted-foreground">
-              Rows rise to the line. Clear every white tile before the row passes.
-            </p>
+            <h1 className="text-2xl font-semibold">{RULES.heading}</h1>
+            <p className="text-sm text-muted-foreground">{RULES.summary}</p>
           </div>
 
-          <div className="w-full space-y-2 rounded-2xl bg-surface p-4 text-left text-sm">
-            <p>
-              <span className="font-medium text-foreground">Tap</span> the white tiles in the row at
-              the line. Number keys <span className="tabular">1</span>–
-              <span className="tabular">3</span> or <span className="tabular">A</span>,{" "}
-              <span className="tabular">S</span> and <span className="tabular">D</span> work too.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">Never touch a black tile.</span> One
-              black tap ends the run on the spot.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">Don&apos;t let a white tile pass.</span>{" "}
-              A row that leaves the line with a white tile still on it ends the run too.
-            </p>
-            <p>
-              <span className="font-medium text-foreground">No final row.</span> Every row tightens
-              the beat, and the longer you last the more of each row turns black.
-            </p>
-          </div>
+          <RulesList rules={RULES.rules} />
 
           <div className="flex w-full flex-col gap-2">
             <Button

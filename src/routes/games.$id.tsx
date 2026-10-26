@@ -221,7 +221,7 @@ function Detail({ game }: { game: Game }) {
             </p>
             {game.playable ? (
               <Button asChild variant="play" size="xl" className="mt-4 w-full">
-                <Link to="/play/$id" params={{ id: game.slug }}>
+                <Link to="/play/$id" params={{ id: game.slug }} search={{ start: true }}>
                   <Play className="fill-current" />
                   Play
                 </Link>
@@ -255,7 +255,7 @@ function Detail({ game }: { game: Game }) {
       <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-background p-3 md:hidden">
         {game.playable ? (
           <Button asChild variant="play" size="lg" className="w-full">
-            <Link to="/play/$id" params={{ id: game.slug }}>
+            <Link to="/play/$id" params={{ id: game.slug }} search={{ start: true }}>
               <Play className="fill-current" />
               Play {game.title}
             </Link>
