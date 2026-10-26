@@ -14,7 +14,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { GameArt } from "./GameArt";
 import { HowToPlaySheet } from "./HowToPlaySheet";
-import { Avatar } from "@/components/common";
 import { CommentsSheet, ShareSheet } from "@/components/social/Sheets";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/client";
@@ -155,12 +154,6 @@ export function FeedItem({ game }: { game: Game }) {
         {/* Info */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 scrim-bottom">
           <div className="pointer-events-auto space-y-3 p-4 pr-20 md:pr-4">
-            {game.isOfficial && (
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Avatar name="Unbored" size="sm" />
-                Unbored
-              </div>
-            )}
             <div>
               <h2 className="text-2xl font-semibold">
                 {/* The title opens the game's page: its details, scores and comments. */}
