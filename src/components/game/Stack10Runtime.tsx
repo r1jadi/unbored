@@ -1,10 +1,10 @@
 import { Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { ErrorState } from "@/components/common";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { RunEndActions } from "@/components/game/RunEndActions";
 import { SavedRunCard } from "@/components/game/SavedRunCard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -380,24 +380,7 @@ function Finished({
         {result.duplicate && " This run was already recorded, so nothing was counted twice."}
       </p>
 
-      <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
-        <Button variant="play" size="lg" onClick={onRestart}>
-          <RotateCcw />
-          Play again
-        </Button>
-        <Button asChild variant="secondary" size="lg">
-          <Link to="/leaderboards/$id" params={{ id: slug }}>
-            See the leaderboard
-          </Link>
-        </Button>
-        {!result.ranked && (
-          <Button asChild variant="ghost" size="lg">
-            <Link to="/login" search={{ redirect: `/games/${slug}` }}>
-              Sign in to rank your scores
-            </Link>
-          </Button>
-        )}
-      </div>
+      <RunEndActions slug={slug} ranked={result.ranked} onRestart={onRestart} />
     </div>
   );
 }

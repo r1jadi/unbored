@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { RunEndActions } from "@/components/game/RunEndActions";
 import { RulesList } from "@/components/game/RulesList";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -510,31 +511,14 @@ function Finished({
         {result.duplicate && " This run was already recorded, so nothing was counted twice."}
       </p>
 
-      <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
-        {result.ranked ? (
+      <RunEndActions slug={slug} ranked={result.ranked} onRestart={onRestart} autoFocus>
+        {result.ranked && (
           <p className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-surface px-3 py-2 text-xs text-muted-foreground">
             <Clock className="size-3.5" />
             The next daily deck arrives at midnight UTC.
           </p>
-        ) : (
-          <Button variant="play" size="lg" onClick={onRestart} autoFocus>
-            <RotateCcw />
-            Play again
-          </Button>
         )}
-        <Button asChild variant="secondary" size="lg">
-          <Link to="/leaderboards/$id" params={{ id: slug }}>
-            See the leaderboard
-          </Link>
-        </Button>
-        {!result.ranked && (
-          <Button asChild variant="ghost" size="lg">
-            <Link to="/login" search={{ redirect: `/games/${slug}` }}>
-              Sign in to rank your scores
-            </Link>
-          </Button>
-        )}
-      </div>
+      </RunEndActions>
     </div>
   );
 }
