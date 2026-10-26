@@ -36,7 +36,7 @@ the system is unhackable. Where a control is missing, it is listed under
 | 3 | Mass assignment: sending fields you must not set | `DisallowUnknownFields` on every decoded body; column-level grants; `reject_change` triggers on immutable columns such as `games.owner_id` |
 | 4 | Score forgery | No `INSERT` grant on `scores` for clients; scores are written by the game-sessions service after validating a session it owns; the session holds the server-chosen seed and start time |
 | 5 | SQL injection | Parameterised queries only; no dynamic SQL in services; the platform exposes no string-building query helper |
-| 6 | XSS | React escapes by default; no `dangerouslySetInnerHTML` in the codebase; JSON responses are `application/json` with `nosniff`; a CSP is prepared but not yet enforced (see Gaps) |
+| 6 | XSS | React escapes by default; the only `dangerouslySetInnerHTML` is the chart component's generated `<style>`; JSON responses are `application/json` with `nosniff`; rendered documents enforce a nonce-based CSP (`script-src 'nonce-…' 'strict-dynamic'`, `src/lib/csp.ts`) in production, so injected inline scripts and event handlers do not run |
 | 7 | CSRF | The API authenticates with a bearer token and `credentials: "omit"`, so a cross-site form post carries no authority; TanStack server functions are protected by `createCsrfMiddleware` |
 | 8 | SSRF | The gateway forwards only to prefixes with a configured upstream whose URL must be `http(s)` with no query or fragment; an unconfigured group answers `503`; nothing user-supplied becomes a URL |
 | 9 | Open redirect / proxy abuse | The gateway is a closed allowlist, not a forward proxy; `Host` is rewritten to the upstream, never taken from the client |
@@ -47,7 +47,7 @@ the system is unhackable. Where a control is missing, it is listed under
 | 14 | Oversized or malformed payloads | `MaxBytesReader` before parsing; strict JSON decoding; unknown content types rejected; oversized bodies produce `413`, not a crash |
 | 15 | Path traversal / malicious upload | Storage buckets have per-bucket size and MIME allowlists; object paths must start with the uploader's user id; objects are served as static bytes and never executed |
 | 16 | Information leakage in errors | One error envelope; unknown errors become `500 internal` with a generic message; the real error is logged with the request id; auth failures never distinguish expired from forged |
-| 17 | Missing security headers | Every API response: `nosniff`, `DENY`, `no-referrer`, CORP/COOP, Permissions-Policy, CSP `default-src 'none'`, HSTS in production, `no-store` |
+| 17 | Missing security headers | Every API response: `nosniff`, `DENY`, `no-referrer`, CORP/COOP, Permissions-Policy, CSP `default-src 'none'`, HSTS in production, `no-store` — each exactly once (the gateway drops the upstream's copies). Documents: CSP, `nosniff`, `DENY`, HSTS. Static files (`vercel.json`): `nosniff` and a same-site `Access-Control-Allow-Origin` instead of the CDN's `*`. Fonts are self-hosted, so no third-party stylesheet loads without integrity |
 | 18 | Insecure CORS | Exact origin allowlist; `*` rejected outside development; credentials never combined with a wildcard; unlisted origins receive no CORS headers |
 | 19 | Secret exposure | Public/secret split documented and enforced by convention (`VITE_` prefix); `.env*` gitignored; `gitleaks` over the full history in CI; `service_role` never reaches the browser |
 | 20 | Unauthorized database changes | Schema changes only through reviewed migrations; CI applies them to an empty database and runs the RLS suite; destructive migrations require an expand/migrate/contract sequence |
@@ -59,10 +59,11 @@ the system is unhackable. Where a control is missing, it is listed under
 
 Honest list of what is **not** in place yet, and what should carry it:
 
-1. **No document CSP.** The API CSP (`default-src 'none'`) is enforced; the HTML
-   document has no CSP yet because a strict policy needs a nonce for TanStack's
-   inline hydration data. Plan: add a report-only CSP, collect violations, then
-   enforce — a decision to make in `docs/decisions` when the report is clean.
+1. **The document CSP allows inline styles and has no reporting.** Scripts are
+   nonce-only, but `style-src` keeps `'unsafe-inline'` because SSR renders
+   `style` attributes. No `report-to` endpoint collects violations, so a page
+   the policy breaks is only noticed by a user. Add reporting once there is a
+   place to send it.
 2. **No service worker / offline handling.** A cached authenticated response
    could leak between sessions; the worker must be designed with that in mind.
 3. **No upload scanning.** Buckets are limited by size and MIME, but content is

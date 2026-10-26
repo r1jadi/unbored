@@ -123,22 +123,44 @@ func Recover(logger *slog.Logger) Middleware {
 	}
 }
 
+// securityHeaders is the API baseline. HSTS is listed separately because it is
+// only sent in production.
+var securityHeaders = [][2]string{
+	{"X-Content-Type-Options", "nosniff"},
+	{"X-Frame-Options", "DENY"},
+	{"Referrer-Policy", "no-referrer"},
+	{"Cross-Origin-Resource-Policy", "same-site"},
+	{"Cross-Origin-Opener-Policy", "same-origin"},
+	{"Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()"},
+	{"Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"},
+	{"Cache-Control", "no-store"},
+}
+
+const hstsHeader = "Strict-Transport-Security"
+
+// SecurityHeaderNames lists every header SecurityHeaders may set. A proxy in
+// front of a service that also runs SecurityHeaders drops these from the
+// upstream response, or the client receives each one twice — and a repeated
+// Strict-Transport-Security header is non-compliant with RFC 6797.
+func SecurityHeaderNames() []string {
+	names := make([]string, 0, len(securityHeaders)+1)
+	for _, header := range securityHeaders {
+		names = append(names, header[0])
+	}
+	return append(names, hstsHeader)
+}
+
 // SecurityHeaders applies the API baseline. The web app sets its own document
 // headers; these protect JSON responses.
 func SecurityHeaders(env config.Environment) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := w.Header()
-			h.Set("X-Content-Type-Options", "nosniff")
-			h.Set("X-Frame-Options", "DENY")
-			h.Set("Referrer-Policy", "no-referrer")
-			h.Set("Cross-Origin-Resource-Policy", "same-site")
-			h.Set("Cross-Origin-Opener-Policy", "same-origin")
-			h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
-			h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'")
-			h.Set("Cache-Control", "no-store")
+			for _, header := range securityHeaders {
+				h.Set(header[0], header[1])
+			}
 			if env.IsProduction() {
-				h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+				h.Set(hstsHeader, "max-age=63072000; includeSubDomains; preload")
 			}
 			next.ServeHTTP(w, r)
 		})

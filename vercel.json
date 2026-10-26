@@ -46,6 +46,15 @@
       "entrypoint": "main.go"
     }
   },
+  "headers": [
+    {
+      "source": "/(assets/.*|favicon\\.png|apple-touch-icon\\.png|icon-.*\\.png|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Access-Control-Allow-Origin", "value": "https://unboredapp.vercel.app" }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/v1",

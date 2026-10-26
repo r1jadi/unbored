@@ -51,6 +51,16 @@ var corsResponseHeaders = []string{
 	"Access-Control-Expose-Headers", "Access-Control-Max-Age",
 }
 
+// gatewayOwnedResponseHeaders are dropped from every upstream response because
+// the gateway's own middleware has already set them on the response: CORS (see
+// above), the security baseline, and the request ID it forwarded. The reverse
+// proxy adds upstream headers beside the existing ones rather than replacing
+// them, so without this each would reach the client twice.
+var gatewayOwnedResponseHeaders = append(
+	append([]string{"X-Request-ID"}, corsResponseHeaders...),
+	httpx.SecurityHeaderNames()...,
+)
+
 // gatewayOwnedPaths are answered by the gateway's own router and are never
 // proxied. They have to keep working in every environment, including the
 // default one where no upstream is configured, because they are what a
@@ -105,7 +115,7 @@ func New(cfg *config.Config, logger *slog.Logger) *Proxy {
 			Transport:    newTransport(),
 			ErrorHandler: p.errorHandler(group.Service),
 			ModifyResponse: func(response *http.Response) error {
-				for _, name := range corsResponseHeaders {
+				for _, name := range gatewayOwnedResponseHeaders {
 					response.Header.Del(name)
 				}
 				return nil

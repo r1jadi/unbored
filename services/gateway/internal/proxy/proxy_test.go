@@ -215,6 +215,39 @@ func TestUpstreamCorsHeadersAreDropped(t *testing.T) {
 	}
 }
 
+func TestUpstreamSecurityHeadersAreNotDuplicated(t *testing.T) {
+	// Every service runs the same security middleware as the gateway. Copying
+	// the upstream's set in beside the gateway's sends each header twice, and a
+	// repeated Strict-Transport-Security header is non-compliant (RFC 6797).
+	upstream := httptest.NewServer(httpx.SecurityHeaders(config.EnvProduction)(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Request-ID", r.Header.Get("X-Request-ID"))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"upstream":true}`))
+		}),
+	))
+	t.Cleanup(upstream.Close)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	p := New(testConfig(map[string]string{"games": upstream.URL}), logger)
+	handler := httpx.RequestID(httpx.SecurityHeaders(config.EnvProduction)(p.Middleware()(http.NotFoundHandler())))
+
+	response := do(t, handler, http.MethodGet, "/api/v1/games", nil)
+	response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", response.StatusCode)
+	}
+	for _, name := range append(httpx.SecurityHeaderNames(), "X-Request-ID") {
+		if got := response.Header.Values(name); len(got) != 1 {
+			t.Errorf("%s = %v, want exactly one value", name, got)
+		}
+	}
+	if got := response.Header.Get("Content-Type"); got != "application/json" {
+		t.Errorf("Content-Type = %q, want the upstream's value", got)
+	}
+}
+
 func TestLongestPrefixWins(t *testing.T) {
 	// Every group in the routing table must be proxied to the service the table
 	// names. Two of them are served by a deployment whose name is not their own

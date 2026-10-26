@@ -1,5 +1,6 @@
 import "./lib/error-capture";
 
+import { CSP_NONCE_HEADER, contentSecurityPolicy, createCspNonce } from "./lib/csp";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
@@ -35,18 +36,33 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   });
 }
 
+// Hands the router this request's CSP nonce (see src/lib/csp.ts). Only GET and
+// HEAD render documents; rebuilding a request that has a body would mean
+// re-streaming it, for a nonce nothing would use. Any client-sent value is
+// overwritten, never trusted.
+function withCspNonce(request: Request, nonce: string): Request {
+  if (request.method !== "GET" && request.method !== "HEAD") return request;
+  const headers = new Headers(request.headers);
+  headers.set(CSP_NONCE_HEADER, nonce);
+  // Built from the URL, not `new Request(request, ...)`: the server runtime's
+  // request object is not always one undici accepts as an input.
+  return new Request(request.url, { method: request.method, headers, signal: request.signal });
+}
+
 // Security headers for rendered documents. Applied here rather than in a
 // platform-specific config file so every deployment target gets the same
 // response: the SSR handler is the only path that returns HTML.
 //
-// No Content-Security-Policy yet: a strict policy needs a nonce threaded through
-// TanStack's inline hydration data, which is planned work — see
-// docs/security/threat-model.md (Gaps).
-function withSecurityHeaders(response: Response): Response {
+// The CSP is production-only: Vite's dev server injects its own inline scripts
+// (HMR, the React refresh preamble) that carry no nonce.
+function withSecurityHeaders(response: Response, nonce: string): Response {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("text/html")) return response;
 
   const headers = new Headers(response.headers);
+  if (import.meta.env.PROD) {
+    headers.set("Content-Security-Policy", contentSecurityPolicy(nonce));
+  }
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("X-Frame-Options", "DENY");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -73,10 +89,11 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const nonce = createCspNonce();
     try {
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
-      return withSecurityHeaders(await normalizeCatastrophicSsrResponse(response));
+      const response = await handler.fetch(withCspNonce(request, nonce), env, ctx);
+      return withSecurityHeaders(await normalizeCatastrophicSsrResponse(response), nonce);
     } catch (error) {
       console.error(error);
       return withSecurityHeaders(
@@ -84,6 +101,7 @@ export default {
           status: 500,
           headers: { "content-type": "text/html; charset=utf-8" },
         }),
+        nonce,
       );
     }
   },
