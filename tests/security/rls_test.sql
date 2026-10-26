@@ -1496,6 +1496,10 @@ reset role;
 \set eight_late_session  'e2e2e2e2-3333-4333-8333-e2e2e2e2e2e2'
 \set eight_guest_session 'e2e2e2e2-4444-4444-8444-e2e2e2e2e2e2'
 \set eight_old_session   'e2e2e2e2-5555-4555-8555-e2e2e2e2e2e2'
+-- Saved progress: Alice's unfinished Queens run, Bob's, and a timed Zip run.
+\set progress_session       'f3f3f3f3-1111-4111-8111-f3f3f3f3f3f3'
+\set progress_bob_session   'f3f3f3f3-2222-4222-8222-f3f3f3f3f3f3'
+\set progress_timed_session 'f3f3f3f3-3333-4333-8333-f3f3f3f3f3f3'
 
 insert into public.games (id, owner_id, slug, title, status, published_at, runtime, playable, category_id) values
   (:'runnable_game', :'alice', 'fixture-runnable', 'Fixture Runnable', 'published', now(), 'stack-10', true,
@@ -1637,7 +1641,12 @@ insert into public.game_sessions (id, game_id, user_id, seed, rules_version, sta
   (:'eight_open_session',  :'eight_game', :'alice', 1, 'eight-puzzle@1', now() - interval '30 seconds',  now() + interval '2 hours', null),
   (:'eight_late_session',  :'eight_game', :'alice', 1, 'eight-puzzle@1', now() - interval '100 seconds', now() + interval '2 hours', null),
   (:'eight_guest_session', :'eight_game', null,     1, 'eight-puzzle@1', now() - interval '30 seconds',  now() + interval '2 hours', null),
-  (:'eight_old_session',   :'eight_game', :'alice', 1, 'eight-puzzle@0', now() - interval '30 seconds',  now() + interval '2 hours', null);
+  (:'eight_old_session',   :'eight_game', :'alice', 1, 'eight-puzzle@0', now() - interval '30 seconds',  now() + interval '2 hours', null),
+  -- Saved-progress fixtures. Alice's Queens run expires within the hour, so a
+  -- save is seen extending it to twelve hours.
+  (:'progress_session',       :'queens_game', :'alice', 1, 'queens@1', now() - interval '5 minutes',  now() + interval '1 hour',  null),
+  (:'progress_bob_session',   :'queens_game', :'bob',   1, 'queens@1', now() - interval '5 minutes',  now() + interval '1 hour',  null),
+  (:'progress_timed_session', :'zip_game',    :'alice', 1, 'zip@1',    now() - interval '30 seconds', now() + interval '2 hours', null);
 
 insert into public.game_sessions
   (id, game_id, user_id, seed, rules_version, started_at, expires_at, completed_at, verified_score, verified_digest)
@@ -2649,6 +2658,20 @@ select rls_test.says(
   format($$public.complete_zip_run('d1d1d1d1-4444-4444-8444-d1d1d1d1d1d1'::uuid, %s, 50, 25000)$$, :'zip_line'),
   'duplicate', 'a repeated guest Zip submission is recognised, not recorded again'
 );
+-- A guest has no account to keep progress or stats on: the functions are not
+-- theirs to call at all.
+select rls_test.raises(
+  $$select public.save_run_progress('f3f3f3f3-1111-4111-8111-f3f3f3f3f3f3'::uuid, array[1], 1000)$$,
+  '42501', 'a guest cannot save a run'
+);
+select rls_test.raises(
+  $$select * from public.saved_run('fixture-queens', 'queens@1')$$,
+  '42501', 'a guest has no saved run to look up'
+);
+select rls_test.raises(
+  $$select * from public.my_game_stats('fixture-queens')$$,
+  '42501', 'a guest has no stats to read'
+);
 -- A guest 8 Puzzle run completes the same way: verified, recorded, unranked.
 select rls_test.ok(
   (select r.outcome = 'recorded' and r.score = 10 and r.ranked = false
@@ -3501,6 +3524,80 @@ select rls_test.ok(
 select rls_test.ok(
   (select rank = 1 and score = 20 from public.game_standing('fixture-eight-puzzle', '11111111-1111-4111-8111-111111111111', null)),
   'your 8 Puzzle standing is your recorded best at its real rank'
+);
+
+-- ── Saved progress: an unfinished run kept on the account ──
+select rls_test.ok(
+  public.save_run_progress('f3f3f3f3-1111-4111-8111-f3f3f3f3f3f3'::uuid, array[1,1,8], 20000) = 'saved',
+  'a signed-in player saves their own unfinished run'
+);
+select rls_test.ok(
+  (select progress_actions = array[1,1,8] and progress_played_ms = 20000
+          and expires_at > now() + interval '11 hours'
+     from public.game_sessions where id = 'f3f3f3f3-1111-4111-8111-f3f3f3f3f3f3'),
+  'the saved moves and played time are on the session, which now stays open twelve hours'
+);
+select rls_test.ok(
+  (select r.session_id = 'f3f3f3f3-1111-4111-8111-f3f3f3f3f3f3' and r.actions = array[1,1,8]
+          and r.played_ms = 20000 and r.seed = '1' and r.rules_version = 'queens@1'
+     from public.saved_run('fixture-queens', 'queens@1') r),
+  'the saved run is found to continue, with its seed as exact text'
+);
+select rls_test.ok(
+  rls_test.count_rows($$select 1 from public.saved_run('fixture-queens', 'queens@2')$$) = 0,
+  'a saved run is only found under the rules it was played under'
+);
+select rls_test.ok(
+  public.save_run_progress('f3f3f3f3-1111-4111-8111-f3f3f3f3f3f3'::uuid, array[1,1,8], 999999999) = 'saved'
+    and (select progress_played_ms <= 5 * 60 * 1000 + 5000
+           from public.game_sessions where id = 'f3f3f3f3-1111-4111-8111-f3f3f3f3f3f3'),
+  'saved played time never exceeds the time the session has existed'
+);
+select rls_test.ok(
+  public.save_run_progress('f3f3f3f3-2222-4222-8222-f3f3f3f3f3f3'::uuid, array[1], 1000) = 'not_found',
+  'a player cannot save to somebody else''s session'
+);
+select rls_test.ok(
+  public.save_run_progress('c0c0c0c0-1111-4111-8111-c0c0c0c0c0c0'::uuid, array[1], 1000) = 'closed',
+  'a recorded run cannot be saved over'
+);
+select rls_test.ok(
+  public.save_run_progress('f3f3f3f3-3333-4333-8333-f3f3f3f3f3f3'::uuid, array[8], 1000) = 'not_resumable',
+  'a timed run (Zip) is not saved: its clock cannot pause'
+);
+select rls_test.raises(
+  $$select public.save_run_progress('f3f3f3f3-1111-4111-8111-f3f3f3f3f3f3'::uuid, array[null]::integer[], 0)$$,
+  '22023', 'a ragged saved move list is a request error'
+);
+select rls_test.denied(
+  $$update public.game_sessions set progress_actions = array[9] where id = 'f3f3f3f3-1111-4111-8111-f3f3f3f3f3f3'$$,
+  'a player cannot write saved moves except through save_run_progress'
+);
+-- Continuing is just finishing the same session: the run is scored like any
+-- other, from its seed, and then there is nothing left to continue.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 50
+     from public.complete_queens_run(
+       'f3f3f3f3-1111-4111-8111-f3f3f3f3f3f3'::uuid, (:queens_two_boards)[1:10], 50, 60000) r),
+  'a continued run is verified and recorded like any other'
+);
+select rls_test.ok(
+  rls_test.count_rows($$select 1 from public.saved_run('fixture-queens', 'queens@1')$$) = 0,
+  'a finished run is no longer offered to continue'
+);
+
+-- ── Stats per game ──
+-- Alice's Queens scores: 50, 110 and the continued run's 50.
+select rls_test.ok(
+  (select runs = 3 and best_score = 110 and total_score = 210 and rank = 1
+          and last_played_at is not null
+     from public.my_game_stats('fixture-queens')),
+  'your stats for a game are your runs, best, total and rank from verified scores'
+);
+select rls_test.ok(
+  (select runs = 0 and best_score is null and total_score = 0 and rank is null
+     from public.my_game_stats('fixture-bob')),
+  'a game you never scored on gives empty stats, not an error'
 );
 
 -- ── Color Merge: the same properties, replayed against a sliding board ──

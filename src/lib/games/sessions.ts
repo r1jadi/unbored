@@ -36,6 +36,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api/client";
 import { getAccessToken, getSessionUserId } from "@/lib/auth/session";
 import { getQueryClient } from "@/lib/query";
+import { fetchSavedRun, useSaveProgress } from "@/lib/games/saved-runs";
 import {
   createRun as createChainRun,
   finish as finishChainRun,
@@ -248,11 +249,12 @@ export function completeRun(
 ): Promise<RunResult> {
   const token = getAccessToken();
   return postCompletion(sessionId, submissionBody, durationMs, token, options).then((result) => {
-    // A verified run changes the game's board and its play count; the next
-    // visit to either should read them fresh rather than from cache.
+    // A verified run changes the game's board, its play count and the player's
+    // own stats; the next visit to any of them should read them fresh.
     const client = getQueryClient();
     void client.invalidateQueries({ queryKey: ["leaderboard", result.gameSlug] });
     void client.invalidateQueries({ queryKey: ["games"] });
+    void client.invalidateQueries({ queryKey: ["my-game-stats", result.gameSlug] });
     return result;
   });
 }
@@ -328,6 +330,11 @@ function asApiError(error: unknown): ApiError {
 
 export type Stack10RunState =
   | { status: "starting" }
+  /**
+   * The player has an unfinished run of this game saved on their account. It is
+   * offered before a new one is started: continue it, or start over.
+   */
+  | { status: "saved"; session: PlaySession; run: Stack10Run; playedMs: number }
   | { status: "playing"; session: PlaySession; run: Stack10Run }
   /** A finished run is being verified. No score is shown yet. */
   | { status: "submitting"; session: PlaySession; run: Stack10Run }
@@ -342,6 +349,10 @@ export type Stack10RunState =
     };
 
 export type Stack10RunControls = Stack10RunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Ends the saved run, keeping its score, and starts a new one. */
+  newRun: () => void;
   /** Ends the run where it stands and submits it, keeping its score. */
   finish: () => void;
   /** Places the run's next tile. Ignored unless the run is live. */
@@ -373,6 +384,8 @@ export function useStack10Run(gameSlug: string): Stack10RunControls {
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by "New run": the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
 
   useEffect(() => {
     mounted.current = true;
@@ -390,9 +403,25 @@ export function useStack10Run(gameSlug: string): Stack10RunControls {
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal })
+    // A signed-in player's unfinished run comes first: it is offered to continue
+    // rather than replaced by a new session behind their back.
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, STACK10_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          const run = saved.actions.reduce(
+            (current: Stack10Run, action) => placeTile(current, action),
+            createRun(saved.session.seed),
+          );
+          setState({ status: "saved", session: saved.session, run, playedMs: saved.playedMs });
+          return null;
+        }
+        return startSession(gameSlug, { signal: controller.signal });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         startedAt.current = Date.now();
         setState({ status: "playing", session, run: createRun(session.seed) });
       })
@@ -448,6 +477,42 @@ export function useStack10Run(gameSlug: string): Stack10RunControls {
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "saved") return current;
+      // The run's clock carries on from the time it had already been played.
+      startedAt.current = Date.now() - current.playedMs;
+      return { status: "playing", session: current.session, run: current.run };
+    });
+  }, []);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    // The saved run ends here and keeps its score, like any run the player ends:
+    // it is submitted as it was left. Only then does the new run start, because
+    // starting one closes the player's open session.
+    completeRun(
+      session.id,
+      { ...submission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: state.run.actions }
+      : null,
+    startedAt,
+  );
+
   const restart = useCallback(() => setAttempt((n) => n + 1), []);
 
   const retry = useCallback(() => {
@@ -466,13 +531,18 @@ export function useStack10Run(gameSlug: string): Stack10RunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, place, finish, restart, retry };
+  return { ...state, place, finish, restart, retry, continueRun, newRun };
 }
 
 // ── A run of Chain, from session to score ─────────────────────────────────
 
 export type ChainRunState =
   | { status: "starting" }
+  /**
+   * The player has an unfinished run of this game saved on their account. It is
+   * offered before a new one is started: continue it, or start over.
+   */
+  | { status: "saved"; session: PlaySession; run: ChainRun; playedMs: number }
   | { status: "playing"; session: PlaySession; run: ChainRun }
   /** A finished run is being verified. No score is shown yet. */
   | { status: "submitting"; session: PlaySession; run: ChainRun }
@@ -487,6 +557,10 @@ export type ChainRunState =
     };
 
 export type ChainRunControls = ChainRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Ends the saved run, keeping its score, and starts a new one. */
+  newRun: () => void;
   /** Ends the run where it stands and submits it, keeping its score. */
   finish: () => void;
   /** Taps a pad. Ignored unless the run is live. */
@@ -520,6 +594,8 @@ export function useChainRun(gameSlug: string): ChainRunControls {
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by "New run": the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
 
   useEffect(() => {
     mounted.current = true;
@@ -537,9 +613,28 @@ export function useChainRun(gameSlug: string): ChainRunControls {
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: CHAIN_RULES_VERSION })
+    // A signed-in player's unfinished run comes first: it is offered to continue
+    // rather than replaced by a new session behind their back.
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, CHAIN_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          const run = saved.actions.reduce(
+            (current: ChainRun, action) => tapPad(current, action),
+            createChainRun(saved.session.seed),
+          );
+          setState({ status: "saved", session: saved.session, run, playedMs: saved.playedMs });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: CHAIN_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         startedAt.current = Date.now();
         setState({ status: "playing", session, run: createChainRun(session.seed) });
       })
@@ -599,6 +694,42 @@ export function useChainRun(gameSlug: string): ChainRunControls {
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "saved") return current;
+      // The run's clock carries on from the time it had already been played.
+      startedAt.current = Date.now() - current.playedMs;
+      return { status: "playing", session: current.session, run: current.run };
+    });
+  }, []);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    // The saved run ends here and keeps its score, like any run the player ends:
+    // it is submitted as it was left. Only then does the new run start, because
+    // starting one closes the player's open session.
+    completeRun(
+      session.id,
+      { ...chainSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: state.run.taps }
+      : null,
+    startedAt,
+  );
+
   const restart = useCallback(() => setAttempt((n) => n + 1), []);
 
   const retry = useCallback(() => {
@@ -617,13 +748,18 @@ export function useChainRun(gameSlug: string): ChainRunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, tap, finish, restart, retry };
+  return { ...state, tap, finish, restart, retry, continueRun, newRun };
 }
 
 // ── A run of Memory Flash, from session to score ───────────────────────────
 
 export type MemoryFlashRunState =
   | { status: "starting" }
+  /**
+   * The player has an unfinished run of this game saved on their account. It is
+   * offered before a new one is started: continue it, or start over.
+   */
+  | { status: "saved"; session: PlaySession; run: MemoryFlashRun; playedMs: number }
   | { status: "playing"; session: PlaySession; run: MemoryFlashRun }
   /** A finished run is being verified. No score is shown yet. */
   | { status: "submitting"; session: PlaySession; run: MemoryFlashRun }
@@ -638,6 +774,10 @@ export type MemoryFlashRunState =
     };
 
 export type MemoryFlashRunControls = MemoryFlashRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Ends the saved run, keeping its score, and starts a new one. */
+  newRun: () => void;
   /** Ends the run where it stands and submits it, keeping its score. */
   finish: () => void;
   /** Taps a cell. Ignored unless the run is live. */
@@ -671,6 +811,8 @@ export function useMemoryFlashRun(gameSlug: string): MemoryFlashRunControls {
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by "New run": the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
 
   useEffect(() => {
     mounted.current = true;
@@ -688,9 +830,28 @@ export function useMemoryFlashRun(gameSlug: string): MemoryFlashRunControls {
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: MEMORY_FLASH_RULES_VERSION })
+    // A signed-in player's unfinished run comes first: it is offered to continue
+    // rather than replaced by a new session behind their back.
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, MEMORY_FLASH_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          const run = saved.actions.reduce(
+            (current: MemoryFlashRun, action) => tapCell(current, action),
+            createMemoryFlashRun(saved.session.seed),
+          );
+          setState({ status: "saved", session: saved.session, run, playedMs: saved.playedMs });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: MEMORY_FLASH_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         startedAt.current = Date.now();
         setState({ status: "playing", session, run: createMemoryFlashRun(session.seed) });
       })
@@ -750,6 +911,42 @@ export function useMemoryFlashRun(gameSlug: string): MemoryFlashRunControls {
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "saved") return current;
+      // The run's clock carries on from the time it had already been played.
+      startedAt.current = Date.now() - current.playedMs;
+      return { status: "playing", session: current.session, run: current.run };
+    });
+  }, []);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    // The saved run ends here and keeps its score, like any run the player ends:
+    // it is submitted as it was left. Only then does the new run start, because
+    // starting one closes the player's open session.
+    completeRun(
+      session.id,
+      { ...memoryFlashSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: state.run.taps }
+      : null,
+    startedAt,
+  );
+
   const restart = useCallback(() => setAttempt((n) => n + 1), []);
 
   const retry = useCallback(() => {
@@ -768,13 +965,18 @@ export function useMemoryFlashRun(gameSlug: string): MemoryFlashRunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, tap, finish, restart, retry };
+  return { ...state, tap, finish, restart, retry, continueRun, newRun };
 }
 
 // ── A run of One Move, from session to score ───────────────────────────────
 
 export type OneMoveRunState =
   | { status: "starting" }
+  /**
+   * The player has an unfinished run of this game saved on their account. It is
+   * offered before a new one is started: continue it, or start over.
+   */
+  | { status: "saved"; session: PlaySession; run: OneMoveRun; playedMs: number }
   | { status: "playing"; session: PlaySession; run: OneMoveRun }
   /** A finished run is being verified. No score is shown yet. */
   | { status: "submitting"; session: PlaySession; run: OneMoveRun }
@@ -789,6 +991,10 @@ export type OneMoveRunState =
     };
 
 export type OneMoveRunControls = OneMoveRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Ends the saved run, keeping its score, and starts a new one. */
+  newRun: () => void;
   /** Ends the run where it stands and submits it, keeping its score. */
   finish: () => void;
   /**
@@ -826,6 +1032,8 @@ export function useOneMoveRun(gameSlug: string): OneMoveRunControls {
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by "New run": the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
 
   useEffect(() => {
     mounted.current = true;
@@ -843,9 +1051,28 @@ export function useOneMoveRun(gameSlug: string): OneMoveRunControls {
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: ONE_MOVE_RULES_VERSION })
+    // A signed-in player's unfinished run comes first: it is offered to continue
+    // rather than replaced by a new session behind their back.
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, ONE_MOVE_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          const run = saved.actions.reduce(
+            (current: OneMoveRun, action) => tapOneMoveCell(current, action),
+            createOneMoveRun(saved.session.seed),
+          );
+          setState({ status: "saved", session: saved.session, run, playedMs: saved.playedMs });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: ONE_MOVE_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         // The clock starts when the player presses Start (`begin`), not when the
         // session arrives: reading the rules is not part of the run.
         setState({ status: "playing", session, run: createOneMoveRun(session.seed) });
@@ -913,6 +1140,42 @@ export function useOneMoveRun(gameSlug: string): OneMoveRunControls {
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "saved") return current;
+      // The run's clock carries on from the time it had already been played.
+      startedAt.current = Date.now() - current.playedMs;
+      return { status: "playing", session: current.session, run: current.run };
+    });
+  }, []);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    // The saved run ends here and keeps its score, like any run the player ends:
+    // it is submitted as it was left. Only then does the new run start, because
+    // starting one closes the player's open session.
+    completeRun(
+      session.id,
+      { ...oneMoveSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: state.run.taps }
+      : null,
+    startedAt,
+  );
+
   const restart = useCallback(() => setAttempt((n) => n + 1), []);
 
   const retry = useCallback(() => {
@@ -931,13 +1194,18 @@ export function useOneMoveRun(gameSlug: string): OneMoveRunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, begin, tap, finish, restart, retry };
+  return { ...state, begin, tap, finish, restart, retry, continueRun, newRun };
 }
 
 // ── A run of Queens, from session to score ───────────────────────────────
 
 export type QueensRunState =
   | { status: "starting" }
+  /**
+   * The player has an unfinished run of this game saved on their account. It is
+   * offered before a new one is started: continue it, or start over.
+   */
+  | { status: "saved"; session: PlaySession; run: QueensRun; playedMs: number }
   | { status: "playing"; session: PlaySession; run: QueensRun }
   /** A finished run is being verified. No score is shown yet. */
   | { status: "submitting"; session: PlaySession; run: QueensRun }
@@ -952,6 +1220,10 @@ export type QueensRunState =
     };
 
 export type QueensRunControls = QueensRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Ends the saved run, keeping its score, and starts a new one. */
+  newRun: () => void;
   /**
    * Marks the moment the player pressed Start, so the submitted duration is the
    * run's and not the time spent reading the rules.
@@ -989,6 +1261,8 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by "New run": the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
 
   useEffect(() => {
     mounted.current = true;
@@ -1006,9 +1280,28 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: QUEENS_RULES_VERSION })
+    // A signed-in player's unfinished run comes first: it is offered to continue
+    // rather than replaced by a new session behind their back.
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, QUEENS_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          const run = saved.actions.reduce(
+            (current: QueensRun, action) => tapQueensCell(current, action),
+            createQueensRun(saved.session.seed),
+          );
+          setState({ status: "saved", session: saved.session, run, playedMs: saved.playedMs });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: QUEENS_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         // The clock starts when the player presses Start (`begin`), not when the
         // session arrives: reading the rules is not part of the run.
         setState({ status: "playing", session, run: createQueensRun(session.seed) });
@@ -1076,6 +1369,42 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
     if (startedAt.current === 0) startedAt.current = Date.now();
   }, []);
 
+  const continueRun = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "saved") return current;
+      // The run's clock carries on from the time it had already been played.
+      startedAt.current = Date.now() - current.playedMs;
+      return { status: "playing", session: current.session, run: current.run };
+    });
+  }, []);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    // The saved run ends here and keeps its score, like any run the player ends:
+    // it is submitted as it was left. Only then does the new run start, because
+    // starting one closes the player's open session.
+    completeRun(
+      session.id,
+      { ...queensSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: state.run.taps }
+      : null,
+    startedAt,
+  );
+
   const restart = useCallback(() => setAttempt((n) => n + 1), []);
 
   const retry = useCallback(() => {
@@ -1094,7 +1423,7 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, begin, tap, finish, restart, retry };
+  return { ...state, begin, tap, finish, restart, retry, continueRun, newRun };
 }
 
 // ── A run of Zip, from Start to score ──────────────────────────────────────
@@ -1497,6 +1826,11 @@ export function useEightPuzzleRun(gameSlug: string): EightPuzzleRunControls {
 
 export type ColorMergeRunState =
   | { status: "starting" }
+  /**
+   * The player has an unfinished run of this game saved on their account. It is
+   * offered before a new one is started: continue it, or start over.
+   */
+  | { status: "saved"; session: PlaySession; run: ColorMergeRun; playedMs: number }
   | { status: "playing"; session: PlaySession; run: ColorMergeRun }
   /** A finished run is being verified. No score is shown yet. */
   | { status: "submitting"; session: PlaySession; run: ColorMergeRun }
@@ -1511,6 +1845,10 @@ export type ColorMergeRunState =
     };
 
 export type ColorMergeRunControls = ColorMergeRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Ends the saved run, keeping its score, and starts a new one. */
+  newRun: () => void;
   /** Ends the run where it stands and submits it, keeping its score. */
   finish: () => void;
   /**
@@ -1548,6 +1886,8 @@ export function useColorMergeRun(gameSlug: string): ColorMergeRunControls {
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by "New run": the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
 
   useEffect(() => {
     mounted.current = true;
@@ -1565,9 +1905,29 @@ export function useColorMergeRun(gameSlug: string): ColorMergeRunControls {
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: COLOR_MERGE_RULES_VERSION })
+    // A signed-in player's unfinished run comes first: it is offered to continue
+    // rather than replaced by a new session behind their back.
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, COLOR_MERGE_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          const run = saved.actions.reduce(
+            (current: ColorMergeRun, action) =>
+              slideColorMerge(current, action as ColorMergeDirection),
+            createColorMergeRun(saved.session.seed),
+          );
+          setState({ status: "saved", session: saved.session, run, playedMs: saved.playedMs });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: COLOR_MERGE_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         // The clock starts when the player presses Start (`begin`), not when the
         // session arrives: reading the rules is not part of the run.
         setState({ status: "playing", session, run: createColorMergeRun(session.seed) });
@@ -1635,6 +1995,42 @@ export function useColorMergeRun(gameSlug: string): ColorMergeRunControls {
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "saved") return current;
+      // The run's clock carries on from the time it had already been played.
+      startedAt.current = Date.now() - current.playedMs;
+      return { status: "playing", session: current.session, run: current.run };
+    });
+  }, []);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    // The saved run ends here and keeps its score, like any run the player ends:
+    // it is submitted as it was left. Only then does the new run start, because
+    // starting one closes the player's open session.
+    completeRun(
+      session.id,
+      { ...colorMergeSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: state.run.moves }
+      : null,
+    startedAt,
+  );
+
   const restart = useCallback(() => setAttempt((n) => n + 1), []);
 
   const retry = useCallback(() => {
@@ -1653,7 +2049,7 @@ export function useColorMergeRun(gameSlug: string): ColorMergeRunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, begin, slide, finish, restart, retry };
+  return { ...state, begin, slide, finish, restart, retry, continueRun, newRun };
 }
 
 // ── A run of Don't Touch the Black, from session to score ──────────────────

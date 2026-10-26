@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, Page, PageHeader, Section } from "@/components/
 import { GameArt } from "@/components/game/GameArt";
 import { GameCard } from "@/components/game/GameCard";
 import { LeaderboardList } from "@/components/game/Leaderboard";
+import { YourStats } from "@/components/game/YourStats";
 import { CommentsSheet, ShareSheet } from "@/components/social/Sheets";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -163,6 +164,8 @@ function Detail({ game }: { game: Game }) {
                 <p className="mt-1 text-sm text-muted-foreground">{game.instructions}</p>
               </section>
             )}
+
+            <YourStats slug={game.slug} />
 
             <div className="mt-4 flex gap-2">
               <Button

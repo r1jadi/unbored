@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ErrorState } from "@/components/common";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { SavedRunCard } from "@/components/game/SavedRunCard";
 import { RulesList } from "@/components/game/RulesList";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,20 @@ export function OneMoveRuntime({
   autoStart?: boolean;
 }) {
   const state = useOneMoveRun(slug);
+
+  // A signed-in player's unfinished run is offered before a new one starts.
+  if (state.status === "saved") {
+    return (
+      <SavedRunCard
+        score={state.run.score}
+        where={`Board ${state.run.level}`}
+        onContinue={state.continueRun}
+        onNewRun={state.newRun}
+        slug={slug}
+        title={title}
+      />
+    );
+  }
 
   if (state.status === "starting") {
     return (

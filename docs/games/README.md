@@ -25,6 +25,27 @@ learned this in `supabase/migrations/20261107120000_end_run_saves_score.sql`
 (their `@2` rules; the retired `@1` rules still require a complete run); the
 other games accepted it from the start.
 
+
+## Saved progress
+
+A signed-in player keeps more than their scores:
+
+- **An unfinished run.** While they play Stack 10, Chain, Memory Flash, One Move,
+  Color Merge or Queens, the run's moves are saved to its session as they go
+  (shortly after each move, and at once when the page is hidden or left). Opening
+  the game again offers **Continue run** — the saved moves are replayed from the
+  seed, so the board, score and level are exactly where they were — or **New
+  run**, which submits the saved run as it was left (keeping its score, like any
+  ended run) and starts a fresh one. A saved run stays open for twelve hours after
+  its last save. Zip, 8 Puzzle, 7 Second and Don't Touch the Black do not resume:
+  their clocks or conveyors cannot pause.
+- **Stats per game**, on the game's page: runs played, best score, rank, total
+  points and when they last played, from their verified scores.
+
+Saved moves are never a score. A continued run is verified like any other, when
+it is submitted. See `supabase/migrations/20261108120000_saved_progress.sql` and
+`src/lib/games/saved-runs.ts`.
+
 ## Stack 10
 
 Place the numbered tiles the game deals into four columns. A column that adds up to

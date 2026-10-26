@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorState } from "@/components/common";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { SavedRunCard } from "@/components/game/SavedRunCard";
 import { RulesList } from "@/components/game/RulesList";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -76,6 +77,20 @@ export function ColorMergeRuntime({
   autoStart?: boolean;
 }) {
   const state = useColorMergeRun(slug);
+
+  // A signed-in player's unfinished run is offered before a new one starts.
+  if (state.status === "saved") {
+    return (
+      <SavedRunCard
+        score={state.run.score}
+        where={`${state.run.moves.length} ${state.run.moves.length === 1 ? "slide" : "slides"}`}
+        onContinue={state.continueRun}
+        onNewRun={state.newRun}
+        slug={slug}
+        title={title}
+      />
+    );
+  }
 
   if (state.status === "starting") {
     return (
