@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { LevelUpOverlay } from "@/components/game/LevelUp";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,7 @@ import {
   type QueensCell,
   type QueensRun,
 } from "@/lib/games/queens";
+import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -182,6 +184,11 @@ function Board({
 
   useReportRunProgress(started && !verifying && run.outcome === "playing", onFinish);
 
+  // A solved board gets a beat before the next one, with a note when it grows.
+  const nextSide = boardSize(run.level);
+  const grew = run.level > 1 && nextSide > boardSize(run.level - 1);
+  const levelUp = useLevelUp(run.level, run.score, levelUpHold(grew));
+
   // Drawing a board runs the region search, so it is done once per board rather
   // than on every tap.
   const drawn = useMemo(
@@ -249,7 +256,7 @@ function Board({
   }
 
   const { size, regions } = drawn;
-  const accepting = !verifying && run.outcome === "playing";
+  const accepting = !verifying && run.outcome === "playing" && !levelUp;
   const blocked = blockedCells(size, regions, run.cells);
   const queens = run.cells.filter((cell) => cell === "queen").length;
   const mistakesLeft = Math.max(0, QUEENS_MISTAKES - run.mistakes);
@@ -311,7 +318,7 @@ function Board({
       <div className="flex min-h-0 flex-1 items-center justify-center py-3">
         <div className="flex max-h-full w-full justify-center">
           <div
-            className="grid aspect-square w-full overflow-hidden rounded-lg border-2"
+            className="relative grid aspect-square w-full overflow-hidden rounded-lg border-2"
             style={{
               borderColor: REGION_EDGE,
               maxWidth:
@@ -356,6 +363,14 @@ function Board({
                 </button>
               );
             })}
+            {levelUp && (
+              <LevelUpOverlay
+                levelUp={levelUp}
+                unit="Board"
+                next={`Board ${run.level} · ${nextSide}×${nextSide}`}
+                note={grew ? `Boards are ${nextSide}×${nextSide} from here.` : undefined}
+              />
+            )}
           </div>
         </div>
       </div>

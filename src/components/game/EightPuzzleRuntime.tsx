@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { LevelUpOverlay } from "@/components/game/LevelUp";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,8 +25,10 @@ import {
   EIGHT_PUZZLE_BONUS_MS,
   EIGHT_PUZZLE_SIDE,
   fewestMoves,
+  scrambleLength,
   type EightPuzzleRun,
 } from "@/lib/games/eight-puzzle";
+import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -214,7 +217,13 @@ function Board({
   const [confirming, setConfirming] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const boardRef = useRef<HTMLDivElement>(null);
-  const accepting = !verifying && run.outcome === "playing";
+  // A solved board gets a beat before the next one. It is short: the clock keeps
+  // running, on the server as well as here. The scramble stops growing at
+  // eighty steps, which is worth saying once.
+  const fullyScrambled =
+    run.level > 1 && scrambleLength(run.level) === 80 && scrambleLength(run.level - 1) < 80;
+  const levelUp = useLevelUp(run.level, run.score, levelUpHold(fullyScrambled));
+  const accepting = !verifying && run.outcome === "playing" && !levelUp;
 
   useReportRunProgress(accepting, onFinish);
 
@@ -343,6 +352,14 @@ function Board({
                 );
               })}
             </div>
+            {levelUp && (
+              <LevelUpOverlay
+                levelUp={levelUp}
+                unit="Board"
+                next={`Board ${run.level} · par ${par} · clock +${EIGHT_PUZZLE_BONUS_MS / 1000} s`}
+                note={fullyScrambled ? "Every board is fully scrambled from here." : undefined}
+              />
+            )}
           </div>
         </div>
       </div>

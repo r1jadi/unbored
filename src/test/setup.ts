@@ -1,5 +1,14 @@
 import "@testing-library/jest-dom/vitest";
 
+import { levelUpTiming } from "@/lib/games/level-up";
+
+// The beat between two levels runs on a real clock. The play tests solve level
+// after level in one go, so it is off by default; the level-up tests turn it on.
+beforeEach(() => {
+  levelUpTiming.ms = 0;
+  levelUpTiming.noteMs = 0;
+});
+
 // The query cache and the engagement batcher are app-wide singletons. Each test
 // starts from an empty cache so one test's answers are never another's. Imported
 // lazily: a static import would load the app's config before the env stubs

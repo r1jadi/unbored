@@ -1,12 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { LevelUpOverlay } from "@/components/game/LevelUp";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -139,6 +141,16 @@ const PAD_STYLES = ["bg-game-1", "bg-game-2", "bg-game-4", "bg-game-5"] as const
 /** The beat before the first step, so the board settles before it starts. */
 const LEAD_IN_MS = 350;
 
+/** Whether `round` is the first round played at the tempo's floor. */
+function reachesTopSpeed(round: number): boolean {
+  const now = chainTempo(round);
+  const before = chainTempo(round - 1);
+  const after = chainTempo(round + 1);
+  const steady = now.litMs === after.litMs && now.gapMs === after.gapMs;
+  const changed = now.litMs !== before.litMs || now.gapMs !== before.gapMs;
+  return steady && changed;
+}
+
 /** The live board: a showing phase, then an input phase, per round. */
 function Board({
   run,
@@ -159,28 +171,41 @@ function Board({
   const round = run.round;
   const seed = run.seed;
 
+  // A repeated chain gets a beat before the next one, and the next sequence
+  // waits for it. The beat says so once when the tempo reaches its floor.
+  const topSpeed = round > 1 && reachesTopSpeed(round);
+  const holdMs = levelUpHold(topSpeed);
+  const levelUp = useLevelUp(round, run.score, holdMs);
+  const firstRound = useRef(round);
+
   // Each round starts by showing its symbols, then hands over to the player.
   // The effect re-runs only when the round (or run) changes: taps within a
   // round must not restart the showing.
   useEffect(() => {
     setShowing(true);
     setLit(null);
+    // A round reached by repeating the last one waits for the level-up beat.
+    const delay = round === firstRound.current ? 0 : holdMs;
     const steps = Array.from({ length: round }, (_, i) => symbolAt(seed, i));
     const { litMs, gapMs } = chainTempo(round);
     const timers: ReturnType<typeof setTimeout>[] = [];
     steps.forEach((pad, i) => {
-      const at = LEAD_IN_MS + i * (litMs + gapMs);
+      const at = delay + LEAD_IN_MS + i * (litMs + gapMs);
       timers.push(setTimeout(() => setLit(pad), at));
       timers.push(setTimeout(() => setLit(null), at + litMs));
     });
-    timers.push(setTimeout(() => setShowing(false), LEAD_IN_MS + steps.length * (litMs + gapMs)));
+    timers.push(
+      setTimeout(() => setShowing(false), delay + LEAD_IN_MS + steps.length * (litMs + gapMs)),
+    );
     return () => {
       timers.forEach(clearTimeout);
       setLit(null);
     };
+    // `holdMs` follows the round; the showing restarts only with a new round.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round, seed]);
 
-  const accepting = !showing && !verifying && run.outcome === "playing";
+  const accepting = !showing && !levelUp && !verifying && run.outcome === "playing";
 
   // From the first showing beat the run is live: leaving loses it.
   useReportRunProgress(!verifying && run.outcome === "playing", onFinish);
@@ -233,7 +258,7 @@ function Board({
       </p>
 
       <div
-        className="mx-auto grid w-full max-w-md flex-1 grid-cols-2 content-center gap-3 py-3"
+        className="relative mx-auto grid w-full max-w-md flex-1 grid-cols-2 content-center gap-3 py-3"
         role="group"
         aria-label="Pads"
       >
@@ -269,6 +294,14 @@ function Board({
             </button>
           );
         })}
+        {levelUp && (
+          <LevelUpOverlay
+            levelUp={levelUp}
+            unit="Round"
+            next={`Round ${round} · ${round} taps`}
+            note={topSpeed ? "Top speed: the beat stops getting faster." : undefined}
+          />
+        )}
       </div>
 
       <p className="pt-1 text-center text-xs text-muted-foreground" aria-live="polite">

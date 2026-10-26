@@ -1,12 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { LevelUpOverlay } from "@/components/game/LevelUp";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -153,21 +155,37 @@ function Board({
   const flash = showMs(round);
   const [showing, setShowing] = useState(true);
 
+  // A rebuilt pattern gets a beat before the next one, with a note when the board
+  // grows. The next pattern waits for it: lighting it under the beat would spend
+  // its whole exposure where the player cannot see it.
+  const grew = round > 1 && side > boardSide(round - 1);
+  const holdMs = levelUpHold(grew);
+  const levelUp = useLevelUp(round, run.score, holdMs);
+  const firstRound = useRef(round);
+  const [shownRound, setShownRound] = useState(round);
+  const between = shownRound !== round;
+
   // Each round starts by lighting its pattern, then hands over to the player. The
   // exposure shortens as the run goes on, and the board can grow between rounds,
   // so both the duration and the pattern are functions of the round. The effect
   // re-runs only when the round (or run) changes: entering a cell within a round
-  // must not restart the showing.
+  // must not restart the showing. A round reached by rebuilding the last one
+  // waits for the level-up beat first.
   useEffect(() => {
+    const delay = round === firstRound.current ? 0 : holdMs;
     setShowing(true);
-    const hide = setTimeout(() => setShowing(false), leadInMs(round) + showMs(round));
+    const begin = setTimeout(() => setShownRound(round), delay);
+    const hide = setTimeout(() => setShowing(false), delay + leadInMs(round) + showMs(round));
     return () => {
+      clearTimeout(begin);
       clearTimeout(hide);
       setShowing(false);
     };
+    // `holdMs` follows the round; the showing restarts only with a new round.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round, seed]);
 
-  const accepting = !showing && !verifying && run.outcome === "playing";
+  const accepting = !showing && !between && !levelUp && !verifying && run.outcome === "playing";
 
   // From the first showing beat the run is live: leaving loses it.
   useReportRunProgress(!verifying && run.outcome === "playing", onFinish);
@@ -221,13 +239,16 @@ function Board({
           the rules, because the board grows with the pattern. */}
       <div className="flex flex-1 items-center justify-center py-3">
         <div
-          className={cn("grid aspect-square w-full max-w-md", side <= 5 ? "gap-2" : "gap-1")}
+          className={cn(
+            "relative grid aspect-square w-full max-w-md",
+            side <= 5 ? "gap-2" : "gap-1",
+          )}
           style={{ gridTemplateColumns: `repeat(${side}, minmax(0, 1fr))` }}
           role="group"
           aria-label={`Pattern grid, ${side} by ${side}`}
         >
           {Array.from({ length: cells }, (_, index) => {
-            const lit = showing ? pattern.includes(index) : run.entered.includes(index);
+            const lit = showing ? !between && pattern.includes(index) : run.entered.includes(index);
             const entered = !showing && run.entered.includes(index);
             return (
               <button
@@ -255,6 +276,14 @@ function Board({
               </button>
             );
           })}
+          {levelUp && (
+            <LevelUpOverlay
+              levelUp={levelUp}
+              unit="Round"
+              next={`Round ${round} · ${round} cells · ${flash} ms flash`}
+              note={grew ? `The board grows to ${side}×${side}.` : undefined}
+            />
+          )}
         </div>
       </div>
 

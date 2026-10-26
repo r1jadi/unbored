@@ -5,9 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { ErrorState } from "@/components/common";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { LevelUpOverlay } from "@/components/game/LevelUp";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { boardPattern, type OneMoveRun } from "@/lib/games/one-move";
+import { boardPattern, boardSize, type OneMoveRun } from "@/lib/games/one-move";
+import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -160,6 +162,11 @@ function Board({
   // A started, unverified run is progress the player would lose by leaving.
   useReportRunProgress(started && !verifying && run.outcome === "playing", onFinish);
 
+  // A restored board gets a beat before the next one, with a note when it grows.
+  const nextSide = boardSize(run.level);
+  const grew = run.level > 1 && nextSide > boardSize(run.level - 1);
+  const levelUp = useLevelUp(run.level, run.score, levelUpHold(grew));
+
   if (!started) {
     return (
       <div className="flex flex-1 flex-col justify-center px-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -226,7 +233,7 @@ function Board({
   }
 
   const board = boardPattern(run.seed, run.level);
-  const accepting = !verifying && run.outcome === "playing";
+  const accepting = !verifying && run.outcome === "playing" && !levelUp;
 
   return (
     <div className="flex flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -277,7 +284,7 @@ function Board({
         <div className="flex max-h-full w-full justify-center">
           <div
             className={cn(
-              "grid aspect-square w-full",
+              "relative grid aspect-square w-full",
               board.size > 12
                 ? "gap-0.5"
                 : board.size > 9
@@ -320,6 +327,14 @@ function Board({
                 }`}</span>
               </button>
             ))}
+            {levelUp && (
+              <LevelUpOverlay
+                levelUp={levelUp}
+                unit="Board"
+                next={`Board ${run.level} · ${nextSide}×${nextSide}`}
+                note={grew ? `Boards are ${nextSide}×${nextSide} from here.` : undefined}
+              />
+            )}
           </div>
         </div>
       </div>

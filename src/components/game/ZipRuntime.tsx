@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { LevelUpOverlay } from "@/components/game/LevelUp";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
@@ -225,7 +227,12 @@ function Board({
   const lastCell = useRef<number | null>(null);
 
   const drawn = useMemo(() => drawBoard(run.seed, run.level), [run.seed, run.level]);
-  const accepting = !verifying && run.outcome === "playing";
+  // A solved board gets a beat before the next one, with a note when it grows.
+  // It is short: the clock keeps running, on the server as well as here.
+  const nextSide = boardSize(run.level);
+  const grew = run.level > 1 && nextSide > boardSize(run.level - 1);
+  const levelUp = useLevelUp(run.level, run.score, levelUpHold(grew));
+  const accepting = !verifying && run.outcome === "playing" && !levelUp;
 
   useReportRunProgress(accepting, onFinish);
 
@@ -437,6 +444,16 @@ function Board({
                 ) : null,
               )}
             </svg>
+            {levelUp && (
+              <LevelUpOverlay
+                levelUp={levelUp}
+                unit="Board"
+                next={`Board ${run.level} · ${nextSide}×${nextSide} · clock +${
+                  (ZIP_BONUS_MS_PER_ROW * boardSize(levelUp.solved)) / 1000
+                } s`}
+                note={grew ? `Boards are ${nextSide}×${nextSide} from here.` : undefined}
+              />
+            )}
           </div>
         </div>
       </div>
