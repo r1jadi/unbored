@@ -406,13 +406,13 @@ func TestSecurityHeadersAreAlwaysPresent(t *testing.T) {
 }
 
 func TestCORSOnlyAllowsConfiguredOrigins(t *testing.T) {
-	server := newTestServer(t, testOptions{withAuth: true, corsOrigin: "https://unboredapp.vercel.app"})
+	server := newTestServer(t, testOptions{withAuth: true, corsOrigin: "https://unbored.lol"})
 
 	allowed := get(t, server.URL+"/api/v1/things/public", map[string]string{
-		"Origin": "https://unboredapp.vercel.app",
+		"Origin": "https://unbored.lol",
 	})
 	allowed.Body.Close()
-	if got := allowed.Header.Get("Access-Control-Allow-Origin"); got != "https://unboredapp.vercel.app" {
+	if got := allowed.Header.Get("Access-Control-Allow-Origin"); got != "https://unbored.lol" {
 		t.Fatalf("allowed origin not echoed: %q", got)
 	}
 

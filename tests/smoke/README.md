@@ -15,7 +15,7 @@ and check what the server did with it.
 API_BASE=http://127.0.0.1:8090/api/v1 node tests/smoke/stack10-smoke.mjs
 
 # Against production, after a deployment:
-API_BASE=https://unboredapp.vercel.app/api/v1 node tests/smoke/stack10-smoke.mjs
+API_BASE=https://unbored.lol/api/v1 node tests/smoke/stack10-smoke.mjs
 
 # As a signed-in player, which is what makes the run ranked:
 API_BASE=... API_TOKEN=<supabase access token> node tests/smoke/stack10-smoke.mjs

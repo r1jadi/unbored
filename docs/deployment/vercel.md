@@ -6,7 +6,7 @@ second host and no `api.` subdomain.
 
 |                    |                                                                                                                                                                                            |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Project            | `unboredapp` → `https://unboredapp.vercel.app`                                                                                                                                             |
+| Project            | `unboredapp` → `https://unbored.lol`                                                                                                                                             |
 | Configuration      | [`vercel.json`](../../vercel.json) (services + rewrites + two service bindings)                                                                                                            |
 | Web service        | `web` — repository root, framework `tanstack-start-lovable` (TanStack Start + Vite, SSR through Nitro)                                                                                     |
 | API service        | `api` — **container image**, `Dockerfile.vercel` at the repository root; this is the Go gateway                                                                                            |
@@ -15,10 +15,10 @@ second host and no `api.` subdomain.
 | Games service      | `games` — `services/`, framework `go`, entrypoint `services/main.go`; serves the catalogue, the play sessions **and** the admin API (one remaining preset entrypoint name, three packages) |
 | Reachability       | `auth`, `users` and `games` are internal: no rewrite targets them, so only the gateway can reach them                                                                                      |
 | Local API          | `http://localhost:8080/api/v1` (`go run ./gateway/cmd/gateway`, `HTTP_ADDR=:8080`)                                                                                                         |
-| Production API     | `https://unboredapp.vercel.app/api/v1`                                                                                                                                                     |
-| Production auth    | `https://unboredapp.vercel.app/api/v1/auth/*`                                                                                                                                              |
-| Production profile | `https://unboredapp.vercel.app/api/v1/users/me`                                                                                                                                            |
-| Health             | `https://unboredapp.vercel.app/api/v1/health`                                                                                                                                              |
+| Production API     | `https://unbored.lol/api/v1`                                                                                                                                                     |
+| Production auth    | `https://unbored.lol/api/v1/auth/*`                                                                                                                                              |
+| Production profile | `https://unbored.lol/api/v1/users/me`                                                                                                                                            |
+| Health             | `https://unbored.lol/api/v1/health`                                                                                                                                              |
 
 ## The four services
 
@@ -215,7 +215,7 @@ dependency that is down must not make a healthy process look dead, because that
 is how a restart loop starts.
 
 The auth service serves the same two routes on its own port, but it is internal,
-so `https://unboredapp.vercel.app/api/v1/health` is always the gateway's
+so `https://unbored.lol/api/v1/health` is always the gateway's
 answer. Reach the auth service's own probes from inside the deployment, or
 locally.
 
@@ -230,8 +230,8 @@ scopes variables per environment; the values below are for **Production**.
 | ------------------------------- | ---------------------------------------- |
 | `VITE_SUPABASE_URL`             | `https://<project-ref>.supabase.co`      |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | the publishable key (`sb_publishable_…`) |
-| `VITE_PUBLIC_SITE_URL`          | `https://unboredapp.vercel.app`          |
-| `VITE_API_BASE_URL`             | `https://unboredapp.vercel.app/api/v1`   |
+| `VITE_PUBLIC_SITE_URL`          | `https://unbored.lol`          |
+| `VITE_API_BASE_URL`             | `https://unbored.lol/api/v1`   |
 
 `VITE_API_BASE_URL` is the gateway's origin. It is the same origin as the app, so
 the browser calls it without CORS preflights; the absolute value is used so the
@@ -248,8 +248,8 @@ reads the variable and falls back to same-origin `/api/v1`.
 | `NITRO_PRESET`             | `vercel`                                      | The web service: `@lovable.dev/vite-tanstack-config` defaults Nitro to a Cloudflare worker, which is not what this project deploys                                                                                                                                                                                                                                                                                                                                                          |
 | `SUPABASE_URL`             | same URL as `VITE_SUPABASE_URL`               | Both Go services derive `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` from it                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `SUPABASE_PUBLISHABLE_KEY` | same value as `VITE_SUPABASE_PUBLISHABLE_KEY` | Read by **both** Go services: `auth` calls the Supabase Auth API, `users` calls the Data API. The value is already public, so this is not a secret — it is set twice because the browser and the services read different names                                                                                                                                                                                                                                                              |
-| `CORS_ALLOWED_ORIGINS`     | `https://unboredapp.vercel.app`               | Required in production; `*` is rejected. A wrong value surfaces in the browser as a network failure, never as an auth error — see the troubleshooting row for two-origin CORS errors.                                                                                                                                                                                                                                                                                                       |
-| `PUBLIC_SITE_URL`          | `https://unboredapp.vercel.app`               | Origin the auth service proposes as Supabase `emailRedirectTo` (`…/auth/callback`); must also be allowlisted in Supabase redirect URLs. `SITE_URL` is accepted as a fallback name.                                                                                                                                                                                                                                                                                                          |
+| `CORS_ALLOWED_ORIGINS`     | `https://unbored.lol`               | Required in production; `*` is rejected. A wrong value surfaces in the browser as a network failure, never as an auth error — see the troubleshooting row for two-origin CORS errors.                                                                                                                                                                                                                                                                                                       |
+| `PUBLIC_SITE_URL`          | `https://unbored.lol`               | Origin the auth service proposes as Supabase `emailRedirectTo` (`…/auth/callback`); must also be allowlisted in Supabase redirect URLs. `SITE_URL` is accepted as a fallback name.                                                                                                                                                                                                                                                                                                          |
 | `RATE_LIMIT_ENABLED`       | `1`                                           | Cannot be disabled in production                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `ADMIN_EMAILS`             | `admin@example.com,another@example.com`       | Single source of truth for administrator access (server-only, never `VITE_`): comma-separated verified emails, matched case-insensitively per request; missing/empty grants no one; claims never grant, and a `user_roles` row grants the moderator tier at most, never suspension. Set for **Production** and **Preview** (preview needs its own test admins, never production secrets). Takes effect on the next request after deploy; removal revokes with no database cleanup.          |
 | `SUPABASE_SECRET_KEY`      | the `games-admin` secret key (`sb_secret_…`)  | Privileged Data API credential for the admin bridge (server-only, never `VITE_`, never logged): after verifying `ADMIN_EMAILS`, the games deployment calls the `service_role`-only `*_svc` database wrappers with the verified actor — this is what serves an allowlisted administrator who holds no `user_roles` row. Without it those callers are answered `503`. Set for **Production** and **Preview**; no other service reads it. Legacy name `SUPABASE_SERVICE_ROLE_KEY` is accepted. |
@@ -358,13 +358,13 @@ yet."_ — a correct answer for a group with no upstream. After it, the group mu
 reach the auth service and Supabase:
 
 ```bash
-curl -sS -o /dev/null -w '%{http_code}\n' https://unboredapp.vercel.app/api/v1/auth/session
+curl -sS -o /dev/null -w '%{http_code}\n' https://unbored.lol/api/v1/auth/session
 # 401 — routed, proxied and verified by the auth service. 503 means the binding
 #       did not inject UPSTREAM_AUTH_URL; check the build log for the `auth` service.
 
 curl -sS -X POST -H 'Content-Type: application/json' \
   -d '{"email":"does-not-exist@example.com","password":"a-long-password"}' \
-  https://unboredapp.vercel.app/api/v1/auth/sign-in
+  https://unbored.lol/api/v1/auth/sign-in
 # 401 {"error":{"code":"unauthorized","message":"That email and password do not match."}}
 # This is Supabase's answer, mapped to the platform envelope. It proves the whole
 # chain — Vercel routing, the binding, the auth service and the Supabase project —
@@ -382,7 +382,7 @@ failure.
 must be the account's own row, read from Supabase.
 
 ```bash
-BASE=https://unboredapp.vercel.app
+BASE=https://unbored.lol
 curl -sS -o /dev/null -w '%{http_code}\n' "$BASE/api/v1/users/me"
 # 401 — the binding resolved and the Users service verified the absence of a
 #       token. 503 means the gateway has no UPSTREAM_USERS_URL; 404 from the web
@@ -509,7 +509,7 @@ credential cases ran against the live Supabase project.
 | `GET /api/v1/auth/session` (no token)                    | `401 unauthorized`                                                                                         | **The binding resolved**: this is the auth service's answer, not the gateway's `503`                                                                                              |
 | `POST /api/v1/auth/sign-in` (unknown field)              | `400 bad_request`, `details[0] = {field:"sneaky",rule:"unknown"}`                                          | Request validation through production                                                                                                                                             |
 | `POST /api/v1/auth/sign-in` (wrong password)             | `401 "That email and password do not match."`                                                              | A live round trip to Supabase, mapped to the platform envelope                                                                                                                    |
-| `OPTIONS /api/v1/auth/sign-in`                           | `204`, exactly **one** `Access-Control-Allow-Origin: https://unboredapp.vercel.app`                        | CORS works and the upstream's header is not duplicated                                                                                                                            |
+| `OPTIONS /api/v1/auth/sign-in`                           | `204`, exactly **one** `Access-Control-Allow-Origin: https://unbored.lol`                        | CORS works and the upstream's header is not duplicated                                                                                                                            |
 | `POST /api/v1/auth/sign-in` (confirmed account)          | `200`, `session.userId` = a real Supabase uuid, `role: user`, `onboarded: false`, `tokens.expiresIn: 3600` | Sign-in end to end, including the RLS-guarded `profiles` read                                                                                                                     |
 | `GET /api/v1/auth/session` (bearer)                      | `200` with the same session                                                                                | **JWKS verification of a live Supabase token**                                                                                                                                    |
 | `POST /api/v1/auth/refresh`                              | `200`, a new access _and_ refresh token                                                                    | Refresh works                                                                                                                                                                     |

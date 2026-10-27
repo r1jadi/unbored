@@ -102,7 +102,7 @@ to be detected at all — see [docs/deployment/vercel.md](../../docs/deployment/
 The boundary is unchanged: separate packages, separate backends, separate route
 sets, and a local binary of its own. The gateway reaches the group over the
 `UPSTREAM_GAMES_URL` binding, and the public path stays
-`https://unboredapp.vercel.app/api/v1/sessions`.
+`https://unbored.lol/api/v1/sessions`.
 
 | Variable                            | Needed for                                                  |
 | ----------------------------------- | ----------------------------------------------------------- |

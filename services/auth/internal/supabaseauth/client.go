@@ -353,7 +353,7 @@ func errorCode(body io.Reader) (string, error) {
 func confirmationRedirect() string {
 	raw := strings.TrimSpace(config.Getenv("PUBLIC_SITE_URL", "SITE_URL", "VITE_PUBLIC_SITE_URL"))
 	if raw == "" {
-		raw = "https://unboredapp.vercel.app"
+		raw = "https://unbored.lol"
 	}
 	parsed, err := parseRedirectBase(raw)
 	if err != nil {

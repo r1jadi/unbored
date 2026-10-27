@@ -32,4 +32,4 @@ Disallow: /
 User-agent: SemrushBot
 Disallow: /
 
-Sitemap: https://unboredapp.vercel.app/sitemap.xml
+Sitemap: https://unbored.lol/sitemap.xml

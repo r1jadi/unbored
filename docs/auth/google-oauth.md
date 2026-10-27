@@ -47,7 +47,7 @@ the frontend.
 1. APIs & Services → Credentials → Create Credentials → OAuth client ID →
    Application type **Web application**.
 2. Authorized JavaScript origins:
-   - `https://unboredapp.vercel.app`
+   - `https://unbored.lol`
    - `https://trrwaftksifjaiaxfmiu.supabase.co`
 3. Authorized redirect URIs (exact, Supabase callback):
    - `https://trrwaftksifjaiaxfmiu.supabase.co/auth/v1/callback`
@@ -59,8 +59,8 @@ the frontend.
 1. Authentication → Providers → Google → Enable.
 2. Paste the Google **Client ID** and **Client secret**.
 3. Authentication → URL Configuration → Site URL:
-   `https://unboredapp.vercel.app`.
-4. Redirect URLs: add `https://unboredapp.vercel.app/auth/callback`
+   `https://unbored.lol`.
+4. Redirect URLs: add `https://unbored.lol/auth/callback`
    (and preview variants as needed).
 
 ### 3. Verify

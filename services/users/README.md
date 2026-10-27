@@ -213,13 +213,13 @@ service binding on `api`:
 
 Like the auth service it has no rewrite of its own, so it is never reached from
 the internet directly: the public entry stays
-`https://unboredapp.vercel.app/api/v1/users/*` through the gateway. `users`
+`https://unbored.lol/api/v1/users/*` through the gateway. `users`
 declares no binding itself and stays on the Go framework preset.
 
 Verification after a deployment:
 
 ```bash
-BASE=https://unboredapp.vercel.app
+BASE=https://unbored.lol
 curl -sS -o /dev/null -w '%{http_code}\n' "$BASE/api/v1/users/me"
 # 401 — the binding resolved and the Users service answered (a 503 means the
 #       gateway has no UPSTREAM_USERS_URL; check that the `users` service was

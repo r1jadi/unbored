@@ -3,7 +3,7 @@
  * Stack 10 against a live API: the whole play path, in one command.
  *
  *   API_BASE=http://127.0.0.1:8090/api/v1 node tests/smoke/stack10-smoke.mjs
- *   API_BASE=https://unboredapp.vercel.app/api/v1 node tests/smoke/stack10-smoke.mjs
+ *   API_BASE=https://unbored.lol/api/v1 node tests/smoke/stack10-smoke.mjs
  *
  * It is a *smoke* test, not a unit test: it starts a real session, plays a real
  * run, submits it, and checks what the server did with it. Run it against a local

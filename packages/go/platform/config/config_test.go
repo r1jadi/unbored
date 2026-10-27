@@ -54,7 +54,7 @@ func TestVercelProductionEnvironmentBootsWithJwksOnly(t *testing.T) {
 	t.Setenv("PORT", "3000")
 	t.Setenv("LOG_LEVEL", "info")
 	t.Setenv("LOG_FORMAT", "json")
-	t.Setenv("CORS_ALLOWED_ORIGINS", "https://unboredapp.vercel.app")
+	t.Setenv("CORS_ALLOWED_ORIGINS", "https://unbored.lol")
 	t.Setenv("RATE_LIMIT_ENABLED", "1")
 	t.Setenv("SUPABASE_URL", "https://abcdefghijklmnop.supabase.co")
 	t.Setenv("SUPABASE_JWKS_URL", "")

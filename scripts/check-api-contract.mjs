@@ -56,7 +56,7 @@ function routedGroups() {
 /** Documented paths: the YAML block keys under `paths:`, two-space indented. */
 function documentedPaths() {
   const source = read(CONTRACT);
-  if (!source.includes(`url: https://unboredapp.vercel.app${API_BASE}`)) {
+  if (!source.includes(`url: https://unbored.lol${API_BASE}`)) {
     fail(`the contract does not declare a server at ...${API_BASE}`);
   }
   const pathsBlock = source.slice(source.indexOf("\npaths:"));

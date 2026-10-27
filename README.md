@@ -7,8 +7,8 @@ The repository holds the whole product: a TanStack Start web app, a Go API split
 into independent services behind one gateway, and a Supabase (Postgres) database
 whose authorization lives in Row Level Security rather than in application code.
 
-- **Web** — <https://unboredapp.vercel.app>
-- **API** — <https://unboredapp.vercel.app/api/v1> (a service of the same Vercel project)
+- **Web** — <https://unbored.lol>
+- **API** — <https://unbored.lol/api/v1> (a service of the same Vercel project)
 - **Source** — <https://github.com/r1jadi/unbored>
 
 ## Status

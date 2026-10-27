@@ -445,7 +445,7 @@ function Body({ section }: { section: string }) {
               </Button>
             }
           />
-          <Row label="Website" value="unboredapp.vercel.app" />
+          <Row label="Website" value="unbored.lol" />
         </Group>
       );
     default:

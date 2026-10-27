@@ -141,7 +141,7 @@ binary and the deployment cannot drift.
 
 The gateway reaches it over the `UPSTREAM_GAMES_URL` service binding declared on the
 `api` service, so the public path stays
-`https://unboredapp.vercel.app/api/v1/games`. See
+`https://unbored.lol/api/v1/games`. See
 [deployment/vercel.md](../../docs/deployment/vercel.md).
 
 ## Tests

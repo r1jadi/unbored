@@ -10,7 +10,7 @@ steps that code cannot perform.
   Supabase and proposes `options.emailRedirectTo = <SITE>/auth/callback`
   (`services/auth/internal/supabaseauth/client.go`). The site is resolved from
   `PUBLIC_SITE_URL`, `SITE_URL`, then `VITE_PUBLIC_SITE_URL`, defaulting to
-  `https://unboredapp.vercel.app`. An invalid value is omitted rather than
+  `https://unbored.lol`. An invalid value is omitted rather than
   sent.
 - The username chosen on the same form travels in that request's `data`
   payload (`data.username`). Supabase stores it on the auth user before the
@@ -34,10 +34,10 @@ steps that code cannot perform.
 
 ## Manual Supabase steps (owner)
 
-1. **Authentication → URL Configuration → Site URL**: `https://unboredapp.vercel.app`.
+1. **Authentication → URL Configuration → Site URL**: `https://unbored.lol`.
 2. **Redirect URLs** (allowlist): add
-   - `https://unboredapp.vercel.app/auth/callback`
-   - `https://unboredapp.vercel.app/auth/callback?next=/reset-password`
+   - `https://unbored.lol/auth/callback`
+   - `https://unbored.lol/auth/callback?next=/reset-password`
    - preview origins as needed (`https://unboredapp-*.vercel.app/auth/callback`).
      Without these, Supabase ignores the proposed `emailRedirectTo`.
 3. **Authentication → Email templates → Confirm signup**: ensure the button links
@@ -46,9 +46,9 @@ steps that code cannot perform.
 4. **Authentication → Providers → Email**: confirm signup confirmation is ON
    (the app handles the pending state; do not disable it to make signup look
    instant).
-5. **Vercel env (Production)**: `PUBLIC_SITE_URL=https://unboredapp.vercel.app`,
-   `VITE_API_BASE_URL=https://unboredapp.vercel.app/api/v1`,
-   `CORS_ALLOWED_ORIGINS=https://unboredapp.vercel.app`.
+5. **Vercel env (Production)**: `PUBLIC_SITE_URL=https://unbored.lol`,
+   `VITE_API_BASE_URL=https://unbored.lol/api/v1`,
+   `CORS_ALLOWED_ORIGINS=https://unbored.lol`.
 
 ## Verify without touching production data
 

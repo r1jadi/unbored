@@ -95,7 +95,7 @@ graduation path to per-service modules are in
 | development | `npm run dev`, port 8081        | `go run ./gateway/cmd/gateway`, port 8080                                    | local Supabase or the Docker harness in `scripts/test-rls.sh` |
 | preview     | Vercel preview per pull request | the same deployment's api service, `development`-like config                 | shares the staging project                                    |
 | staging     | Vercel preview of `main`        | same deployment as production, separate config                               | separate Supabase project                                     |
-| production  | `https://unboredapp.vercel.app` | `https://unboredapp.vercel.app/api/v1` (the api service of the same project) | the hosted Supabase project                                   |
+| production  | `https://unbored.lol` | `https://unbored.lol/api/v1` (the api service of the same project) | the hosted Supabase project                                   |
 
 Enable services mode — the framework preset in the Vercel dashboard — before
 relying on the API column: see [deployment/vercel.md](../deployment/vercel.md).

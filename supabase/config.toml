@@ -46,7 +46,7 @@ file_size_limit = "50MiB"
 enabled = true
 # The web app dev server. Add real origins here when a preview domain is used.
 site_url = "http://localhost:8081"
-additional_redirect_urls = ["http://localhost:8081", "https://unboredapp.vercel.app"]
+additional_redirect_urls = ["http://localhost:8081", "https://unbored.lol"]
 jwt_expiry = 3600
 enable_signup = true
 # Minimum length, not composition rules: length beats character classes.

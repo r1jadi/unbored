@@ -154,7 +154,7 @@ After a deployment, the check that matters is one request to production:
 ```bash
 curl -sS -X POST -H 'Content-Type: application/json' \
   -d '{"email":"does-not-exist@example.com","password":"a-long-password"}' \
-  https://unboredapp.vercel.app/api/v1/auth/sign-in
+  https://unbored.lol/api/v1/auth/sign-in
 # 401 with the platform envelope — the whole chain works.
 # 503 "This API is not available in this environment yet." — the gateway has no
 #     upstream: the binding did not resolve.
