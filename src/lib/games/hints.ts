@@ -7,7 +7,7 @@
  * so a hint cannot score anything by itself.
  *
  * Only games with a right move to point at have one: Stack 10, Color Merge,
- * One Move, Queens, Zip, 8 Puzzle and Tango. Chain and Memory Flash test memory, and
+ * One Move, Queens, Zip, 8 Puzzle, Tango and Sudoku. Chain and Memory Flash test memory, and
  * Don't Touch the Black and 7 Second are against the clock, so a hint would be
  * the answer rather than help.
  */
@@ -26,6 +26,14 @@ import {
   type QueensRun,
 } from "@/lib/games/queens";
 import { canPlace, tileAt, type Stack10Run } from "@/lib/games/stack10";
+import {
+  board as sudokuBoard,
+  candidates as sudokuCandidates,
+  conflicts as sudokuConflicts,
+  EMPTY as SUDOKU_EMPTY,
+  type SudokuDigit,
+  type SudokuRun,
+} from "@/lib/games/sudoku";
 import {
   EMPTY as TANGO_EMPTY,
   solution as tangoSolution,
@@ -181,4 +189,42 @@ export function tangoRight(run: TangoRun): number {
   const start = tangoStart(run.seed, run.level);
   return run.cells.filter((value, cell) => start[cell] === TANGO_EMPTY && value === answer[cell])
     .length;
+}
+
+/**
+ * Sudoku: a cell and the digit it takes. A digit that clashes comes first — the
+ * clashing cell the player filled that differs from the planted solution — then
+ * an empty cell only one digit fits, and otherwise the empty cell with the
+ * fewest candidates, with the planted digit when it still fits there.
+ */
+export function sudokuHint(
+  run: SudokuRun,
+): { cell: number; digit: SudokuDigit; fix: boolean } | null {
+  if (run.outcome !== "playing") return null;
+  const { solution, start } = sudokuBoard(run.seed, run.level);
+  const clashes = sudokuConflicts(run.cells);
+  const wrong = run.cells.findIndex(
+    (digit, cell) => start[cell] === SUDOKU_EMPTY && clashes.has(cell) && digit !== solution[cell],
+  );
+  if (wrong >= 0) return { cell: wrong, digit: solution[wrong], fix: true };
+
+  let best: { cell: number; options: SudokuDigit[] } | null = null;
+  for (let cell = 0; cell < run.cells.length; cell += 1) {
+    if (run.cells[cell] !== SUDOKU_EMPTY) continue;
+    const options = sudokuCandidates(run.cells, cell);
+    if (!best || options.length < best.options.length) best = { cell, options };
+  }
+  if (!best) return null;
+  const { cell, options } = best;
+  const digit = options.includes(solution[cell]) ? solution[cell] : (options[0] ?? solution[cell]);
+  return { cell, digit, fix: false };
+}
+
+/** How many cells the player filled without a clash: a right move raises it. */
+export function sudokuRight(run: SudokuRun): number {
+  const { start } = sudokuBoard(run.seed, run.level);
+  const clashes = sudokuConflicts(run.cells);
+  return run.cells.filter(
+    (digit, cell) => start[cell] === SUDOKU_EMPTY && digit !== SUDOKU_EMPTY && !clashes.has(cell),
+  ).length;
 }

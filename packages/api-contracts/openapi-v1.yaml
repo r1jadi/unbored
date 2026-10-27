@@ -915,8 +915,8 @@ paths:
         exception in the other direction — its clock decides when a run ends, so
         a submission is valid with any number of answers from zero to sixty — and
         so is Crowns, whose player may end a run at any time: a Crowns run never
-        loses points, so any prefix of a legal line is valid. Trail, 8 Puzzle and
-        Sun & Moon are the same, with one more check: its run is against a clock the server times from the
+        loses points, so any prefix of a legal line is valid. Trail, 8 Puzzle,
+        Sun & Moon and Sudoku are the same, with one more check: its run is against a clock the server times from the
         session's start, and a run that arrives after the time its solved boards
         earned is refused (`422`).
 
@@ -972,7 +972,7 @@ paths:
                         Color Merge, a cell for Don't Touch the Black, an
                         answer button for 7 Second, a cell for Crowns and for
                         Trail (the cells its path enters), and the cell of the tile
-                        slid for 8 Puzzle, a cell for Sun & Moon. This is what is replayed; the
+                        slid for 8 Puzzle, a cell for Sun & Moon, and a cell and digit for Sudoku. This is what is replayed; the
                         rules for how a move is generated and what it does belong
                         to the game (see `docs/games`). The bound is a submission's
                         move ceiling, not a complete run: the finite games' lengths
@@ -983,13 +983,15 @@ paths:
                         the endless games carry up to 4096 Stack 10 tiles, 4096
                         Chain taps, 4096 Color Merge slides, 4095 Don't Touch
                         the Black cell taps, 8192 Crowns taps (notes are taps)
-                        8192 Trail cells, 8192 8 Puzzle slides and 8192 Sun & Moon taps. A position is a column for Stack 10
+                        8192 Trail cells, 8192 8 Puzzle slides, 8192 Sun & Moon taps and 8192 Sudoku moves. A position is a column for Stack 10
                         (0–3), a pad for Chain, a cell for Memory Flash, One Move
                         and Don't Touch the Black, a direction for Color Merge
                         (0–3), an answer button for 7 Second (0–2) and a cell of
                         the 9×9 board for Crowns (0–80) and of the 7×7 board for
                         Trail (0–48), of the 3×3 board for 8 Puzzle (0–8) and of the
-                        6×6 board for Sun & Moon (0–35). Each
+                        6×6 board for Sun & Moon (0–35), and for Sudoku a cell
+                        of its 9×9 board and the digit put there, as cell × 10 +
+                        digit, 0 clearing the cell (0–809). Each
                         verifier refuses anything past its own bound.
                       maxItems: 8192
                       # The highest position any shipped version addresses: a cell
@@ -2111,7 +2113,7 @@ components:
           description: |
             The client runtime that plays this game (`stack-10`, `chain`,
             `memory-flash`, `one-move`, `color-merge`, `dont-touch`,
-            `seven-second`, `queens`, `zip`, `eight-puzzle` or `tango`), or null when
+            `seven-second`, `queens`, `zip`, `eight-puzzle`, `tango` or `sudoku`), or null when
             none exists. It is the runtime's
             identifier, not its title, because the client mounts a runtime by
             that name.

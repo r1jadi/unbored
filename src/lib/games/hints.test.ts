@@ -28,6 +28,12 @@ import { createRun as createStack10, type Stack10Run } from "@/lib/games/stack10
 import { createRun as createZip, solution as zipSolution, tap as tapZip } from "@/lib/games/zip";
 import { tangoHint, tangoRight } from "@/lib/games/hints";
 import { createRun as createTango, SUN, tap as tapTango } from "@/lib/games/tango";
+import { sudokuHint, sudokuRight } from "@/lib/games/hints";
+import {
+  createRun as createSudoku,
+  place as placeSudoku,
+  solution as sudokuSolution,
+} from "@/lib/games/sudoku";
 import { useHint } from "@/lib/games/use-hint";
 
 describe("hints", () => {
@@ -148,5 +154,28 @@ describe("tangoHint", () => {
     expect(tangoRight(fresh)).toBe(0);
     expect(tangoRight(tapTango(fresh, 1))).toBe(1);
     expect(tangoRight(tapTango(tapTango(fresh, 1), 1))).toBe(0);
+  });
+});
+
+describe("sudokuHint", () => {
+  // Seed 1's first board: cell 2 starts as a 5, and cell 0 takes a 6.
+  it("points at a clashing digit before anything else", () => {
+    const wrong = placeSudoku(createSudoku("1"), 0, 5); // a second 5 in row one
+    expect(sudokuHint(wrong)).toEqual({ cell: 0, digit: 6, fix: true });
+  });
+
+  it("points at an empty cell and a digit that fits it", () => {
+    const run = createSudoku("1");
+    const hint = sudokuHint(run);
+    expect(hint?.fix).toBe(false);
+    expect(run.cells[hint!.cell]).toBe(0);
+    expect(hint?.digit).toBe(sudokuSolution("1", 1)[hint!.cell]);
+  });
+
+  it("counts a digit that fits as progress, and a clashing one as none", () => {
+    const fresh = createSudoku("1");
+    expect(sudokuRight(fresh)).toBe(0);
+    expect(sudokuRight(placeSudoku(fresh, 0, 6))).toBe(1);
+    expect(sudokuRight(placeSudoku(fresh, 0, 5))).toBe(0);
   });
 });

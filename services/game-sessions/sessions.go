@@ -9,8 +9,8 @@
 //     `complete_memory_flash_run`, `complete_one_move_run`,
 //     `complete_color_merge_run`, `complete_dont_touch_run`,
 //     `complete_seven_second_run`, `complete_queens_run`, `complete_zip_run`,
-//     `complete_eight_puzzle_run`, `complete_tango_run`) replays the submitted
-//     actions, derives the
+//     `complete_eight_puzzle_run`, `complete_tango_run`,
+//     `complete_sudoku_run`) replays the submitted actions, derives the
 //     score and writes the ledger. This service validates
 //     the request shape, maps the verifier's outcome onto an HTTP answer, and
 //     never sees a score it can change. That is why there is no service_role key
@@ -84,6 +84,8 @@ const (
 	eightPuzzleMaxActions = 8192
 	// tango@1 carries at most 8192 taps.
 	tangoMaxActions = 8192
+	// sudoku@1 carries at most 8192 moves.
+	sudokuMaxActions = 8192
 	// The bounds a move has to fit. Stack 10 addresses a column and Chain a pad,
 	// both 0 to 3; Color Merge addresses one of its four directions, also 0 to 3;
 	// Memory Flash addresses a cell of its board — sixteen for the retired 4×4
@@ -116,6 +118,9 @@ const (
 	eightPuzzleCells = 9
 	// tangoCells is the 6×6 board.
 	tangoCells = 36
+	// sudokuMoves is every move on the 9×9 board: cell × 10 + digit, from 0
+	// (cell 0 cleared) to 809 (a 9 in cell 80).
+	sudokuMoves = 810
 )
 
 // Patterns mirror the database constraints, so a bad request is a 400 that names
@@ -365,6 +370,8 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 		limit = eightPuzzleMaxActions
 	case strings.HasPrefix(rules, "tango@"):
 		limit = tangoMaxActions
+	case strings.HasPrefix(rules, "sudoku@"):
+		limit = sudokuMaxActions
 	}
 	if len(actions) > limit {
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
@@ -440,7 +447,7 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnprocessable,
 			"That score is not the one this run produces."))
 	case "out_of_time":
-		// Zip, 8 Puzzle and Tango: the run reached the server later than the clock its
+		// Zip, 8 Puzzle, Tango and Sudoku: the run reached the server later than the clock its
 		// solved boards earned, timed from the session's own start.
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnprocessable,
 			"That run finished after its clock ran out, so it cannot be scored."))
@@ -485,6 +492,8 @@ func boardSize(rulesVersion string) int {
 		return eightPuzzleCells
 	case strings.HasPrefix(rulesVersion, "tango@"):
 		return tangoCells
+	case strings.HasPrefix(rulesVersion, "sudoku@"):
+		return sudokuMoves
 	default:
 		return stackChainPositions
 	}

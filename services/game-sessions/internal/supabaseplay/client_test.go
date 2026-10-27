@@ -294,6 +294,24 @@ func TestCompleteRunRoutesZipRulesToZipVerifier(t *testing.T) {
 	}
 }
 
+func TestCompleteRunRoutesSudokuRulesToSudokuVerifier(t *testing.T) {
+	rec := newRecorder(t, http.StatusOK, resultRow)
+
+	if _, err := rec.client(t).CompleteRun(context.Background(), CompleteRequest{
+		SessionID:    "dddddddd-1111-4111-8111-dddddddddddd",
+		RulesVersion: "sudoku@1",
+		Actions:      []int32{6, 13},
+		Score:        0,
+		DurationMS:   20000,
+	}); err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+
+	if rec.path != "/rest/v1/rpc/complete_sudoku_run" {
+		t.Fatalf("path = %s, want the Sudoku verifier function", rec.path)
+	}
+}
+
 func TestCompleteRunRoutesTangoRulesToTangoVerifier(t *testing.T) {
 	rec := newRecorder(t, http.StatusOK, resultRow)
 

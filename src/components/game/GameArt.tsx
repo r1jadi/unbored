@@ -62,6 +62,7 @@ export function GameArt({
         {id === "trail" && <Trail />}
         {id === "8-puzzle" && <EightPuzzle />}
         {id === "sun-and-moon" && <SunAndMoon />}
+        {id === "sudoku" && <Sudoku />}
         {!KNOWN.has(id) && <Generated seed={id} />}
       </div>
     </div>
@@ -81,6 +82,7 @@ const KNOWN = new Set([
   "trail",
   "8-puzzle",
   "sun-and-moon",
+  "sudoku",
 ]);
 
 /**
@@ -300,6 +302,40 @@ function SunAndMoon() {
                 : "bg-game-1 shadow-[inset_0.25em_-0.1em_0_0_var(--color-surface)]",
             )}
           />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Sudoku() {
+  // Seed 1's first board as it starts, box by box: the givens, and one digit just
+  // placed.
+  const cells = "005018409080002006020003701000025070250630140006084902090250317003049205060300800"
+    .split("")
+    .map(Number);
+  const boxes = Array.from({ length: 9 }, (_, box) =>
+    Array.from({ length: 9 }, (_, index) => {
+      const row = Math.floor(box / 3) * 3 + Math.floor(index / 3);
+      const column = (box % 3) * 3 + (index % 3);
+      return row * 9 + column;
+    }),
+  );
+  return (
+    <div className="grid w-full grid-cols-3 gap-[min(1cqw,1cqh,0.25rem)] rounded-xl bg-surface-2 p-[min(1cqw,1cqh,0.25rem)]">
+      {boxes.map((box, b) => (
+        <div key={b} className="grid grid-cols-3 gap-px overflow-hidden rounded-sm">
+          {box.map((cell) => (
+            <div
+              key={cell}
+              className={cn(
+                "flex aspect-square items-center justify-center text-[min(3cqw,3cqh,0.75rem)] font-semibold leading-none",
+                cell === 0 ? "bg-game-3 text-background" : "bg-surface text-foreground",
+              )}
+            >
+              {cell === 0 ? 6 : cells[cell] || ""}
+            </div>
+          ))}
         </div>
       ))}
     </div>

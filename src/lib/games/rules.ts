@@ -236,6 +236,24 @@ export const GAME_RULES = {
       },
     ],
   },
+  sudoku: {
+    heading: "One to nine",
+    summary: "Every row, column and box, once each. Beat the clock.",
+    rules: [
+      {
+        lead: "Fill the grid",
+        text: "so that every row, every column and every 3×3 box holds the digits 1 to 9 once each.",
+      },
+      {
+        lead: "Pick a cell",
+        text: "and tap a number to place it, or Erase to clear it. You can also type 1 to 9, and move with the arrow keys. Cells that start filled stay as they are; a digit that repeats is marked in red.",
+      },
+      {
+        lead: "The clock",
+        text: "starts at six minutes, and every solved board adds three minutes and ninety points. Each board starts with fewer cells filled, and the run ends when the clock does.",
+      },
+    ],
+  },
 } satisfies Record<string, GameRules>;
 
 /** A game's rules by its runtime, or null for a runtime with none written. */

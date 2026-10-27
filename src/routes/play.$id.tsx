@@ -6,6 +6,7 @@ import { ChainRuntime } from "@/components/game/ChainRuntime";
 import { ColorMergeRuntime } from "@/components/game/ColorMergeRuntime";
 import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
 import { TangoRuntime } from "@/components/game/TangoRuntime";
+import { SudokuRuntime } from "@/components/game/SudokuRuntime";
 import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
 import { GameExits } from "@/components/game/GameExits";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
@@ -38,6 +39,7 @@ import { QUEENS_RUNTIME } from "@/lib/games/queens";
 import { ZIP_RUNTIME } from "@/lib/games/zip";
 import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
 import { TANGO_RUNTIME } from "@/lib/games/tango";
+import { SUDOKU_RUNTIME } from "@/lib/games/sudoku";
 import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
 import { STACK10_RUNTIME } from "@/lib/games/stack10";
 
@@ -80,7 +82,8 @@ export const Route = createFileRoute("/play/$id")({
  * 10, `chain` plays Chain, `memory-flash` plays Memory Flash, `one-move` plays One
  * Move, `color-merge` plays Color Merge, `dont-touch` plays Don't Touch the Black,
  * `seven-second` plays 7 Second, `queens` plays Crowns, `zip` plays Trail,
- * `eight-puzzle` plays 8 Puzzle, and anything else gets the honest "no runtime
+ * `eight-puzzle` plays 8 Puzzle, `tango` plays Sun & Moon, `sudoku` plays Sudoku,
+ * and anything else gets the honest "no runtime
  * yet" screen rather than a board that does not follow that game's rules. Every
  * catalogue game now has a runtime, but the branch stays a feature rather than a
  * leftover: it is what stops a future catalogue entry from silently pretending.
@@ -163,7 +166,8 @@ export function PlaySurface({
       state.game.runtime === QUEENS_RUNTIME ||
       state.game.runtime === ZIP_RUNTIME ||
       state.game.runtime === EIGHT_PUZZLE_RUNTIME ||
-      state.game.runtime === TANGO_RUNTIME);
+      state.game.runtime === TANGO_RUNTIME ||
+      state.game.runtime === SUDOKU_RUNTIME);
 
   const nav = useNavigate();
   const [confirming, setConfirming] = useState(false);
@@ -274,6 +278,15 @@ export function PlaySurface({
 
       {state.status === "ready" && state.game.runtime === TANGO_RUNTIME && playable && (
         <TangoRuntime
+          key={state.game.slug}
+          slug={state.game.slug}
+          title={state.game.title}
+          autoStart={autoStart}
+        />
+      )}
+
+      {state.status === "ready" && state.game.runtime === SUDOKU_RUNTIME && playable && (
+        <SudokuRuntime
           key={state.game.slug}
           slug={state.game.slug}
           title={state.game.title}

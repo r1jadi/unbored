@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Eleven games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Twelve games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
-**7 Second**, **Crowns**, **Trail**, **8 Puzzle** and **Sun & Moon**. Ten of them — all
-but 7 Second — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
+**7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon** and **Sudoku**. Eleven
+of them — all but 7 Second — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
 
@@ -37,8 +37,8 @@ A signed-in player keeps more than their scores:
   seed, so the board, score and level are exactly where they were — or **New
   run**, which submits the saved run as it was left (keeping its score, like any
   ended run) and starts a fresh one. A saved run stays open for twelve hours after
-  its last save. Trail, 8 Puzzle, Sun & Moon, 7 Second and Don't Touch the Black do not
-  resume:
+  its last save. Trail, 8 Puzzle, Sun & Moon, Sudoku, 7 Second and Don't Touch the
+  Black do not resume:
   their clocks or conveyors cannot pause.
 - **Stats per game**, on the game's page: runs played, best score, rank, total
   points and when they last played, from their verified scores.
@@ -1295,6 +1295,113 @@ reading order, 1 a sun, 2 a moon, 0 empty).
    Both boards filled: **120 points**, 85 taps.
 4. **The clock** — a session started two hundred seconds earlier: board one alone
    (165 s + 20 s) is `out_of_time`; both boards (210 s + 20 s) are on time.
+
+## Sudoku
+
+The classic number puzzle as an endless run against a clock. Fill a 9×9 grid so
+that every row, every column and every 3×3 box holds the digits 1 to 9 once each.
+Some cells start filled.
+
+### The board
+
+| Thing   | Value                                                               |
+| ------- | ------------------------------------------------------------------- |
+| Board   | 9×9 in 3×3 boxes, always                                            |
+| Givens  | 40 cells on board one, one fewer a board, never fewer than 30       |
+| Solved  | full, with 1 to 9 in every row, column and box — any such grid      |
+| Clock   | 360 s to start, +180 s per solved board; 20 s of slack              |
+| Moves   | 8192 at most in one submission: a request bound, not a level        |
+| Rules   | `sudoku@1`                                                          |
+| Runtime | `sudoku` (the catalogue's `games.runtime` value)                    |
+
+### The boards
+
+A board is drawn from one stream in two steps, the **solution** and the
+**givens**, and the server mirrors both. The solution needs no search: it is the
+pattern grid read through shuffled rows and columns and relabelled, and every one
+of those steps keeps a grid valid.
+
+```
+state₀ = ((seed mod 2³²) + 2³²) mod 2³²            // as One Move, Crowns and Trail
+if state₀ = 0 then state₀ = 2654435769
+stateₙ = (stateₙ₋₁ × 1664525 + 1013904223) mod 2³²  // advanced once per level
+t = stateₙ; draw() = t ← (t × 22695477 + 1) mod 2³²; t >> 16
+shuffle(xs): Fisher–Yates, i from |xs| − 1 down to 1, j = draw() mod (i + 1)
+digits  = shuffle([1..9])
+rows    = bands = shuffle([0,1,2]); for each band b in that order:
+          for w in shuffle([0,1,2]): 3b + w
+columns = the same, drawn next, through the stacks
+solution(r, c) = digits[(3 × (rows[r] mod 3) + rows[r] div 3 + columns[c]) mod 9]
+givens(n) = max(30, 41 − n)
+givens:   shuffle([0..80]); the first givens(n) cells start filled with their
+          solution digit
+```
+
+Because the givens are drawn at random rather than dug until the answer is
+unique, a board may have more than one solution. That is why a board is solved
+when it is **full and obeys the rules**, not when it equals the planted solution:
+every answer counts. The planted solution feeds only the hints.
+
+### A move, scoring and the clock
+
+A move is one number, **cell × 10 + digit**: it puts the digit (1–9) in the cell
+(0–80), or clears the cell when the digit is 0, so moves run from 0 to 809. A
+given, a cell off the board, or a move that leaves the cell as it was is not a
+move. The screen marks digits that repeat in a row, column or box, but a wrong
+digit never ends a run — the player fixes it, and the clock is what is spent. On
+screen the player picks a cell, then a digit on the pad or the keyboard; which
+cell is picked is display, not a move.
+
+A move that leaves the board solved scores **ninety points** (ten a row), adds
+three minutes to the clock and deals the next board, which starts with one fewer
+cell filled. The run ends when the clock reaches zero or the player ends it; any
+prefix of a legal line is valid, because the score never goes down.
+
+The clock works exactly as Trail's: the session is issued when the player presses
+Start, and the verifier refuses a run that reaches it more than
+`sudoku_budget_ms(boards solved) + sudoku_slack_ms()` after the session started
+(`out_of_time`, a `422`).
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261114120000_sudoku_sessions.sql`.
+
+- `public.sudoku_draw(seed, level)` returns a level's planted solution followed
+  by its starting cells (162 values); `sudoku_solved(cells)` is the solved check;
+  `sudoku_givens(level)` and `sudoku_budget_ms(cleared)` are the givens and the
+  clock. The generator and the check are internals.
+- `public.start_game_session` accepts (`sudoku`, `sudoku@1`); the session reports
+  `tile_count` 8192 and lives twelve hours.
+- `public.complete_sudoku_run(session, actions, score, duration)` replays the
+  moves, derives the score, compares it with the claim, checks the clock and only
+  then records it. The Go service routes `sudoku@` runs to it and accepts up to
+  8192 moves from 0 to 809.
+- `20261114120100_sudoku_playable.sql` inserts the catalogue record (Logic),
+  applied after the deployment carrying the runtime is live.
+
+### Test vectors
+
+Each vector is asserted by both the SQL suite and the client engine (cells in
+reading order, 0 empty).
+
+1. **Seed 1's first two boards** — solutions
+   `635718429187492536924563781841925673259637148376184952498256317713849265562371894`
+   and
+   `728146953461935827359872164975284631842613579136597248214369785587421396693758412`,
+   starting from
+   `005018409080002006020003701000025070250630140006084902090250317003049205060300800`
+   (forty givens) and
+   `708006003461005027000002104905000030040613570130597048010300080007401096600008000`
+   (thirty-nine).
+2. **A full-width seed** — `9223372036854775807`'s first solution is
+   `784519362632874519159362874541936287827451936396287451268745193913628745475193628`.
+3. **Seed 1, a stopped line** — board one filled by the moves
+   `6,13,37,72,91,117,124,139,155,163,189,204,215,226,258,278,284,291,309,336,353,389,417,448,453,467,481,525,544,568,596,637,641,668,706,725,742,767,771,799,804`,
+   then `11` (a 1 in cell 1) on board two: **90 points**, 42 moves. Both boards
+   filled: **180 points**, 83 moves.
+4. **The clock** — a session started six hundred seconds earlier: board one alone
+   (540 s + 20 s) is `out_of_time`; both boards (720 s + 20 s) are on time.
 
 ## Color Merge
 

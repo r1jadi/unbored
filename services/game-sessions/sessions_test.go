@@ -65,7 +65,11 @@ const (
 	// cells: ten points and one solved board.
 	eightPuzzleRules = "eight-puzzle@1"
 	// Seed 1's first Tango board is filled by these taps: sixty points.
-	tangoRules     = "tango@1"
+	tangoRules = "tango@1"
+	// Seed 1's first Sudoku board is filled by these moves (cell × 10 + digit):
+	// ninety points.
+	sudokuRules    = "sudoku@1"
+	sudokuRun      = "[6,13,37,72,91,117,124,139,155,163,189,204,215,226,258,278,284,291,309,336,353,389,417,448,453,467,481,525,544,568,596,637,641,668,706,725,742,767,771,799,804]"
 	tangoRun       = "[1,2,3,3,5,6,6,7,9,9,10,10,11,12,13,13,14,14,15,16,18,19,19,20,20,22,22,23,24,24,26,27,27,28,29,29,30,32,32,34]"
 	eightPuzzleRun = "[5,4,1,2,5,4,3,6,7,8]"
 	zipRun         = "[8,7,6,5,10,15,20,21,16,11,12,17,22,23,24,19,18,13,14,9,4,3,2,1,0]"
@@ -1049,6 +1053,42 @@ func TestCompleteSessionVerifiesATangoRun(t *testing.T) {
 	}
 	if len(backend.lastRun.Actions) != 40 || backend.lastRun.Actions[39] != 34 {
 		t.Fatalf("actions = %v, want the submitted taps", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionVerifiesASudokuRun(t *testing.T) {
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules(sudokuRules, "90", "120000", sudokuRun), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if backend.lastRun.RulesVersion != sudokuRules {
+		t.Fatalf("rules version = %q, want the run's pinned sudoku@1", backend.lastRun.RulesVersion)
+	}
+	if len(backend.lastRun.Actions) != 41 || backend.lastRun.Actions[40] != 804 {
+		t.Fatalf("actions = %v, want the submitted moves", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionRejectsASudokuMovePastTheBoard(t *testing.T) {
+	// The last move is a 9 in cell 80, 809, so 810 is malformed input.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules(sudokuRules, "0", "20000", "[6,810]"), "")
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (%#v)", status, body)
+	}
+	if backend.runCalls != 0 {
+		t.Fatal("a move outside the Sudoku board reached the verifier")
 	}
 }
 

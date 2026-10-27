@@ -3,7 +3,7 @@
 // `complete_stack10_run`, `complete_chain_run`, `complete_memory_flash_run` and
 // `complete_one_move_run`, `complete_color_merge_run`, `complete_dont_touch_run`
 // `complete_seven_second_run`, `complete_queens_run`, `complete_zip_run`,
-// `complete_eight_puzzle_run` and `complete_tango_run`.
+// `complete_eight_puzzle_run`, `complete_tango_run` and `complete_sudoku_run`.
 //
 // Three properties shape it, and all three are deliberate:
 //
@@ -236,7 +236,8 @@ func (c *Client) CompleteRun(ctx context.Context, request CompleteRequest) (Resu
 // Touch the Black run by complete_dont_touch_run, a 7 Second run by
 // complete_seven_second_run, a Queens run by complete_queens_run, a Zip run by
 // complete_zip_run, an 8 Puzzle run by complete_eight_puzzle_run, a Tango run by
-// complete_tango_run, and anything else by complete_stack10_run — which
+// complete_tango_run, a Sudoku run by complete_sudoku_run, and anything else by
+// complete_stack10_run — which
 // answers wrong_rules for a version it does not implement, so an unknown version
 // is still a refusal, never a pass.
 func completeFunction(rulesVersion string) string {
@@ -261,6 +262,8 @@ func completeFunction(rulesVersion string) string {
 		return "complete_eight_puzzle_run"
 	case strings.HasPrefix(rulesVersion, "tango@"):
 		return "complete_tango_run"
+	case strings.HasPrefix(rulesVersion, "sudoku@"):
+		return "complete_sudoku_run"
 	default:
 		return "complete_stack10_run"
 	}
