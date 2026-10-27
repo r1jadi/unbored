@@ -23,16 +23,23 @@ import {
   boardSize as queensSize,
   createRun as createQueens,
   solution as queensSolution,
+  tap as tapQueens,
 } from "@/lib/games/queens";
 import { createRun as createStack10, type Stack10Run } from "@/lib/games/stack10";
 import { createRun as createZip, solution as zipSolution, tap as tapZip } from "@/lib/games/zip";
 import { tangoHint, tangoRight } from "@/lib/games/hints";
-import { createRun as createTango, SUN, tap as tapTango } from "@/lib/games/tango";
+import {
+  createRun as createTango,
+  solution as tangoSolution,
+  SUN,
+  tap as tapTango,
+} from "@/lib/games/tango";
 import { sudokuHint, sudokuRight } from "@/lib/games/hints";
 import {
   createRun as createSudoku,
+  candidates as sudokuCandidates,
+  canFinish as sudokuCanFinish,
   place as placeSudoku,
-  solution as sudokuSolution,
 } from "@/lib/games/sudoku";
 import { useHint } from "@/lib/games/use-hint";
 
@@ -43,30 +50,58 @@ describe("hints", () => {
     const columns = run.columns.map((column, index) =>
       index === 2 ? { tiles: [10 - tile], sum: 10 - tile } : column,
     );
-    expect(stack10Hint({ ...run, columns } as Stack10Run)).toBe(2);
+    expect(stack10Hint({ ...run, columns } as Stack10Run)).toEqual({
+      column: 2,
+      reason: `The ${tile} makes column 3 exactly 10, which clears it.`,
+    });
   });
 
   it("Color Merge: points at a slide that moves the board", () => {
     const run = createColorMerge(1);
-    const direction = colorMergeHint(run);
-    expect(direction).not.toBeNull();
-    expect(canSlide(run, direction!)).toBe(true);
+    const hint = colorMergeHint(run);
+    expect(hint).not.toBeNull();
+    expect(canSlide(run, hint!.direction)).toBe(true);
+    expect(hint!.reason).toMatch(/^(Sliding|No slide)/);
   });
 
   it("One Move: names the row first, then the cell", () => {
     const run = createOneMove(1);
     const cell = winningCell(run.seed, run.level);
-    expect(oneMoveHint(run, 0)).toEqual({ kind: "row", row: Math.floor(cell / 3), size: 3 });
-    expect(oneMoveHint(run, 1)).toEqual({ kind: "cell", cell });
+    expect(oneMoveHint(run, 0)).toMatchObject({ kind: "row", row: Math.floor(cell / 3), size: 3 });
+    expect(oneMoveHint(run, 0)?.reason).toMatch(
+      new RegExp(`^Row ${Math.floor(cell / 3) + 1} has the most cells out of the checkerboard`),
+    );
+    expect(oneMoveHint(run, 1)).toMatchObject({ kind: "cell", cell });
+    expect(oneMoveHint(run, 1)?.reason).toMatch(/exactly the cross a tap here flips back/);
     // The cell hint is the move that clears the board.
     expect(tapOneMove(run, cell).levelsCleared).toBe(1);
   });
 
-  it("Queens: points at the next Queen of the solution", () => {
-    const run = createQueens(1);
-    const size = queensSize(1);
-    expect(queensHint(run)).toBe(queensSolution(run.seed, 1)[0]);
-    expect(size).toBeGreaterThan(0);
+  it("Crowns: names the rule, outlines what it is about, and is never wrong", () => {
+    // Following the hints alone solves boards, without a single mistake: every
+    // crown hinted is on the solution, and every X hinted is off it.
+    for (const seed of [1, 202, 303, 404]) {
+      let run = createQueens(seed);
+      for (let step = 0; step < 200 && run.levelsCleared < 1; step += 1) {
+        const hint = queensHint(run)!;
+        const size = queensSize(run.level);
+        const onSolution =
+          queensSolution(run.seed, run.level)[Math.floor(hint.cell / size)] === hint.cell % size;
+        expect(onSolution).toBe(hint.kind === "crown");
+        expect(hint.reason.length).toBeGreaterThan(20);
+        expect(hint.focus.length).toBeGreaterThan(0);
+        const want = hint.kind === "crown" ? "queen" : "mark";
+        const level = run.level;
+        for (
+          let tap = 0;
+          tap < 3 && run.level === level && run.cells[hint.cell] !== want;
+          tap += 1
+        ) {
+          run = tapQueens(run, hint.cell);
+        }
+      }
+      expect(run).toMatchObject({ levelsCleared: 1, mistakes: 0 });
+    }
   });
 
   it("Zip: the next cell of the solution, or back to the last one that agreed", () => {
@@ -80,9 +115,12 @@ describe("hints", () => {
   it("8 Puzzle: a slide on a shortest way to solved", () => {
     const run = createEightPuzzle(1);
     const before = fewestMoves(run.tiles);
-    const cell = eightPuzzleHint(run);
-    expect(cell).not.toBeNull();
-    expect(fewestMoves(slideTile(run, cell!).tiles)).toBe(before - 1);
+    const hint = eightPuzzleHint(run);
+    expect(hint).not.toBeNull();
+    expect(fewestMoves(slideTile(run, hint!.cell).tiles)).toBe(before - 1);
+    expect(hint!.reason).toMatch(
+      before === 1 ? /solves the board/ : new RegExp(`leaves ${before - 1} slides? to solve`),
+    );
   });
 });
 
@@ -139,14 +177,37 @@ describe("useHint", () => {
 });
 
 describe("tangoHint", () => {
-  // Seed 1's first board: cell 1 starts empty and takes a sun.
-  it("points at the first empty cell and the symbol it takes", () => {
-    expect(tangoHint(createTango("1"))).toEqual({ cell: 1, value: SUN, fix: false });
+  it("names the rule that forces the cell, and is never wrong", () => {
+    for (const seed of ["1", "7", "42", "4242"]) {
+      let run = createTango(seed);
+      for (let step = 0; step < 100 && run.levelsCleared < 1; step += 1) {
+        const hint = tangoHint(run)!;
+        expect(hint.value).toBe(tangoSolution(run.seed, run.level)[hint.cell]);
+        expect(hint.fix).toBe(false);
+        const level = run.level;
+        for (
+          let tap = 0;
+          tap < 3 && run.level === level && run.cells[hint.cell] !== hint.value;
+          tap += 1
+        ) {
+          run = tapTango(run, hint.cell);
+        }
+      }
+      expect(run.levelsCleared).toBe(1);
+    }
   });
 
-  it("points at a symbol placed wrong before anything else", () => {
+  it("explains a sign next to a filled cell", () => {
+    // Seed 1's first board: the first hint reads a sign.
+    expect(tangoHint(createTango("1"))?.reason).toMatch(
+      /^The [=×] sign between this cell and row \d, column \d means they (match|differ), and that one is a (sun|moon)\.$/,
+    );
+  });
+
+  it("points at a symbol placed wrong before anything else, and says why", () => {
     const wrong = tapTango(tapTango(createTango("1"), 1), 1); // a moon where a sun goes
-    expect(tangoHint(wrong)).toEqual({ cell: 1, value: SUN, fix: true });
+    expect(tangoHint(wrong)).toMatchObject({ cell: 1, value: SUN, fix: true });
+    expect(tangoHint(wrong)?.reason).toMatch(/breaks a rule|can't be finished/);
   });
 
   it("counts a right symbol as progress, and a wrong one as none", () => {
@@ -159,17 +220,54 @@ describe("tangoHint", () => {
 
 describe("sudokuHint", () => {
   // Seed 1's first board: cell 2 starts as a 5, and cell 0 takes a 6.
-  it("points at a clashing digit before anything else", () => {
+  it("says why a repeated digit has to go", () => {
     const wrong = placeSudoku(createSudoku("1"), 0, 5); // a second 5 in row one
-    expect(sudokuHint(wrong)).toEqual({ cell: 0, digit: 6, fix: true });
+    expect(sudokuHint(wrong)).toEqual({
+      cell: 0,
+      action: "clear",
+      digit: 5,
+      reason: "This 5 can't stay: there's already a 5 in row 1.",
+    });
   });
 
-  it("points at an empty cell and a digit that fits it", () => {
-    const run = createSudoku("1");
-    const hint = sudokuHint(run);
-    expect(hint?.fix).toBe(false);
-    expect(run.cells[hint!.cell]).toBe(0);
-    expect(hint?.digit).toBe(sudokuSolution("1", 1)[hint!.cell]);
+  it("says when a digit leaves the board unfinishable", () => {
+    // A digit that fits its row, column and box but leaves no way to finish.
+    let run = createSudoku("1");
+    let found = false;
+    for (let cell = 0; cell < 81 && !found; cell += 1) {
+      if (run.cells[cell] !== 0) continue;
+      for (const digit of sudokuCandidates(run.cells, cell)) {
+        const trial = [...run.cells];
+        trial[cell] = digit;
+        if (sudokuCanFinish(trial)) continue;
+        run = placeSudoku(run, cell, digit);
+        expect(sudokuHint(run)).toEqual({
+          cell,
+          action: "clear",
+          digit,
+          reason: `With a ${digit} here, the rest of the board can't be finished. Clear it.`,
+        });
+        found = true;
+        break;
+      }
+    }
+    expect(found).toBe(true);
+  });
+
+  it("explains the only place for a digit, and following the hints solves the board", () => {
+    let run = createSudoku("1");
+    expect(sudokuHint(run)?.reason).toMatch(
+      /^This is the only place in (its box|row \d|column \d) where a \d fits/,
+    );
+    for (let step = 0; step < 81 && run.levelsCleared < 1; step += 1) {
+      const hint = sudokuHint(run)!;
+      expect(hint.action).toBe("place");
+      const trial = [...run.cells];
+      trial[hint.cell] = hint.digit;
+      expect(sudokuCanFinish(trial)).toBe(true);
+      run = placeSudoku(run, hint.cell, hint.digit);
+    }
+    expect(run.levelsCleared).toBe(1);
   });
 
   it("counts a digit that fits as progress, and a clashing one as none", () => {

@@ -257,13 +257,34 @@ const UNITS: readonly (readonly number[])[] = (() => {
   return units;
 })();
 
-/** The cells that share a row, column or box with `cell`, itself excluded. */
-export function peers(cell: number): number[] {
+/** The row, column and box of a cell, in that order. */
+export function unitsOf(cell: number): {
+  row: readonly number[];
+  column: readonly number[];
+  box: readonly number[];
+} {
+  const row = Math.floor(cell / SUDOKU_SIDE);
+  const column = cell % SUDOKU_SIDE;
+  const box = Math.floor(row / SUDOKU_BOX) * SUDOKU_BOX + Math.floor(column / SUDOKU_BOX);
+  return { row: UNITS[row * 3], column: UNITS[column * 3 + 1], box: UNITS[box * 3 + 2] };
+}
+
+/** Every unit: rows, columns and boxes, interleaved as row 0, column 0, box 0, row 1… */
+export function units(): readonly (readonly number[])[] {
+  return UNITS;
+}
+
+const PEERS: readonly (readonly number[])[] = Array.from({ length: CELLS }, (_, cell) => {
   const seen = new Set<number>();
   for (const unit of UNITS) {
     if (unit.includes(cell)) unit.forEach((other) => other !== cell && seen.add(other));
   }
   return [...seen];
+});
+
+/** The cells that share a row, column or box with `cell`, itself excluded. */
+export function peers(cell: number): number[] {
+  return [...PEERS[cell]];
 }
 
 /**
@@ -289,8 +310,40 @@ export function isSolved(cells: readonly SudokuDigit[]): boolean {
 
 /** The digits an empty cell could take without clashing with what its peers hold. */
 export function candidates(cells: readonly SudokuDigit[], cell: number): SudokuDigit[] {
-  const taken = new Set(peers(cell).map((other) => cells[other]));
+  const taken = new Set(PEERS[cell].map((other) => cells[other]));
   return ([1, 2, 3, 4, 5, 6, 7, 8, 9] as const).filter((digit) => !taken.has(digit));
+}
+
+/**
+ * Whether the cells can still be completed into a solved grid: no clash now, and
+ * a search (most constrained cell first) finds a way to fill every empty cell.
+ * Used by the hints to say that a digit leads nowhere; it never decides a score.
+ */
+export function canFinish(cells: readonly SudokuDigit[]): boolean {
+  if (conflicts(cells).size > 0) return false;
+  const grid = [...cells];
+  const search = (): boolean => {
+    let best = -1;
+    let options: SudokuDigit[] = [];
+    for (let cell = 0; cell < CELLS; cell += 1) {
+      if (grid[cell] !== EMPTY) continue;
+      const fits = candidates(grid, cell);
+      if (fits.length === 0) return false;
+      if (best < 0 || fits.length < options.length) {
+        best = cell;
+        options = fits;
+        if (fits.length === 1) break;
+      }
+    }
+    if (best < 0) return true;
+    for (const digit of options) {
+      grid[best] = digit;
+      if (search()) return true;
+    }
+    grid[best] = EMPTY;
+    return false;
+  };
+  return search();
 }
 
 // ── A run ───────────────────────────────────────────────────────────────────

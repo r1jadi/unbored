@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 
 import { ErrorState } from "@/components/common";
 import { GameExits } from "@/components/game/GameExits";
-import { HintButton } from "@/components/game/Hint";
+import { HintButton, HintNote } from "@/components/game/Hint";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { SavedRunCard } from "@/components/game/SavedRunCard";
 import { RulesList } from "@/components/game/RulesList";
@@ -314,9 +314,13 @@ function Board({
         </div>
       </div>
 
-      <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
-        {statusLine(run, verifying)}
-      </p>
+      {hints.hint ? (
+        <HintNote reason={hints.hint.reason} className="my-0.5" />
+      ) : (
+        <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
+          {statusLine(run, verifying)}
+        </p>
+      )}
 
       <div className="flex items-center justify-center gap-3 pb-1 text-xs text-muted-foreground">
         <span>
@@ -354,8 +358,7 @@ function Board({
             className="relative grid aspect-square w-full overflow-hidden rounded-lg border-2"
             style={{
               borderColor: REGION_EDGE,
-              maxWidth:
-                size > 7 ? "min(36rem, calc(100dvh - 16rem))" : "min(28rem, calc(100dvh - 16rem))",
+              maxWidth: `min(${size > 7 ? 36 : 28}rem, calc(100dvh - ${hints.hint ? 18.5 : 16}rem))`,
               gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${size}, minmax(0, 1fr))`,
             }}
@@ -375,7 +378,9 @@ function Board({
                 borderBottomColor: below !== region ? REGION_EDGE : CELL_EDGE,
               };
               const auto = cell === "empty" && blocked.has(index);
-              const hinted = hints.hint === index;
+              const hinted = hints.hint?.cell === index;
+              // The row, column or region the hint's reason is about.
+              const focused = !hinted && !!hints.hint?.focus.includes(index);
               return (
                 <button
                   key={index}
@@ -384,7 +389,11 @@ function Board({
                   disabled={!accepting || cell === "ruled-out"}
                   onClick={() => onTap(index)}
                   aria-label={`${cellLabel(row, column, region, cell, auto, run, verifying)}${
-                    hinted ? " Hint: a crown goes here." : ""
+                    hinted
+                      ? hints.hint?.kind === "mark"
+                        ? " Hint: no crown goes here."
+                        : " Hint: a crown goes here."
+                      : ""
                   }`}
                   style={edges}
                   className={cn(
@@ -393,6 +402,7 @@ function Board({
                     "focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                     REGION_COLOURS[region % REGION_COLOURS.length],
                     accepting ? "hover:brightness-110" : "opacity-70",
+                    focused && "outline-2 -outline-offset-4 outline-dashed outline-primary",
                     hinted && "animate-pulse ring-2 ring-inset ring-primary",
                   )}
                 >

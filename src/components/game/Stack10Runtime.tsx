@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { ErrorState } from "@/components/common";
 import { GameExits } from "@/components/game/GameExits";
 import { EndRunButton } from "@/components/game/EndRunButton";
-import { HintButton } from "@/components/game/Hint";
+import { HintButton, HintNote } from "@/components/game/Hint";
 import { stack10Hint } from "@/lib/games/hints";
 import { useHint } from "@/lib/games/use-hint";
 import { RunEndActions } from "@/components/game/RunEndActions";
@@ -220,13 +220,17 @@ function Board({
             {tile ?? "—"}
           </span>
         </div>
-        <p className="text-center text-xs text-muted-foreground tabular" aria-live="polite">
-          {readout.pressurePercent === 0
-            ? placed < STACK10_TILES
-              ? `Warm-up: heavier tiles start after tile ${STACK10_TILES}`
-              : "Heavier tiles can start arriving now"
-            : `Heavier tile chance ${readout.pressurePercent}% · up to +${readout.heavyBonus}`}
-        </p>
+        {hints.hint ? (
+          <HintNote reason={hints.hint.reason} />
+        ) : (
+          <p className="text-center text-xs text-muted-foreground tabular" aria-live="polite">
+            {readout.pressurePercent === 0
+              ? placed < STACK10_TILES
+                ? `Warm-up: heavier tiles start after tile ${STACK10_TILES}`
+                : "Heavier tiles can start arriving now"
+              : `Heavier tile chance ${readout.pressurePercent}% · up to +${readout.heavyBonus}`}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-1 items-stretch justify-center gap-2">
@@ -234,7 +238,7 @@ function Board({
           const playable = canPlace(run, index) && !verifying;
           const clears = tile !== null && column.sum + tile === 10;
           const over = tile !== null && column.sum + tile > 10;
-          const hinted = hints.hint === index;
+          const hinted = hints.hint?.column === index;
           return (
             <button
               key={index}

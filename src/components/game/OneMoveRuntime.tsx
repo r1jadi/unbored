@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
 import { GameExits } from "@/components/game/GameExits";
-import { HintButton } from "@/components/game/Hint";
+import { HintButton, HintNote } from "@/components/game/Hint";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { SavedRunCard } from "@/components/game/SavedRunCard";
@@ -290,13 +290,17 @@ function Board({
         </div>
       </div>
 
-      <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
-        {verifying
-          ? "Verifying your run with the server…"
-          : run.outcome === "over"
-            ? "One move missed."
-            : `Board ${run.level} — one move restores the checkerboard.`}
-      </p>
+      {hints.hint ? (
+        <HintNote reason={hints.hint.reason} className="my-0.5" />
+      ) : (
+        <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
+          {verifying
+            ? "Verifying your run with the server…"
+            : run.outcome === "over"
+              ? "One move missed."
+              : `Board ${run.level} — one move restores the checkerboard.`}
+        </p>
+      )}
 
       {/* The difficulty of this board, read from the rules rather than guessed:
           the board grows a row and a column every four levels, without cap, so
@@ -331,8 +335,8 @@ function Board({
             style={{
               maxWidth:
                 board.size > 9
-                  ? "min(36rem, calc(100dvh - 12rem))"
-                  : "min(28rem, calc(100dvh - 12rem))",
+                  ? `min(36rem, calc(100dvh - ${hints.hint ? 14.5 : 12}rem))`
+                  : `min(28rem, calc(100dvh - ${hints.hint ? 14.5 : 12}rem))`,
               gridTemplateColumns: `repeat(${board.size}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${board.size}, minmax(0, 1fr))`,
             }}

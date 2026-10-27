@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
-import { HintButton } from "@/components/game/Hint";
+import { HintButton, HintNote } from "@/components/game/Hint";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import { RulesList } from "@/components/game/RulesList";
 import { RunEndActions } from "@/components/game/RunEndActions";
@@ -283,9 +283,13 @@ function Board({
         </div>
       </div>
 
-      <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
-        {statusLine(run, verifying, clashes.size > 0)}
-      </p>
+      {hints.hint ? (
+        <HintNote reason={hints.hint.reason} className="my-0.5" />
+      ) : (
+        <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
+          {statusLine(run, verifying, clashes.size > 0)}
+        </p>
+      )}
 
       <div className="mx-auto flex w-full max-w-md items-center gap-3 pb-1 text-xs text-muted-foreground">
         <span className="tabular">
@@ -322,7 +326,7 @@ function Board({
             className="relative grid aspect-square w-full overflow-hidden rounded-lg border bg-surface"
             style={{
               borderColor: CELL_EDGE,
-              maxWidth: "min(30rem, calc(100dvh - 16rem))",
+              maxWidth: `min(30rem, calc(100dvh - ${hints.hint ? 18.5 : 16}rem))`,
               gridTemplateColumns: `repeat(${TANGO_SIDE}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${TANGO_SIDE}, minmax(0, 1fr))`,
             }}

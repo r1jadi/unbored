@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 
 import { ErrorState } from "@/components/common";
 import { GameExits } from "@/components/game/GameExits";
-import { HintButton } from "@/components/game/Hint";
+import { HintButton, HintNote } from "@/components/game/Hint";
 import { useHint } from "@/lib/games/use-hint";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { RulesList } from "@/components/game/RulesList";
@@ -287,9 +287,13 @@ function Board({
         </div>
       </div>
 
-      <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
-        {statusLine(run, verifying)}
-      </p>
+      {hints.hint ? (
+        <HintNote reason={hints.hint.reason} className="my-0.5" />
+      ) : (
+        <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
+          {statusLine(run, verifying)}
+        </p>
+      )}
 
       <div className="mx-auto flex w-full max-w-md items-center gap-3 pb-1 text-xs text-muted-foreground">
         <span className="tabular">
@@ -326,7 +330,7 @@ function Board({
             tabIndex={-1}
             onKeyDown={onKeyDown}
             className="relative aspect-square w-full rounded-2xl bg-surface p-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            style={{ maxWidth: "min(24rem, calc(100dvh - 16rem))" }}
+            style={{ maxWidth: `min(24rem, calc(100dvh - ${hints.hint ? 18.5 : 16}rem))` }}
             role="group"
             aria-label={`Board ${run.level}, 3 by 3. Arrow keys slide a tile into the gap.`}
           >
@@ -340,7 +344,7 @@ function Board({
                 const slides = accepting ? lineTaps(run, cell) : [];
                 const movable = slides.length > 0;
                 const home = tile - 1 === cell;
-                const hinted = hints.hint === cell;
+                const hinted = hints.hint?.cell === cell;
                 return (
                   <button
                     // Keyed by tile, not by cell, so a tile keeps its element and

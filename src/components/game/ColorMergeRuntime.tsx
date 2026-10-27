@@ -14,7 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
 import { GameExits } from "@/components/game/GameExits";
-import { HintButton } from "@/components/game/Hint";
+import { HintButton, HintNote } from "@/components/game/Hint";
 import { colorMergeHint } from "@/lib/games/hints";
 import { useHint } from "@/lib/games/use-hint";
 import { EndRunButton } from "@/components/game/EndRunButton";
@@ -340,15 +340,19 @@ function Board({
         </div>
       </div>
 
-      <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
-        {verifying
-          ? "Verifying your run with the server…"
-          : run.outcome === "over"
-            ? run.endReason === "locked"
-              ? "The board locked."
-              : "Submission limit reached."
-            : `Slide to merge — best tile ${readout.best}.`}
-      </p>
+      {hints.hint ? (
+        <HintNote reason={hints.hint.reason} className="my-0.5" />
+      ) : (
+        <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
+          {verifying
+            ? "Verifying your run with the server…"
+            : run.outcome === "over"
+              ? run.endReason === "locked"
+                ? "The board locked."
+                : "Submission limit reached."
+              : `Slide to merge — best tile ${readout.best}.`}
+        </p>
+      )}
 
       {/* A square board, capped against the viewport height as well as the
           column, so a landscape phone still shows the d-pad and the whole grid. */}
@@ -356,7 +360,7 @@ function Board({
         <div
           className="grid aspect-square w-full gap-1.5 rounded-2xl bg-surface p-1.5 sm:gap-2"
           style={{
-            maxWidth: "min(26rem, calc(100dvh - 17rem))",
+            maxWidth: `min(26rem, calc(100dvh - ${hints.hint ? 19.5 : 17}rem))`,
             gridTemplateColumns: `repeat(${COLOR_MERGE_SIZE}, minmax(0, 1fr))`,
             gridTemplateRows: `repeat(${COLOR_MERGE_SIZE}, minmax(0, 1fr))`,
             // A finger swipe is a move, not a scroll: without this the browser
@@ -443,7 +447,7 @@ function Board({
           icon={<ArrowUp />}
           run={run}
           accepting={accepting}
-          hinted={hints.hint}
+          hinted={hints.hint?.direction ?? null}
           onSlide={slide}
           className="col-start-2 row-start-1"
         />
@@ -453,7 +457,7 @@ function Board({
           icon={<ArrowLeft />}
           run={run}
           accepting={accepting}
-          hinted={hints.hint}
+          hinted={hints.hint?.direction ?? null}
           onSlide={slide}
           className="col-start-1 row-start-2"
         />
@@ -463,7 +467,7 @@ function Board({
           icon={<ArrowDown />}
           run={run}
           accepting={accepting}
-          hinted={hints.hint}
+          hinted={hints.hint?.direction ?? null}
           onSlide={slide}
           className="col-start-2 row-start-2"
         />
@@ -473,7 +477,7 @@ function Board({
           icon={<ArrowRight />}
           run={run}
           accepting={accepting}
-          hinted={hints.hint}
+          hinted={hints.hint?.direction ?? null}
           onSlide={slide}
           className="col-start-3 row-start-2"
         />

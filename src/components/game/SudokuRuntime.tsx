@@ -12,7 +12,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
-import { HintButton } from "@/components/game/Hint";
+import { HintButton, HintNote } from "@/components/game/Hint";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import { RulesList } from "@/components/game/RulesList";
 import { RunEndActions } from "@/components/game/RunEndActions";
@@ -337,13 +337,13 @@ function Board({
         </div>
       </div>
 
-      <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
-        {hints.hint
-          ? `Hint: row ${Math.floor(hints.hint.cell / SUDOKU_SIDE) + 1}, column ${
-              (hints.hint.cell % SUDOKU_SIDE) + 1
-            } ${hints.hint.fix ? "should be" : "takes"} a ${hints.hint.digit}.`
-          : statusLine(run, verifying, clashes.size > 0)}
-      </p>
+      {hints.hint ? (
+        <HintNote reason={hints.hint.reason} className="my-0.5" />
+      ) : (
+        <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
+          {statusLine(run, verifying, clashes.size > 0)}
+        </p>
+      )}
 
       <div className="mx-auto flex w-full max-w-md items-center gap-3 pb-1 text-xs text-muted-foreground">
         <span className="tabular">
@@ -378,7 +378,7 @@ function Board({
             className="relative grid aspect-square w-full overflow-hidden rounded-lg border-2 bg-surface"
             style={{
               borderColor: BOX_EDGE,
-              maxWidth: "min(30rem, calc(100dvh - 21rem))",
+              maxWidth: `min(30rem, calc(100dvh - ${hints.hint ? 23.5 : 21}rem))`,
               gridTemplateColumns: `repeat(${SUDOKU_SIDE}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${SUDOKU_SIDE}, minmax(0, 1fr))`,
             }}
