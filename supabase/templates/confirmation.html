@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <!-- The design is dark already; ask clients not to invert it. -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
+    <title>Confirm your email</title>
+    <style>
+      @media (max-width: 520px) {
+        .card { padding: 32px 22px !important; }
+        .title { font-size: 26px !important; }
+      }
+      a.button:hover { background: #ff8455 !important; }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background:#131417;" bgcolor="#131417">
+    <!-- Inbox preview line. The trailing spaces stop clients pulling in body text. -->
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#131417;">
+      One tap and you're in. Confirm your email to start playing on Unbored.
+      &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847;
+    </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#131417" style="background:#131417;">
+      <tr>
+        <td align="center" style="padding:40px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
+            <!-- Brand -->
+            <tr>
+              <td align="center" style="padding:0 0 24px;">
+                <a href="{{ .SiteURL }}" style="text-decoration:none;">
+                  <img src="https://unbored.lol/icon-192.png" width="56" height="56" alt="Unbored" style="display:block;border:0;border-radius:14px;" />
+                </a>
+              </td>
+            </tr>
+
+            <!-- Card -->
+            <tr>
+              <td class="card" bgcolor="#1c1d22" style="background:#1c1d22;border:1px solid #2a2c33;border-radius:20px;padding:40px 36px;font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="padding:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#f86f3c;">
+                      Almost there
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="title" style="padding:0 0 14px;font-size:30px;line-height:1.15;font-weight:700;letter-spacing:-0.02em;color:#f5f5f7;">
+                      One tap and you're in.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 0 28px;font-size:16px;line-height:1.6;color:#a9abb4;">
+                      Confirm <span style="color:#f5f5f7;font-weight:600;">{{ .Email }}</span> to finish creating your Unbored account. Quick games, no boredom.
+                    </td>
+                  </tr>
+
+                  <!-- Button -->
+                  <tr>
+                    <td align="left" style="padding:0 0 28px;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td bgcolor="#f86f3c" style="border-radius:12px;background:#f86f3c;">
+                            <a class="button" href="{{ .ConfirmationURL }}" target="_blank"
+                               style="display:inline-block;padding:16px 32px;font-size:16px;font-weight:700;color:#1a0f0a;text-decoration:none;border-radius:12px;background:#f86f3c;font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                              Confirm my email &rarr;
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+
+                  <!-- Divider -->
+                  <tr>
+                    <td style="padding:0 0 20px;"><div style="height:1px;line-height:1px;background:#2a2c33;">&nbsp;</div></td>
+                  </tr>
+
+                  <!-- Fallback link -->
+                  <tr>
+                    <td style="padding:0 0 6px;font-size:13px;line-height:1.5;color:#7d808a;">
+                      Button not working? Paste this link into your browser:
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0;font-size:12px;line-height:1.5;word-break:break-all;">
+                      <a href="{{ .ConfirmationURL }}" style="color:#f86f3c;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td align="center" style="padding:24px 12px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#6b6e78;">
+                The link works once and expires soon. If you didn't sign up for Unbored, you can safely ignore this email.
+                <br /><br />
+                <a href="{{ .SiteURL }}" style="color:#a9abb4;text-decoration:none;font-weight:600;">unbored.lol</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

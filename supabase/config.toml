@@ -57,6 +57,13 @@ enable_anonymous_sign_ins = false
 enable_signup = true
 enable_confirmations = true
 
+# Branded confirmation mail. The hosted project does not read this file:
+# paste supabase/templates/confirmation.html into Dashboard → Authentication
+# → Emails → Confirm signup, with the same subject.
+[auth.email.template.confirmation]
+subject = "Confirm your email for Unbored"
+content_path = "./supabase/templates/confirmation.html"
+
 # Auth mail through Resend's SMTP relay. Off locally so `supabase start` keeps
 # using its built-in mail catcher; the hosted project sets the same values in
 # Dashboard → Authentication → Emails → SMTP Settings. To test real delivery

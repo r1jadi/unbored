@@ -52,6 +52,10 @@ steps that code cannot perform.
 3. **Authentication → Email templates → Confirm signup**: ensure the button links
    to `{{ .ConfirmationURL }}` (the Supabase verify URL carrying the redirect).
    Do not replace it with a code template.
+   The branded version is `supabase/templates/confirmation.html`: paste its
+   contents into the template body and set the subject to
+   "Confirm your email for Unbored". Its logo loads from
+   `https://unbored.lol/icon-192.png`, so keep that file published.
 4. **Authentication → Providers → Email**: confirm signup confirmation is ON
    (the app handles the pending state; do not disable it to make signup look
    instant).
