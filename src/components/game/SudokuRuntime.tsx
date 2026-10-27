@@ -52,6 +52,7 @@ import {
   type SudokuRun,
 } from "@/lib/games/sudoku";
 import { useHint } from "@/lib/games/use-hint";
+import { useSettledClashes } from "@/lib/games/use-settled-clashes";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["sudoku"];
@@ -273,7 +274,7 @@ function Board({
     compute: () => sudokuHint(run),
   });
 
-  const clashes = conflicts(run.cells);
+  const clashes = useSettledClashes(conflicts(run.cells));
   const empty = run.cells.filter((value) => value === EMPTY).length;
   const remaining = Math.max(0, deadline - now);
   const earned = budgetMs(run.levelsCleared);

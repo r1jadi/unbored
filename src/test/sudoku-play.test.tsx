@@ -234,15 +234,34 @@ describe("the board", () => {
     expect(cell(1)).toHaveAccessibleName("Row 1 column 2, empty");
   });
 
-  it("marks a digit that repeats", async () => {
+  it("marks a digit that repeats once the board has sat still a moment", async () => {
     mockPlayback();
     await renderRuntime();
     await startRun();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 
     playMoves([5]); // a second 5 in row one
+    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, 5");
+    expect(screen.queryByText(/Something clashes/)).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(2900);
+    });
+    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, 5");
+
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    vi.useRealTimers();
     expect(cell(0)).toHaveAccessibleName("Row 1 column 1, 5, repeats");
     expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 5, fixed, repeats");
     expect(screen.getByText(/Something clashes/)).toBeInTheDocument();
+
+    // Fixing it clears the mark at once: no waiting to be told it is right.
+    playMoves([6]);
+    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, 6");
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 5, fixed");
+    expect(screen.queryByText(/Something clashes/)).not.toBeInTheDocument();
   });
 
   it("solves a board when it is full and right: ninety points and more time", async () => {

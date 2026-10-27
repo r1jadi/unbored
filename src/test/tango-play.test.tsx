@@ -108,10 +108,18 @@ async function renderRuntime() {
   return router;
 }
 
+/**
+ * A cell by its label's prefix. A selector rather than a role query: a run taps
+ * dozens of cells, and role queries over every button are slow in jsdom.
+ */
 function cell(index: number) {
   const row = Math.floor(index / 6) + 1;
   const column = (index % 6) + 1;
-  return screen.getByRole("button", { name: new RegExp(`^Row ${row} column ${column},`) });
+  const found = document.querySelector<HTMLButtonElement>(
+    `button[aria-label^="Row ${row} column ${column},"]`,
+  );
+  if (!found) throw new Error(`no cell at row ${row}, column ${column}`);
+  return found;
 }
 
 function tapCells(cells: readonly number[]) {
@@ -198,16 +206,34 @@ describe("the board", () => {
     expect(cell(1)).toHaveAccessibleName(/empty\. Tap to place a sun\./);
   });
 
-  it("marks cells that break a rule", async () => {
+  it("marks cells that break a rule once the board has sat still a moment", async () => {
     mockPlayback();
     await renderRuntime();
     await startRun();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 
     // Cell 0 is a moon; moons on 1 and 2 make three alike in a row.
     tapCells([1, 1, 2, 2]);
+    expect(cell(1)).not.toHaveAccessibleName(/breaks a rule/);
+    expect(screen.queryByText(/Something clashes/)).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(2900);
+    });
+    expect(cell(1)).not.toHaveAccessibleName(/breaks a rule/);
+
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    vi.useRealTimers();
     expect(cell(1)).toHaveAccessibleName(/moon, breaks a rule/);
     expect(cell(0)).toHaveAccessibleName(/moon, fixed, breaks a rule/);
     expect(screen.getByText("Something clashes: the red cells break a rule.")).toBeInTheDocument();
+
+    // Fixing it clears the mark at once: no waiting to be told it is right.
+    tapCells([2]);
+    expect(cell(1)).not.toHaveAccessibleName(/breaks a rule/);
+    expect(screen.queryByText(/Something clashes/)).not.toBeInTheDocument();
   });
 
   it("shows the board's signs", async () => {
