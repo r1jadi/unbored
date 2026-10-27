@@ -57,6 +57,19 @@ enable_anonymous_sign_ins = false
 enable_signup = true
 enable_confirmations = true
 
+# Auth mail through Resend's SMTP relay. Off locally so `supabase start` keeps
+# using its built-in mail catcher; the hosted project sets the same values in
+# Dashboard → Authentication → Emails → SMTP Settings. To test real delivery
+# locally, uncomment and export RESEND_API_KEY.
+# [auth.email.smtp]
+# enabled = true
+# host = "smtp.resend.com"
+# port = 465
+# user = "resend"
+# pass = "env(RESEND_API_KEY)"
+# admin_email = "hello@unbored.lol"
+# sender_name = "Unbored"
+
 [auth.sms]
 enable_signup = false
 enable_confirmations = false

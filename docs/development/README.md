@@ -8,6 +8,7 @@ How to get a working checkout and how to work in this repository.
 | [environments.md](environments.md) | development / preview / staging / production, the public-vs-secret split, where values are set, fail-fast configuration, and the manual actions this phase could not perform. |
 | [conventions.md](conventions.md) | Git rules (never rewrite published history), Go conventions, TypeScript/React conventions, SQL/migration rules, the UI freeze. |
 | [testing.md](testing.md) | Every suite and command, the database suite's assertion helpers, how to add tests, and an explicit list of what is not covered. |
+| [analytics-and-email.md](analytics-and-email.md) | PostHog analytics in the web app and Resend for Supabase Auth mail and Go-sent email: configuration, setup steps, usage. |
 
 Quick reference:
 

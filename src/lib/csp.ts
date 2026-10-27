@@ -34,9 +34,10 @@ function originOf(url: string): string | undefined {
  * injects a `<style>` element. Inline CSS cannot execute code, so this is the
  * accepted trade-off; scripts are where the policy is strict.
  *
- * The browser talks to this origin (the API is same-origin by default) and to
- * Supabase directly (auth, storage, avatars), so those are the only
- * connections allowed.
+ * The browser talks to this origin (the API is same-origin by default), to
+ * Supabase directly (auth, storage, avatars) and, when configured, to PostHog
+ * (event ingestion, plus the extension scripts it loads from its assets host),
+ * so those are the only connections allowed.
  */
 export function contentSecurityPolicy(nonce: string): string {
   const supabase = originOf(publicConfig.supabase.url);
@@ -48,6 +49,12 @@ export function contentSecurityPolicy(nonce: string): string {
     connect.add(supabase.replace(/^http/, "ws"));
   }
   if (api) connect.add(api);
+  const posthog = publicConfig.posthog.key ? originOf(publicConfig.posthog.host) : undefined;
+  if (posthog) {
+    connect.add(posthog);
+    // https://us.i.posthog.com → https://us-assets.i.posthog.com
+    connect.add(posthog.replace(/:\/\/(\w+)\.i\.posthog\.com$/, "://$1-assets.i.posthog.com"));
+  }
 
   return [
     "default-src 'self'",

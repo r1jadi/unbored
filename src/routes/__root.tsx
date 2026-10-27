@@ -22,6 +22,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { SafeAreaDiagnostics } from "@/components/dev/SafeAreaDiagnostics";
 import { Toaster } from "@/components/ui/sonner";
 import { initializeSession, useAuth } from "@/lib/auth/session";
+import { identifyUser, initAnalytics, resetAnalytics } from "@/lib/analytics";
 import { LanguageProvider } from "@/lib/settings/language";
 import { ThemeProvider } from "@/lib/settings/theme";
 
@@ -148,7 +149,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         },
         { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
         { rel: "icon", type: "image/png", href: "/favicon.png" },
-        { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+        { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png?v=2" },
         { rel: "manifest", href: "/manifest.webmanifest" },
         ...page.links,
       ],
@@ -187,8 +188,19 @@ function RootComponent() {
   // render and the first client render must agree (both anonymous), and the
   // restored token is re-validated against the API before it is trusted.
   useEffect(() => {
+    initAnalytics();
     void initializeSession();
   }, []);
+
+  // PostHog identity follows the session: the account id once signed in, a
+  // fresh anonymous id after signing out ("restoring" changes nothing yet).
+  const analyticsUserId = auth.status === "authenticated" ? auth.session.userId : undefined;
+  const analyticsRole = auth.status === "authenticated" ? auth.session.role : undefined;
+  useEffect(() => {
+    if (auth.status === "restoring") return;
+    if (analyticsUserId) identifyUser(analyticsUserId, { role: analyticsRole });
+    else resetAnalytics();
+  }, [auth.status, analyticsUserId, analyticsRole]);
 
   // A session without a finished registration (see `lib/users/registration`)
   // means the account is not fully created yet, so the app routes to the screen

@@ -83,6 +83,11 @@ export const publicConfig = {
       readEnv(import.meta.env?.["VITE_SUPABASE_PUBLISHABLE_KEY"]) ||
       readEnv(import.meta.env?.["VITE_SUPABASE_ANON_KEY"]),
   },
+  posthog: {
+    /** Project API key (`phc_...`): a public ingestion key. Empty disables analytics. */
+    key: readEnv(import.meta.env?.["VITE_PUBLIC_POSTHOG_KEY"]),
+    host: readEnv(import.meta.env?.["VITE_PUBLIC_POSTHOG_HOST"]) || "https://us.i.posthog.com",
+  },
 } as const;
 
 /** Whether Supabase-backed features can be used in this build. */
