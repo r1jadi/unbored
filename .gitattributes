@@ -1,0 +1,4 @@
+# Every text file is LF, in the repository and in every checkout, whatever the
+# platform: the formatter and the linters expect LF, and a Windows checkout with
+# core.autocrlf would otherwise turn every line into a lint error.
+* text=auto eol=lf
