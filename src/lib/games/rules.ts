@@ -242,15 +242,19 @@ export const GAME_RULES = {
     rules: [
       {
         lead: "Fill the grid",
-        text: "so that every row, every column and every 3×3 box holds the digits 1 to 9 once each.",
+        text: "so that every row, every column and every 3×3 box holds the digits 1 to 9 once each. Every board has exactly one solution.",
       },
       {
         lead: "Pick a cell",
         text: "and tap a number to place it, or Erase to clear it. You can also type 1 to 9, and move with the arrow keys. Cells that start filled stay as they are; a digit that repeats is marked in red.",
       },
       {
+        lead: "Notes and Undo",
+        text: "Turn on Notes (or press N) to jot small candidate digits in a cell; placing a digit tidies them away. Undo (Ctrl+Z) steps back.",
+      },
+      {
         lead: "The clock",
-        text: "starts at six minutes, and every solved board adds three minutes and ninety points. Each board starts with fewer cells filled, and the run ends when the clock does.",
+        text: "starts at six minutes. Boards start gentle and get harder, and every solved board scores ninety points and adds the next board's time. The run ends when the clock does.",
       },
     ],
   },

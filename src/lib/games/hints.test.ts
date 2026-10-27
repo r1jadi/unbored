@@ -219,14 +219,14 @@ describe("tangoHint", () => {
 });
 
 describe("sudokuHint", () => {
-  // Seed 1's first board: cell 2 starts as a 5, and cell 0 takes a 6.
+  // Seed 1's first board: cell 4 starts as a 9, and cell 2 takes a 2.
   it("says why a repeated digit has to go", () => {
-    const wrong = placeSudoku(createSudoku("1"), 0, 5); // a second 5 in row one
+    const wrong = placeSudoku(createSudoku("1"), 2, 9); // a second 9 in row one
     expect(sudokuHint(wrong)).toEqual({
-      cell: 0,
+      cell: 2,
       action: "clear",
-      digit: 5,
-      reason: "This 5 can't stay: there's already a 5 in row 1.",
+      digit: 9,
+      reason: "This 9 can't stay: there's already a 9 in row 1.",
     });
   });
 
@@ -273,7 +273,7 @@ describe("sudokuHint", () => {
   it("counts a digit that fits as progress, and a clashing one as none", () => {
     const fresh = createSudoku("1");
     expect(sudokuRight(fresh)).toBe(0);
-    expect(sudokuRight(placeSudoku(fresh, 0, 6))).toBe(1);
-    expect(sudokuRight(placeSudoku(fresh, 0, 5))).toBe(0);
+    expect(sudokuRight(placeSudoku(fresh, 2, 2))).toBe(1);
+    expect(sudokuRight(placeSudoku(fresh, 2, 9))).toBe(0);
   });
 });

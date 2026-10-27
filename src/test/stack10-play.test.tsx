@@ -9,6 +9,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Stack10Runtime } from "@/components/game/Stack10Runtime";
+import { buttonNamed } from "@/test/queries";
 import { clearSession, signIn } from "@/lib/auth/session";
 
 /**
@@ -124,7 +125,7 @@ async function renderRuntime() {
 
 /** Presses the column at `index` (0-based), as the board's own buttons are named. */
 function pressColumn(index: number) {
-  fireEvent.click(screen.getByRole("button", { name: new RegExp(`^Column ${index + 1},`) }));
+  fireEvent.click(buttonNamed(new RegExp(`^Column ${index + 1},`)));
 }
 
 afterEach(() => {

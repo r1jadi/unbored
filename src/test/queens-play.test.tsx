@@ -9,6 +9,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { QueensRuntime } from "@/components/game/QueensRuntime";
+import { buttonNamed } from "@/test/queries";
 import { clearSession, signIn } from "@/lib/auth/session";
 import { board } from "@/lib/games/queens";
 
@@ -122,7 +123,7 @@ const CELL = /^Row \d+ column \d+,/;
 function cell(index: number, size: number) {
   const row = Math.floor(index / size) + 1;
   const column = (index % size) + 1;
-  return screen.getByRole("button", { name: new RegExp(`^Row ${row} column ${column},`) });
+  return buttonNamed(new RegExp(`^Row ${row} column ${column},`));
 }
 
 function tapIndex(index: number, size: number) {

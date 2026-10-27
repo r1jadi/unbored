@@ -9,6 +9,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ZipRuntime } from "@/components/game/ZipRuntime";
+import { buttonNamed } from "@/test/queries";
 import { clearSession, signIn } from "@/lib/auth/session";
 
 /**
@@ -118,7 +119,7 @@ async function renderRuntime() {
 function cell(index: number, size = 5) {
   const row = Math.floor(index / size) + 1;
   const column = (index % size) + 1;
-  return screen.getByRole("button", { name: new RegExp(`^Row ${row} column ${column},`) });
+  return buttonNamed(new RegExp(`^Row ${row} column ${column},`));
 }
 
 /** A keyboard-style click (detail 0), which is how a cell button taps. */

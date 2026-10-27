@@ -2,12 +2,14 @@ import {
   Eraser,
   Grid3x3,
   Loader2,
+  Pencil,
   RotateCcw,
   ShieldCheck,
   Trophy,
   TriangleAlert,
+  Undo2,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type KeyboardEvent } from "react";
 
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
@@ -43,14 +45,21 @@ import {
   budgetMs,
   conflicts,
   EMPTY,
-  givenCount,
   peers,
-  SUDOKU_BONUS_MS,
   SUDOKU_BOX,
   SUDOKU_POINTS_PER_BOARD,
   SUDOKU_SIDE,
+  allowanceMs,
+  tierOf,
   type SudokuRun,
+  type SudokuTier,
 } from "@/lib/games/sudoku";
+import {
+  emptyNotesState,
+  notedDigits,
+  notesReducer,
+  type SudokuNotesState,
+} from "@/lib/games/sudoku-notes";
 import { useHint } from "@/lib/games/use-hint";
 import { useSettledClashes } from "@/lib/games/use-settled-clashes";
 
@@ -58,6 +67,14 @@ import { useSettledClashes } from "@/lib/games/use-settled-clashes";
 const RULES = GAME_RULES["sudoku"];
 
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+
+/** What a step up to a harder tier asks of the player, said once. */
+const TIER_NOTES: Record<SudokuTier, string | undefined> = {
+  gentle: undefined,
+  easy: "From here, look along rows and columns too, not just boxes.",
+  medium: "From here, boards need more than singles: pencil notes help.",
+  hard: "Hard boards from here: fewer clues, and more pairs to find.",
+};
 
 /**
  * Sudoku, playing for real.
@@ -238,19 +255,32 @@ function Board({
   const [now, setNow] = useState(() => Date.now());
   const [selected, setSelected] = useState(() => firstEmpty(run.cells));
   const cellRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  // Pencil notes, and whether the pad writes notes instead of digits. Both are
+  // the player's working: nothing here is a move.
+  const [{ notes, history }, dispatchNotes] = useReducer(notesReducer, undefined, emptyNotesState);
+  // The latest notes state, for Undo to read the step it takes back even when
+  // two presses land before a render.
+  const latestNotes = useRef<SudokuNotesState>({ notes, history });
+  useEffect(() => {
+    latestNotes.current = { notes, history };
+  });
+  const [notesMode, setNotesMode] = useState(false);
 
   const drawn = useMemo(() => drawBoard(run.seed, run.level), [run.seed, run.level]);
 
-  // A new board starts with the selection on its first empty cell.
+  // A new board starts with the selection on its first empty cell, no notes and
+  // nothing to undo.
   useEffect(() => {
     setSelected(firstEmpty(drawn.start));
+    dispatchNotes({ type: "reset" });
+    latestNotes.current = emptyNotesState();
   }, [drawn]);
 
   // A solved board gets a beat before the next one. It is short: the clock keeps
-  // running, on the server as well as here. The givens stop shrinking at thirty,
-  // which is worth saying once.
-  const fewest = run.level > 1 && givenCount(run.level) === 30 && givenCount(run.level - 1) > 30;
-  const levelUp = useLevelUp(run.level, run.score, levelUpHold(fewest));
+  // running, on the server as well as here. A step up to a harder tier is worth
+  // saying once, and what it asks of the player.
+  const steppedUp = run.level > 1 && tierOf(run.level) !== tierOf(run.level - 1);
+  const levelUp = useLevelUp(run.level, run.score, levelUpHold(steppedUp));
   const accepting = !verifying && run.outcome === "playing" && !levelUp;
 
   useReportRunProgress(accepting, onFinish);
@@ -288,9 +318,41 @@ function Board({
     if (focus) cellRefs.current[cell]?.focus();
   }
 
+  /**
+   * A digit from the pad or the keyboard, 0 for Erase. In notes mode a digit
+   * notes or un-notes a candidate in an empty cell; otherwise it is placed, which
+   * also tidies the notes it rules out. Erase on an empty cell clears its notes.
+   */
   function put(digit: number) {
     if (!accepting || selectedGiven) return;
+    if (notesMode && digit !== EMPTY) {
+      if (selectedDigit !== EMPTY) return;
+      dispatchNotes({ type: "toggle", cell: selected, digit });
+      return;
+    }
+    if (digit === EMPTY && selectedDigit === EMPTY) {
+      dispatchNotes({ type: "clear", cell: selected });
+      return;
+    }
+    if (digit === selectedDigit) return;
+    dispatchNotes({ type: "place", cell: selected, digit, previous: selectedDigit });
     onPlace(selected, digit);
+  }
+
+  /**
+   * Steps back once: the notes return to what they were, and a placed digit is
+   * replaced by what the cell held — which is itself a move, sent like any other.
+   */
+  function undo() {
+    const current = latestNotes.current;
+    const step = current.history[current.history.length - 1];
+    if (!accepting || !step) return;
+    latestNotes.current = notesReducer(current, { type: "undo" });
+    dispatchNotes({ type: "undo" });
+    if (step.cell !== undefined && run.cells[step.cell] !== step.previous) {
+      onPlace(step.cell, step.previous ?? EMPTY);
+      select(step.cell, true);
+    }
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -314,6 +376,12 @@ function Board({
     } else if (event.key === "0" || event.key === "Backspace" || event.key === "Delete") {
       event.preventDefault();
       put(EMPTY);
+    } else if (event.key === "n" || event.key === "N") {
+      event.preventDefault();
+      setNotesMode((on) => !on);
+    } else if (event.key.toLowerCase() === "z" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      undo();
     }
   }
 
@@ -378,7 +446,7 @@ function Board({
             className="relative grid aspect-square w-full overflow-hidden rounded-lg border-2 bg-surface"
             style={{
               borderColor: BOX_EDGE,
-              maxWidth: `min(30rem, calc(100dvh - ${hints.hint ? 23.5 : 21}rem))`,
+              maxWidth: `min(30rem, calc(100dvh - ${hints.hint ? 26 : 23.5}rem))`,
               gridTemplateColumns: `repeat(${SUDOKU_SIDE}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${SUDOKU_SIDE}, minmax(0, 1fr))`,
             }}
@@ -405,7 +473,7 @@ function Board({
                   disabled={!accepting}
                   aria-pressed={isSelected}
                   onClick={() => select(index)}
-                  aria-label={cellLabel(row, column, value, given, clash)}
+                  aria-label={cellLabel(row, column, value, given, clash, notes[index])}
                   style={{
                     borderRightWidth:
                       column < SUDOKU_SIDE - 1 ? ((column + 1) % SUDOKU_BOX === 0 ? 2 : 1) : 0,
@@ -426,7 +494,22 @@ function Board({
                     hinted && "animate-pulse ring-2 ring-inset ring-primary",
                   )}
                 >
-                  {value !== EMPTY ? value : ""}
+                  {value !== EMPTY ? (
+                    value
+                  ) : notes[index] ? (
+                    <span
+                      aria-hidden
+                      className="grid size-full grid-cols-3 grid-rows-3 p-[6%] text-[clamp(0.45rem,1.7vmin,0.65rem)] font-medium leading-none text-muted-foreground"
+                    >
+                      {DIGITS.map((digit) => (
+                        <span key={digit} className="flex items-center justify-center">
+                          {notes[index] & (1 << digit) ? digit : ""}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    ""
+                  )}
                 </button>
               );
             })}
@@ -435,18 +518,54 @@ function Board({
               <LevelUpOverlay
                 levelUp={levelUp}
                 unit="Board"
-                next={`Board ${run.level} · ${givenCount(run.level)} cells to start · clock +${
-                  SUDOKU_BONUS_MS / 60_000
+                next={`Board ${run.level} · ${tierOf(run.level)} · clock +${
+                  allowanceMs(run.level) / 60_000
                 } min`}
-                note={fewest ? "Boards start with thirty cells from here." : undefined}
+                note={steppedUp ? TIER_NOTES[tierOf(run.level)] : undefined}
               />
             )}
           </div>
         </div>
       </div>
 
-      {/* The number pad: a digit goes in the selected cell. The small count is how
-          many of that digit are still to place. */}
+      {/* The tools: Undo, Notes (the pad writes notes while it is on) and Erase. */}
+      <div className="mx-auto grid w-full max-w-md grid-cols-3 gap-1 pt-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={!accepting || history.length === 0}
+          onClick={undo}
+        >
+          <Undo2 />
+          Undo
+        </Button>
+        <Button
+          type="button"
+          variant={notesMode ? "secondary" : "ghost"}
+          size="sm"
+          aria-pressed={notesMode}
+          disabled={!accepting}
+          onClick={() => setNotesMode((on) => !on)}
+          className={cn(notesMode && "text-primary")}
+        >
+          <Pencil />
+          {notesMode ? "Notes on" : "Notes"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={!accepting || selectedGiven || (selectedDigit === EMPTY && !notes[selected])}
+          onClick={() => put(EMPTY)}
+        >
+          <Eraser />
+          Erase
+        </Button>
+      </div>
+
+      {/* The number pad: a digit goes in the selected cell, or into its notes. The
+          small count is how many of that digit are still to place. */}
       <div
         className="mx-auto grid w-full max-w-md grid-cols-9 gap-1 pt-1"
         role="group"
@@ -461,9 +580,10 @@ function Board({
               variant="secondary"
               disabled={!accepting || selectedGiven}
               onClick={() => put(digit)}
-              aria-label={`Place ${digit}, ${left} left`}
+              aria-label={notesMode ? `Note ${digit}` : `Place ${digit}, ${left} left`}
               className={cn(
                 "flex h-12 flex-col gap-0 px-0 text-lg font-semibold tabular",
+                notesMode && "text-primary",
                 left <= 0 && "opacity-50",
               )}
             >
@@ -477,15 +597,6 @@ function Board({
       </div>
 
       <div className="flex items-center justify-center gap-2 pt-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!accepting || selectedGiven || selectedDigit === EMPTY}
-          onClick={() => put(EMPTY)}
-        >
-          <Eraser />
-          Erase
-        </Button>
         <HintButton offered={hints.offered} waitSeconds={hints.waitSeconds} onAsk={hints.ask} />
         <Button variant="ghost" size="sm" disabled={!accepting} onClick={() => setConfirming(true)}>
           End run
@@ -517,22 +628,24 @@ function statusLine(run: SudokuRun, verifying: boolean, clashing: boolean): stri
   if (clashing) return "Something clashes: a red digit repeats in its row, column or box.";
   const start = drawBoard(run.seed, run.level).start;
   if (run.levelsCleared > 0 && run.cells.every((value, cell) => value === start[cell])) {
-    return `Board ${run.level - 1} solved, +${SUDOKU_POINTS_PER_BOARD}. Board ${run.level} starts with ${givenCount(run.level)} cells.`;
+    return `Board ${run.level - 1} solved, +${SUDOKU_POINTS_PER_BOARD}. Board ${run.level} is ${tierOf(run.level)}.`;
   }
-  return `Board ${run.level} — 1 to 9 in every row, column and box.`;
+  return `Board ${run.level}, ${tierOf(run.level)} — 1 to 9 in every row, column and box.`;
 }
 
-/** The accessible name of a cell: where it is, and what it holds. */
+/** The accessible name of a cell: where it is, what it holds, and its notes. */
 function cellLabel(
   row: number,
   column: number,
   value: number,
   given: boolean,
   clash: boolean,
+  noted: number,
 ): string {
+  const notesText = value === EMPTY && noted ? `, notes ${notedDigits(noted).join(" ")}` : "";
   return `Row ${row + 1} column ${column + 1}, ${value === EMPTY ? "empty" : value}${
     given ? ", fixed" : ""
-  }${clash ? ", repeats" : ""}`;
+  }${clash ? ", repeats" : ""}${notesText}`;
 }
 
 /** The end of a run: the score the server verified, or a guest's unranked result. */

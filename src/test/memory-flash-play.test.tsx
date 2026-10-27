@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
 import { boardCells, patternAt } from "@/lib/games/memory-flash";
+import { buttonNamed } from "@/test/queries";
 import { clearSession, signIn } from "@/lib/auth/session";
 
 /**
@@ -118,7 +119,7 @@ async function renderRuntime() {
 
 /** Taps the cell at `index` (0-based), as the board's own buttons are named. */
 function tapCell(index: number) {
-  fireEvent.click(screen.getByRole("button", { name: new RegExp(`^Cell ${index + 1},`) }));
+  fireEvent.click(buttonNamed(new RegExp(`^Cell ${index + 1},`)));
 }
 
 /**

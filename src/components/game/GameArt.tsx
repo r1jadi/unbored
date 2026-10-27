@@ -311,7 +311,7 @@ function SunAndMoon() {
 function Sudoku() {
   // Seed 1's first board as it starts, box by box: the givens, and one digit just
   // placed.
-  const cells = "005018409080002006020003701000025070250630140006084902090250317003049205060300800"
+  const cells = "730090000040130872000057049080610090000800600000003080178002904920004001060901250"
     .split("")
     .map(Number);
   const boxes = Array.from({ length: 9 }, (_, box) =>
@@ -330,10 +330,10 @@ function Sudoku() {
               key={cell}
               className={cn(
                 "flex aspect-square items-center justify-center text-[min(3cqw,3cqh,0.75rem)] font-semibold leading-none",
-                cell === 0 ? "bg-game-3 text-background" : "bg-surface text-foreground",
+                cell === 2 ? "bg-game-3 text-background" : "bg-surface text-foreground",
               )}
             >
-              {cell === 0 ? 6 : cells[cell] || ""}
+              {cell === 2 ? 2 : cells[cell] || ""}
             </div>
           ))}
         </div>

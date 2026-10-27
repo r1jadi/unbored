@@ -9,6 +9,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
+import { buttonNamed } from "@/test/queries";
 import { clearSession, signIn } from "@/lib/auth/session";
 import { DONT_TOUCH_LANES, cellAt, rowAt } from "@/lib/games/dont-touch";
 
@@ -135,7 +136,7 @@ async function startRun() {
 
 /** The button for one tile of a row, whatever its state. */
 function tile(row: number, lane: number) {
-  return screen.getByRole("button", { name: new RegExp(`^Row ${row}, lane ${lane}`) });
+  return buttonNamed(new RegExp(`^Row ${row}, lane ${lane}`));
 }
 
 const WHITE_OPENING_TILE = cellAt(0, 2);

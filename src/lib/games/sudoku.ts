@@ -2,28 +2,31 @@
  * Sudoku (runtime `sudoku`) — the game, as a pure deterministic state machine.
  *
  * Fill a 9×9 grid so that every row, every column and every 3×3 box holds the
- * digits 1 to 9 once each. Some cells start filled.
+ * digits 1 to 9 once each. Some cells start filled, and every board has exactly
+ * one solution.
  *
  * This module is the *client's* copy of the rules. The authority is the database:
- * `public.complete_sudoku_run` in
- * `supabase/migrations/20261114120000_sudoku_sessions.sql` replays the submitted
+ * `public.complete_sudoku_run` (latest in
+ * `supabase/migrations/20261115120000_sudoku_bank.sql`) replays the submitted
  * moves from the session's seed and derives the score itself. The copy is pinned
- * like every other game's: the rules version (`sudoku@1`) is data, the state
+ * like every other game's: the rules version (`sudoku@2`) is data, the state
  * machine is total and pure, and the boards and scored lines in `sudoku.test.ts`
  * are the ones `tests/security/rls_test.sql` asserts.
  *
  * ## The boards
  *
- * A board is drawn in two steps from one random stream: the **solution** and the
- * **givens**. The solution is the classic pattern grid with its digits relabelled
- * and its rows, columns, bands and stacks shuffled — every step keeps it a valid
- * grid, so no search is needed and the database can mirror it cheaply. The givens
- * are the first few cells of a shuffle of all eighty-one.
+ * Every board comes from a bank of 200 puzzles (`sudoku-bank.ts`), each with
+ * exactly one solution and graded by the hardest technique a logical solver
+ * needs. The level picks the grade — boards 1–2 are **gentle** (the last place for
+ * a digit in a box is all they need), 3–5 **easy** (singles in any row, column or
+ * box), 6–9 **medium** (pair and line eliminations) and from 10 **hard** — and the
+ * seed picks a puzzle in it and disguises it: the digits relabelled, rows and
+ * columns shuffled within their bands and stacks, the bands and stacks shuffled.
+ * None of that changes how many solutions a puzzle has, so the board stays
+ * unique, and the database mirrors it with cheap draws.
  *
- * A board is solved when it is **full and obeys the rules**, not when it equals
- * the planted solution: with givens drawn at random a board may have more than
- * one answer, and every one of them counts. The planted solution only feeds the
- * hints.
+ * A board is solved when it is **full and obeys the rules** — with one solution,
+ * that is the solution.
  *
  * ## A move
  *
@@ -33,21 +36,22 @@
  *
  * ## The endless game, against the clock
  *
- * Like Sun & Moon, a run is a race: one clock that starts at six minutes and
- * gains three with every solved board, timed by the server from the session's
- * start. A solved board scores ten points a row. A wrong digit never ends a run —
- * the player fixes it, and the clock is what is spent. Each board starts with
- * fewer cells filled than the last, from forty down to thirty.
+ * A run is a race: one clock that starts at six minutes, timed by the server from
+ * the session's start. Every solved board scores ten points a row and adds the
+ * next board's allowance — more for the harder tiers. A wrong digit never ends a
+ * run: the player fixes it, and the clock is what is spent.
  *
  * Storage rule: nothing here is persisted. A score only exists once the server has
  * verified it.
  */
 
+import { SUDOKU_BANK, SUDOKU_PER_TIER, SUDOKU_TIERS } from "@/lib/games/sudoku-bank";
+
 /** The `runtime` value the catalogue must carry for these rules to play a game. */
 export const SUDOKU_RUNTIME = "sudoku";
 
 /** The rules the server can verify. Sent with every run and pinned to a session. */
-export const SUDOKU_RULES_VERSION = "sudoku@1";
+export const SUDOKU_RULES_VERSION = "sudoku@2";
 
 /** The board is always 9×9, in 3×3 boxes. */
 export const SUDOKU_SIDE = 9;
@@ -56,9 +60,11 @@ export const SUDOKU_BOX = 3;
 /** The most moves one submission may carry: a request ceiling, not a final board. */
 export const SUDOKU_MAX_ACTIONS = 8192;
 
-/** The clock a run starts with, and what every solved board adds. */
+/** The clock a run starts with. */
 export const SUDOKU_START_MS = 360_000;
-export const SUDOKU_BONUS_MS = 180_000;
+
+/** The time a board of each tier is given: what solving the board before it adds. */
+export const SUDOKU_ALLOWANCE_MS = [240_000, 300_000, 480_000, 600_000] as const;
 
 /** How late after its clock ran out the server still accepts a run. */
 export const SUDOKU_SLACK_MS = 20_000;
@@ -71,6 +77,9 @@ const CELLS = SUDOKU_SIDE * SUDOKU_SIDE;
 /** A cell: 0 when empty, otherwise its digit. */
 export const EMPTY = 0;
 export type SudokuDigit = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
+/** A tier of the bank: how hard a board is. */
+export type SudokuTier = (typeof SUDOKU_TIERS)[number];
 
 // The same generators as Queens, Zip, 8 Puzzle and Sun & Moon: One Move's outer
 // LCG advanced once per level, and a second LCG started at that state to draw
@@ -87,10 +96,11 @@ export type SudokuOutcome = "playing" | "over";
 
 /** A board as it is drawn. */
 export type SudokuBoard = {
-  /** The planted solution, in board order. */
+  /** The board's one solution, in board order. */
   readonly solution: readonly SudokuDigit[];
   /** The cells that start filled, with their digits; 0 elsewhere. */
   readonly start: readonly SudokuDigit[];
+  readonly tier: SudokuTier;
 };
 
 /** One run, as this module knows it. */
@@ -149,15 +159,30 @@ function boardStream(seed: string | number | bigint, level: number): () => numbe
   };
 }
 
-/** How many cells a level's board starts with: forty on board one, down to thirty. */
-export function givenCount(level: number): number {
+/** The tier a level's board is drawn from, by index: boards 1–2, 3–5, 6–9, then the rest. */
+export function tierIndex(level: number): number {
   assertLevel(level);
-  return Math.max(30, 41 - level);
+  return level <= 2 ? 0 : level <= 5 ? 1 : level <= 9 ? 2 : 3;
 }
 
-/** The clock a run has earned once `levelsCleared` boards are solved, in ms. */
+/** The tier a level's board is drawn from. */
+export function tierOf(level: number): SudokuTier {
+  return SUDOKU_TIERS[tierIndex(level)];
+}
+
+/** The time the board at `level` is given. */
+export function allowanceMs(level: number): number {
+  return SUDOKU_ALLOWANCE_MS[tierIndex(level)];
+}
+
+/**
+ * The clock a run has earned once `levelsCleared` boards are solved, in ms: six
+ * minutes, plus the allowance of the board after each one solved.
+ */
 export function budgetMs(levelsCleared: number): number {
-  return SUDOKU_START_MS + SUDOKU_BONUS_MS * Math.max(0, levelsCleared);
+  let total = SUDOKU_START_MS;
+  for (let level = 1; level <= levelsCleared; level += 1) total += allowanceMs(level + 1);
+  return total;
 }
 
 /** Fisher–Yates in place, from the last index down: the order the verifier draws in. */
@@ -179,54 +204,43 @@ function shuffledLines(next: () => number): number[] {
 }
 
 /**
- * Draws the solution: the pattern grid `(3 × (r mod 3) + ⌊r / 3⌋ + c) mod 9`,
- * a valid grid, read through shuffled rows and columns and relabelled with a
- * shuffle of the digits.
+ * Draws a board's starting cells: a puzzle from the level's tier, then the digits
+ * relabelled, then the rows and the columns shuffled — in that order, as
+ * `public.sudoku_start` draws them.
  */
-function drawSolution(next: () => number): SudokuDigit[] {
+function drawStart(seed: string | number | bigint, level: number): SudokuDigit[] {
+  const next = boardStream(seed, level);
+  const puzzle = SUDOKU_BANK[tierIndex(level) * SUDOKU_PER_TIER + (next() % SUDOKU_PER_TIER)];
   const digits = shuffle(next, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
   const rows = shuffledLines(next);
   const columns = shuffledLines(next);
-  const grid: SudokuDigit[] = [];
+  const start: SudokuDigit[] = [];
   for (let row = 0; row < SUDOKU_SIDE; row += 1) {
     for (let column = 0; column < SUDOKU_SIDE; column += 1) {
-      const r = rows[row];
-      const c = columns[column];
-      const pattern =
-        (SUDOKU_BOX * (r % SUDOKU_BOX) + Math.floor(r / SUDOKU_BOX) + c) % SUDOKU_SIDE;
-      grid.push(digits[pattern] as SudokuDigit);
+      const digit = Number(puzzle[rows[row] * SUDOKU_SIDE + columns[column]]);
+      start.push((digit === EMPTY ? EMPTY : digits[digit - 1]) as SudokuDigit);
     }
   }
-  return grid;
-}
-
-/** Draws which cells start filled: the first few of a shuffle of every cell. */
-function drawStart(next: () => number, solved: readonly SudokuDigit[], level: number) {
-  const order = shuffle(
-    next,
-    Array.from({ length: CELLS }, (_, index) => index),
-  );
-  const start = new Array<SudokuDigit>(CELLS).fill(EMPTY);
-  for (const cell of order.slice(0, givenCount(level))) start[cell] = solved[cell];
   return start;
 }
 
 const boardCache = new Map<string, SudokuBoard>();
 
-/** The board a level shows: its planted solution and its starting cells. Cached. */
+/** The board a level shows: its starting cells, its one solution and its tier. Cached. */
 export function board(seed: string | number | bigint, level: number): SudokuBoard {
   const key = `${toBigInt(seed).toString()}:${level}`;
   const cached = boardCache.get(key);
   if (cached) return cached;
-  const next = boardStream(seed, level);
-  const solved = drawSolution(next);
-  const drawn: SudokuBoard = { solution: solved, start: drawStart(next, solved, level) };
+  const start = drawStart(seed, level);
+  const solved = solve(start);
+  if (!solved) throw new Error("a Sudoku bank puzzle has no solution");
+  const drawn: SudokuBoard = { solution: solved, start, tier: tierOf(level) };
   if (boardCache.size > 64) boardCache.clear();
   boardCache.set(key, drawn);
   return drawn;
 }
 
-/** A level's planted solution. */
+/** A level's solution. */
 export function solution(seed: string | number | bigint, level: number): SudokuDigit[] {
   return [...board(seed, level).solution];
 }
@@ -234,6 +248,11 @@ export function solution(seed: string | number | bigint, level: number): SudokuD
 /** The cells a level's board starts with filled; 0 elsewhere. */
 export function startCells(seed: string | number | bigint, level: number): SudokuDigit[] {
   return [...board(seed, level).start];
+}
+
+/** How many cells a level's board starts with. */
+export function givenCount(seed: string | number | bigint, level: number): number {
+  return board(seed, level).start.filter((digit) => digit !== EMPTY).length;
 }
 
 // ── The rules on a board ────────────────────────────────────────────────────
@@ -315,12 +334,13 @@ export function candidates(cells: readonly SudokuDigit[], cell: number): SudokuD
 }
 
 /**
- * Whether the cells can still be completed into a solved grid: no clash now, and
- * a search (most constrained cell first) finds a way to fill every empty cell.
- * Used by the hints to say that a digit leads nowhere; it never decides a score.
+ * A way to fill every empty cell so the grid obeys the rules — searching the most
+ * constrained cell first — or null when there is none. The board uses it to know
+ * its solution; the hints use it to say a digit leads nowhere. It never decides a
+ * score.
  */
-export function canFinish(cells: readonly SudokuDigit[]): boolean {
-  if (conflicts(cells).size > 0) return false;
+export function solve(cells: readonly SudokuDigit[]): SudokuDigit[] | null {
+  if (conflicts(cells).size > 0) return null;
   const grid = [...cells];
   const search = (): boolean => {
     let best = -1;
@@ -343,7 +363,12 @@ export function canFinish(cells: readonly SudokuDigit[]): boolean {
     grid[best] = EMPTY;
     return false;
   };
-  return search();
+  return search() ? grid : null;
+}
+
+/** Whether the cells can still be completed into a solved grid. */
+export function canFinish(cells: readonly SudokuDigit[]): boolean {
+  return solve(cells) !== null;
 }
 
 // ── A run ───────────────────────────────────────────────────────────────────

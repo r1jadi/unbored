@@ -9,20 +9,22 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SudokuRuntime } from "@/components/game/SudokuRuntime";
+import { buttonNamed } from "@/test/queries";
 import { clearSession, signIn } from "@/lib/auth/session";
 
 /**
  * Sudoku on screen, driven through the real API client against a stubbed server.
  *
- * Seed 1's first board starts with a 5 on cell 2 and fills from the moves in
+ * Seed 1's first board — gentle — starts with a 7 on cell 0 and a 9 on cell 4,
+ * leaves cell 2 open to 1, 2, 5 or 6 (its answer is 2), and fills from the moves in
  * `LINE_ONE` (`cell × 10 + digit`). Like Sun & Moon, the rules show with no
  * session, Start asks for one, and the clock ends the run.
  */
 
 const LINE_ONE = [
-  6, 13, 37, 72, 91, 117, 124, 139, 155, 163, 189, 204, 215, 226, 258, 278, 284, 291, 309, 336, 353,
-  389, 417, 448, 453, 467, 481, 525, 544, 568, 596, 637, 641, 668, 706, 725, 742, 767, 771, 799,
-  804,
+  22, 34, 58, 65, 71, 86, 95, 119, 146, 188, 191, 206, 212, 243, 272, 297, 325, 334, 353, 363, 375,
+  381, 404, 419, 432, 447, 456, 469, 474, 487, 492, 511, 535, 575, 586, 613, 655, 663, 678, 697,
+  706, 724, 743, 767, 808,
 ];
 const CELL = /^Row \d column \d,/;
 
@@ -30,7 +32,7 @@ function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
     id: "edededed-1111-4111-8111-edededededed",
     gameSlug: "sudoku",
-    rulesVersion: "sudoku@1",
+    rulesVersion: "sudoku@2",
     seed: "1",
     tileCount: 8192,
     startedAt: "2026-11-14T12:00:00.000Z",
@@ -111,11 +113,11 @@ async function renderRuntime() {
 function cell(index: number) {
   const row = Math.floor(index / 9) + 1;
   const column = (index % 9) + 1;
-  return screen.getByRole("button", { name: new RegExp(`^Row ${row} column ${column},`) });
+  return buttonNamed(new RegExp(`^Row ${row} column ${column},`));
 }
 
 function pad(digit: number) {
-  return screen.getByRole("button", { name: new RegExp(`^Place ${digit},`) });
+  return buttonNamed(new RegExp(`^Place ${digit},`));
 }
 
 /**
@@ -179,11 +181,11 @@ describe("starting a run", () => {
 
     expect(JSON.parse(String(sessionCalls(spy)[0][1]?.body ?? "{}"))).toEqual({
       gameSlug: "sudoku",
-      rulesVersion: "sudoku@1",
+      rulesVersion: "sudoku@2",
       client: "web/1.0",
     });
     expect(screen.getAllByRole("button", { name: CELL })).toHaveLength(81);
-    expect(screen.getByText("41 cells left")).toBeInTheDocument();
+    expect(screen.getByText("45 cells left")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Time left" })).toHaveAttribute(
       "aria-valuenow",
       "360",
@@ -197,11 +199,11 @@ describe("the board", () => {
     await renderRuntime();
     await startRun();
 
-    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 5, fixed");
-    fireEvent.click(cell(2));
-    expect(cell(2)).toHaveAttribute("aria-pressed", "true");
+    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, 7, fixed");
+    fireEvent.click(cell(0));
+    expect(cell(0)).toHaveAttribute("aria-pressed", "true");
     expect(pad(1)).toBeDisabled();
-    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, empty");
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, empty");
   });
 
   it("places a digit in the selected cell, replaces it and erases it", async () => {
@@ -209,12 +211,102 @@ describe("the board", () => {
     await renderRuntime();
     await startRun();
 
-    playMoves([6]);
-    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, 6");
-    playMoves([7]);
-    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, 7");
-    playMoves([0]);
-    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, empty");
+    playMoves([22]);
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 2");
+    playMoves([25]);
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 5");
+    playMoves([20]);
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, empty");
+  });
+
+  it("keeps pencil notes, and tidies them when a digit is placed", async () => {
+    mockPlayback();
+    await renderRuntime();
+    await startRun();
+
+    // Cell 2 can take a 1, 2, 5 or 6; note two of them.
+    fireEvent.click(cell(2));
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.click(buttonNamed("Note 2"));
+    fireEvent.click(buttonNamed("Note 6"));
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, empty, notes 2 6");
+    // A note again takes it out.
+    fireEvent.click(buttonNamed("Note 6"));
+    fireEvent.click(buttonNamed("Note 6"));
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, empty, notes 2 6");
+
+    // Placing a 2 next to it, in the same row, takes the 2 out of its notes.
+    fireEvent.click(screen.getByRole("button", { name: "Notes on" }));
+    playMoves([32]);
+    expect(cell(3)).toHaveAccessibleName("Row 1 column 4, 2");
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, empty, notes 6");
+
+    // Erase on an empty cell clears its notes.
+    fireEvent.click(cell(2));
+    fireEvent.click(screen.getByRole("button", { name: "Erase" }));
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, empty");
+  });
+
+  it("keeps every note when several are tapped before the screen redraws", async () => {
+    mockPlayback();
+    await renderRuntime();
+    await startRun();
+
+    fireEvent.click(cell(2));
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    // Three taps in one batch: each has to build on the one before it.
+    act(() => {
+      buttonNamed("Note 2").click();
+      buttonNamed("Note 5").click();
+      buttonNamed("Note 6").click();
+    });
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, empty, notes 2 5 6");
+  });
+
+  it("undoes notes and digits, a step at a time", async () => {
+    const spy = mockPlayback();
+    await renderRuntime();
+    await startRun();
+    const undo = () => fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
+
+    fireEvent.click(cell(2));
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.click(buttonNamed("Note 2"));
+    fireEvent.click(screen.getByRole("button", { name: "Notes on" }));
+    playMoves([32, 34]); // a 2 in cell 3, then a 4 over it
+
+    undo();
+    expect(cell(3)).toHaveAccessibleName("Row 1 column 4, 2");
+    undo();
+    expect(cell(3)).toHaveAccessibleName("Row 1 column 4, empty");
+    // The note the 2 took out comes back with it.
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, empty, notes 2");
+    undo();
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, empty");
+    expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
+
+    // Undoing a digit is a move like any other: the server sees every one.
+    await endRun();
+    await screen.findByRole("button", { name: /play again/i });
+    expect(completionBody(spy).progress.actions).toEqual([32, 34, 32, 30]);
+  }, 15000);
+
+  it("toggles notes with N and undoes with Ctrl+Z", async () => {
+    mockPlayback();
+    await renderRuntime();
+    await startRun();
+
+    const group = screen.getByRole("group", { name: "Board 1, 9 by 9" });
+    fireEvent.click(cell(2));
+    fireEvent.keyDown(group, { key: "n" });
+    fireEvent.keyDown(group, { key: "6" });
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, empty, notes 6");
+    fireEvent.keyDown(group, { key: "n" });
+    fireEvent.keyDown(group, { key: "6" });
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 6");
+    fireEvent.keyDown(group, { key: "z", ctrlKey: true });
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, empty, notes 6");
   });
 
   it("takes digits and moves from the keyboard", async () => {
@@ -223,15 +315,15 @@ describe("the board", () => {
     await startRun();
 
     const group = screen.getByRole("group", { name: "Board 1, 9 by 9" });
-    fireEvent.click(cell(0));
-    fireEvent.keyDown(group, { key: "6" });
-    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, 6");
+    fireEvent.click(cell(2));
+    fireEvent.keyDown(group, { key: "2" });
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 2");
     fireEvent.keyDown(group, { key: "ArrowRight" });
-    expect(cell(1)).toHaveAttribute("aria-pressed", "true");
-    fireEvent.keyDown(group, { key: "3" });
-    expect(cell(1)).toHaveAccessibleName("Row 1 column 2, 3");
+    expect(cell(3)).toHaveAttribute("aria-pressed", "true");
+    fireEvent.keyDown(group, { key: "4" });
+    expect(cell(3)).toHaveAccessibleName("Row 1 column 4, 4");
     fireEvent.keyDown(group, { key: "Backspace" });
-    expect(cell(1)).toHaveAccessibleName("Row 1 column 2, empty");
+    expect(cell(3)).toHaveAccessibleName("Row 1 column 4, empty");
   });
 
   it("marks a digit that repeats once the board has sat still a moment", async () => {
@@ -240,27 +332,27 @@ describe("the board", () => {
     await startRun();
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
 
-    playMoves([5]); // a second 5 in row one
-    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, 5");
+    playMoves([29]); // a second 9 in row one
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 9");
     expect(screen.queryByText(/Something clashes/)).not.toBeInTheDocument();
 
     act(() => {
       vi.advanceTimersByTime(2900);
     });
-    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, 5");
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 9");
 
     act(() => {
       vi.advanceTimersByTime(100);
     });
     vi.useRealTimers();
-    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, 5, repeats");
-    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 5, fixed, repeats");
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 9, repeats");
+    expect(cell(4)).toHaveAccessibleName("Row 1 column 5, 9, fixed, repeats");
     expect(screen.getByText(/Something clashes/)).toBeInTheDocument();
 
     // Fixing it clears the mark at once: no waiting to be told it is right.
-    playMoves([6]);
-    expect(cell(0)).toHaveAccessibleName("Row 1 column 1, 6");
-    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 5, fixed");
+    playMoves([22]);
+    expect(cell(2)).toHaveAccessibleName("Row 1 column 3, 2");
+    expect(cell(4)).toHaveAccessibleName("Row 1 column 5, 9, fixed");
     expect(screen.queryByText(/Something clashes/)).not.toBeInTheDocument();
   });
 
@@ -274,8 +366,8 @@ describe("the board", () => {
     expect(screen.getByRole("group", { name: "Board 2, 9 by 9" })).toBeInTheDocument();
     expect(scoreShown()).toBe("90");
     expect(screen.getByText(/Board 1 solved, \+90/)).toBeInTheDocument();
-    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuemax"))).toBe(540);
-  });
+    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuemax"))).toBe(600);
+  }, 15000);
 });
 
 describe("finishing a run", () => {
@@ -285,18 +377,18 @@ describe("finishing a run", () => {
     await startRun();
 
     playMoves(LINE_ONE);
-    // Past the 540 seconds the first board earned: the next move finds the clock over.
-    const later = Date.now() + 541_000;
+    // Past the 600 seconds the first board earned: the next move finds the clock over.
+    const later = Date.now() + 601_000;
     vi.spyOn(Date, "now").mockImplementation(() => later);
-    playMoves([11]);
+    playMoves([5]); // a 5 in cell 0 of board two
 
     await screen.findByRole("button", { name: /play again/i });
     expect(screen.getByText("Time's up")).toBeInTheDocument();
     const body = completionBody(spy);
-    expect(body.progress.rulesVersion).toBe("sudoku@1");
+    expect(body.progress.rulesVersion).toBe("sudoku@2");
     expect(body.progress.actions).toEqual(LINE_ONE);
     expect(body.score).toBe(90);
-  });
+  }, 15000);
 
   it("lets the player end the run, and shows the score the server verified", async () => {
     const spy = mockPlayback();
@@ -309,7 +401,7 @@ describe("finishing a run", () => {
     expect(screen.getByText("Run ended")).toBeInTheDocument();
     expect(screen.getByText("270")).toBeInTheDocument();
     expect(completionBody(spy).score).toBe(90);
-  });
+  }, 15000);
 
   it("ranks a signed-in player's run", async () => {
     mockFetch(() =>

@@ -9,6 +9,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ChainRuntime } from "@/components/game/ChainRuntime";
+import { buttonNamed } from "@/test/queries";
 import { clearSession, signIn } from "@/lib/auth/session";
 import { symbolAt } from "@/lib/games/chain";
 
@@ -125,7 +126,7 @@ async function renderRuntime() {
 
 /** Taps the pad at `index` (0-based), as the board's own buttons are named. */
 function tapPad(index: number) {
-  fireEvent.click(screen.getByRole("button", { name: new RegExp(`^Pad ${index + 1}\\.`) }));
+  fireEvent.click(buttonNamed(new RegExp(`^Pad ${index + 1}\\.`)));
 }
 
 /** Waits out the showing: round one's sequence, then the player's turn. */

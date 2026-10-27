@@ -9,6 +9,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OneMoveRuntime } from "@/components/game/OneMoveRuntime";
+import { buttonNamed } from "@/test/queries";
 import { clearSession, signIn } from "@/lib/auth/session";
 
 /**
@@ -129,9 +130,7 @@ function tapIndex(index: number, level: number) {
   const size = sizeOf(level);
   const row = Math.floor(index / size) + 1;
   const column = (index % size) + 1;
-  fireEvent.click(
-    screen.getByRole("button", { name: new RegExp(`^Row ${row} column ${column},`) }),
-  );
+  fireEvent.click(buttonNamed(new RegExp(`^Row ${row} column ${column},`)));
 }
 
 /** Presses Start and returns the live board. */

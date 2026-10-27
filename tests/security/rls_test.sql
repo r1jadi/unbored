@@ -1528,6 +1528,15 @@ reset role;
 \set sudoku_late_session  'a8a8a8a8-3333-4333-8333-a8a8a8a8a8a8'
 \set sudoku_guest_session 'a8a8a8a8-4444-4444-8444-a8a8a8a8a8a8'
 \set sudoku_old_session   'a8a8a8a8-5555-4555-8555-a8a8a8a8a8a8'
+-- Sudoku sudoku@2: boards from the graded bank. Seed 1's first board is filled by
+-- :sudoku2_board_one; the line then puts a 5 in cell 0 of board two and stops: 90
+-- points, forty-six moves. :sudoku2_two_boards fills both boards: 180, ninety.
+\set sudoku2_line 'array[22,34,58,65,71,86,95,119,146,188,191,206,212,243,272,297,325,334,353,363,375,381,404,419,432,447,456,469,474,487,492,511,535,575,586,613,655,663,678,697,706,724,743,767,808,5]'
+\set sudoku2_board_one 'array[22,34,58,65,71,86,95,119,146,188,191,206,212,243,272,297,325,334,353,363,375,381,404,419,432,447,456,469,474,487,492,511,535,575,586,613,655,663,678,697,706,724,743,767,808]'
+\set sudoku2_two_boards 'array[22,34,58,65,71,86,95,119,146,188,191,206,212,243,272,297,325,334,353,363,375,381,404,419,432,447,456,469,474,487,492,511,535,575,586,613,655,663,678,697,706,724,743,767,808,5,17,41,62,78,84,92,135,148,159,163,177,189,194,217,222,256,261,278,289,291,317,342,355,363,375,382,391,406,448,454,498,529,533,572,615,626,631,659,666,673,726,732,764,791]'
+\set sudoku2_session      'a9a9a9a9-1111-4111-8111-a9a9a9a9a9a9'
+\set sudoku2_open_session 'a9a9a9a9-2222-4222-8222-a9a9a9a9a9a9'
+\set sudoku2_late_session 'a9a9a9a9-3333-4333-8333-a9a9a9a9a9a9'
 
 insert into public.games (id, owner_id, slug, title, status, published_at, runtime, playable, category_id) values
   (:'runnable_game', :'alice', 'fixture-runnable', 'Fixture Runnable', 'published', now(), 'stack-10', true,
@@ -1692,7 +1701,12 @@ insert into public.game_sessions (id, game_id, user_id, seed, rules_version, sta
   (:'sudoku_open_session',  :'sudoku_game', :'alice', 1, 'sudoku@1', now() - interval '30 seconds',  now() + interval '2 hours', null),
   (:'sudoku_late_session',  :'sudoku_game', :'alice', 1, 'sudoku@1', now() - interval '600 seconds', now() + interval '2 hours', null),
   (:'sudoku_guest_session', :'sudoku_game', null,     1, 'sudoku@1', now() - interval '30 seconds',  now() + interval '2 hours', null),
-  (:'sudoku_old_session',   :'sudoku_game', :'alice', 1, 'sudoku@0', now() - interval '30 seconds',  now() + interval '2 hours', null);
+  (:'sudoku_old_session',   :'sudoku_game', :'alice', 1, 'sudoku@0', now() - interval '30 seconds',  now() + interval '2 hours', null),
+  -- sudoku@2 fixtures, on seed 1: thirty seconds into the six-minute opening
+  -- clock, except the late one at seven hundred seconds.
+  (:'sudoku2_session',      :'sudoku_game', :'alice', 1, 'sudoku@2', now() - interval '30 seconds',  now() + interval '2 hours', null),
+  (:'sudoku2_open_session', :'sudoku_game', :'alice', 1, 'sudoku@2', now() - interval '30 seconds',  now() + interval '2 hours', null),
+  (:'sudoku2_late_session', :'sudoku_game', :'alice', 1, 'sudoku@2', now() - interval '700 seconds', now() + interval '2 hours', null);
 
 insert into public.game_sessions
   (id, game_id, user_id, seed, rules_version, started_at, expires_at, completed_at, verified_score, verified_digest)
@@ -1903,6 +1917,37 @@ select rls_test.ok(
 select rls_test.raises(
   $$select public.sudoku_draw(1, 0)$$,
   '22023', 'a Sudoku level before the first is a request error'
+);
+-- The sudoku@2 boards, asserted directly against the client engine.
+select rls_test.ok(
+  public.sudoku_start(1, 1) = array[7,3,0,0,9,0,0,0,0,0,4,0,1,3,0,8,7,2,0,0,0,0,5,7,0,4,9,0,8,0,6,1,0,0,9,0,0,0,0,8,0,0,6,0,0,0,0,0,0,0,3,0,8,0,1,7,8,0,0,2,9,0,4,9,2,0,0,0,4,0,0,1,0,6,0,9,0,1,2,5,0]
+    and public.sudoku_start(1, 2) = array[0,0,3,9,0,6,0,0,0,0,1,6,4,0,0,0,0,0,0,0,8,0,0,3,5,0,0,0,0,0,3,0,4,6,0,0,0,0,0,0,0,9,7,4,0,0,6,7,5,0,2,1,0,0,7,3,4,0,9,1,8,0,0,0,8,0,0,0,5,4,7,2,0,0,5,8,0,7,3,0,9],
+  'the Sudoku bank deals seed 1''s first two boards'
+);
+select rls_test.ok(
+  public.sudoku_start(9223372036854775807, 1) = array[0,0,0,8,0,2,0,0,6,0,0,0,6,0,9,7,0,0,6,0,0,7,4,0,0,1,0,2,0,0,0,0,0,5,6,0,8,9,6,0,0,0,2,0,1,1,0,0,2,7,0,0,0,9,5,0,2,0,0,0,0,0,0,7,0,1,4,9,0,6,2,5,0,0,9,1,2,5,0,8,0],
+  'the Sudoku bank replays a full-width seed exactly'
+);
+select rls_test.ok(
+  public.sudoku_start(0, 3) = public.sudoku_start(2654435769, 3),
+  'a zero Sudoku seed deals the fallback state''s bank boards'
+);
+select rls_test.ok(
+  array_length(public.sudoku_bank(), 1) = 200
+    and public.sudoku_tier(1) = 0 and public.sudoku_tier(2) = 0 and public.sudoku_tier(3) = 1
+    and public.sudoku_tier(5) = 1 and public.sudoku_tier(6) = 2 and public.sudoku_tier(9) = 2
+    and public.sudoku_tier(10) = 3 and public.sudoku_tier(500) = 3
+    and public.sudoku_tiered_budget_ms(0) = 360000 and public.sudoku_tiered_budget_ms(1) = 600000
+    and public.sudoku_tiered_budget_ms(2) = 900000
+    and public.sudoku_tiered_budget_ms(5) - public.sudoku_tiered_budget_ms(4) = 480000,
+  'the Sudoku bank holds four tiers, and the clock gives harder boards more time'
+);
+select rls_test.ok(
+  (select count(*) from unnest(public.sudoku_start(1, 1)) v where v <> 0) = 36
+    and (select count(*) from unnest(public.sudoku_start(1, 3)) v where v <> 0) = 30
+    and (select count(*) from unnest(public.sudoku_start(1, 6)) v where v <> 0) = 26
+    and (select count(*) from unnest(public.sudoku_start(1, 10)) v where v <> 0) = 25,
+  'a disguised bank board keeps its puzzle''s clues: fewer as the tiers get harder'
 );
 -- The Color Merge generator, asserted directly: the opening board and the
 -- spawns after it are the ones the client engine computes and the verifier
@@ -2446,6 +2491,10 @@ select rls_test.visible(
 select rls_test.says_field(
   $$public.start_game_session('sudoku', 'sudoku@1', 'test/1.0')$$,
   'tile_count', '8192', 'a Sudoku session reports its submission bound'
+);
+select rls_test.says_field(
+  $$public.start_game_session('sudoku', 'sudoku@2', 'test/1.0')$$,
+  'rules_version', 'sudoku@2', 'a Sudoku session pins the bank rules, sudoku@2'
 );
 select rls_test.says(
   $$public.start_game_session('fixture-sudoku', 'tango@1', 'test/1.0')$$,
@@ -3825,6 +3874,45 @@ select rls_test.ok(
 select rls_test.ok(
   (select rank = 1 and score = 180 from public.game_standing('fixture-sudoku', '11111111-1111-4111-8111-111111111111', null)),
   'your Sudoku standing is your recorded best at its real rank'
+);
+
+-- ── Sudoku sudoku@2: bank boards on a tiered clock ──
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 90 and r.cleared_columns = 1 and r.tiles_placed = 46
+     from public.complete_sudoku_run(
+       'a9a9a9a9-1111-4111-8111-a9a9a9a9a9a9'::uuid, :sudoku2_line, 90, 25000) r),
+  'a sudoku@2 run is recorded: one bank board solved, forty-six moves, 90 points'
+);
+select rls_test.says(
+  $$public.complete_sudoku_run('a9a9a9a9-2222-4222-8222-a9a9a9a9a9a9'::uuid, array[1], 0, 25000)$$,
+  'invalid_actions', 'a sudoku@2 cell that started filled cannot be changed'
+);
+select rls_test.says_field(
+  format($$public.complete_sudoku_run('a9a9a9a9-2222-4222-8222-a9a9a9a9a9a9'::uuid, %s, 999, 25000)$$, :'sudoku2_two_boards'),
+  'score', '180', 'the sudoku@2 replay is the score, and it is reported back'
+);
+select rls_test.says(
+  format($$public.complete_sudoku_run('a9a9a9a9-2222-4222-8222-a9a9a9a9a9a9'::uuid, %s, 90, 25000)$$, :'sudoku_board_one'),
+  'invalid_actions', 'a sudoku@1 line does not fit a sudoku@2 board'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 180 and r.cleared_columns = 2 and r.tiles_placed = 90
+     from public.complete_sudoku_run(
+       'a9a9a9a9-2222-4222-8222-a9a9a9a9a9a9'::uuid, :sudoku2_two_boards, 180, 25000) r),
+  'a sudoku@2 run that solved two boards is recorded at 180'
+);
+-- The tiered clock. The late session started seven hundred seconds ago: one
+-- solved board earns 360 + 240 s (+20 s of slack), too late; two earn 360 + 240 +
+-- 300 s (+20), on time.
+select rls_test.says(
+  format($$public.complete_sudoku_run('a9a9a9a9-3333-4333-8333-a9a9a9a9a9a9'::uuid, %s, 90, 690000)$$, :'sudoku2_board_one'),
+  'out_of_time', 'a sudoku@2 run that arrives after its tiered clock ran out is refused'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 180
+     from public.complete_sudoku_run(
+       'a9a9a9a9-3333-4333-8333-a9a9a9a9a9a9'::uuid, :sudoku2_two_boards, 180, 690000) r),
+  'a solved sudoku@2 board buys the next board''s allowance'
 );
 
 -- ── Saved progress: an unfinished run kept on the account ──

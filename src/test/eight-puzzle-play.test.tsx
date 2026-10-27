@@ -9,6 +9,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
+import { buttonNamed } from "@/test/queries";
 import { clearSession, signIn } from "@/lib/auth/session";
 
 /**
@@ -109,9 +110,7 @@ async function renderRuntime() {
 function tileAt(cell: number) {
   const row = Math.floor(cell / 3) + 1;
   const column = (cell % 3) + 1;
-  return screen.getByRole("button", {
-    name: new RegExp(`^Tile \\d, row ${row} column ${column}\\b`),
-  });
+  return buttonNamed(new RegExp(`^Tile \\d, row ${row} column ${column}\\b`));
 }
 
 function slide(cells: readonly number[]) {
