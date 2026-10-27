@@ -7,7 +7,7 @@
  * so a hint cannot score anything by itself.
  *
  * Only games with a right move to point at have one: Stack 10, Color Merge,
- * One Move, Queens, Zip and 8 Puzzle. Chain and Memory Flash test memory, and
+ * One Move, Queens, Zip, 8 Puzzle and Tango. Chain and Memory Flash test memory, and
  * Don't Touch the Black and 7 Second are against the clock, so a hint would be
  * the answer rather than help.
  */
@@ -26,6 +26,13 @@ import {
   type QueensRun,
 } from "@/lib/games/queens";
 import { canPlace, tileAt, type Stack10Run } from "@/lib/games/stack10";
+import {
+  EMPTY as TANGO_EMPTY,
+  solution as tangoSolution,
+  startCells as tangoStart,
+  type TangoRun,
+  type TangoValue,
+} from "@/lib/games/tango";
 import { solution as zipSolution, type ZipRun } from "@/lib/games/zip";
 
 /** How long a player goes without a right move before a hint is offered. */
@@ -150,4 +157,28 @@ export function eightPuzzleHint(run: EightPuzzleRun): number | null {
     if (best === null || left < best.left) best = { cell, left };
   }
   return best?.cell ?? null;
+}
+
+/**
+ * Tango: a cell and the symbol it takes. A symbol already placed wrong comes
+ * first — it is what stands between the player and the solution — and otherwise
+ * the first empty cell, in board order.
+ */
+export function tangoHint(run: TangoRun): { cell: number; value: TangoValue; fix: boolean } | null {
+  if (run.outcome !== "playing") return null;
+  const answer = tangoSolution(run.seed, run.level);
+  const wrong = run.cells.findIndex(
+    (value, cell) => value !== TANGO_EMPTY && value !== answer[cell],
+  );
+  if (wrong >= 0) return { cell: wrong, value: answer[wrong], fix: true };
+  const empty = run.cells.findIndex((value) => value === TANGO_EMPTY);
+  return empty >= 0 ? { cell: empty, value: answer[empty], fix: false } : null;
+}
+
+/** How many of the cells the player fills are right: a right move raises it. */
+export function tangoRight(run: TangoRun): number {
+  const answer = tangoSolution(run.seed, run.level);
+  const start = tangoStart(run.seed, run.level);
+  return run.cells.filter((value, cell) => start[cell] === TANGO_EMPTY && value === answer[cell])
+    .length;
 }

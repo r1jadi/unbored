@@ -26,6 +26,8 @@ import {
 } from "@/lib/games/queens";
 import { createRun as createStack10, type Stack10Run } from "@/lib/games/stack10";
 import { createRun as createZip, solution as zipSolution, tap as tapZip } from "@/lib/games/zip";
+import { tangoHint, tangoRight } from "@/lib/games/hints";
+import { createRun as createTango, SUN, tap as tapTango } from "@/lib/games/tango";
 import { useHint } from "@/lib/games/use-hint";
 
 describe("hints", () => {
@@ -127,5 +129,24 @@ describe("useHint", () => {
     rerender({ progress: 1 });
     expect(result.current.hint).toBeNull();
     expect(result.current.offered).toBe(false);
+  });
+});
+
+describe("tangoHint", () => {
+  // Seed 1's first board: cell 1 starts empty and takes a sun.
+  it("points at the first empty cell and the symbol it takes", () => {
+    expect(tangoHint(createTango("1"))).toEqual({ cell: 1, value: SUN, fix: false });
+  });
+
+  it("points at a symbol placed wrong before anything else", () => {
+    const wrong = tapTango(tapTango(createTango("1"), 1), 1); // a moon where a sun goes
+    expect(tangoHint(wrong)).toEqual({ cell: 1, value: SUN, fix: true });
+  });
+
+  it("counts a right symbol as progress, and a wrong one as none", () => {
+    const fresh = createTango("1");
+    expect(tangoRight(fresh)).toBe(0);
+    expect(tangoRight(tapTango(fresh, 1))).toBe(1);
+    expect(tangoRight(tapTango(tapTango(fresh, 1), 1))).toBe(0);
   });
 });

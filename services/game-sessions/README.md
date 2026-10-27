@@ -42,7 +42,7 @@ the score row. This service:
   Color Merge's directions, sixteen cells for Memory Flash, twenty-five for One
   Move, sixty for Don't Touch the Black, three answer buttons for 7 Second,
   eighty-one cells for Queens' 9×9 board, forty-nine for Zip's 7×7, nine for
-  8 Puzzle), a
+  8 Puzzle, thirty-six for Tango's 6×6), a
   positive duration —
   so a malformed request is a `400` that names the field rather than a `500` from a
   function;
@@ -68,7 +68,7 @@ bypasses every policy in the project; there is none to be wrong with. See
 | `already_played`   | 409  | 7 Second only: another session of the same day's deck is already recorded, so this one cannot become a second score.                                                                                         |
 | `invalid_actions`  | 422  | The sequence is not one the rules can produce — a position off the board, play after the run ended, or a run that stops early. 7 Second ends by its clock, so any answer line up to sixty is a complete run. |
 | `invalid_duration` | 422  | The claim is longer than the session has existed.                                                                                                                                                            |
-| `out_of_time`      | 422  | Zip and 8 Puzzle: the run reached the server later than the clock its solved boards earned, timed from the session's start. |
+| `out_of_time`      | 422  | Zip, 8 Puzzle and Tango: the run reached the server later than the clock its solved boards earned, timed from the session's start. |
 | `score_mismatch`   | 422  | The replay disagrees with the claimed score. The message reports the replayed score; nothing is recorded.                                                                                                    |
 | anything else      | 500  | An outcome this service does not know is an unclear run state, and an unclear run is never reported as success.                                                                                              |
 

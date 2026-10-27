@@ -64,9 +64,12 @@ const (
 	// Seed 1's first 8 Puzzle board is solved by sliding the tiles on these
 	// cells: ten points and one solved board.
 	eightPuzzleRules = "eight-puzzle@1"
-	eightPuzzleRun   = "[5,4,1,2,5,4,3,6,7,8]"
-	zipRun           = "[8,7,6,5,10,15,20,21,16,11,12,17,22,23,24,19,18,13,14,9,4,3,2,1,0]"
-	testUserID       = "3f7c2b1e-4d5a-4c9b-8e2f-1a2b3c4d5e6f"
+	// Seed 1's first Tango board is filled by these taps: sixty points.
+	tangoRules     = "tango@1"
+	tangoRun       = "[1,2,3,3,5,6,6,7,9,9,10,10,11,12,13,13,14,14,15,16,18,19,19,20,20,22,22,23,24,24,26,27,27,28,29,29,30,32,32,34]"
+	eightPuzzleRun = "[5,4,1,2,5,4,3,6,7,8]"
+	zipRun         = "[8,7,6,5,10,15,20,21,16,11,12,17,22,23,24,19,18,13,14,9,4,3,2,1,0]"
+	testUserID     = "3f7c2b1e-4d5a-4c9b-8e2f-1a2b3c4d5e6f"
 )
 
 // token signs a token the platform verifier accepts, with the given subject.
@@ -1027,6 +1030,42 @@ func TestCompleteSessionVerifiesAnEightPuzzleRun(t *testing.T) {
 	}
 	if len(backend.lastRun.Actions) != 10 || backend.lastRun.Actions[9] != 8 {
 		t.Fatalf("actions = %v, want the submitted slides", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionVerifiesATangoRun(t *testing.T) {
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules(tangoRules, "60", "30000", tangoRun), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if backend.lastRun.RulesVersion != tangoRules {
+		t.Fatalf("rules version = %q, want the run's pinned tango@1", backend.lastRun.RulesVersion)
+	}
+	if len(backend.lastRun.Actions) != 40 || backend.lastRun.Actions[39] != 34 {
+		t.Fatalf("actions = %v, want the submitted taps", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionRejectsATangoCellPastTheBoard(t *testing.T) {
+	// The board is 6×6, so cell 36 is malformed input.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules(tangoRules, "0", "20000", "[1,36]"), "")
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (%#v)", status, body)
+	}
+	if backend.runCalls != 0 {
+		t.Fatal("a cell outside the Tango board reached the verifier")
 	}
 }
 

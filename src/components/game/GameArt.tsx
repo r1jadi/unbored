@@ -61,6 +61,7 @@ export function GameArt({
         {id === "queens" && <Queens />}
         {id === "zip" && <Zip />}
         {id === "8-puzzle" && <EightPuzzle />}
+        {id === "tango" && <Tango />}
         {!KNOWN.has(id) && <Generated seed={id} />}
       </div>
     </div>
@@ -79,6 +80,7 @@ const KNOWN = new Set([
   "queens",
   "zip",
   "8-puzzle",
+  "tango",
 ]);
 
 /**
@@ -276,6 +278,30 @@ function EightPuzzle() {
           </div>
         ),
       )}
+    </div>
+  );
+}
+
+function Tango() {
+  // Seed 1's first board, solved: suns and moons, three of each in every line.
+  const cells = "211221211221122112122121211212122112".split("").map(Number);
+  return (
+    <div className="grid w-full grid-cols-6 gap-[min(1cqw,1cqh,0.25rem)] rounded-xl bg-surface-2 p-[min(1.5cqw,1.5cqh,0.375rem)]">
+      {cells.map((value, i) => (
+        <div
+          key={i}
+          className="flex aspect-square items-center justify-center rounded-sm bg-surface"
+        >
+          <div
+            className={cn(
+              "size-1/2 rounded-full",
+              value === 1
+                ? "bg-game-4"
+                : "bg-game-1 shadow-[inset_0.25em_-0.1em_0_0_var(--color-surface)]",
+            )}
+          />
+        </div>
+      ))}
     </div>
   );
 }

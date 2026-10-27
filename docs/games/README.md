@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Ten games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Eleven games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
-**7 Second**, **Queens**, **Zip** and **8 Puzzle**. Nine of them — all but 7 Second
-— are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
+**7 Second**, **Queens**, **Zip**, **8 Puzzle** and **Tango**. Ten of them — all
+but 7 Second — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
 
@@ -37,7 +37,8 @@ A signed-in player keeps more than their scores:
   seed, so the board, score and level are exactly where they were — or **New
   run**, which submits the saved run as it was left (keeping its score, like any
   ended run) and starts a fresh one. A saved run stays open for twelve hours after
-  its last save. Zip, 8 Puzzle, 7 Second and Don't Touch the Black do not resume:
+  its last save. Zip, 8 Puzzle, Tango, 7 Second and Don't Touch the Black do not
+  resume:
   their clocks or conveyors cannot pause.
 - **Stats per game**, on the game's page: runs played, best score, rank, total
   points and when they last played, from their verified scores.
@@ -1188,6 +1189,107 @@ Each vector is asserted by both the SQL suite and the client engine.
    twelve slides. Both boards' slides: **20 points**, nineteen slides.
 4. **The clock** — a session started a hundred seconds earlier: board one alone
    (75 s + 20 s) is `out_of_time`; both boards (90 s + 20 s) are on time.
+
+## Tango
+
+LinkedIn's sun-and-moon puzzle as an endless run against a clock. Fill a 6×6 grid
+so that every row and every column holds three suns and three moons, no three of
+the same sit next to each other across or down, cells joined by `=` match and
+cells joined by `×` differ. Some cells start filled, and every board has exactly
+one solution.
+
+### The board
+
+| Thing   | Value                                                           |
+| ------- | --------------------------------------------------------------- |
+| Board   | 6×6, always                                                     |
+| Givens  | 9 cells on board one, one fewer a board, never fewer than 3     |
+| Signs   | `=` and `×` between neighbours, added until the board is unique |
+| Clock   | 120 s to start, +45 s per solved board; 20 s of slack           |
+| Taps    | 8192 at most in one submission: a request bound, not a level    |
+| Rules   | `tango@1`                                                       |
+| Runtime | `tango` (the catalogue's `games.runtime` value)                 |
+
+### The boards
+
+A board is drawn from one stream in three steps: the **solution**, the **givens**
+and the **signs**. The server mirrors the first two; the signs only guide the
+player, so they are the client's alone, as Zip's checkpoints are.
+
+```
+side = 6
+rows = the masks 0..63 with three set bits and no three equal neighbours,
+       in mask order (14 rows; bit 5 − i set means cell i is a sun)
+state₀ = ((seed mod 2³²) + 2³²) mod 2³²            // as One Move, Queens and Zip
+if state₀ = 0 then state₀ = 2654435769
+stateₙ = (stateₙ₋₁ × 1664525 + 1013904223) mod 2³²  // advanced once per level
+t = stateₙ; draw() = t ← (t × 22695477 + 1) mod 2³²; t >> 16
+solution: for each row, options = the rows that keep every column at three of
+          each at most and never three alike down it; take options[draw() mod
+          |options|]; if none fits, start the grid again (about one draw in ten)
+givens(n) = max(3, 10 − n)
+givens:   Fisher–Yates over cells 0..35 (i from 35 down to 1, j = draw() mod
+          (i + 1)); the first givens(n) cells start filled with their solution
+signs:    while a second solution exists, add a sign on a neighbouring pair that
+          it relates the other way round from the planted solution, picked by
+          draw() mod |pairs|
+```
+
+Such a pair always exists: the givens rule out the one grid that differs from the
+solution everywhere (every symbol swapped). A board takes about a millisecond.
+
+### A tap, scoring and the clock
+
+A tap is a **cell**; it cycles the cell from empty to a sun, to a moon, and back
+to empty. A given, or a cell off the board, is not a move. The screen marks cells
+that break a rule, but a wrong symbol never ends a run — the player fixes it, and
+the clock is what is spent.
+
+A tap that leaves the board equal to its solution scores **sixty points** (ten a
+row), adds forty-five seconds to the clock and deals the next board, which starts
+with one fewer cell filled. The run ends when the clock reaches zero or the player
+ends it; any prefix of a legal line is valid, because the score never goes down.
+
+The clock works exactly as Zip's: the session is issued when the player presses
+Start, and the verifier refuses a run that reaches it more than
+`tango_budget_ms(boards solved) + tango_slack_ms()` after the session started
+(`out_of_time`, a `422`).
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261111120000_tango_sessions.sql`.
+
+- `public.tango_draw(seed, level)` returns a level's solution followed by its
+  starting cells (72 values); `tango_givens(level)` and `tango_budget_ms(cleared)`
+  are the givens and the clock. The generator is internals.
+- `public.start_game_session` accepts (`tango`, `tango@1`); the session reports
+  `tile_count` 8192 and lives twelve hours.
+- `public.complete_tango_run(session, actions, score, duration)` replays the taps,
+  derives the score, compares it with the claim, checks the clock and only then
+  records it. The Go service routes `tango@` runs to it and accepts up to 8192
+  taps on cells 0 to 35.
+- `20261111120100_tango_playable.sql` inserts the catalogue record (Logic),
+  applied after the deployment carrying the runtime is live.
+
+### Test vectors
+
+Each vector is asserted by both the SQL suite and the client engine (cells in
+reading order, 1 a sun, 2 a moon, 0 empty).
+
+1. **Seed 1's first two boards** — solutions
+   `211221211221122112122121211212122112` and
+   `121212211212122121121221212112212121`, starting from
+   `200020001000000002000100010000020102` (nine givens) and
+   `000010011210000101100000000000000000` (eight).
+2. **A full-width seed** — `9223372036854775807`'s first solution is
+   `121122212112212211121221121122212211`.
+3. **Seed 1, a stopped line** — board one filled by tapping cells
+   `1,2,3,3,5,6,6,7,9,9,10,10,11,12,13,13,14,14,15,16,18,19,19,20,20,22,22,23,24,24,26,27,27,28,29,29,30,32,32,34`
+   (once for a sun, twice for a moon), then `0,0` on board two: **60 points**.
+   Both boards filled: **120 points**, 85 taps.
+4. **The clock** — a session started two hundred seconds earlier: board one alone
+   (165 s + 20 s) is `out_of_time`; both boards (210 s + 20 s) are on time.
 
 ## Color Merge
 

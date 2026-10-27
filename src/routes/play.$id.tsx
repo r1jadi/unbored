@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { ChainRuntime } from "@/components/game/ChainRuntime";
 import { ColorMergeRuntime } from "@/components/game/ColorMergeRuntime";
 import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
+import { TangoRuntime } from "@/components/game/TangoRuntime";
 import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
 import { GameExits } from "@/components/game/GameExits";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
@@ -36,6 +37,7 @@ import { prefetchPlay } from "@/lib/prefetch";
 import { QUEENS_RUNTIME } from "@/lib/games/queens";
 import { ZIP_RUNTIME } from "@/lib/games/zip";
 import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
+import { TANGO_RUNTIME } from "@/lib/games/tango";
 import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
 import { STACK10_RUNTIME } from "@/lib/games/stack10";
 
@@ -160,7 +162,8 @@ export function PlaySurface({
       state.game.runtime === SEVEN_SECOND_RUNTIME ||
       state.game.runtime === QUEENS_RUNTIME ||
       state.game.runtime === ZIP_RUNTIME ||
-      state.game.runtime === EIGHT_PUZZLE_RUNTIME);
+      state.game.runtime === EIGHT_PUZZLE_RUNTIME ||
+      state.game.runtime === TANGO_RUNTIME);
 
   const nav = useNavigate();
   const [confirming, setConfirming] = useState(false);
@@ -262,6 +265,15 @@ export function PlaySurface({
 
       {state.status === "ready" && state.game.runtime === EIGHT_PUZZLE_RUNTIME && playable && (
         <EightPuzzleRuntime
+          key={state.game.slug}
+          slug={state.game.slug}
+          title={state.game.title}
+          autoStart={autoStart}
+        />
+      )}
+
+      {state.status === "ready" && state.game.runtime === TANGO_RUNTIME && playable && (
+        <TangoRuntime
           key={state.game.slug}
           slug={state.game.slug}
           title={state.game.title}

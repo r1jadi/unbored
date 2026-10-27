@@ -214,6 +214,28 @@ export const GAME_RULES = {
       },
     ],
   },
+  tango: {
+    heading: "Suns and moons",
+    summary: "Balance every row and column. Beat the clock.",
+    rules: [
+      {
+        lead: "Fill the grid",
+        text: "with suns and moons: every row and every column holds three of each, and no three alike sit next to each other across or down.",
+      },
+      {
+        lead: "Signs",
+        text: "between two cells say how they relate: = means they match, × means they differ.",
+      },
+      {
+        lead: "Tap a cell",
+        text: "for a sun, again for a moon, and once more to clear it. Cells that start filled stay as they are; clashes are marked in red.",
+      },
+      {
+        lead: "The clock",
+        text: "starts at two minutes, and every solved board adds 45 seconds and sixty points. Each board starts with fewer cells filled, and the run ends when the clock does.",
+      },
+    ],
+  },
 } satisfies Record<string, GameRules>;
 
 /** A game's rules by its runtime, or null for a runtime with none written. */
