@@ -630,12 +630,27 @@ export function authErrorMessage(error: unknown): string {
  * account is created — including while confirmation is pending. It is omitted
  * only when there is no choice to send (a resumed OAuth registration, whose
  * account already exists).
+ *
+ * `displayName` travels the same way: the trigger stores it and, together with
+ * the username, records the registration as finished, so opening the
+ * confirmation link signs straight in instead of re-asking for both.
  */
-export function signUp(email: string, password: string, username?: string): Promise<AuthSession> {
+export function signUp(
+  email: string,
+  password: string,
+  username?: string,
+  displayName?: string,
+): Promise<AuthSession> {
   const chosen = username?.trim();
+  const name = displayName?.trim();
   return apiFetch<AuthSession>(Routes.signUp, {
     method: "POST",
-    body: { email, password, ...(chosen ? { username: chosen } : {}) },
+    body: {
+      email,
+      password,
+      ...(chosen ? { username: chosen } : {}),
+      ...(name ? { displayName: name } : {}),
+    },
   }).then(adopt);
 }
 

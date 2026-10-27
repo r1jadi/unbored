@@ -147,7 +147,7 @@ func TestSignUpDecodesAConfirmationPendingResponse(t *testing.T) {
 		}`)
 	})
 
-	result, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "")
+	result, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "", "")
 	if err != nil {
 		t.Fatalf("sign-up failed: %v", err)
 	}
@@ -183,7 +183,7 @@ func TestSignUpDetectsAnAlreadyRegisteredAddress(t *testing.T) {
 		}`)
 	})
 
-	result, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "")
+	result, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "", "")
 
 	var apiErr *Error
 	if !errors.As(err, &apiErr) {
@@ -208,7 +208,7 @@ func TestSignUpDoesNotReadAMissingIdentityListAsARefusal(t *testing.T) {
 		writeJSON(t, w, 200, `{"id":"u1","email":"player@example.com","created_at":"2026-10-01T00:00:00Z"}`)
 	})
 
-	result, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "")
+	result, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "", "")
 	if err != nil {
 		t.Fatalf("sign-up failed: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestSignUpKeepsAResentConfirmationAPendingSuccess(t *testing.T) {
 		}`)
 	})
 
-	result, err := client.SignUp(context.Background(), "waiting@example.com", "correct-horse-battery", "")
+	result, err := client.SignUp(context.Background(), "waiting@example.com", "correct-horse-battery", "", "")
 	if err != nil {
 		t.Fatalf("sign-up failed: %v", err)
 	}
@@ -249,7 +249,7 @@ func TestSignUpProposesTheAppCallback(t *testing.T) {
 		writeJSON(t, w, 200, `{"id":"u1","email":"player@example.com","created_at":"2026-10-01T00:00:00Z"}`)
 	})
 
-	if _, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", ""); err != nil {
+	if _, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "", ""); err != nil {
 		t.Fatalf("sign-up failed: %v", err)
 	}
 	options, ok := (*requests)[0].body["options"].(map[string]any)
@@ -269,7 +269,7 @@ func TestSignUpSendsTheChosenUsernameAsMetadata(t *testing.T) {
 			"identities":[{"id":"i1","provider":"email","user_id":"u1"}]}`)
 	})
 
-	if _, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "rijad"); err != nil {
+	if _, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "rijad", ""); err != nil {
 		t.Fatalf("sign-up failed: %v", err)
 	}
 
@@ -286,12 +286,27 @@ func TestSignUpSendsTheChosenUsernameAsMetadata(t *testing.T) {
 	}
 }
 
+func TestSignUpSendsTheDisplayNameAsMetadata(t *testing.T) {
+	client, requests := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(t, w, 200, `{"id":"u1","email":"player@example.com","created_at":"2026-10-01T00:00:00Z"}`)
+	})
+
+	if _, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "rijad", "Rijad"); err != nil {
+		t.Fatalf("sign-up failed: %v", err)
+	}
+
+	data, ok := (*requests)[0].body["data"].(map[string]any)
+	if !ok || data["username"] != "rijad" || data["display_name"] != "Rijad" {
+		t.Errorf("data = %v, want username rijad and display_name Rijad", (*requests)[0].body["data"])
+	}
+}
+
 func TestSignUpOmitsTheMetadataWhenNoUsernameWasChosen(t *testing.T) {
 	client, requests := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(t, w, 200, `{"id":"u1","email":"player@example.com","created_at":"2026-10-01T00:00:00Z"}`)
 	})
 
-	if _, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", ""); err != nil {
+	if _, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "", ""); err != nil {
 		t.Fatalf("sign-up failed: %v", err)
 	}
 	if _, present := (*requests)[0].body["data"]; present {

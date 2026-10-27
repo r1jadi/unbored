@@ -42,6 +42,39 @@ const BARE = [
   "/auth/callback",
 ];
 
+/**
+ * Supabase falls back to the project's Site URL (the home page) when the
+ * `emailRedirectTo` it was given is missing from the redirect allowlist. The
+ * confirmation then lands on `/` carrying tokens nobody reads, and the visitor
+ * is left signed out. Hand any such landing to `/auth/callback`, which is the
+ * one screen that verifies them. Returns true when it navigated away.
+ */
+function forwardStrayAuthRedirect(): boolean {
+  const { pathname, search, hash } = window.location;
+  if (pathname.startsWith("/auth/callback")) return false;
+  const query = new URLSearchParams(search);
+  const fragment = new URLSearchParams(hash.replace(/^#/, ""));
+  const carriesAuth =
+    fragment.has("access_token") ||
+    (fragment.has("error") && fragment.has("error_description")) ||
+    query.has("token_hash") ||
+    // `?code` alone is too generic to claim on every page; Supabase only ever
+    // sends it to the Site URL itself.
+    (pathname === "/" && query.has("code"));
+  if (!carriesAuth) return false;
+  // Fragment errors become query parameters, which is where the callback reads them.
+  if (fragment.has("error")) {
+    for (const key of ["error", "error_description"]) {
+      const value = fragment.get(key);
+      if (value !== null) query.set(key, value);
+    }
+  }
+  const nextSearch = query.toString();
+  const nextHash = fragment.has("access_token") ? hash : "";
+  window.location.replace(`/auth/callback${nextSearch ? `?${nextSearch}` : ""}${nextHash}`);
+  return true;
+}
+
 // Paths a signed-in visitor may reach while registration is unfinished: the
 // screen that completes it, the auth screens that can end or switch the
 // session, and the legal documents the sign-up steps reference.
@@ -188,6 +221,7 @@ function RootComponent() {
   // render and the first client render must agree (both anonymous), and the
   // restored token is re-validated against the API before it is trusted.
   useEffect(() => {
+    if (forwardStrayAuthRedirect()) return;
     initAnalytics();
     void initializeSession();
   }, []);

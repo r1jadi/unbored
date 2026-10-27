@@ -98,7 +98,11 @@ type Backend interface {
 	// SignUp creates the account. username may be empty for a legacy client, in
 	// which case the database trigger generates one; when it is set, the
 	// trigger persists exactly that name or fails the whole registration.
-	SignUp(ctx context.Context, email, password, username string) (supabaseauth.Result, error)
+	//
+	// displayName, when set, is the name chosen on the same form. The trigger
+	// writes it to the profile and records the registration as finished, so the
+	// account does not walk back through sign-up after its email is confirmed.
+	SignUp(ctx context.Context, email, password, username, displayName string) (supabaseauth.Result, error)
 	SignInWithPassword(ctx context.Context, email, password string) (supabaseauth.Result, error)
 	// UsernameAvailable answers whether a normalized username is unclaimed. It
 	// runs anonymously and reads only the public profile row.
@@ -167,6 +171,8 @@ type credentialsRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Username string `json:"username"`
+	// DisplayName is only read on sign-up.
+	DisplayName string `json:"displayName"`
 }
 
 // usernameAvailabilityView is the answer to GET /auth/username-available. It
@@ -258,6 +264,14 @@ func (s *service) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	displayName := strings.TrimSpace(request.DisplayName)
+	if utf8.RuneCountInString(displayName) > maxDisplayNameLength {
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnprocessable,
+			"Keep the display name to 60 characters or fewer.",
+			apierr.Detail{Field: "displayName", Rule: "length"}))
+		return
+	}
+
 	if s.throttled(w, r, limitKey{"ip", httpx.ClientKey(r)}, limitKey{"account", supabaseauth.EscapeEmail(email)}) {
 		return
 	}
@@ -281,7 +295,7 @@ func (s *service) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	result, err := s.backend.SignUp(r.Context(), email, request.Password, username)
+	result, err := s.backend.SignUp(r.Context(), email, request.Password, username, displayName)
 	if err != nil {
 		// The gap between the check above and the insert is real: another
 		// registration can claim the name first. The database's unique index
@@ -573,6 +587,9 @@ func timePointer(value time.Time) *time.Time {
 }
 
 // ── Username rules ─────────────────────────────────────────────────────────
+
+// maxDisplayNameLength mirrors `profiles_display_name_length`.
+const maxDisplayNameLength = 60
 
 // usernamePattern mirrors `profiles_username_format`: 3–24 lowercase letters,
 // digits and underscores. It is applied after normalization, so the rule is the

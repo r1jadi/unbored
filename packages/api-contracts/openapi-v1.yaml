@@ -189,6 +189,13 @@ paths:
                     The username to own. Uppercase is normalized to lowercase;
                     uniqueness is case-insensitive. Omit only for clients that
                     predate the field — the database then generates a name.
+                displayName:
+                  type: string
+                  maxLength: 60
+                  description: |
+                    The display name chosen on the sign-up form. Trimmed. With a
+                    username, the account is created already registered
+                    (`onboarded`), so the confirmation link signs straight in.
       responses:
         "201":
           description: |

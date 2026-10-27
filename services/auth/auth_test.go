@@ -56,23 +56,25 @@ type fakeBackend struct {
 	userErr          error
 	markOnboardedErr error
 
-	signInEmail    string
-	signUpUsername string
-	signUpHits     int
-	usernameChecks []string
-	refreshTokens  []string
-	signOutTokens  []string
-	onboardedHits  int
-	userHits       int
-	markHits       int
-	markedAt       []time.Time
+	signInEmail       string
+	signUpUsername    string
+	signUpDisplayName string
+	signUpHits        int
+	usernameChecks    []string
+	refreshTokens     []string
+	signOutTokens     []string
+	onboardedHits     int
+	userHits          int
+	markHits          int
+	markedAt          []time.Time
 }
 
-func (f *fakeBackend) SignUp(_ context.Context, _, _, username string) (supabaseauth.Result, error) {
+func (f *fakeBackend) SignUp(_ context.Context, _, _, username, displayName string) (supabaseauth.Result, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.signUpHits++
 	f.signUpUsername = username
+	f.signUpDisplayName = displayName
 	return f.signUpResult, f.signUpErr
 }
 
@@ -666,6 +668,42 @@ func TestSignUpPersistsTheChosenUsername(t *testing.T) {
 	checks := backend.usernameLookups()
 	if len(checks) != 1 || checks[0] != "rijad" {
 		t.Errorf("availability lookups = %v, want one for rijad", checks)
+	}
+}
+
+func TestSignUpForwardsTheChosenDisplayName(t *testing.T) {
+	backend := &fakeBackend{usernameAvailable: true}
+	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
+
+	response := h.do(t, http.MethodPost, SignUpPath,
+		`{"email":"player@example.com","password":"correct-horse-battery","username":"rijad","displayName":"  Rijad H  "}`, nil)
+	if response.StatusCode != http.StatusCreated {
+		t.Fatalf("status = %d, want 201", response.StatusCode)
+	}
+	response.Body.Close()
+
+	// The trigger stores it and marks the registration finished, so the
+	// confirmation link does not lead back to the name step.
+	backend.mu.Lock()
+	got := backend.signUpDisplayName
+	backend.mu.Unlock()
+	if got != "Rijad H" {
+		t.Errorf("display name sent to Supabase = %q, want %q", got, "Rijad H")
+	}
+}
+
+func TestSignUpRejectsAnOverlongDisplayName(t *testing.T) {
+	backend := &fakeBackend{usernameAvailable: true}
+	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
+
+	response := h.do(t, http.MethodPost, SignUpPath,
+		`{"email":"player@example.com","password":"correct-horse-battery","username":"rijad","displayName":"`+strings.Repeat("a", 61)+`"}`, nil)
+	response.Body.Close()
+	if response.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", response.StatusCode)
+	}
+	if backend.signupCalls() != 0 {
+		t.Errorf("an account was created for a refused display name")
 	}
 }
 

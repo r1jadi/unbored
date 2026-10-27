@@ -17,6 +17,11 @@ steps that code cannot perform.
   trigger runs, and `handle_new_user` writes it to the profile in the account's
   own transaction. It is therefore already the account's username while
   confirmation is pending; opening the link does not set or replace it.
+- The display name travels the same way (`data.display_name`). With both
+  present the trigger also sets `onboarded_at`
+  (`20261112120000_signup_display_name.sql`): the form collected the name and
+  the accepted terms before the request, so the link signs straight in rather
+  than reopening `/signup`.
 - The pending screen is `/verify-email` (link instructions, resend via
   Supabase `/auth/v1/resend`, continue to login). It never asks for a code.
 - The callback is `/auth/callback` (`src/routes/auth.callback.tsx`):
@@ -26,6 +31,10 @@ steps that code cannot perform.
   Every token is verified by the backend (`POST /auth/session`) before the app
   treats the caller as authenticated. Callback parameters are stripped from the
   URL immediately; failures show a specific message with a resend path.
+- If Supabase ignores `emailRedirectTo` (it is not in the allowlist) it sends
+  the visitor to the Site URL instead. The root route forwards any landing that
+  carries `#access_token`, `?token_hash`, or `/?code` to `/auth/callback`, so
+  the account is still signed in — but fix the allowlist below regardless.
 - Login (`/login`) keeps the server's message for HTTP responses (unconfirmed
   email, wrong password, rate limit) and reports a connection problem only when
   the fetch itself threw. A `localhost` API URL baked into a production bundle

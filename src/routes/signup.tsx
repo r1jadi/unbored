@@ -33,7 +33,12 @@ import {
   usernameValidationMessage,
 } from "@/lib/users/username";
 import { seo } from "@/lib/seo";
-import { readWithLegacy, removeWithLegacy, safeSessionStorage } from "@/lib/storage";
+import {
+  readWithLegacy,
+  removeWithLegacy,
+  safeLocalStorage,
+  safeSessionStorage,
+} from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/signup")({
@@ -51,32 +56,41 @@ function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-/** Where a display name is kept while email confirmation is pending. */
+/**
+ * Where a display name is kept while email confirmation is pending. Local, not
+ * session, storage: the confirmation link opens in a new tab, which has an empty
+ * session storage. The server copy (sign-up metadata) is the primary record;
+ * this only covers a database that has not learned to read it yet.
+ */
 const PENDING_DISPLAY_NAME_KEY = "unbored-pending-display-name";
 /** Pre-rename key: read once and moved forward by `readWithLegacy`. */
 const LEGACY_PENDING_DISPLAY_NAME_KEY = "onemore-pending-display-name";
 
 function storedPendingDisplayName(): string {
   return (
+    readWithLegacy(safeLocalStorage(), PENDING_DISPLAY_NAME_KEY, LEGACY_PENDING_DISPLAY_NAME_KEY) ??
     readWithLegacy(
       safeSessionStorage(),
       PENDING_DISPLAY_NAME_KEY,
       LEGACY_PENDING_DISPLAY_NAME_KEY,
-    ) ?? ""
+    ) ??
+    ""
   );
 }
 
 function rememberPendingDisplayName(name: string): void {
   try {
-    sessionStorage.setItem(PENDING_DISPLAY_NAME_KEY, name);
+    localStorage.setItem(PENDING_DISPLAY_NAME_KEY, name);
   } catch {
     // Best effort only; the profile screen lets the user set it later.
   }
 }
 
 function forgetPendingDisplayName(): void {
-  // Both keys: a stale legacy copy would restore the forgotten name.
-  removeWithLegacy(safeSessionStorage(), PENDING_DISPLAY_NAME_KEY, LEGACY_PENDING_DISPLAY_NAME_KEY);
+  // Both keys in both stores: a stale copy would restore the forgotten name.
+  for (const storage of [safeLocalStorage(), safeSessionStorage()]) {
+    removeWithLegacy(storage, PENDING_DISPLAY_NAME_KEY, LEGACY_PENDING_DISPLAY_NAME_KEY);
+  }
 }
 
 /** The icon that matches the availability line under the username input. */
@@ -195,11 +209,11 @@ function Signup() {
     setErr(undefined);
     setBusy(true);
     try {
-      const result = await signUp(creds.email, creds.password, chosenUsername);
       const name = displayName.trim();
-      // When Supabase issued a session immediately, the registration is
-      // finished below. While confirmation is pending there is no token, so the
-      // name is kept for the sign-up completion after verification.
+      // The name travels with the request: the database stores it and records
+      // the registration as finished, so the confirmation link signs straight
+      // in. The local copy only covers a database without that migration.
+      const result = await signUp(creds.email, creds.password, chosenUsername, name);
       if (name !== "") rememberPendingDisplayName(name);
       if (result.tokens) {
         await finishRegistration();

@@ -128,7 +128,9 @@ func New(cfg *config.Config) (*Client, error) {
 // the same transaction that creates the account, so the chosen name is on the
 // profile before this call returns — including while email confirmation is
 // pending. The trigger's unique index, not this client, decides whether two
-// concurrent registrations may share a name.
+// concurrent registrations may share a name. A non-empty displayName travels
+// the same way (`data.display_name`); the trigger stores it and marks the
+// registration finished, because the form collected everything before calling.
 //
 // The confirmation link Supabase emails must land on the app's own callback
 // (`/auth/callback`), not on Supabase's default site URL: the callback
@@ -137,10 +139,17 @@ func New(cfg *config.Config) (*Client, error) {
 // from PUBLIC_SITE_URL (preferred), SITE_URL, then VITE_PUBLIC_SITE_URL, and
 // defaults to the production origin. An invalid value is ignored rather than
 // sent, so a misconfigured environment cannot produce a broken link.
-func (c *Client) SignUp(ctx context.Context, email, password, username string) (Result, error) {
+func (c *Client) SignUp(ctx context.Context, email, password, username, displayName string) (Result, error) {
 	payload := map[string]any{"email": email, "password": password}
+	data := map[string]string{}
 	if username != "" {
-		payload["data"] = map[string]string{"username": username}
+		data["username"] = username
+	}
+	if displayName != "" {
+		data["display_name"] = displayName
+	}
+	if len(data) > 0 {
+		payload["data"] = data
 	}
 	if redirect := confirmationRedirect(); redirect != "" {
 		payload["options"] = map[string]string{"emailRedirectTo": redirect}
