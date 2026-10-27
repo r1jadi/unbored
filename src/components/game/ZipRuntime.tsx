@@ -52,7 +52,7 @@ import {
 const RULES = GAME_RULES["zip"];
 
 /**
- * Zip, playing for real.
+ * Trail, playing for real.
  *
  * The board is a view onto `useZipRun`, which owns the lifecycle and the clock:
  * the rules first, a session issued when the player presses Start, boards drawn
@@ -112,7 +112,7 @@ export function ZipRuntime({
         <h2 className="text-xl font-semibold">Your run was not verified</h2>
         <p className="mx-auto max-w-sm text-sm text-muted-foreground">
           {playErrorMessage(state.error)} Nothing was saved. Sending the same run again is safe, but
-          a Zip run has to reach the server soon after its clock runs out.
+          a timed run has to reach the server soon after its clock runs out.
         </p>
         <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
           <Button variant="play" size="lg" onClick={state.retry}>

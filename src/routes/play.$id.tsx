@@ -79,7 +79,7 @@ export const Route = createFileRoute("/play/$id")({
  * The runtime is chosen by the game's `runtime` identifier — `stack-10` plays Stack
  * 10, `chain` plays Chain, `memory-flash` plays Memory Flash, `one-move` plays One
  * Move, `color-merge` plays Color Merge, `dont-touch` plays Don't Touch the Black,
- * `seven-second` plays 7 Second, `queens` plays Queens, `zip` plays Zip,
+ * `seven-second` plays 7 Second, `queens` plays Crowns, `zip` plays Trail,
  * `eight-puzzle` plays 8 Puzzle, and anything else gets the honest "no runtime
  * yet" screen rather than a board that does not follow that game's rules. Every
  * catalogue game now has a runtime, but the branch stays a feature rather than a

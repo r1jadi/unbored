@@ -2152,7 +2152,7 @@ select rls_test.visible(
 -- ships, only the six with runtimes are playable.
 select rls_test.visible(
   $$select 1 from public.games
-     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'queens', 'zip', '8-puzzle', 'tango') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
+     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
   0, 'no shipped game besides the eleven runtimes is marked playable'
 );
 select rls_test.says_field(
@@ -2286,19 +2286,23 @@ select rls_test.visible(
   $$select 1 from public.games where slug = 'one-move' and playable and runtime = 'one-move'$$,
   1, 'the shipped One Move game is playable and names its runtime'
 );
--- The shipped Queens game: playable, naming its runtime, issuing a twelve-hour
--- run that reports its submission bound.
+-- The shipped Queens game, named Crowns: playable, naming its runtime, issuing a
+-- twelve-hour run that reports its submission bound.
 select rls_test.visible(
-  $$select 1 from public.games where slug = 'queens' and playable and runtime = 'queens'
-       and status = 'published' and is_official$$,
-  1, 'the shipped Queens game is published, playable and names its runtime'
+  $$select 1 from public.games where slug = 'crowns' and title = 'Crowns' and playable
+       and runtime = 'queens' and status = 'published' and is_official$$,
+  1, 'the shipped Crowns game is published, playable and names the queens runtime'
+);
+select rls_test.visible(
+  $$select 1 from public.games where slug in ('queens', 'zip', 'tango')$$,
+  0, 'no game keeps the old Queens, Zip or Tango slugs'
 );
 select rls_test.says_field(
-  $$public.start_game_session('queens', 'queens@1', 'test/1.0')$$,
-  'game_slug', 'queens', 'the shipped Queens game issues a run like any other'
+  $$public.start_game_session('crowns', 'queens@1', 'test/1.0')$$,
+  'game_slug', 'crowns', 'the shipped Crowns game issues a run like any other'
 );
 select rls_test.says_field(
-  $$public.start_game_session('queens', 'queens@1', 'test/1.0')$$,
+  $$public.start_game_session('crowns', 'queens@1', 'test/1.0')$$,
   'tile_count', '8192', 'a Queens session reports its submission bound'
 );
 select rls_test.ok(
@@ -2318,14 +2322,14 @@ select rls_test.says(
   $$public.start_game_session('fixture-one-move', 'queens@1', 'test/1.0')$$,
   'unsupported_runtime', 'a One Move game cannot start a Queens run'
 );
--- The shipped Zip game, same shape.
+-- The shipped Zip game, named Trail, same shape.
 select rls_test.visible(
-  $$select 1 from public.games where slug = 'zip' and playable and runtime = 'zip'
-       and status = 'published' and is_official$$,
-  1, 'the shipped Zip game is published, playable and names its runtime'
+  $$select 1 from public.games where slug = 'trail' and title = 'Trail' and playable
+       and runtime = 'zip' and status = 'published' and is_official$$,
+  1, 'the shipped Trail game is published, playable and names the zip runtime'
 );
 select rls_test.says_field(
-  $$public.start_game_session('zip', 'zip@1', 'test/1.0')$$,
+  $$public.start_game_session('trail', 'zip@1', 'test/1.0')$$,
   'tile_count', '8192', 'a Zip session reports its submission bound'
 );
 select rls_test.says(
@@ -2354,14 +2358,14 @@ select rls_test.says(
   $$public.start_game_session('fixture-zip', 'eight-puzzle@1', 'test/1.0')$$,
   'unsupported_runtime', 'a Zip game cannot start an 8 Puzzle run'
 );
--- The shipped Tango game, same shape.
+-- The shipped Tango game, named Sun & Moon, same shape.
 select rls_test.visible(
-  $$select 1 from public.games where slug = 'tango' and playable and runtime = 'tango'
-       and status = 'published' and is_official$$,
-  1, 'the shipped Tango game is published, playable and names its runtime'
+  $$select 1 from public.games where slug = 'sun-and-moon' and title = 'Sun & Moon' and playable
+       and runtime = 'tango' and status = 'published' and is_official$$,
+  1, 'the shipped Sun & Moon game is published, playable and names the tango runtime'
 );
 select rls_test.says_field(
-  $$public.start_game_session('tango', 'tango@1', 'test/1.0')$$,
+  $$public.start_game_session('sun-and-moon', 'tango@1', 'test/1.0')$$,
   'tile_count', '8192', 'a Tango session reports its submission bound'
 );
 select rls_test.says(

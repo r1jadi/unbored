@@ -36,7 +36,7 @@ const CELL = /^Row \d+ column \d+,/;
 function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
     id: "abababab-1111-4111-8111-abababababab",
-    gameSlug: "zip",
+    gameSlug: "trail",
     rulesVersion: "zip@1",
     seed: "1",
     tileCount: 8192,
@@ -50,7 +50,7 @@ function sessionPayload(overrides: Record<string, unknown> = {}) {
 function resultPayload(overrides: Record<string, unknown> = {}) {
   return {
     sessionId: "abababab-1111-4111-8111-abababababab",
-    gameSlug: "zip",
+    gameSlug: "trail",
     // Deliberately not the client's number: the screen must show the verified one.
     score: 150,
     clearedColumns: 3,
@@ -94,7 +94,7 @@ async function renderRuntime() {
     createRoute({
       getParentRoute: () => root,
       path: "/",
-      component: () => <ZipRuntime slug="zip" title="Zip" />,
+      component: () => <ZipRuntime slug="trail" title="Trail" />,
     }),
     createRoute({ getParentRoute: () => root, path: "/games/$id", component: () => <p>Game</p> }),
     createRoute({
@@ -166,7 +166,7 @@ describe("starting a run", () => {
 
     expect(sessionCalls(spy)).toHaveLength(1);
     expect(JSON.parse(String(sessionCalls(spy)[0][1]?.body ?? "{}"))).toEqual({
-      gameSlug: "zip",
+      gameSlug: "trail",
       rulesVersion: "zip@1",
       client: "web/1.0",
     });

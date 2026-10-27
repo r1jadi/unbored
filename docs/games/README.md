@@ -5,7 +5,7 @@ game earns the right to be called playable.
 
 Eleven games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
-**7 Second**, **Queens**, **Zip**, **8 Puzzle** and **Tango**. Ten of them — all
+**7 Second**, **Crowns**, **Trail**, **8 Puzzle** and **Sun & Moon**. Ten of them — all
 but 7 Second — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -31,13 +31,13 @@ other games accepted it from the start.
 A signed-in player keeps more than their scores:
 
 - **An unfinished run.** While they play Stack 10, Chain, Memory Flash, One Move,
-  Color Merge or Queens, the run's moves are saved to its session as they go
+  Color Merge or Crowns, the run's moves are saved to its session as they go
   (shortly after each move, and at once when the page is hidden or left). Opening
   the game again offers **Continue run** — the saved moves are replayed from the
   seed, so the board, score and level are exactly where they were — or **New
   run**, which submits the saved run as it was left (keeping its score, like any
   ended run) and starts a fresh one. A saved run stays open for twelve hours after
-  its last save. Zip, 8 Puzzle, Tango, 7 Second and Don't Touch the Black do not
+  its last save. Trail, 8 Puzzle, Sun & Moon, 7 Second and Don't Touch the Black do not
   resume:
   their clocks or conveyors cannot pause.
 - **Stats per game**, on the game's page: runs played, best score, rank, total
@@ -773,11 +773,13 @@ drifts, one of the two suites fails.
    `1, 8, 6, 6, 5, 4, 5, 0, 24, 13, 3, 7, 20, 0, 2, 20, 35, 25, 13, 32`, which is
    what catches a client that rounded the seed to a double.
 
-## Queens
+## Crowns
 
-LinkedIn's Queens puzzle as an endless run. Every board is an N×N grid split into
-N coloured regions: place exactly one Queen in each row, each column and each
-region, with no two Queens touching — not even diagonally. Every board has exactly
+Crowns is the classic Star Battle puzzle (one star per line) as an endless run.
+Its code keeps its first name: runtime `queens`, rules `queens@1`, slug `crowns`.
+Every board is an N×N grid split into
+N coloured regions: place exactly one crown in each row, each column and each
+region, with no two crowns touching — not even diagonally. Every board has exactly
 one solution. Solve it and the next one is dealt; **there is no final board**.
 
 ### The board
@@ -786,27 +788,27 @@ one solution. Solve it and the next one is dealt; **there is no final board**.
 | -------- | ------------------------------------------------------------------ |
 | Board    | 5×5, growing to 9×9 by level eleven, then 9×9 for every board      |
 | Levels   | none — boards keep coming until the run ends                       |
-| Mistakes | 3 per run: the third Queen placed off the solution ends the run    |
+| Mistakes | 3 per run: the third crown placed off the solution ends the run    |
 | Taps     | 8192 at most in one submission: a request bound, not a level       |
 | Rules    | `queens@1`                                                         |
 | Runtime  | `queens` (the catalogue's `games.runtime` value)                   |
 
 ### How the real game works, and what this one keeps
 
-LinkedIn's daily Queens is the "one star" variant of Star Battle. Its rules are
-the ones above; a tap cycles a cell through an X (a note), a Queen and empty;
-clashing Queens are highlighted rather than refused; and there is an optional
-automatic X that fills in the cells a Queen rules out. Its boards are mostly 7×7
+The daily versions of this puzzle are the "one star" variant of Star Battle.
+Their rules are the ones above; a tap cycles a cell through an X (a note), a crown and empty;
+clashing crowns are highlighted rather than refused; and there is an optional
+automatic X that fills in the cells a crown rules out. Their boards are mostly 7×7
 to 10×10, hand-checked to have one solution that can be reached by deduction.
 
 Unbored keeps the rules, the tap cycle and the automatic X — shown as faint Xs,
 a display aid rather than state, so it changes no tap. It changes one thing: a
-Queen placed off the solution is a **mistake**, not a clash to fix later. A daily
-puzzle can let a player shuffle Queens freely because nothing is ranked; an
+crown placed off the solution is a **mistake**, not a clash to fix later. A daily
+puzzle can let a player shuffle crowns freely because nothing is ranked; an
 endless, ranked run needs a way to end and a skill a replay can measure, and a
-wrong Queen is both. With a unique solution, "off the solution" and "breaks the
+wrong crown is both. With a unique solution, "off the solution" and "breaks the
 rules eventually" are the same thing, so the mistake rule only makes the board say
-so at once. Because a wrong Queen is refused, two Queens on the board can never
+so at once. Because a wrong crown is refused, two crowns on the board can never
 clash, which is why there is no clash highlight.
 
 ### The boards
@@ -814,7 +816,7 @@ clash, which is why there is no clash highlight.
 A board is drawn in two steps from one random stream, both functions of the
 run's seed, which the **server** chooses:
 
-1. **The solution** — a placement of N Queens, one per row and column, none
+1. **The solution** — a placement of N crowns, one per row and column, none
    touching. This is what the verifier needs, so it is written out in full:
 
    ```
@@ -836,25 +838,25 @@ run's seed, which the **server** chooses:
    boards would share their draws. About one shuffle in eight passes, at every
    size.
 
-2. **The regions** — grown outwards from the solution's Queens, region _r_ holding
-   row _r_'s Queen. Each step picks a random unassigned cell that touches a region
+2. **The regions** — grown outwards from the solution's crowns, region _r_ holding
+   row _r_'s crown. Each step picks a random unassigned cell that touches a region
    (in board order, `draw() mod count`) and joins it to one of the regions it
    touches. Large regions touch more cells, so they grow faster and leave a mix of
    large and small regions, the way a hand-made board does. A fresh layout usually
    has several solutions, so the generator **repairs** it: a row-by-row solver
    finds another solution, the generator takes a cell where that solution has a
-   Queen the planted one does not, and hands the cell to a neighbouring region
-   (keeping its old region connected). That solution now has two Queens in one
+   crown the planted one does not, and hands the cell to a neighbouring region
+   (keeping its old region connected). That solution now has two crowns in one
    region and is gone; the planted solution is untouched, because none of its
-   Queens moved. The loop ends when the solver finds exactly one solution, and a
+   crowns moved. The loop ends when the solver finds exactly one solution, and a
    layout that runs out of repairs is regrown. Growth plus repair produces a
    unique 9×9 board in a few milliseconds on average; a fallback that is always
-   unique (every Queen but the last alone in its region) exists so the generator
+   unique (every crown but the last alone in its region) exists so the generator
    is total, and has never been needed.
 
-Only the client grows regions. The verifier needs only the solution: a Queen is
+Only the client grows regions. The verifier needs only the solution: a crown is
 right exactly when it sits on it, and no region a client could draw changes which
-Queens are mistakes. That keeps the database's copy to a shuffle.
+crowns are mistakes. That keeps the database's copy to a shuffle.
 
 The seed travels as a **decimal string**, as every game's does.
 
@@ -878,12 +880,12 @@ eleven on the difficulty comes from the layouts, which differ every board.
 A move is a **cell index on the current board**. The cell cycles:
 
 1. **Empty → X.** A note. Free.
-2. **X → Queen.** If the cell is on the solution, the Queen stays. If not, it is a
+2. **X → crown.** If the cell is on the solution, the crown stays. If not, it is a
    **mistake**: the cell is ruled out and locked, and the third mistake of the run
    ends it.
-3. **Queen → empty.**
+3. **crown → empty.**
 
-The board's last Queen solves it: it scores ten points a row and the next board is
+The board's last crown solves it: it scores ten points a row and the next board is
 dealt, empty. Mistakes carry from board to board. A tap on a ruled-out cell, a cell
 off the board, or a tap after the run ended is not a move: the submission is
 impossible and is refused.
@@ -916,7 +918,7 @@ the session is closed once the run is submitted.
   `public.queens_side(level)` its size. Internals: execute is not granted to a
   client, and the verifier is the only caller.
 - `public.start_game_session(slug, rules, client)` accepts the pair (`queens`,
-  `queens@1`). A Queens session reports `tile_count` 8192 — the submission bound —
+  `queens@1`). A Crowns session reports `tile_count` 8192 — the submission bound —
   and lives twelve hours, like every endless run.
 - `public.complete_queens_run(session, actions, score, duration)` replays the taps
   cell by cell as above, derives the score, compares it with the claim, and only
@@ -935,14 +937,14 @@ player's, and it is never ranked.
 Each vector is asserted by both the SQL suite and the client engine.
 
 1. **Seed 1's first four solutions** — `[1,3,0,4,2]`, `[4,1,3,0,5,2]`,
-   `[0,3,5,1,4,2]`, `[0,6,1,4,2,5,3]` (the Queen's column in each row).
+   `[0,3,5,1,4,2]`, `[0,6,1,4,2,5,3]` (the crown's column in each row).
 2. **A full-width seed** — `9223372036854775807` draws `[4,1,3,0,2]` on board one
    and `[5,8,3,0,2,6,1,4,7]` on board eleven, which is what catches a client that
    rounded the seed to a double.
 3. **The zero-state fallback** — seed `0` draws the same boards as `2654435769`.
 4. **Seed 1, a mistaken line** —
-   `1,1,8,8,10,10,19,19,22,22,4,4,4,0,0,1,1,2,2`: board one solved (each Queen an
-   X, then a Queen), cell 4 of board two cycled back to empty, then three Queens
+   `1,1,8,8,10,10,19,19,22,22,4,4,4,0,0,1,1,2,2`: board one solved (each crown an
+   X, then a crown), cell 4 of board two cycled back to empty, then three crowns
    off the solution. **50 points**, 19 taps, 1 board solved, and the third mistake
    ends the run. Asserted in
    [`tests/security/rls_test.sql`](../../tests/security/rls_test.sql) and in
@@ -951,9 +953,10 @@ Each vector is asserted by both the SQL suite and the client engine.
    `1,1,8,8,10,10,19,19,22,22,4,4,7,7,15,15,18,18,29,29,32,32`: boards one and two
    solved, then the player ends the run. **110 points**, 22 taps.
 
-## Zip
+## Trail
 
-LinkedIn's Zip puzzle as an endless run against a clock. Every board is an N×N
+Trail is the classic numbered-path puzzle as an endless run against a clock. Its
+code keeps its first name: runtime `zip`, rules `zip@1`, slug `trail`. Every board is an N×N
 grid with numbered checkpoints and sometimes walls: draw one path that starts on
 1, passes through the numbers in order, visits every cell exactly once and ends on
 the highest number, moving up, down, left or right and never through a wall.
@@ -972,8 +975,8 @@ Every board has exactly one solution.
 
 ### How the real game works, and what this one keeps
 
-LinkedIn's Zip (designed with Grandmaster Puzzles) has exactly these rules; walls
-appear on some boards as a design theme. The player can only draw the path — no
+The daily versions of this puzzle have exactly these rules; walls appear on some
+boards as a design theme. The player can only draw the path — no
 notes — and undoes by going back over it. Nothing ever ends a daily puzzle: it is
 a race against the timer, and that is what this version keeps. A ranked endless
 run needs an ending the server can check, so a run is one clock: it starts at
@@ -1054,7 +1057,7 @@ board starts with no path.
 Any prefix of a legal line is a valid submission: the score never goes down.
 
 The clock is enforced with the **server's** time. Every other game issues its
-session when the play screen opens; Zip issues it when the player presses Start,
+session when the play screen opens; Trail issues it when the player presses Start,
 so the session's `started_at` is the start of the run. The verifier refuses a run
 that reaches it more than `zip_budget_ms(boards solved) + zip_slack_ms()` after
 that (`out_of_time`, a `422`). A client that ignored its own clock would only
@@ -1062,7 +1065,7 @@ reach the server too late.
 
 The cost: a submission whose first send never reached the server, retried by hand
 long after the clock ran out, is refused too. The client retries a failed request
-on its own straight away, and the error screen says that a Zip run has to arrive
+on its own straight away, and the error screen says that a Trail run has to arrive
 soon after its clock ends.
 
 ### Verified scores
@@ -1154,7 +1157,7 @@ to the clock and deals the next board, scrambled three steps more. The run ends
 when the clock reaches zero or the player ends it; any prefix of a legal line is
 valid, because the score never goes down.
 
-The clock works exactly as Zip's: the session is issued when the player presses
+The clock works exactly as Trail's: the session is issued when the player presses
 Start, and the verifier refuses a run that reaches it more than
 `eight_puzzle_budget_ms(boards solved) + eight_puzzle_slack_ms()` after the
 session started (`out_of_time`, a `422`).
@@ -1190,9 +1193,11 @@ Each vector is asserted by both the SQL suite and the client engine.
 4. **The clock** — a session started a hundred seconds earlier: board one alone
    (75 s + 20 s) is `out_of_time`; both boards (90 s + 20 s) are on time.
 
-## Tango
+## Sun & Moon
 
-LinkedIn's sun-and-moon puzzle as an endless run against a clock. Fill a 6×6 grid
+Sun & Moon is the classic binary puzzle (Takuzu, or Binairo) drawn with suns and
+moons, as an endless run against a clock. Its code keeps its first name: runtime
+`tango`, rules `tango@1`, slug `sun-and-moon`. Fill a 6×6 grid
 so that every row and every column holds three suns and three moons, no three of
 the same sit next to each other across or down, cells joined by `=` match and
 cells joined by `×` differ. Some cells start filled, and every board has exactly
@@ -1214,7 +1219,7 @@ one solution.
 
 A board is drawn from one stream in three steps: the **solution**, the **givens**
 and the **signs**. The server mirrors the first two; the signs only guide the
-player, so they are the client's alone, as Zip's checkpoints are.
+player, so they are the client's alone, as Trail's checkpoints are.
 
 ```
 side = 6
@@ -1250,7 +1255,7 @@ row), adds forty-five seconds to the clock and deals the next board, which start
 with one fewer cell filled. The run ends when the clock reaches zero or the player
 ends it; any prefix of a legal line is valid, because the score never goes down.
 
-The clock works exactly as Zip's: the session is issued when the player presses
+The clock works exactly as Trail's: the session is issued when the player presses
 Start, and the verifier refuses a run that reaches it more than
 `tango_budget_ms(boards solved) + tango_slack_ms()` after the session started
 (`out_of_time`, a `422`).

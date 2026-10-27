@@ -45,7 +45,7 @@ import {
 const RULES = GAME_RULES["queens"];
 
 /**
- * Queens, playing for real.
+ * Crowns, playing for real.
  *
  * The board is a view onto `useQueensRun`, which owns the whole lifecycle: a
  * session issued by the server, the boards played against its seed, and the score
@@ -324,7 +324,7 @@ function Board({
             {size}×{size}
           </span>{" "}
           board · <span className="tabular">{queens}</span> of{" "}
-          <span className="tabular">{size}</span> Queens
+          <span className="tabular">{size}</span> crowns
         </span>
         <span
           className="inline-flex items-center gap-1"
@@ -384,7 +384,7 @@ function Board({
                   disabled={!accepting || cell === "ruled-out"}
                   onClick={() => onTap(index)}
                   aria-label={`${cellLabel(row, column, region, cell, auto, run, verifying)}${
-                    hinted ? " Hint: a Queen goes here." : ""
+                    hinted ? " Hint: a crown goes here." : ""
                   }`}
                   style={edges}
                   className={cn(
@@ -417,7 +417,7 @@ function Board({
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
             ? "The taps you made are your score if the server agrees."
-            : "Faint Xs mark cells your Queens already rule out."}
+            : "Faint Xs mark cells your crowns already rule out."}
         </p>
         <Button variant="ghost" size="sm" disabled={!accepting} onClick={() => setConfirming(true)}>
           End run
@@ -468,13 +468,13 @@ function statusLine(run: QueensRun, verifying: boolean): string {
   const last = run.taps.at(-1);
   if (last !== undefined && run.cells[last] === "ruled-out") {
     const left = QUEENS_MISTAKES - run.mistakes;
-    return `No Queen goes there. ${left} ${left === 1 ? "mistake" : "mistakes"} left.`;
+    return `No crown goes there. ${left} ${left === 1 ? "mistake" : "mistakes"} left.`;
   }
   if (run.levelsCleared > 0 && run.cells.every((cell) => cell === "empty")) {
     const solved = boardSize(run.level - 1);
     return `Board ${run.level - 1} solved, +${solved * 10}. Board ${run.level} is ${boardSize(run.level)}×${boardSize(run.level)}.`;
   }
-  return `Board ${run.level} — one Queen per row, column and colour.`;
+  return `Board ${run.level} — one crown per row, column and colour.`;
 }
 
 /** The accessible name of a cell: where it is, its region, and what it holds. */
@@ -489,19 +489,19 @@ function cellLabel(
 ): string {
   const contents =
     cell === "queen"
-      ? "Queen"
+      ? "crown"
       : cell === "mark"
         ? "marked X"
         : cell === "ruled-out"
           ? "ruled out by a mistake"
           : auto
-            ? "empty, ruled out by a Queen"
+            ? "empty, ruled out by a crown"
             : "empty";
   const position = `Row ${row + 1} column ${column + 1}, region ${region + 1}, ${contents}`;
   if (verifying) return `${position}. The run is being verified.`;
   if (run.outcome !== "playing") return `${position}. The run has ended.`;
   if (cell === "ruled-out") return `${position}.`;
-  const next = cell === "empty" ? "mark an X" : cell === "mark" ? "place a Queen" : "clear it";
+  const next = cell === "empty" ? "mark an X" : cell === "mark" ? "place a crown" : "clear it";
   return `${position}. Tap to ${next}.`;
 }
 

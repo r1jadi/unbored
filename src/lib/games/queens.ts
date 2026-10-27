@@ -42,13 +42,13 @@
  *   - **A tap cycles a cell**: empty → X (a note) → Queen → empty. Notes are free.
  *   - **A Queen off the solution is a mistake.** The cell is ruled out and locked,
  *     shown as a red X, and the third mistake ends the run. This is the fail
- *     condition the endless format needs: LinkedIn's daily puzzle lets a player
+ *     condition the endless format needs: a daily puzzle lets a player
  *     shuffle Queens freely because nothing is ranked, but a ranked run has to be
  *     able to end, and a replay can count a wrong Queen where it cannot measure a
  *     clock.
  *   - **A board is solved when its N Queens are placed**, and the next board is
  *     dealt. Boards grow from 5×5 to 9×9 and then stay 9×9: a unique-solution
- *     board past 9×9 takes too long to generate on a phone, and LinkedIn's own
+ *     board past 9×9 takes too long to generate on a phone, and the daily puzzles'
  *     boards sit in the same range.
  *   - **A solved board scores ten points per row**, so a 5×5 board is worth 50 and
  *     a 9×9 board 90: larger boards take much longer, and the score should say so.

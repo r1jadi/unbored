@@ -32,10 +32,10 @@ const DYNAMIC_PATHS = [
     "dont-break-the-chain",
     "memory-flash",
     "7-second",
-    "queens",
-    "zip",
+    "crowns",
+    "trail",
     "8-puzzle",
-    "tango",
+    "sun-and-moon",
   ].map((id) => `/games/${id}`),
 ];
 

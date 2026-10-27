@@ -58,7 +58,7 @@ import { useHint } from "@/lib/games/use-hint";
 const RULES = GAME_RULES["tango"];
 
 /**
- * Tango, playing for real.
+ * Sun & Moon, playing for real.
  *
  * The board is a view onto `useTangoRun`, which owns the lifecycle and the clock:
  * the rules first, a session issued when the player presses Start, boards drawn

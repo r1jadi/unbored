@@ -66,10 +66,10 @@ database accepts only after replaying the run.
 | Color Merge           | `color-merge`          | `color-merge.ts`  |
 | Don't Touch the Black | `dont-touch-the-black` | `dont-touch.ts`   |
 | 7 Second              | `7-second`             | `seven-second.ts` |
-| Queens                | `queens`               | `queens.ts`       |
-| Zip                   | `zip`                  | `zip.ts`          |
+| Crowns                | `crowns`               | `queens.ts`       |
+| Trail                 | `trail`                | `zip.ts`          |
 | 8 Puzzle              | `8-puzzle`             | `eight-puzzle.ts` |
-| Tango                 | `tango`                | `tango.ts`        |
+| Sun & Moon            | `sun-and-moon`         | `tango.ts`        |
 
 7 Second is the daily game: one shared deck per UTC day and one ranked attempt a
 day. `play.$id.tsx` mounts a runtime only for a game whose `runtime` identifier it

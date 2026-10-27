@@ -29,7 +29,7 @@ const CELL = /^Row \d column \d,/;
 function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
     id: "efefefef-1111-4111-8111-efefefefefef",
-    gameSlug: "tango",
+    gameSlug: "sun-and-moon",
     rulesVersion: "tango@1",
     seed: "1",
     tileCount: 8192,
@@ -43,7 +43,7 @@ function sessionPayload(overrides: Record<string, unknown> = {}) {
 function resultPayload(overrides: Record<string, unknown> = {}) {
   return {
     sessionId: "efefefef-1111-4111-8111-efefefefefef",
-    gameSlug: "tango",
+    gameSlug: "sun-and-moon",
     // Deliberately not the client's number: the screen must show the verified one.
     score: 180,
     clearedColumns: 3,
@@ -87,7 +87,7 @@ async function renderRuntime() {
     createRoute({
       getParentRoute: () => root,
       path: "/",
-      component: () => <TangoRuntime slug="tango" title="Tango" />,
+      component: () => <TangoRuntime slug="sun-and-moon" title="Sun & Moon" />,
     }),
     createRoute({ getParentRoute: () => root, path: "/games/$id", component: () => <p>Game</p> }),
     createRoute({
@@ -161,7 +161,7 @@ describe("starting a run", () => {
     await startRun();
 
     expect(JSON.parse(String(sessionCalls(spy)[0][1]?.body ?? "{}"))).toEqual({
-      gameSlug: "tango",
+      gameSlug: "sun-and-moon",
       rulesVersion: "tango@1",
       client: "web/1.0",
     });

@@ -105,11 +105,11 @@ async function renderAt(node: ReactNode) {
   return router;
 }
 
-const queens: Game = {
-  slug: "queens",
-  title: "Queens",
-  tagline: "One Queen per row, column and colour.",
-  instructions: "Place exactly one Queen in each row, each column and each region.",
+const crowns: Game = {
+  slug: "crowns",
+  title: "Crowns",
+  tagline: "One crown per row, column and colour.",
+  instructions: "Place exactly one crown in each row, each column and each region.",
   runtime: "queens",
   playable: true,
   plays: 0,
@@ -125,28 +125,28 @@ afterEach(() => {
 
 describe("the feed card", () => {
   it("offers Tap to play, which starts the game, and the rules", async () => {
-    stubSessions("queens", "queens@1");
-    await renderAt(<FeedItem game={queens} />);
+    stubSessions("crowns", "queens@1");
+    await renderAt(<FeedItem game={crowns} />);
 
     const play = screen.getByRole("link", { name: /Tap to play/ });
-    expect(play).toHaveAttribute("href", "/play/queens?start=true");
+    expect(play).toHaveAttribute("href", "/play/crowns?start=true");
     // The board itself starts the game the same way.
-    expect(screen.getByRole("link", { name: "Play Queens" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Play Crowns" })).toHaveAttribute(
       "href",
-      "/play/queens?start=true",
+      "/play/crowns?start=true",
     );
     // The title is the way to the game's page.
-    expect(screen.getByRole("link", { name: "Queens" })).toHaveAttribute("href", "/games/queens");
+    expect(screen.getByRole("link", { name: "Crowns" })).toHaveAttribute("href", "/games/crowns");
     expect(screen.getByRole("button", { name: /^Rules$/ })).toBeInTheDocument();
   });
 
   it("shows the game's full rules in a sheet, with Tap to play at the bottom", async () => {
-    stubSessions("queens", "queens@1");
-    await renderAt(<FeedItem game={queens} />);
+    stubSessions("crowns", "queens@1");
+    await renderAt(<FeedItem game={crowns} />);
 
     fireEvent.click(screen.getByRole("button", { name: /^Rules$/ }));
     const sheet = await screen.findByRole("dialog");
-    expect(within(sheet).getByText("How to play Queens")).toBeInTheDocument();
+    expect(within(sheet).getByText("How to play Crowns")).toBeInTheDocument();
     expect(within(sheet).getByText(GAME_RULES.queens.summary)).toBeInTheDocument();
     for (const rule of GAME_RULES.queens.rules) {
       expect(within(sheet).getByText(rule.lead)).toBeInTheDocument();
@@ -154,7 +154,7 @@ describe("the feed card", () => {
     }
     expect(within(sheet).getByRole("link", { name: /Tap to play/ })).toHaveAttribute(
       "href",
-      "/play/queens?start=true",
+      "/play/crowns?start=true",
     );
   });
 });
@@ -182,9 +182,9 @@ describe("starting straight away", () => {
     expect(screen.queryByRole("button", { name: "Start run" })).toBeNull();
   });
 
-  it("asks for Zip's timed session at once, rather than on a Start press", async () => {
-    const spy = stubSessions("zip", "zip@1");
-    await renderAt(<ZipRuntime slug="zip" title="Zip" autoStart />);
+  it("asks for Trail's timed session at once, rather than on a Start press", async () => {
+    const spy = stubSessions("trail", "zip@1");
+    await renderAt(<ZipRuntime slug="trail" title="Trail" autoStart />);
 
     expect(await screen.findByRole("group", { name: "Board 1, 5 by 5" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Fill the grid" })).toBeNull();
@@ -197,7 +197,7 @@ describe("starting straight away", () => {
   // showed as a flash of the Start run screen when the play screen's code had to
   // load first. No render of a Tap to play run may be the rules.
   it.each([
-    ["Zip", useZipRun, "zip", "zip@1"],
+    ["Trail", useZipRun, "trail", "zip@1"],
     ["8 Puzzle", useEightPuzzleRun, "eight-puzzle", "eight-puzzle@1"],
   ] as const)("never renders %s's rules, even for a frame", async (_name, hook, slug, rules) => {
     stubSessions(slug, rules);

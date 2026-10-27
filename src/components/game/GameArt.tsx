@@ -58,10 +58,10 @@ export function GameArt({
         {id === "dont-break-the-chain" && <Chain />}
         {id === "memory-flash" && <MemoryFlash />}
         {id === "7-second" && <Seven />}
-        {id === "queens" && <Queens />}
-        {id === "zip" && <Zip />}
+        {id === "crowns" && <Crowns />}
+        {id === "trail" && <Trail />}
         {id === "8-puzzle" && <EightPuzzle />}
-        {id === "tango" && <Tango />}
+        {id === "sun-and-moon" && <SunAndMoon />}
         {!KNOWN.has(id) && <Generated seed={id} />}
       </div>
     </div>
@@ -77,10 +77,10 @@ const KNOWN = new Set([
   "dont-break-the-chain",
   "memory-flash",
   "7-second",
-  "queens",
-  "zip",
+  "crowns",
+  "trail",
   "8-puzzle",
-  "tango",
+  "sun-and-moon",
 ]);
 
 /**
@@ -201,7 +201,7 @@ function OneMove() {
   );
 }
 
-function Queens() {
+function Crowns() {
   // Seed 1's first board, solved: the regions read as shapes, and the Queens sit
   // one per row, column and region without touching.
   const regions = [0, 0, 0, 1, 1, 0, 0, 3, 1, 3, 2, 3, 3, 3, 3, 4, 4, 3, 3, 3, 4, 4, 4, 3, 3];
@@ -221,7 +221,7 @@ function Queens() {
   );
 }
 
-function Zip() {
+function Trail() {
   // Seed 1's first board, solved: one line through every cell, past its numbers.
   const path = [
     8, 7, 6, 5, 10, 15, 20, 21, 16, 11, 12, 17, 22, 23, 24, 19, 18, 13, 14, 9, 4, 3, 2, 1, 0,
@@ -282,7 +282,7 @@ function EightPuzzle() {
   );
 }
 
-function Tango() {
+function SunAndMoon() {
   // Seed 1's first board, solved: suns and moons, three of each in every line.
   const cells = "211221211221122112122121211212122112".split("").map(Number);
   return (

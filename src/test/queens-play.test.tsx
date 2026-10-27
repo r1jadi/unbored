@@ -34,7 +34,7 @@ import { board } from "@/lib/games/queens";
 function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
     id: "99999999-1111-4111-8111-999999999999",
-    gameSlug: "queens",
+    gameSlug: "crowns",
     rulesVersion: "queens@1",
     seed: "1",
     tileCount: 8192,
@@ -48,7 +48,7 @@ function sessionPayload(overrides: Record<string, unknown> = {}) {
 function resultPayload(overrides: Record<string, unknown> = {}) {
   return {
     sessionId: "99999999-1111-4111-8111-999999999999",
-    gameSlug: "queens",
+    gameSlug: "crowns",
     // Deliberately not the client's number: the screen must show the verified one.
     score: 70,
     clearedColumns: 1,
@@ -92,7 +92,7 @@ async function renderRuntime() {
     createRoute({
       getParentRoute: () => root,
       path: "/",
-      component: () => <QueensRuntime slug="queens" title="Queens" />,
+      component: () => <QueensRuntime slug="crowns" title="Crowns" />,
     }),
     createRoute({ getParentRoute: () => root, path: "/games/$id", component: () => <p>Game</p> }),
     createRoute({
@@ -176,7 +176,7 @@ describe("starting a run", () => {
     });
 
     expect(await screen.findByRole("button", { name: "Start run" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "One Queen each" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "One crown each" })).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: /^Board / })).not.toBeInTheDocument();
     expect(spy).toHaveBeenCalledTimes(1);
   });
@@ -188,7 +188,7 @@ describe("starting a run", () => {
 
     const start = spy.mock.calls.find((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(JSON.parse(String(start?.[1]?.body ?? "{}"))).toEqual({
-      gameSlug: "queens",
+      gameSlug: "crowns",
       rulesVersion: "queens@1",
       client: "web/1.0",
     });
@@ -198,10 +198,10 @@ describe("starting a run", () => {
     mockPlayback();
     await renderRuntime();
 
-    expect(await screen.findByRole("heading", { name: "One Queen each" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "One crown each" })).toBeInTheDocument();
     expect(screen.getByText(/every row, every column and every colour region/)).toBeInTheDocument();
     expect(screen.getByText(/not even\s+diagonally/)).toBeInTheDocument();
-    expect(screen.getByText(/twice for a Queen, and a third time to clear it/)).toBeInTheDocument();
+    expect(screen.getByText(/twice for a crown, and a third time to clear it/)).toBeInTheDocument();
     expect(screen.getByText("Signed in: this run can be ranked")).toBeInTheDocument();
     expect(screen.queryAllByRole("button", { name: CELL })).toHaveLength(0);
 
@@ -255,9 +255,9 @@ describe("playing the board", () => {
     await startRun();
 
     tapIndex(1, 5);
-    expect(cell(1, 5)).toHaveAccessibleName(/marked X\. Tap to place a Queen\./);
+    expect(cell(1, 5)).toHaveAccessibleName(/marked X\. Tap to place a crown\./);
     tapIndex(1, 5);
-    expect(cell(1, 5)).toHaveAccessibleName(/Queen\. Tap to clear it\./);
+    expect(cell(1, 5)).toHaveAccessibleName(/crown\. Tap to clear it\./);
     expect(screen.getByText("1")).toBeInTheDocument(); // one of five Queens
     tapIndex(1, 5);
     expect(cell(1, 5)).toHaveAccessibleName(/, empty\. Tap to mark an X\./);
@@ -270,9 +270,9 @@ describe("playing the board", () => {
 
     placeQueen(1, 5);
     // Row 1, column 2's neighbours and its row are ruled out; the taps are only two.
-    expect(cell(0, 5)).toHaveAccessibleName(/empty, ruled out by a Queen/);
-    expect(cell(6, 5)).toHaveAccessibleName(/empty, ruled out by a Queen/);
-    expect(cell(21, 5)).toHaveAccessibleName(/empty, ruled out by a Queen/);
+    expect(cell(0, 5)).toHaveAccessibleName(/empty, ruled out by a crown/);
+    expect(cell(6, 5)).toHaveAccessibleName(/empty, ruled out by a crown/);
+    expect(cell(21, 5)).toHaveAccessibleName(/empty, ruled out by a crown/);
     expect(cell(13, 5)).toHaveAccessibleName(/, empty\. Tap/);
   });
 
@@ -283,7 +283,7 @@ describe("playing the board", () => {
 
     placeQueen(0, 5);
 
-    expect(screen.getByText("No Queen goes there. 2 mistakes left.")).toBeInTheDocument();
+    expect(screen.getByText("No crown goes there. 2 mistakes left.")).toBeInTheDocument();
     expect(cell(0, 5)).toBeDisabled();
     expect(cell(0, 5)).toHaveAccessibleName(/ruled out by a mistake/);
     expect(screen.getByRole("img", { name: "2 of 3 mistakes left" })).toBeInTheDocument();
@@ -404,7 +404,7 @@ describe("finishing a run", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /play again/i }));
 
-    expect(await screen.findByRole("heading", { name: "One Queen each" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "One crown each" })).toBeInTheDocument();
     const sessions = spy.mock.calls.filter((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(sessions).toHaveLength(2);
   });

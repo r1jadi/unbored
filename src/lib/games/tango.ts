@@ -1,7 +1,7 @@
 /**
- * Tango — the game, as a pure deterministic state machine.
+ * Sun & Moon (runtime `tango`) — the game, as a pure deterministic state machine.
  *
- * LinkedIn's Tango: fill a 6×6 grid with suns and moons. Every row and every
+ * Sun & Moon, the classic binary puzzle: fill a 6×6 grid with suns and moons. Every row and every
  * column holds three of each, no three of the same sit next to each other across
  * or down, cells joined by `=` match, and cells joined by `×` differ. Some cells
  * start filled. Every board has exactly one solution.
@@ -26,12 +26,12 @@
  *
  * ## The endless game, against the clock
  *
- * Like Zip and 8 Puzzle, and like LinkedIn's own Tango, a run is a race: one clock
+ * Like Zip and 8 Puzzle, a run is a race: one clock
  * that starts at two minutes and gains forty-five seconds with every solved board,
  * timed by the server from the session's start. A solved board scores ten points
  * a row. A tap cycles a cell — sun, moon, empty — so a run is never ended by a
  * wrong symbol: a player fixes it, and the clock is what is spent. The boards stay
- * 6×6, as LinkedIn's do; each starts with fewer cells filled than the last, from
+ * 6×6, as the daily puzzles' do; each starts with fewer cells filled than the last, from
  * nine down to three, so the signs carry more of the deduction.
  *
  * Storage rule: nothing here is persisted. A score only exists once the server has
@@ -381,7 +381,7 @@ export function board(seed: string | number | bigint, level: number): TangoBoard
 /**
  * The cells that break a rule as the board stands: three alike in a row, a row
  * or column with more than three of a symbol, or a sign that does not hold. The
- * screen marks them, as LinkedIn's Tango does; the run does not count them.
+ * screen marks them; the run does not count them.
  */
 export function conflicts(cells: readonly TangoValue[], signs: readonly TangoSign[]): Set<number> {
   const marked = new Set<number>();

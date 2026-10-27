@@ -31,7 +31,7 @@
  *
  * ## The endless game, against the clock
  *
- * LinkedIn's Zip is a speed puzzle, and so is this: a run is a series of boards
+ * A numbered-path puzzle is a speed puzzle, and so is this: a run is a series of boards
  * against one clock. The clock starts at sixty seconds and every solved board adds
  * five seconds per row. When it reaches zero the run is over; the player may also
  * end it early. A solved board scores ten points per row. The clock is enforced by

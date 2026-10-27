@@ -914,9 +914,9 @@ paths:
         refused, so a player cannot discard the move that lost. 7 Second is the
         exception in the other direction — its clock decides when a run ends, so
         a submission is valid with any number of answers from zero to sixty — and
-        so is Queens, whose player may end a run at any time: a Queens run never
-        loses points, so any prefix of a legal line is valid. Zip, 8 Puzzle and
-        Tango are the same, with one more check: its run is against a clock the server times from the
+        so is Crowns, whose player may end a run at any time: a Crowns run never
+        loses points, so any prefix of a legal line is valid. Trail, 8 Puzzle and
+        Sun & Moon are the same, with one more check: its run is against a clock the server times from the
         session's start, and a run that arrives after the time its solved boards
         earned is refused (`422`).
 
@@ -970,9 +970,9 @@ paths:
                         addressed: a column for Stack 10, a pad for Chain, a cell
                         for Memory Flash, a cell for One Move, a direction for
                         Color Merge, a cell for Don't Touch the Black, an
-                        answer button for 7 Second, a cell for Queens and for
-                        Zip (the cells its path enters), and the cell of the tile
-                        slid for 8 Puzzle, a cell for Tango. This is what is replayed; the
+                        answer button for 7 Second, a cell for Crowns and for
+                        Trail (the cells its path enters), and the cell of the tile
+                        slid for 8 Puzzle, a cell for Sun & Moon. This is what is replayed; the
                         rules for how a move is generated and what it does belong
                         to the game (see `docs/games`). The bound is a submission's
                         move ceiling, not a complete run: the finite games' lengths
@@ -982,14 +982,14 @@ paths:
                         forty-eight slides for the retired Color Merge deck), while
                         the endless games carry up to 4096 Stack 10 tiles, 4096
                         Chain taps, 4096 Color Merge slides, 4095 Don't Touch
-                        the Black cell taps, 8192 Queens taps (notes are taps)
-                        8192 Zip cells, 8192 8 Puzzle slides and 8192 Tango taps. A position is a column for Stack 10
+                        the Black cell taps, 8192 Crowns taps (notes are taps)
+                        8192 Trail cells, 8192 8 Puzzle slides and 8192 Sun & Moon taps. A position is a column for Stack 10
                         (0–3), a pad for Chain, a cell for Memory Flash, One Move
                         and Don't Touch the Black, a direction for Color Merge
                         (0–3), an answer button for 7 Second (0–2) and a cell of
-                        the 9×9 board for Queens (0–80) and of the 7×7 board for
-                        Zip (0–48), of the 3×3 board for 8 Puzzle (0–8) and of the
-                        6×6 board for Tango (0–35). Each
+                        the 9×9 board for Crowns (0–80) and of the 7×7 board for
+                        Trail (0–48), of the 3×3 board for 8 Puzzle (0–8) and of the
+                        6×6 board for Sun & Moon (0–35). Each
                         verifier refuses anything past its own bound.
                       maxItems: 8192
                       # The highest position any shipped version addresses: a cell
@@ -2210,7 +2210,7 @@ components:
         tileCount:
           type: integer
           minimum: 1
-          description: "How many moves a run holds: tiles for Stack 10, taps for Memory Flash and One Move, slides for Color Merge, cell taps for Don't Touch the Black, answers for 7 Second, and cell taps for Queens. The endless games report their submission bound instead of a complete length, because they have none: 4096 tiles for Stack 10, 4096 taps for Chain, 4096 slides for Color Merge, 4095 cell taps for Don't Touch the Black and 8192 taps for Queens. The client does not choose it."
+          description: "How many moves a run holds: tiles for Stack 10, taps for Memory Flash and One Move, slides for Color Merge, cell taps for Don't Touch the Black, answers for 7 Second, and cell taps for Crowns. The endless games report their submission bound instead of a complete length, because they have none: 4096 tiles for Stack 10, 4096 taps for Chain, 4096 slides for Color Merge, 4095 cell taps for Don't Touch the Black and 8192 taps for Crowns. The client does not choose it."
         startedAt: { type: string, format: date-time }
         expiresAt:
           type: string

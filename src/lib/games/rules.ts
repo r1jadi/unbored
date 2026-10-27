@@ -161,19 +161,19 @@ export const GAME_RULES = {
     ],
   },
   queens: {
-    heading: "One Queen each",
+    heading: "One crown each",
     summary: "Every board is split into coloured regions, one for each row.",
     rules: [
       {
         lead: "The goal",
-        text: "is exactly one Queen in every row, every column and every colour region. Two Queens can never touch, not even diagonally.",
+        text: "is exactly one crown in every row, every column and every colour region. Two crowns can never touch, not even diagonally.",
       },
       {
         lead: "Tap a cell",
-        text: "once for an X — a note that no Queen goes there — twice for a Queen, and a third time to clear it.",
+        text: "once for an X — a note that no crown goes there — twice for a crown, and a third time to clear it.",
       },
       {
-        lead: "A wrong Queen",
+        lead: "A wrong crown",
         text: "is a mistake, and the third one ends the run. Every board has one solution and is worth ten points a row; the boards grow as you go, and you can end the run whenever you like.",
       },
     ],
