@@ -34,6 +34,7 @@ All tables live in `public` and are reachable only through the Data API roles
 | `reports` | `reporter_id` | User reports with a status workflow. |
 | `moderation_actions` | `moderator_id` | Append-only record of moderator decisions. |
 | `notifications` | `user_id` | Per-user inbox. |
+| `game_release_digests` | — | One five-new-games email batch, its games and one delivery row per recipient. Service-owned; no client grant at all. |
 | `analytics_events` | `user_id` (nullable) | Append-only product events; no Data API grant at all. |
 
 ## Ownership rules
@@ -81,6 +82,7 @@ The full matrix, including the denied cases, is in
 | `likes`, `follows` | select | select, insert/delete own | all |
 | `reports` | — | insert own, select own, staff select/update | all |
 | `notifications` | — | select/update own `read_at` | all |
+| `game_release_digests` (+ games, deliveries) | — | — (no grant) | all |
 | `analytics_events` | — | — (no grant) | all |
 
 ## Integrity rules enforced in the database

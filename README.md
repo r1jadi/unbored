@@ -28,7 +28,8 @@ Five slices are implemented end to end; the rest are contract-only.
 | The game catalogue (`games`)                                                                                        | **Implemented** — published games, search, categories with real counts     |
 | Play sessions and server-verified scores (`game-sessions`)                                                          | **Implemented** — a score exists only if the database replays the run      |
 | The admin dashboard's API (`admin`)                                                                                 | **Implemented** — staff-gated reads and moderation writes, no fixture data |
-| Everything else (scores, leaderboards, feed, recommendations, social, notifications, search, moderation, analytics) | Scaffolded: each has a published contract and answers `501`                |
+| The five-new-games email digest (`notifications`)                                                                   | **Implemented** — opt-in, cron-triggered, one email per five releases      |
+| Everything else (scores, leaderboards, feed, recommendations, social, search, moderation, analytics)                | Scaffolded: each has a published contract and answers `501`                |
 | Payments (RaiAccept)                                                                                                | Designed, not built — see [0005](docs/decisions/0005-payments.md)          |
 
 A scaffolded endpoint is deliberate, not missing: the route exists, authenticates,
@@ -204,7 +205,7 @@ shutdown with readiness draining.
 | `feed`            | The personalised feed                                             | Scaffolded                    |
 | `recommendations` | Suggestions                                                       | Scaffolded                    |
 | `social`          | Comments, follows, likes                                          | Scaffolded                    |
-| `notifications`   | In-app and push                                                   | Scaffolded                    |
+| `notifications`   | The five-new-games email digest; in-app and push remain scaffolded | **Implemented** (digest)      |
 | `search`          | Games, creators, players                                          | Scaffolded                    |
 | `moderation`      | Reports and moderation actions                                    | Scaffolded                    |
 | `analytics`       | Product events and dashboards                                     | Scaffolded                    |

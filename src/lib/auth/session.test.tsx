@@ -203,6 +203,16 @@ describe("signUp", () => {
     });
   });
 
+  it("sends the product-updates choice only when it was ticked", async () => {
+    const consented = mockFetch(() => jsonResponse(sessionPayload(), 201));
+    await signUp("player@example.com", "correct-horse-battery", "rijad", "Rijad", true);
+    expect(requestOf(consented).body).toMatchObject({ marketing: true });
+
+    const declined = mockFetch(() => jsonResponse(sessionPayload(), 201));
+    await signUp("player@example.com", "correct-horse-battery", "rijad", "Rijad", false);
+    expect(requestOf(declined).body).not.toHaveProperty("marketing");
+  });
+
   it("signs the caller in when Supabase returns a session", async () => {
     const spy = mockFetch(() => jsonResponse(sessionPayload(), 201));
 

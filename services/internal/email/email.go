@@ -67,6 +67,11 @@ func New(apiKey, from string) *Sender {
 // Enabled reports whether an API key is configured.
 func (s *Sender) Enabled() bool { return s.apiKey != "" }
 
+// Configured reports whether a send can succeed at all: an API key and a
+// default From address are both present. Callers that must not record a batch of
+// guaranteed failures (the game digest) check this before starting.
+func (s *Sender) Configured() bool { return s.Enabled() && s.from != "" }
+
 // Send delivers msg and returns the Resend email id.
 func (s *Sender) Send(ctx context.Context, msg Message) (string, error) {
 	if !s.Enabled() {

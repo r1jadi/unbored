@@ -25,6 +25,8 @@ and `.env.example`; the values the Vercel project needs are in
 | --- | --- | --- |
 | `SUPABASE_SECRET_KEY` (legacy: `SUPABASE_SERVICE_ROLE_KEY`) | `.env.local`, gitignored | Vercel → Settings → Environment Variables, **Production scope only**; API host secret store |
 | `SUPABASE_JWT_SECRET` | `.env.local` | API host secret store; prefer JWKS + asymmetric keys so this value does not exist. The gateway deployment deliberately has none — it verifies against the project JWKS (see [deployment/vercel.md](../deployment/vercel.md)) |
+| `RESEND_API_KEY` | `.env.local`, gitignored | Vercel → Settings → Environment Variables, server-side only; the games deployment sends the digest |
+| `CRON_SECRET` | `.env.local`, gitignored | Vercel → Settings → Environment Variables; Vercel Cron sends it as a bearer token to the digest route |
 | `RAIACCEPT_*` | not set | not set until the payments task; then a secret store, server-side only |
 | Database password | the local container's throwaway value | Supabase-managed; never in this repository |
 

@@ -213,7 +213,13 @@ function Signup() {
       // The name travels with the request: the database stores it and records
       // the registration as finished, so the confirmation link signs straight
       // in. The local copy only covers a database without that migration.
-      const result = await signUp(creds.email, creds.password, chosenUsername, name);
+      const result = await signUp(
+        creds.email,
+        creds.password,
+        chosenUsername,
+        name,
+        accept.marketing,
+      );
       if (name !== "") rememberPendingDisplayName(name);
       if (result.tokens) {
         await finishRegistration();

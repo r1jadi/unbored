@@ -20,6 +20,7 @@ export type UserPreferences = {
   notifyBeats: boolean;
   notifyFollowers: boolean;
   notifyComments: boolean;
+  notifyNewGames: boolean;
   language: string | null;
   appearance: string | null;
 };
@@ -34,6 +35,8 @@ export const defaultPreferences: UserPreferences = {
   notifyBeats: true,
   notifyFollowers: true,
   notifyComments: true,
+  // Email is opt-in: the sign-up form and Settings both collect explicit consent.
+  notifyNewGames: false,
   language: null,
   appearance: null,
 };
@@ -49,6 +52,7 @@ type Row = {
   notify_beats: boolean;
   notify_followers: boolean;
   notify_comments: boolean;
+  notify_new_games: boolean;
   language: string | null;
   appearance: string | null;
 };
@@ -64,6 +68,7 @@ function toPreferences(row: Row): UserPreferences {
     notifyBeats: row.notify_beats,
     notifyFollowers: row.notify_followers,
     notifyComments: row.notify_comments,
+    notifyNewGames: row.notify_new_games,
     language: row.language,
     appearance: row.appearance,
   };
@@ -81,6 +86,7 @@ function toRow(prefs: UserPreferences, userId: string): Row {
     notify_beats: prefs.notifyBeats,
     notify_followers: prefs.notifyFollowers,
     notify_comments: prefs.notifyComments,
+    notify_new_games: prefs.notifyNewGames,
     language: prefs.language,
     appearance: prefs.appearance,
   };

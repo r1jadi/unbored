@@ -57,5 +57,23 @@ Two paths, one API key:
    Set `RESEND_API_KEY` only on the Vercel service that sends mail — it is a
    secret and never a `VITE_` variable.
 
-Before either works, verify `unbored.lol` in Resend → Domains (SPF/DKIM DNS
+3. **Game release digest** (`services/notifications`). After five games have
+   been published since the last digest, a daily Vercel Cron calls
+   `GET /api/v1/cron/game-digests`, which emails every account with
+   `user_preferences.notify_new_games = true`. The message lists each game's
+   name, its how-to-play `instructions` and a `/play/<slug>` link, and links to
+   `/settings/notifications` to opt out.
+
+   Consent has two doors, both writing the same column: the optional "Product
+   updates" checkbox on the sign-up form and the "New games" toggle in Settings.
+   Existing accounts start opted out. The catalogue that predates the feature is
+   recorded as a closed baseline digest, so it is never mailed retroactively.
+
+   The route is disabled (503) unless `CRON_SECRET` is set; Vercel Cron sends it
+   as `Authorization: Bearer <CRON_SECRET>`. Each run sends to at most 25
+   recipients and continues an unfinished digest on the next run. Delivery rows
+   and a Resend idempotency key per digest/recipient prevent duplicates. See
+   [services/notifications/README.md](../../services/notifications/README.md).
+
+Before any of these works, verify `unbored.lol` in Resend → Domains (SPF/DKIM DNS
 records), otherwise Resend only delivers to the account owner's address.

@@ -301,6 +301,36 @@ func TestSignUpSendsTheDisplayNameAsMetadata(t *testing.T) {
 	}
 }
 
+func TestSignUpSendsOnlyExplicitMarketingConsent(t *testing.T) {
+	client, requests := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(t, w, 200, `{"id":"u1","email":"player@example.com","created_at":"2026-10-01T00:00:00Z"}`)
+	})
+
+	if _, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "rijad", "Rijad", true); err != nil {
+		t.Fatalf("sign-up failed: %v", err)
+	}
+	data, ok := (*requests)[0].body["data"].(map[string]any)
+	if !ok || data["marketing"] != "true" {
+		t.Errorf("data = %v, want marketing true", (*requests)[0].body["data"])
+	}
+}
+
+func TestSignUpOmitsMarketingWithoutConsent(t *testing.T) {
+	client, requests := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(t, w, 200, `{"id":"u1","email":"player@example.com","created_at":"2026-10-01T00:00:00Z"}`)
+	})
+
+	if _, err := client.SignUp(context.Background(), "player@example.com", "correct-horse-battery", "rijad", "Rijad", false); err != nil {
+		t.Fatalf("sign-up failed: %v", err)
+	}
+	data, ok := (*requests)[0].body["data"].(map[string]any)
+	if ok {
+		if _, present := data["marketing"]; present {
+			t.Errorf("marketing was sent without consent: %v", data)
+		}
+	}
+}
+
 func TestSignUpOmitsTheMetadataWhenNoUsernameWasChosen(t *testing.T) {
 	client, requests := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(t, w, 200, `{"id":"u1","email":"player@example.com","created_at":"2026-10-01T00:00:00Z"}`)

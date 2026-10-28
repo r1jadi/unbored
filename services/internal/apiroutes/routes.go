@@ -54,6 +54,13 @@ func Groups() []Group {
 		// docs/deployment/vercel.md). The prefix names the service that answers
 		// it, so the gateway's upstream lookup cannot drift from what runs.
 		{Prefix: BasePath + "/admin", Service: "games"},
+		// The game-release digest is triggered by Vercel Cron, not a user. It is
+		// served by the notifications package mounted in the games deployment
+		// (that deployment already holds the secret key) and authenticates the
+		// caller with CRON_SECRET. It lives under its own prefix so it cannot be
+		// mistaken for a staff route, and the gateway forwards it through the
+		// existing games upstream.
+		{Prefix: BasePath + "/cron", Service: "games"},
 	}
 }
 

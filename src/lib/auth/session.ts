@@ -634,12 +634,16 @@ export function authErrorMessage(error: unknown): string {
  * `displayName` travels the same way: the trigger stores it and, together with
  * the username, records the registration as finished, so opening the
  * confirmation link signs straight in instead of re-asking for both.
+ *
+ * `marketing` is the optional "Product updates" choice. It is sent only when
+ * ticked, and the database trigger turns it into the email-digest preference.
  */
 export function signUp(
   email: string,
   password: string,
   username?: string,
   displayName?: string,
+  marketing?: boolean,
 ): Promise<AuthSession> {
   const chosen = username?.trim();
   const name = displayName?.trim();
@@ -650,6 +654,7 @@ export function signUp(
       password,
       ...(chosen ? { username: chosen } : {}),
       ...(name ? { displayName: name } : {}),
+      ...(marketing ? { marketing: true } : {}),
     },
   }).then(adopt);
 }

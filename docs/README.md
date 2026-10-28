@@ -53,7 +53,8 @@ server-verified scores and working leaderboards. All seven catalogue games are
 `playable`, each names the runtime that plays it, and 7 Second is the daily one:
 same deck for everyone on a UTC day, one ranked attempt a day.
 
-The remaining features (the other games, social, notifications, search,
-moderation, analytics, payments) each have a published contract and an
-unimplemented endpoint that answers `501` until its own task lands. See
+The remaining features (social, in-app notifications, search, moderation,
+analytics, payments) each have a published contract and an unimplemented endpoint
+that answers `501` until its own task lands. The game-release email digest is
+implemented; see [development/analytics-and-email.md](development/analytics-and-email.md). See
 [architecture/api.md](architecture/api.md) for the endpoint inventory.

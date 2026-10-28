@@ -70,12 +70,13 @@ type Supabase struct {
 	// PublishableKey is the project's publishable key (`sb_publishable_…`, the
 	// legacy anon key). It is not a secret — Supabase designs it to be readable
 	// by anyone — but a service needs it as the `apikey` header when it calls
-	// Supabase Auth on a caller's behalf (services/auth). The secret key is never
-	// read into a service's configuration: nothing here bypasses RLS.
+	// Supabase Auth on a caller's behalf (services/auth).
 	PublishableKey string
 	// SecretKey authorizes privileged server-side database calls that run as the
-	// service role. Empty means unconfigured: privileged paths stay disabled and
-	// fail closed rather than falling back to an unprivileged identity.
+	// service role. Today that is the admin API and the game-release digest, both
+	// mounted in the games deployment after their own authorization checks. Empty
+	// means unconfigured: privileged paths stay disabled and fail closed rather
+	// than falling back to an unprivileged identity.
 	SecretKey string
 }
 

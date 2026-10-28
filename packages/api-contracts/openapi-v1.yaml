@@ -90,6 +90,8 @@ tags:
     description: Product analytics.
   - name: admin
     description: Operations API behind the admin dashboard.
+  - name: internal
+    description: Machine-triggered operations, authenticated with a server secret. Not for browsers.
   - name: health
     description: Liveness of the gateway itself, for uptime checks and deployments.
 
@@ -196,6 +198,13 @@ paths:
                     The display name chosen on the sign-up form. Trimmed. With a
                     username, the account is created already registered
                     (`onboarded`), so the confirmation link signs straight in.
+                marketing:
+                  type: boolean
+                  description: |
+                    Explicit consent to occasional emails about new games,
+                    collected from the optional "Product updates" checkbox.
+                    Omitted or false means no digest. The sign-up trigger stores
+                    true as `user_preferences.notify_new_games`.
       responses:
         "201":
           description: |
@@ -1841,8 +1850,46 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "503": { $ref: "#/components/responses/Unavailable" }
 
+  /cron/game-digests:
+    get:
+      operationId: sendGameDigest
+      tags: [internal]
+      summary: Send the next five-new-games digest
+      description: |
+        Called by Vercel Cron, not by a browser. Claims at most one digest of five
+        newly published games, emails it to accounts that opted in to product
+        updates, and records every outcome. Answers `idle` while fewer than five
+        games are waiting. A run is capped; the next scheduled run continues an
+        unfinished digest without mailing anyone twice.
+      security: [{ cronSecret: [] }]
+      x-status: available
+      responses:
+        "200":
+          description: The digest is idle, or the messages this run produced.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, sent, failed, closed]
+                properties:
+                  status: { type: string, enum: [idle, sent] }
+                  digestId: { type: string, format: uuid }
+                  games: { type: integer }
+                  sent: { type: integer }
+                  failed: { type: integer }
+                  closed: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
 components:
   securitySchemes:
+    cronSecret:
+      type: http
+      scheme: bearer
+      description: |
+        `CRON_SECRET`. Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`
+        on the scheduled request. It is a machine credential, never a user token,
+        and the route answers 503 when it is unset.
     bearerAuth:
       type: http
       scheme: bearer

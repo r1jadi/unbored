@@ -131,6 +131,9 @@ func New(cfg *config.Config) (*Client, error) {
 // concurrent registrations may share a name. A non-empty displayName travels
 // the same way (`data.display_name`); the trigger stores it and marks the
 // registration finished, because the form collected everything before calling.
+// The optional marketing flag is sent as `data.marketing` only when it is true;
+// the trigger turns that into the email-digest preference and an absent key
+// means no consent.
 //
 // The confirmation link Supabase emails must land on the app's own callback
 // (`/auth/callback`), not on Supabase's default site URL: the callback
@@ -139,7 +142,7 @@ func New(cfg *config.Config) (*Client, error) {
 // from PUBLIC_SITE_URL (preferred), SITE_URL, then VITE_PUBLIC_SITE_URL, and
 // defaults to the production origin. An invalid value is ignored rather than
 // sent, so a misconfigured environment cannot produce a broken link.
-func (c *Client) SignUp(ctx context.Context, email, password, username, displayName string) (Result, error) {
+func (c *Client) SignUp(ctx context.Context, email, password, username, displayName string, marketing ...bool) (Result, error) {
 	payload := map[string]any{"email": email, "password": password}
 	data := map[string]string{}
 	if username != "" {
@@ -147,6 +150,12 @@ func (c *Client) SignUp(ctx context.Context, email, password, username, displayN
 	}
 	if displayName != "" {
 		data["display_name"] = displayName
+	}
+	if len(marketing) > 0 && marketing[0] {
+		// Explicit consent only. An absent key is the default, so an OAuth or
+		// legacy client never opts an account in by accident. The sign-up trigger
+		// reads this and writes the notify_new_games preference.
+		data["marketing"] = "true"
 	}
 	if len(data) > 0 {
 		payload["data"] = data

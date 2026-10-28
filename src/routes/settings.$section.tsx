@@ -274,7 +274,16 @@ function Body({ section }: { section: string }) {
               onChange={(v) => void update({ ...prefs, notifyComments: v })}
             />
           </Group>
-          <Group title="Push & email">
+          <Group title="Email">
+            <Toggle
+              id="n4"
+              label="New games"
+              desc="One email after every five new games, with how to play. Turn it off any time."
+              checked={prefs.notifyNewGames}
+              onChange={(v) => void update({ ...prefs, notifyNewGames: v })}
+            />
+          </Group>
+          <Group title="Push">
             <Row
               label="Push notifications"
               value="Not available"
@@ -282,13 +291,6 @@ function Body({ section }: { section: string }) {
                 <span className="text-xs text-muted-foreground">
                   No push delivery is implemented
                 </span>
-              }
-            />
-            <Row
-              label="Email updates"
-              value="Not available"
-              action={
-                <span className="text-xs text-muted-foreground">No email delivery implemented</span>
               }
             />
           </Group>

@@ -9,6 +9,18 @@ import (
 	"testing"
 )
 
+func TestConfiguredRequiresKeyAndFrom(t *testing.T) {
+	if New("", "Unbored <hello@unbored.lol>").Configured() {
+		t.Error("configured without an API key")
+	}
+	if New("re_test", "").Configured() {
+		t.Error("configured without a From address")
+	}
+	if !New("re_test", "Unbored <hello@unbored.lol>").Configured() {
+		t.Error("a complete sender is not configured")
+	}
+}
+
 func TestSendDisabledWithoutKey(t *testing.T) {
 	_, err := New("", "Unbored <hello@unbored.lol>").Send(context.Background(), Message{})
 	if !errors.Is(err, ErrNotConfigured) {

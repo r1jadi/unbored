@@ -46,6 +46,12 @@
       "entrypoint": "main.go"
     }
   },
+  "crons": [
+    {
+      "path": "/api/v1/cron/game-digests",
+      "schedule": "0 9 * * *"
+    }
+  ],
   "redirects": [
     {
       "source": "/:section(games|play|leaderboards)/queens",

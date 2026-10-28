@@ -17,7 +17,7 @@ services/
 ├── feed/                       the personalised feed
 ├── recommendations/            suggestions
 ├── social/                     comments, follows, likes
-├── notifications/              in-app and push
+├── notifications/              the new-games email digest; in-app/push scaffolded
 ├── search/                     games, creators, players
 ├── moderation/                 reports and moderation actions
 ├── analytics/                  product events and dashboards

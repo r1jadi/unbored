@@ -4743,6 +4743,122 @@ select rls_test.ok(
 );
 reset role;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Game release digests
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- The digest tables are service-owned: no client role may read them, and the
+-- functions that assemble or send a digest are not executable by a client.
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+set local role anon;
+select rls_test.denied($$select 1 from public.game_release_digests$$,
+  'anon cannot read game digests');
+select rls_test.denied($$select 1 from public.game_release_digest_games$$,
+  'anon cannot read digest games');
+select rls_test.denied($$select 1 from public.game_release_digest_deliveries$$,
+  'anon cannot read digest deliveries');
+select rls_test.denied($$select public.claim_game_release_digest()$$,
+  'anon cannot claim a digest');
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', :'alice', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.denied($$select 1 from public.game_release_digests$$,
+  'a player cannot read game digests');
+select rls_test.denied($$select public.claim_game_release_digest()$$,
+  'a player cannot claim a digest');
+select rls_test.denied($$select public.game_release_digest_recipients(gen_random_uuid(), 25)$$,
+  'a player cannot list digest recipients');
+select rls_test.denied($$select public.record_game_release_digest_delivery(gen_random_uuid(), gen_random_uuid(), null)$$,
+  'a player cannot record a delivery');
+select rls_test.denied($$select public.close_game_release_digest(gen_random_uuid())$$,
+  'a player cannot close a digest');
+reset role;
+
+-- Explicit consent is what puts an account on the list. Alice opts in; bob
+-- never does, and erin is suspended. Only a confirmed address is deliverable.
+insert into public.user_preferences (user_id, notify_new_games)
+values (:'alice', true)
+on conflict (user_id) do update set notify_new_games = true;
+update auth.users set email_confirmed_at = now() where id = :'alice';
+
+-- Five published games that no digest has announced yet. Instructions are the
+-- how-to-play text the email carries.
+insert into public.games (owner_id, slug, title, instructions, status, published_at) values
+  (:'alice', 'digest-fixture-1', 'Digest One',   'First instructions.',  'published', now() - interval '5 minutes'),
+  (:'alice', 'digest-fixture-2', 'Digest Two',   'Second instructions.', 'published', now() - interval '4 minutes'),
+  (:'alice', 'digest-fixture-3', 'Digest Three', 'Third instructions.',  'published', now() - interval '3 minutes'),
+  (:'alice', 'digest-fixture-4', 'Digest Four',  'Fourth instructions.', 'published', now() - interval '2 minutes'),
+  (:'alice', 'digest-fixture-5', 'Digest Five',  'Fifth instructions.',  'published', now() - interval '1 minute');
+
+set local role service_role;
+select rls_test.ok(
+  (select count(*) from public.game_release_digests where sent_at is not null) >= 1,
+  'the pre-launch catalogue is recorded as a closed baseline digest'
+);
+select public.claim_game_release_digest() as digest_id \gset
+select rls_test.ok(
+  :'digest_id' <> '',
+  'the service can claim a digest once five games are waiting'
+);
+select rls_test.ok(
+  (select count(*) from public.game_release_digest_games(:'digest_id')) = 5,
+  'a digest contains exactly five games'
+);
+select rls_test.ok(
+  (select count(*) from public.game_release_digest_games(:'digest_id')
+    where title <> '' and instructions is not null) = 5,
+  'a digest carries each game''s name and how-to-play text'
+);
+select rls_test.ok(
+  (select count(*) from public.game_release_digest_recipients(:'digest_id', 25)) = 1,
+  'only the opted-in, confirmed account is a digest recipient'
+);
+select rls_test.ok(
+  (select email from public.game_release_digest_recipients(:'digest_id', 25) limit 1) = 'alice@example.com',
+  'the digest recipient is the account''s own address'
+);
+select public.record_game_release_digest_delivery(:'digest_id', :'alice', null);
+select rls_test.ok(
+  (select count(*) from public.game_release_digest_recipients(:'digest_id', 25)) = 0,
+  'a recorded delivery removes the recipient from the next batch'
+);
+select rls_test.ok(
+  public.close_game_release_digest(:'digest_id'),
+  'a digest closes once every recipient is handled'
+);
+select rls_test.ok(
+  (select sent_at is not null from public.game_release_digests where id = :'digest_id'),
+  'closing a digest stamps its sent time'
+);
+reset role;
+
+-- A game is announced at most once, even if it is republished later.
+select rls_test.rejected(
+  $$insert into public.game_release_digest_games (digest_id, game_id)
+    select digest_id, game_id from public.game_release_digest_games limit 1$$,
+  'a game cannot be announced in a second digest'
+);
+
+-- The sign-up form's optional "Product updates" choice is real consent, not a
+-- discarded checkbox. An account without it gets no preference row at all, so
+-- it stays off by default.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb', 'updates@example.com', '{"marketing":"true"}'::jsonb),
+  ('cccccccc-1111-4111-8111-cccccccccccc', 'quiet@example.com', '{}'::jsonb);
+select rls_test.ok(
+  (select notify_new_games from public.user_preferences where user_id = 'bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb') = true,
+  'a sign-up marketing opt-in writes the digest preference'
+);
+select rls_test.ok(
+  (select count(*) from public.user_preferences where user_id = 'cccccccc-1111-4111-8111-cccccccccccc') = 0,
+  'a sign-up without consent writes no digest preference'
+);
+
+delete from auth.users
+ where id in ('bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb', 'cccccccc-1111-4111-8111-cccccccccccc');
+
 rollback;
 
 \echo 'RLS suite passed.'

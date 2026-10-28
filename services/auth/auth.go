@@ -102,7 +102,11 @@ type Backend interface {
 	// displayName, when set, is the name chosen on the same form. The trigger
 	// writes it to the profile and records the registration as finished, so the
 	// account does not walk back through sign-up after its email is confirmed.
-	SignUp(ctx context.Context, email, password, username, displayName string) (supabaseauth.Result, error)
+	//
+	// marketing is the optional "Product updates" consent. It travels as auth
+	// metadata, where the trigger writes notify_new_games; omitted means no
+	// consent.
+	SignUp(ctx context.Context, email, password, username, displayName string, marketing ...bool) (supabaseauth.Result, error)
 	SignInWithPassword(ctx context.Context, email, password string) (supabaseauth.Result, error)
 	// UsernameAvailable answers whether a normalized username is unclaimed. It
 	// runs anonymously and reads only the public profile row.
@@ -173,6 +177,10 @@ type credentialsRequest struct {
 	Username string `json:"username"`
 	// DisplayName is only read on sign-up.
 	DisplayName string `json:"displayName"`
+	// Marketing is only read on sign-up. It is the optional "Product updates"
+	// choice and is forwarded as auth metadata, where the database trigger turns
+	// it into the notify_new_games preference. Omitted means no consent.
+	Marketing bool `json:"marketing"`
 }
 
 // usernameAvailabilityView is the answer to GET /auth/username-available. It
@@ -295,7 +303,7 @@ func (s *service) signUp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	result, err := s.backend.SignUp(r.Context(), email, request.Password, username, displayName)
+	result, err := s.backend.SignUp(r.Context(), email, request.Password, username, displayName, request.Marketing)
 	if err != nil {
 		// The gap between the check above and the insert is real: another
 		// registration can claim the name first. The database's unique index

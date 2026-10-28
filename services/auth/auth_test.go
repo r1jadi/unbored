@@ -59,6 +59,7 @@ type fakeBackend struct {
 	signInEmail       string
 	signUpUsername    string
 	signUpDisplayName string
+	signUpMarketing   bool
 	signUpHits        int
 	usernameChecks    []string
 	refreshTokens     []string
@@ -69,12 +70,13 @@ type fakeBackend struct {
 	markedAt          []time.Time
 }
 
-func (f *fakeBackend) SignUp(_ context.Context, _, _, username, displayName string) (supabaseauth.Result, error) {
+func (f *fakeBackend) SignUp(_ context.Context, _, _, username, displayName string, marketing ...bool) (supabaseauth.Result, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.signUpHits++
 	f.signUpUsername = username
 	f.signUpDisplayName = displayName
+	f.signUpMarketing = len(marketing) > 0 && marketing[0]
 	return f.signUpResult, f.signUpErr
 }
 
@@ -689,6 +691,42 @@ func TestSignUpForwardsTheChosenDisplayName(t *testing.T) {
 	backend.mu.Unlock()
 	if got != "Rijad H" {
 		t.Errorf("display name sent to Supabase = %q, want %q", got, "Rijad H")
+	}
+}
+
+func TestSignUpForwardsTheProductUpdatesChoice(t *testing.T) {
+	backend := &fakeBackend{usernameAvailable: true}
+	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
+
+	response := h.do(t, http.MethodPost, SignUpPath,
+		`{"email":"player@example.com","password":"correct-horse-battery","username":"rijad","marketing":true}`, nil)
+	response.Body.Close()
+	if response.StatusCode != http.StatusCreated {
+		t.Fatalf("status = %d, want 201", response.StatusCode)
+	}
+	backend.mu.Lock()
+	got := backend.signUpMarketing
+	backend.mu.Unlock()
+	if !got {
+		t.Error("the marketing opt-in was not forwarded")
+	}
+}
+
+func TestSignUpDefaultsToNoProductUpdates(t *testing.T) {
+	backend := &fakeBackend{usernameAvailable: true}
+	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
+
+	response := h.do(t, http.MethodPost, SignUpPath,
+		`{"email":"player@example.com","password":"correct-horse-battery","username":"rijad"}`, nil)
+	response.Body.Close()
+	if response.StatusCode != http.StatusCreated {
+		t.Fatalf("status = %d, want 201", response.StatusCode)
+	}
+	backend.mu.Lock()
+	got := backend.signUpMarketing
+	backend.mu.Unlock()
+	if got {
+		t.Error("an account opted in without asking")
 	}
 }
 

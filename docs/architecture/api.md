@@ -89,6 +89,7 @@ never consulted for the authorization decision. See
 | `/api/v1/moderation`                     | moderation      | reports and actions                                                                                                                                                                                  |
 | `/api/v1/analytics`                      | analytics       | product analytics                                                                                                                                                                                    |
 | `/api/v1/admin`                          | admin           | the operations dashboard's API — **implemented** (staff-gated reads, moderation writes; the `admin` package is served by the games deployment, see [0013](../decisions/0013-admin-authorization.md)) |
+| `/api/v1/cron/game-digests`              | games           | the five-new-games email digest — **implemented** (Vercel Cron; `CRON_SECRET`, not a user token)                                                                                                    |
 
 The gateway proxies a group only when its `UPSTREAM_<SERVICE>_URL` is configured.
 An unconfigured group answers `503` with the standard envelope; it is never
