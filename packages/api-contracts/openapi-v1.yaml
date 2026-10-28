@@ -983,7 +983,7 @@ paths:
                         the endless games carry up to 4096 Stack 10 tiles, 4096
                         Chain taps, 4096 Color Merge slides, 4095 Don't Touch
                         the Black cell taps, 8192 Crowns taps (notes are taps)
-                        8192 Trail cells, 8192 8 Puzzle slides, 8192 Sun & Moon taps and 8192 Sudoku moves. A position is a column for Stack 10
+                        8192 Trail cells, 8192 8 Puzzle slides, 8192 Sun & Moon taps, 8192 Sudoku moves and 2048 crossword moves. A position is a column for Stack 10
                         (0–3), a pad for Chain, a cell for Memory Flash, One Move
                         and Don't Touch the Black, a direction for Color Merge
                         (0–3), an answer button for 7 Second (0–2) and a cell of
@@ -991,7 +991,9 @@ paths:
                         Trail (0–48), of the 3×3 board for 8 Puzzle (0–8) and of the
                         6×6 board for Sun & Moon (0–35), and for Sudoku a cell
                         of its 9×9 board and the digit put there, as cell × 10 +
-                        digit, 0 clearing the cell (0–809). Each
+                        digit, 0 clearing the cell (0–809), and for the daily
+                        crossword a letter as cell × 32 + code (0 clears), a
+                        check (1600) or a reveal (1700 + cell), up to 1748. Each
                         verifier refuses anything past its own bound.
                       maxItems: 8192
                       # The highest position any shipped version addresses: a cell
@@ -2113,7 +2115,7 @@ components:
           description: |
             The client runtime that plays this game (`stack-10`, `chain`,
             `memory-flash`, `one-move`, `color-merge`, `dont-touch`,
-            `seven-second`, `queens`, `zip`, `eight-puzzle`, `tango` or `sudoku`), or null when
+            `seven-second`, `queens`, `zip`, `eight-puzzle`, `tango`, `sudoku` or `crossword`), or null when
             none exists. It is the runtime's
             identifier, not its title, because the client mounts a runtime by
             that name.

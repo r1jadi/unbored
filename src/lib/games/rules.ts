@@ -134,7 +134,7 @@ export const GAME_RULES = {
       },
       {
         lead: "No final row.",
-        text: "Every row tightens the beat, and the longer you last the more of each row turns black.",
+        text: "Every row tightens the beat, and the longer you last the more of each row turns black — and the darker it gets, until you can't see what's coming.",
       },
     ],
   },
@@ -255,6 +255,28 @@ export const GAME_RULES = {
       {
         lead: "The clock",
         text: "starts at six minutes. Boards start gentle and get harder, and every solved board scores ninety points and adds the next board's time. The run ends when the clock does.",
+      },
+    ],
+  },
+  crossword: {
+    heading: "Today's crossword",
+    summary: "One puzzle a day, the same for everyone. Solve it fast.",
+    rules: [
+      {
+        lead: "A mini every weekday",
+        text: "— a 5×5 grid — and a bigger 7×7 midi on Saturday and Sunday. Every clue is original.",
+      },
+      {
+        lead: "Pick a square",
+        text: "and type. Pick it again, or tap the clue, to switch between across and down; the arrows step through the clues.",
+      },
+      {
+        lead: "Faster scores more.",
+        text: "A mini is worth 1000 if you solve it within 30 seconds, a midi 2000 within a minute; after that it slips four points a second.",
+      },
+      {
+        lead: "Stuck?",
+        text: "Check the grid (−50) to see which letters are wrong, or reveal a letter (−100 each). One ranked solve a day; a new crossword arrives at midnight UTC.",
       },
     ],
   },

@@ -31,8 +31,29 @@ import {
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["dont-touch"];
 
-/** Rows on screen at once. Four, as in Piano Tiles, keeps each tile tall like a key. */
-const VISIBLE_ROWS = 4;
+/**
+ * Rows on screen at once. Three makes each tile a third of the field tall — a
+ * long key, as in Piano Tiles — and leaves less to read ahead.
+ */
+const VISIBLE_ROWS = 3;
+
+/**
+ * Night falls as a run goes on: the rows above the line sink into the dark, so the
+ * player sees less of what is coming. The row furthest up starts to fade at row
+ * 15 and the next one at row 40, each over 40 rows, until only the row at the
+ * line can be read. The row at the line is never darkened — it is the one being
+ * played. Display only: the deck, the beat and the rules are unchanged.
+ */
+const DARK_FROM_ROW = [Infinity, 40, 15] as const;
+const DARK_OVER_ROWS = 40;
+/** How dark it gets: almost black, so a white tile can no longer be told apart. */
+const DARK_MAX = 0.96;
+
+/** How far into the dark a row `offset` places above the line is, at row `step`. */
+function darkness(offset: number, step: number): number {
+  const from = DARK_FROM_ROW[offset] ?? 0;
+  return Math.min(DARK_MAX, Math.max(0, (step - from) / DARK_OVER_ROWS));
+}
 
 /**
  * Don't Touch the Black, playing for real.
@@ -336,15 +357,17 @@ function Conveyor({
             : "Tap the white tiles in the row at the line."}
       </p>
 
-      {/* The conveyor. Four rows are visible at a time, as in Piano Tiles, so
-          each tile is tall like a key; the bottom one is at the line and is the
+      {/* The conveyor. Three rows are visible at a time, as in Piano Tiles, so
+          each tile is long like a key; the bottom one is at the line and is the
           only one that can be touched. Percentages rather than pixels fill the
           field on any viewport, and the rows move by one row per tick, which is
-          what makes the slowdown visible. */}
+          what makes the speed-up visible. The rows above the line darken as the
+          run goes on (`darkness`). */}
       <div className="relative flex min-h-0 flex-1 justify-center py-2">
         <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface">
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-1/4 border-t-2 border-dashed border-primary/60 bg-primary/5"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 border-t-2 border-dashed border-primary/60 bg-primary/5"
+            style={{ height: `${100 / VISIBLE_ROWS}%` }}
             aria-hidden="true"
           />
 
@@ -355,6 +378,9 @@ function Conveyor({
             if (row >= DONT_TOUCH_MAX_ROWS) return null;
             const atLine = offset === 0;
             const colours = rowAt(run.seed, row);
+            const dark = darkness(offset, step);
+            // A row too dark to read is too dark to describe.
+            const hidden = dark >= 0.5;
             return (
               <div
                 key={row}
@@ -375,7 +401,7 @@ function Conveyor({
                       type="button"
                       disabled={!atLine || !accepting || alreadyCleared}
                       aria-label={`Row ${row + 1}, lane ${lane + 1}, ${
-                        black ? "black — do not touch" : "white"
+                        hidden ? "hidden in the dark" : black ? "black — do not touch" : "white"
                       }${alreadyCleared ? ", cleared" : ""}`}
                       onClick={atLine && accepting && !alreadyCleared ? () => tap(cell) : undefined}
                       className={cn(
@@ -394,6 +420,13 @@ function Conveyor({
                     </button>
                   );
                 })}
+                {dark > 0 && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 bg-zinc-950 transition-opacity duration-300 motion-reduce:transition-none"
+                    style={{ opacity: dark }}
+                  />
+                )}
               </div>
             );
           })}

@@ -24,7 +24,10 @@ export function LevelUpOverlay({
 }) {
   return (
     <div
-      className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-2xl bg-background/85 px-4 text-center backdrop-blur-sm animate-in fade-in duration-150 motion-reduce:animate-none"
+      // `rounded-[inherit]`: the overlay takes its box's corners, so it covers the
+      // board edge to edge — square on a square board, rounded on a rounded one —
+      // and no corner tile peeks out.
+      className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-[inherit] bg-background/85 px-4 text-center backdrop-blur-sm animate-in fade-in duration-150 motion-reduce:animate-none"
       role="status"
       aria-live="polite"
     >

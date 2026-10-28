@@ -3,10 +3,11 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Twelve games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Thirteen games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
-**7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon** and **Sudoku**. Eleven
-of them — all but 7 Second — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
+**7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku** and the
+**Daily Crossword**. Eleven of them — all but 7 Second and the crossword, the two daily
+games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
 
@@ -1423,6 +1424,89 @@ reading order, 0 empty).
    alone (360 + 240 s, + 20 s) is `out_of_time`; both boards (360 + 240 + 300 s,
    + 20 s) are on time.
 
+## Daily Crossword
+
+One crossword a day, the same for everyone: a 5×5 **mini** on weekdays and a 7×7
+**midi** on Saturday and Sunday. Faster solves score more; checking the grid or
+revealing letters costs points. One ranked solve a day, as 7 Second.
+
+### The puzzles
+
+| Thing   | Value                                                                       |
+| ------- | --------------------------------------------------------------------------- |
+| Grids   | 261 minis and 104 midis: a year of weekdays and a year of weekends          |
+| Entries | 3 to 7 letters, every white square in an across and a down entry            |
+| Clues   | original, from `scripts/crossword/words.txt`                                |
+| Day     | the UTC day number — the session's seed                                     |
+| Moves   | 2048 at most in one submission                                              |
+| Rules   | `crossword@1`                                                               |
+| Runtime | `crossword` (the catalogue's `games.runtime` value)                         |
+
+`scripts/generate-crossword-bank.mjs` makes the bank from the word list: it
+enumerates every grid shape that is symmetric under a half turn, connected and
+has no entry shorter than three, fills shapes by backtracking (most constrained
+entry first, from a bitset index of the words), and keeps a fill only if every
+entry is a clued word used once in the puzzle and the same set of answers has not
+been used before. The client gets the grids and the clues of every answer they use
+(`src/lib/games/crossword-bank.ts`, loaded only when a run starts); the database
+gets the grids alone, because it verifies a solve and never shows a clue.
+
+### The day
+
+```
+day      = floor(now / 86 400 000)          // UTC days since 1970-01-01, a Thursday
+weekday  = (day + 4) mod 7                  // 0 Sunday … 6 Saturday
+weekends = weekend days before this day
+grid     = weekday ∈ {0, 6} ? midis[weekends mod |midis|]
+                            : minis[(day − weekends) mod |minis|]
+```
+
+Weekdays walk the minis in order and weekends the midis, so a year passes without
+a repeat. `start_game_session` issues a crossword session with today's day as its
+seed, and — as 7 Second does — answers `already_played` (a `409`) to a signed-in
+player who has completed today's.
+
+### A move
+
+| Move            | Meaning                                                                   |
+| --------------- | ------------------------------------------------------------------------- |
+| `cell × 32 + c` | put a letter in a white square (c 1–26 is A–Z), or clear it (c 0)          |
+| `1600`          | check the grid: a penalty; the screen marks the wrong letters             |
+| `1700 + cell`   | reveal a square's letter, which locks it: a penalty                       |
+
+A black square, a revealed square, a code past Z or a move that changes nothing is
+not a move. The run is over once the grid matches the solution; a move after that
+is impossible play. A run the player gives up is valid, and scores nothing.
+
+### Scoring
+
+A solve is worth **1000** (mini) or **2000** (midi) if it takes no longer than 30 or
+60 seconds; after that it slips **four points a second**, to a floor of a tenth of
+the base. A check costs **50** and a revealed letter **100**; the score never goes
+below zero.
+
+**The database times the solve**, from the session's start to the submission, less
+three seconds for the trip — not the client's clock, which a client could lie
+about. So the client's number is an estimate the verifier keeps in the run's
+digest but does not need to match; the score recorded and returned is the
+database's own. A submission retried later scores a little less, because it arrived
+later.
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261116120000_crossword_sessions.sql`.
+
+- `public.crossword_grid(day)` is a day's grid, from `crossword_minis()` and
+  `crossword_midis()`; `crossword_day()` is today; `crossword_score(side, seconds,
+  checks, reveals)` is the score. All are internals.
+- `public.complete_crossword_run(session, actions, score, duration)` replays the
+  moves, scores a solved grid by its own clock and records it; one ranked
+  completion a day (`already_played`). The Go service routes `crossword@` runs to it
+  and accepts up to 2048 moves from 0 to 1748.
+- `20261116120100_crossword_playable.sql` inserts the catalogue record (Word),
+  applied after the deployment carrying the runtime is live.
+
 ## Color Merge
 
 Slide a 4×4 board of shades. Two equal tiles that meet merge into the next shade
@@ -1712,6 +1796,13 @@ infinite, so is the conveyor.
 The seed travels as a **decimal string** for the same reason the other games' do: it
 is a `bigint` column, and parsing it as a double would colour a different conveyor
 and reject every honest run.
+
+**On screen**, three rows show at a time, so each tile is a third of the field tall —
+a long key, as in Piano Tiles — and **night falls** as the run goes on: the row
+furthest up starts sinking into the dark at row 15 and the next one at row 40, each
+over forty rows, until only the row at the line can be read. That row is never
+darkened. Both are display: the conveyor, the beat and the verifier are unchanged,
+so scores from before and after compare.
 
 ### A tap
 

@@ -7,6 +7,7 @@ import { ColorMergeRuntime } from "@/components/game/ColorMergeRuntime";
 import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
 import { TangoRuntime } from "@/components/game/TangoRuntime";
 import { SudokuRuntime } from "@/components/game/SudokuRuntime";
+import { CrosswordRuntime } from "@/components/game/CrosswordRuntime";
 import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
 import { GameExits } from "@/components/game/GameExits";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
@@ -40,6 +41,7 @@ import { ZIP_RUNTIME } from "@/lib/games/zip";
 import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
 import { TANGO_RUNTIME } from "@/lib/games/tango";
 import { SUDOKU_RUNTIME } from "@/lib/games/sudoku";
+import { CROSSWORD_RUNTIME } from "@/lib/games/crossword";
 import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
 import { STACK10_RUNTIME } from "@/lib/games/stack10";
 
@@ -83,6 +85,7 @@ export const Route = createFileRoute("/play/$id")({
  * Move, `color-merge` plays Color Merge, `dont-touch` plays Don't Touch the Black,
  * `seven-second` plays 7 Second, `queens` plays Crowns, `zip` plays Trail,
  * `eight-puzzle` plays 8 Puzzle, `tango` plays Sun & Moon, `sudoku` plays Sudoku,
+ * `crossword` plays the daily crossword,
  * and anything else gets the honest "no runtime
  * yet" screen rather than a board that does not follow that game's rules. Every
  * catalogue game now has a runtime, but the branch stays a feature rather than a
@@ -167,7 +170,8 @@ export function PlaySurface({
       state.game.runtime === ZIP_RUNTIME ||
       state.game.runtime === EIGHT_PUZZLE_RUNTIME ||
       state.game.runtime === TANGO_RUNTIME ||
-      state.game.runtime === SUDOKU_RUNTIME);
+      state.game.runtime === SUDOKU_RUNTIME ||
+      state.game.runtime === CROSSWORD_RUNTIME);
 
   const nav = useNavigate();
   const [confirming, setConfirming] = useState(false);
@@ -287,6 +291,15 @@ export function PlaySurface({
 
       {state.status === "ready" && state.game.runtime === SUDOKU_RUNTIME && playable && (
         <SudokuRuntime
+          key={state.game.slug}
+          slug={state.game.slug}
+          title={state.game.title}
+          autoStart={autoStart}
+        />
+      )}
+
+      {state.status === "ready" && state.game.runtime === CROSSWORD_RUNTIME && playable && (
+        <CrosswordRuntime
           key={state.game.slug}
           slug={state.game.slug}
           title={state.game.title}

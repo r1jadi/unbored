@@ -389,6 +389,23 @@ describe("the endless conveyor", () => {
     expect(spy.mock.calls.some((call) => String(call[0]).includes("/complete"))).toBe(false);
   });
 
+  it("lets night fall on the rows above the line as the run goes on", async () => {
+    mockPlayback();
+    await startOnFakeClock();
+
+    // Row one: everything in view can be read.
+    expect(tile(3, 1)).not.toHaveAccessibleName(/hidden in the dark/);
+
+    await advance(35);
+
+    // Row thirty-six: the row furthest up is lost in the dark, the next one is
+    // still readable, and the row at the line always is.
+    expect(screen.getByText("Row 36")).toBeInTheDocument();
+    expect(tile(38, 1)).toHaveAccessibleName(/hidden in the dark/);
+    expect(tile(37, 1)).not.toHaveAccessibleName(/hidden in the dark/);
+    expect(tile(36, 1)).not.toHaveAccessibleName(/hidden in the dark/);
+  }, 20000);
+
   it("shows the black density rising with the rows", async () => {
     mockPlayback();
     await startOnFakeClock();

@@ -275,13 +275,14 @@ on conflict (slug) do nothing;
 -- `slug` would reject a fixture that reused one of them.
 --
 -- The categories are load-bearing for the count assertions further down:
--- `puzzle` holds a published fixture and `word` holds only a draft, so a real
+-- `puzzle` holds a published fixture and `strategy` holds only a draft, so a real
 -- published-game count must be non-zero for one and exactly zero for the other.
+-- (`word` held the draft until the Daily Crossword was published into it.)
 insert into public.games (id, owner_id, slug, title, status, published_at, category_id) values
   (:'published_game', :'alice', 'fixture-stack', 'Fixture Stack', 'published', now(),
    (select id from public.categories where slug = 'puzzle')),
   (:'draft_game',     :'alice', 'fixture-draft', 'Fixture Draft', 'draft', null,
-   (select id from public.categories where slug = 'word')),
+   (select id from public.categories where slug = 'strategy')),
   (:'bob_game',       :'bob',   'fixture-bob',   'Fixture Bob',   'published', now(),
    (select id from public.categories where slug = 'arcade'));
 
@@ -374,7 +375,7 @@ select rls_test.ok(
   'a category with a published game reports a non-zero count'
 );
 select rls_test.ok(
-  (select game_count from public.category_game_counts where slug = 'word') = 0,
+  (select game_count from public.category_game_counts where slug = 'strategy') = 0,
   'a category whose only game is a draft reports zero'
 );
 select rls_test.ok(
@@ -1537,6 +1538,19 @@ reset role;
 \set sudoku2_session      'a9a9a9a9-1111-4111-8111-a9a9a9a9a9a9'
 \set sudoku2_open_session 'a9a9a9a9-2222-4222-8222-a9a9a9a9a9a9'
 \set sudoku2_late_session 'a9a9a9a9-3333-4333-8333-a9a9a9a9a9a9'
+-- The daily crossword, on fixed days: day 20000 is a Friday (a mini), 20001 a
+-- Saturday (a midi). A line types each white square's letter in reading order
+-- (cell × 32 + letter). See the Daily Crossword section of docs/games/README.md.
+\set crossword_mini_line 'array[33,82,99,136,215,233,274,293,338,353,406,421,462,481,530,549,577,660,677,722,749]'
+\set crossword_midi_line 'array[102,129,178,205,321,364,399,421,514,562,585,612,645,678,725,754,822,837,884,897,947,969,996,1029,1133,1157,1198,1237,1349,1380,1415,1445]'
+\set crossword_game         'c1c1c1c1-aaaa-4aaa-8aaa-c1c1c1c1c1c1'
+\set crossword_session      'c1c1c1c1-1111-4111-8111-c1c1c1c1c1c1'
+\set crossword_again        'c1c1c1c1-2222-4222-8222-c1c1c1c1c1c1'
+\set crossword_midi_session 'c1c1c1c1-3333-4333-8333-c1c1c1c1c1c1'
+\set crossword_slow_session 'c1c1c1c1-4444-4444-8444-c1c1c1c1c1c1'
+\set crossword_help_session 'c1c1c1c1-5555-4555-8555-c1c1c1c1c1c1'
+\set crossword_quit_session 'c1c1c1c1-6666-4666-8666-c1c1c1c1c1c1'
+\set crossword_bad_session  'c1c1c1c1-7777-4777-8777-c1c1c1c1c1c1'
 
 insert into public.games (id, owner_id, slug, title, status, published_at, runtime, playable, category_id) values
   (:'runnable_game', :'alice', 'fixture-runnable', 'Fixture Runnable', 'published', now(), 'stack-10', true,
@@ -1572,7 +1586,9 @@ insert into public.games (id, owner_id, slug, title, status, published_at, runti
   (:'tango_game', :'alice', 'fixture-tango', 'Fixture Tango', 'published', now(), 'tango', true,
    (select id from public.categories where slug = 'logic')),
   (:'sudoku_game', :'alice', 'fixture-sudoku', 'Fixture Sudoku', 'published', now(), 'sudoku', true,
-   (select id from public.categories where slug = 'logic'));
+   (select id from public.categories where slug = 'logic')),
+  (:'crossword_game', :'alice', 'fixture-crossword', 'Fixture Crossword', 'published', now(), 'crossword', true,
+   (select id from public.categories where slug = 'word'));
 
 -- Runs that have been open for five minutes, which is what makes a claimed
 -- 45-second duration credible: a run cannot have taken longer than the session
@@ -1706,7 +1722,18 @@ insert into public.game_sessions (id, game_id, user_id, seed, rules_version, sta
   -- clock, except the late one at seven hundred seconds.
   (:'sudoku2_session',      :'sudoku_game', :'alice', 1, 'sudoku@2', now() - interval '30 seconds',  now() + interval '2 hours', null),
   (:'sudoku2_open_session', :'sudoku_game', :'alice', 1, 'sudoku@2', now() - interval '30 seconds',  now() + interval '2 hours', null),
-  (:'sudoku2_late_session', :'sudoku_game', :'alice', 1, 'sudoku@2', now() - interval '700 seconds', now() + interval '2 hours', null);
+  (:'sudoku2_late_session', :'sudoku_game', :'alice', 1, 'sudoku@2', now() - interval '700 seconds', now() + interval '2 hours', null),
+  -- Crossword fixtures. Ten seconds in is inside every grace period, so a solve
+  -- scores its full base; ten minutes in is past the floor. Most are other
+  -- players' or other days' so the once-a-day rule leaves them alone; the
+  -- "again" session is Alice's second of day 20000.
+  (:'crossword_session',      :'crossword_game', :'alice', 20000, 'crossword@1', now() - interval '10 seconds',  now() + interval '2 hours', null),
+  (:'crossword_again',        :'crossword_game', :'alice', 20000, 'crossword@1', now() - interval '10 seconds',  now() + interval '2 hours', null),
+  (:'crossword_midi_session', :'crossword_game', :'alice', 20001, 'crossword@1', now() - interval '10 seconds',  now() + interval '2 hours', null),
+  (:'crossword_slow_session', :'crossword_game', :'alice', 20007, 'crossword@1', now() - interval '600 seconds', now() + interval '2 hours', null),
+  (:'crossword_help_session', :'crossword_game', :'alice', 20014, 'crossword@1', now() - interval '10 seconds',  now() + interval '2 hours', null),
+  (:'crossword_quit_session', :'crossword_game', :'alice', 20021, 'crossword@1', now() - interval '10 seconds',  now() + interval '2 hours', null),
+  (:'crossword_bad_session',  :'crossword_game', :'alice', 20028, 'crossword@1', now() - interval '10 seconds',  now() + interval '2 hours', null);
 
 insert into public.game_sessions
   (id, game_id, user_id, seed, rules_version, started_at, expires_at, completed_at, verified_score, verified_digest)
@@ -1917,6 +1944,37 @@ select rls_test.ok(
 select rls_test.raises(
   $$select public.sudoku_draw(1, 0)$$,
   '22023', 'a Sudoku level before the first is a request error'
+);
+-- The crossword's days, asserted against the client engine: day 20000 (a
+-- Friday) gets a mini and 20001 (a Saturday) a midi, and the bank has a year.
+select rls_test.ok(
+  public.crossword_grid(20000) = '#ARCH#WIRERAVENAREA#TERM#'
+    and public.crossword_grid(20001) = '###FARM###ALOE##BRIDEFUR#VETASIDE##MENU###EDGE###'
+    and array_length(public.crossword_minis(), 1) = 261
+    and array_length(public.crossword_midis(), 1) = 104,
+  'the crossword deals day 20000''s mini and day 20001''s midi'
+);
+select rls_test.ok(
+  -- Monday after: the mini after Friday's, the weekend skipped.
+  public.crossword_grid(20003) = (public.crossword_minis())[
+      array_position(public.crossword_minis(), public.crossword_grid(20000)) % 261 + 1]
+    and length(public.crossword_grid(20002)) = 49,
+  'weekdays walk the minis in order and weekends the midis'
+);
+select rls_test.ok(
+  (select count(distinct public.crossword_grid(20000 + d)) = 365 from generate_series(0, 364) d),
+  'a year of daily crosswords repeats none'
+);
+select rls_test.ok(
+  public.crossword_score(5, 30, 0, 0) = 1000 and public.crossword_score(5, 31, 0, 0) = 996
+    and public.crossword_score(5, 9999, 0, 0) = 100 and public.crossword_score(7, 60, 0, 0) = 2000
+    and public.crossword_score(7, 9999, 0, 0) = 200 and public.crossword_score(5, 0, 2, 3) = 600
+    and public.crossword_score(5, 9999, 1, 5) = 0,
+  'a crossword scores its base through the grace period, then four points a second, less help'
+);
+select rls_test.raises(
+  $$select public.crossword_grid(-1)$$,
+  '22023', 'a crossword day before 1970 is a request error'
 );
 -- The sudoku@2 boards, asserted directly against the client engine.
 select rls_test.ok(
@@ -2258,8 +2316,8 @@ select rls_test.visible(
 -- ships, only the six with runtimes are playable.
 select rls_test.visible(
   $$select 1 from public.games
-     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
-  0, 'no shipped game besides the twelve runtimes is marked playable'
+     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
+  0, 'no shipped game besides the thirteen runtimes is marked playable'
 );
 select rls_test.says_field(
   $$public.start_game_session('stack-10', 'stack-10@1', 'test/1.0')$$,
@@ -2503,6 +2561,26 @@ select rls_test.says(
 select rls_test.says(
   $$public.start_game_session('fixture-tango', 'sudoku@1', 'test/1.0')$$,
   'unsupported_runtime', 'a Tango game cannot start a Sudoku run'
+);
+-- The shipped crossword: one puzzle a day, dealt by the day.
+select rls_test.visible(
+  $$select 1 from public.games where slug = 'crossword' and title = 'Daily Crossword' and playable
+       and runtime = 'crossword' and status = 'published' and is_official$$,
+  1, 'the shipped Daily Crossword is published, playable and names its runtime'
+);
+select rls_test.says_field(
+  $$public.start_game_session('crossword', 'crossword@1', 'test/1.0')$$,
+  'tile_count', '2048', 'a crossword session reports its submission bound'
+);
+select rls_test.ok(
+  -- crossword_day() is not callable by clients; today is computed here instead.
+  (select r.seed = extract(epoch from (now() at time zone 'utc')::date)::bigint / 86400
+     from public.start_game_session('crossword', 'crossword@1', 'test/1.0') r),
+  'a crossword session carries today''s UTC day as its seed'
+);
+select rls_test.says(
+  $$public.start_game_session('fixture-crossword', 'sudoku@2', 'test/1.0')$$,
+  'unsupported_runtime', 'a crossword game cannot start a Sudoku run'
 );
 select rls_test.says_field(
   $$public.start_game_session('one-move', 'one-move@1', 'test/1.0')$$,
@@ -3913,6 +3991,75 @@ select rls_test.ok(
      from public.complete_sudoku_run(
        'a9a9a9a9-3333-4333-8333-a9a9a9a9a9a9'::uuid, :sudoku2_two_boards, 180, 690000) r),
   'a solved sudoku@2 board buys the next board''s allowance'
+);
+
+-- ── The daily crossword ──
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 1000 and r.cleared_columns = 1 and r.tiles_placed = 21
+     from public.complete_crossword_run(
+       'c1c1c1c1-1111-4111-8111-c1c1c1c1c1c1'::uuid, :crossword_mini_line, 1, 9000) r),
+  'a crossword solved inside its grace period scores the full 1000, by the database''s clock'
+);
+select rls_test.says(
+  format($$public.complete_crossword_run('c1c1c1c1-1111-4111-8111-c1c1c1c1c1c1'::uuid, %s, 1, 9000)$$, :'crossword_mini_line'),
+  'duplicate', 'a retry of the same crossword solve is safe to repeat'
+);
+select rls_test.says(
+  format($$public.complete_crossword_run('c1c1c1c1-2222-4222-8222-c1c1c1c1c1c1'::uuid, %s, 1000, 9000)$$, :'crossword_mini_line'),
+  'already_played', 'a second ranked solve of the same day is refused'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 2000 and r.tiles_placed = 32
+     from public.complete_crossword_run(
+       'c1c1c1c1-3333-4333-8333-c1c1c1c1c1c1'::uuid, :crossword_midi_line, 2000, 9000) r),
+  'a weekend midi solved inside its grace period scores 2000'
+);
+-- Day 20007's mini (##CAN / #SALE / ELBOW / ROLE# / AWE##), solved ten minutes in.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 100
+     from public.complete_crossword_run(
+       'c1c1c1c1-4444-4444-8444-c1c1c1c1c1c1'::uuid,
+       array[67,97,142,211,225,268,293,325,364,386,431,471,498,527,556,581,641,695,709],
+       1000, 9000) r),
+  'a slow solve slips to the floor of a tenth, whatever the client claims'
+);
+-- Day 20014's mini (RID## / ALE## / GLASS / ##LIP / ##TRY): a check, the first
+-- square revealed, the rest typed.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 850 and r.tiles_placed = 18
+     from public.complete_crossword_run(
+       'c1c1c1c1-5555-4555-8555-c1c1c1c1c1c1'::uuid,
+       array[1600,1700,41,68,161,204,229,327,364,385,435,467,556,585,624,724,754,793],
+       850, 9000) r),
+  'a check costs 50 and a revealed letter 100'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 0 and r.cleared_columns = 0
+     from public.complete_crossword_run(
+       'c1c1c1c1-6666-4666-8666-c1c1c1c1c1c1'::uuid, array[1600], 0, 9000) r),
+  'a crossword given up unsolved is recorded at nothing'
+);
+-- Impossible moves on day 20028's mini (##PIG / #ELSE / SMALL / PINE# / ATE##):
+-- cell 0 is black and cell 2 the first white square.
+select rls_test.says(
+  $$public.complete_crossword_run('c1c1c1c1-7777-4777-8777-c1c1c1c1c1c1'::uuid, array[1], 0, 9000)$$,
+  'invalid_actions', 'a letter in a black square is impossible play'
+);
+select rls_test.says(
+  $$public.complete_crossword_run('c1c1c1c1-7777-4777-8777-c1c1c1c1c1c1'::uuid, array[91], 0, 9000)$$,
+  'invalid_actions', 'a letter code past Z is impossible play'
+);
+select rls_test.says(
+  $$public.complete_crossword_run('c1c1c1c1-7777-4777-8777-c1c1c1c1c1c1'::uuid, array[64], 0, 9000)$$,
+  'invalid_actions', 'clearing an empty square is not a move'
+);
+select rls_test.says(
+  $$public.complete_crossword_run('c1c1c1c1-7777-4777-8777-c1c1c1c1c1c1'::uuid, array[1702, 1702], 0, 9000)$$,
+  'invalid_actions', 'a revealed square cannot be revealed again'
+);
+select rls_test.says(
+  $$public.complete_crossword_run('c1c1c1c1-7777-4777-8777-c1c1c1c1c1c1'::uuid, array[1749], 0, 9000)$$,
+  'invalid_actions', 'a reveal past the board is impossible play'
 );
 
 -- ── Saved progress: an unfinished run kept on the account ──

@@ -294,6 +294,24 @@ func TestCompleteRunRoutesZipRulesToZipVerifier(t *testing.T) {
 	}
 }
 
+func TestCompleteRunRoutesCrosswordRulesToCrosswordVerifier(t *testing.T) {
+	rec := newRecorder(t, http.StatusOK, resultRow)
+
+	if _, err := rec.client(t).CompleteRun(context.Background(), CompleteRequest{
+		SessionID:    "eeeeeeee-1111-4111-8111-eeeeeeeeeeee",
+		RulesVersion: "crossword@1",
+		Actions:      []int32{33, 1600},
+		Score:        0,
+		DurationMS:   20000,
+	}); err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+
+	if rec.path != "/rest/v1/rpc/complete_crossword_run" {
+		t.Fatalf("path = %s, want the crossword verifier function", rec.path)
+	}
+}
+
 func TestCompleteRunRoutesSudokuRulesToSudokuVerifier(t *testing.T) {
 	rec := newRecorder(t, http.StatusOK, resultRow)
 

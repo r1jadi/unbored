@@ -1075,6 +1075,40 @@ func TestCompleteSessionVerifiesASudokuRun(t *testing.T) {
 	}
 }
 
+func TestCompleteSessionAcceptsCrosswordChecksAndReveals(t *testing.T) {
+	// A letter (A in cell 1), a check and a reveal of cell 48 on a midi.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("crossword@1", "0", "20000", "[33,1600,1748]"), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if len(backend.lastRun.Actions) != 3 || backend.lastRun.Actions[2] != 1748 {
+		t.Fatalf("actions = %v, want the submitted moves", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionRejectsACrosswordMovePastTheCodes(t *testing.T) {
+	// 1749 would reveal cell 49, past the 7×7 midi.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("crossword@1", "0", "20000", "[33,1749]"), "")
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (%#v)", status, body)
+	}
+	if backend.runCalls != 0 {
+		t.Fatal("a move past the crossword's codes reached the verifier")
+	}
+}
+
 func TestCompleteSessionRejectsASudokuMovePastTheBoard(t *testing.T) {
 	// The last move is a 9 in cell 80, 809, so 810 is malformed input.
 	backend := testBackend()

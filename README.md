@@ -53,7 +53,7 @@ are unavailable instead of showing fabricated rows.
 
 ## Games
 
-Twelve games are playable end to end. Each has a browser runtime in
+Thirteen games are playable end to end. Each has a browser runtime in
 [`src/lib/games/`](src/lib/games/), a server-issued play session, and a score the
 database accepts only after replaying the run.
 
@@ -71,6 +71,7 @@ database accepts only after replaying the run.
 | 8 Puzzle              | `8-puzzle`             | `eight-puzzle.ts` |
 | Sun & Moon            | `sun-and-moon`         | `tango.ts`        |
 | Sudoku                | `sudoku`               | `sudoku.ts`       |
+| Daily Crossword       | `crossword`            | `crossword.ts`    |
 
 7 Second is the daily game: one shared deck per UTC day and one ranked attempt a
 day. `play.$id.tsx` mounts a runtime only for a game whose `runtime` identifier it

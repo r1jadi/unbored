@@ -63,6 +63,7 @@ export function GameArt({
         {id === "8-puzzle" && <EightPuzzle />}
         {id === "sun-and-moon" && <SunAndMoon />}
         {id === "sudoku" && <Sudoku />}
+        {id === "crossword" && <Crossword />}
         {!KNOWN.has(id) && <Generated seed={id} />}
       </div>
     </div>
@@ -83,6 +84,7 @@ const KNOWN = new Set([
   "8-puzzle",
   "sun-and-moon",
   "sudoku",
+  "crossword",
 ]);
 
 /**
@@ -338,6 +340,33 @@ function Sudoku() {
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+function Crossword() {
+  // The mini for day 20000, solved: ARCH, WIRE, RAVEN, AREA, TERM across.
+  const cells = "#ARCH" + "#WIRE" + "RAVEN" + "AREA#" + "TERM#";
+  const numbers: Record<number, number> = { 1: 1, 2: 2, 3: 3, 4: 4, 6: 5, 10: 6, 15: 7, 20: 8 };
+  return (
+    <div className="grid w-full grid-cols-5 gap-px rounded-lg bg-foreground p-px">
+      {[...cells].map((letter, i) =>
+        letter === "#" ? (
+          <div key={i} className="aspect-square bg-foreground" />
+        ) : (
+          <div
+            key={i}
+            className="relative flex aspect-square items-center justify-center bg-surface text-[min(6cqw,6cqh,1.5rem)] font-semibold"
+          >
+            {numbers[i] && (
+              <span className="absolute left-[8%] top-[4%] text-[min(2.4cqw,2.4cqh,0.6rem)] font-medium text-muted-foreground">
+                {numbers[i]}
+              </span>
+            )}
+            {letter}
+          </div>
+        ),
+      )}
     </div>
   );
 }

@@ -115,6 +115,17 @@ import {
   type EightPuzzleRun,
 } from "@/lib/games/eight-puzzle";
 import {
+  check as checkCrossword,
+  createRun as createCrosswordRun,
+  CROSSWORD_RULES_VERSION,
+  enter as enterCrossword,
+  finish as finishCrossword,
+  gridForDay,
+  reveal as revealCrossword,
+  submission as crosswordSubmission,
+  type CrosswordRun,
+} from "@/lib/games/crossword";
+import {
   budgetMs as sudokuBudgetMs,
   createRun as createSudokuRun,
   finish as finishSudokuRun,
@@ -2270,6 +2281,212 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
   }, [state]);
 
   return { ...state, signedIn, begin, place, finish, restart, retry };
+}
+
+// ── A run of the daily crossword, from Start to score ────────────────────────
+
+export type CrosswordRunState =
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | {
+      status: "playing";
+      session: PlaySession;
+      run: CrosswordRun;
+      /** Every answer's clue, from the bank. */
+      clues: Readonly<Record<string, string>>;
+      /** When the solve started, as a `Date.now()` timestamp. */
+      startedAt: number;
+    }
+  /** A finished run is being verified. No score is shown yet. */
+  | {
+      status: "submitting";
+      session: PlaySession;
+      run: CrosswordRun;
+      clues: Readonly<Record<string, string>>;
+      startedAt: number;
+    }
+  | { status: "finished"; session: PlaySession; run: CrosswordRun; result: RunResult }
+  | {
+      status: "error";
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: CrosswordRun;
+      clues?: Readonly<Record<string, string>>;
+      startedAt?: number;
+    };
+
+export type CrosswordRunControls = CrosswordRunState & {
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for today's session, and the solve starts when it arrives. */
+  begin: () => void;
+  /** Puts a letter in a cell, or clears it with "". */
+  enter: (cell: number, letter: string) => void;
+  /** Checks the grid, at a cost. */
+  check: () => void;
+  /** Reveals these cells' letters, at a cost each. */
+  reveal: (cells: readonly number[]) => void;
+  /** Gives up: the run is submitted unsolved, and scores nothing. */
+  finish: () => void;
+  /** Back to the rules. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays the day's crossword against the session API.
+ *
+ * The session is issued when the player presses Start, carrying the UTC day as
+ * its seed; the day's grid and every clue come from the bank, loaded only now so
+ * the puzzles stay out of the main bundle. A solved grid ends the run and is
+ * submitted at once: the server times the solve by its own clock, so the score on
+ * screen is an estimate until the verified one arrives. A signed-in player who has
+ * finished today's crossword is told so by the server (`already_played`).
+ */
+export function useCrosswordRun(gameSlug: string, autoStart = false): CrosswordRunControls {
+  // Tap to play skips the rules: the first render is already "starting".
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<CrosswordRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  const signedIn = !!getAccessToken();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // A session is requested only once Start has been pressed (`attempt` > 0).
+  useEffect(() => {
+    if (attempt === 0) return;
+    const controller = new AbortController();
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    Promise.all([
+      startSession(gameSlug, { signal: controller.signal, rulesVersion: CROSSWORD_RULES_VERSION }),
+      import("@/lib/games/crossword-bank"),
+    ])
+      .then(([session, bank]) => {
+        if (controller.signal.aborted) return;
+        const grid = gridForDay(Number(session.seed), bank.CROSSWORD_MINIS, bank.CROSSWORD_MIDIS);
+        setState({
+          status: "playing",
+          session,
+          run: createCrosswordRun(session.seed, grid),
+          clues: bank.CROSSWORD_CLUES,
+          startedAt: Date.now(),
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // Verification: once, when a run has ended — solved, given up, or at the bound.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run, clues, startedAt } = state;
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt));
+    setState({ status: "submitting", session, run, clues, startedAt });
+
+    completeRun(
+      session.id,
+      { ...crosswordSubmission(run, durationMs / 1000), rulesVersion: session.rulesVersion },
+      durationMs,
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({
+          status: "error",
+          stage: "submit",
+          error: asApiError(error),
+          session,
+          run,
+          clues,
+          startedAt,
+        });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const play = useCallback((move: (run: CrosswordRun) => CrosswordRun) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = move(current.run);
+      if (next === current.run) return current;
+      if (next.outcome !== "playing") endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const enter = useCallback(
+    (cell: number, letter: string) => play((run) => enterCrossword(run, cell, letter)),
+    [play],
+  );
+  const check = useCallback(() => play((run) => checkCrossword(run)), [play]);
+  const reveal = useCallback(
+    (cells: readonly number[]) =>
+      play((run) => cells.reduce((current, cell) => revealCrossword(current, cell), run)),
+    [play],
+  );
+  const finish = useCallback(() => play((run) => finishCrossword(run)), [play]);
+
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    setState({ status: "intro" });
+  }, []);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (
+      state.stage === "submit" &&
+      state.session &&
+      state.run &&
+      state.clues &&
+      state.startedAt !== undefined
+    ) {
+      // The identical submission, sent again.
+      submitting.current = false;
+      setState({
+        status: "playing",
+        session: state.session,
+        run: state.run,
+        clues: state.clues,
+        startedAt: state.startedAt,
+      });
+      return;
+    }
+
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, signedIn, begin, enter, check, reveal, finish, restart, retry };
 }
 
 // ── A run of Color Merge, from session to score ────────────────────────────
