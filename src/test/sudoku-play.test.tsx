@@ -403,6 +403,22 @@ describe("finishing a run", () => {
     expect(completionBody(spy).score).toBe(90);
   }, 15000);
 
+  it("shows what went wrong on the last board when the run ends", async () => {
+    mockPlayback({}, resultPayload({ score: 0, clearedColumns: 0 }));
+    await renderRuntime();
+    await startRun();
+    // Seed 1's first board opens 7 3 _ in row one: a 3 in cell 2 repeats the
+    // 3 beside it, and the solution has a 2 there.
+    playMoves([23]);
+    await endRun();
+
+    await screen.findByRole("button", { name: /play again/i });
+    expect(screen.getByText("Where board 1 went wrong")).toBeInTheDocument();
+    expect(
+      screen.getByText("Row 1, column 3: your 3 repeats the 3 already in that row. It needed a 2."),
+    ).toBeInTheDocument();
+  }, 15000);
+
   it("ranks a signed-in player's run", async () => {
     mockFetch(() =>
       jsonResponse({

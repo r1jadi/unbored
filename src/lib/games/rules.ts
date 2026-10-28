@@ -280,6 +280,28 @@ export const GAME_RULES = {
       },
     ],
   },
+  gridburst: {
+    heading: "Fill a line, watch it burst",
+    summary: "Drop the pieces onto the grid. A full row or column bursts.",
+    rules: [
+      {
+        lead: "Drag a piece",
+        text: "from the tray onto the grid — or tap a piece, then a square for its top-left corner. Pieces don't rotate.",
+      },
+      {
+        lead: "Fill a row or column",
+        text: "and it bursts. Every square placed is a point; bursting L lines at once scores 10 × L², times your combo.",
+      },
+      {
+        lead: "Keep the combo.",
+        text: "Each burst raises it by one; three placements in a row without a burst reset it. Empty the whole board for 300 more.",
+      },
+      {
+        lead: "No final tray.",
+        text: "Place all three pieces and three more arrive, bigger ones more often as you go. The run ends when nothing in your tray fits.",
+      },
+    ],
+  },
 } satisfies Record<string, GameRules>;
 
 /** A game's rules by its runtime, or null for a runtime with none written. */

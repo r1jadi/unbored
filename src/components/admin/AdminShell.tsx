@@ -16,7 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { Avatar, ErrorState } from "@/components/common";
+import { ErrorState, UserAvatar } from "@/components/common";
 import { LogoMark } from "@/components/layout/Logo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -237,7 +237,7 @@ function AdminDashboard({
             Back to Unbored
           </Link>
           <div className="mt-1 flex items-center gap-2.5 px-3 pt-2">
-            <Avatar name={session.username} size="sm" />
+            <UserAvatar username={session.username} size="sm" />
             <div className="min-w-0 text-xs">
               <p className="truncate font-medium">@{session.username}</p>
               <p className="truncate text-muted-foreground">{roleLabel}</p>

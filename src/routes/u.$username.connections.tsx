@@ -3,13 +3,13 @@ import { Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as z from "zod";
 import {
-  Avatar,
   EmptyState,
   ErrorState,
   FollowButton,
   ListSkeleton,
   Page,
   PageHeader,
+  UserAvatar,
   UserName,
 } from "@/components/common";
 import {
@@ -108,7 +108,7 @@ function Connections() {
                 params={{ username: u.username }}
                 className="flex min-w-0 flex-1 items-center gap-3"
               >
-                <Avatar name={u.username} />
+                <UserAvatar username={u.username} path={u.avatar_path} />
                 <div className="min-w-0 text-sm">
                   <UserName username={u.username} />
                   <p className="truncate text-xs text-muted-foreground">{u.display_name}</p>

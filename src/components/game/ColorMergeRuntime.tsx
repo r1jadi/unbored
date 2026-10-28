@@ -233,7 +233,7 @@ function Board({
   const accepting = !verifying && run.outcome === "playing";
 
   // A started, unverified run is progress the player would lose by leaving.
-  useReportRunProgress(started && accepting, onFinish);
+  useReportRunProgress(started && accepting, onFinish, session);
 
   const slide = useCallback(
     (direction: ColorMergeDirection) => {

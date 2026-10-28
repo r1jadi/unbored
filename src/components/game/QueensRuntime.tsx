@@ -225,7 +225,7 @@ function Board({
     if (started) firstCell.current?.focus();
   }, [started]);
 
-  useReportRunProgress(started && !verifying && run.outcome === "playing", onFinish);
+  useReportRunProgress(started && !verifying && run.outcome === "playing", onFinish, session);
 
   // A solved board gets a beat before the next one, with a note when it grows.
   const nextSide = boardSize(run.level);

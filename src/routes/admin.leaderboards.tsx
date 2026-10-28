@@ -13,7 +13,7 @@ import {
   useDebounced,
   type Column,
 } from "@/components/admin/ui";
-import { Avatar } from "@/components/common";
+import { UserAvatar } from "@/components/common";
 import {
   ADMIN_LIMIT,
   ADMIN_MAX_LIMIT,
@@ -73,7 +73,7 @@ export function ScoresAdmin() {
       className: "min-w-48",
       cell: (s) => (
         <span className="flex min-w-0 items-center gap-3">
-          <Avatar name={s.username} size="sm" />
+          <UserAvatar username={s.username} size="sm" />
           <span className="truncate text-sm font-medium">@{s.username}</span>
         </span>
       ),
@@ -172,7 +172,7 @@ export function ScoresAdmin() {
             rowKey={(s) => s.id}
             mobileRow={(s) => (
               <MobileRow>
-                <Avatar name={s.username} size="sm" />
+                <UserAvatar username={s.username} size="sm" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">@{s.username}</span>
                   <span className="block truncate text-xs text-muted-foreground">

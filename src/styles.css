@@ -238,12 +238,247 @@
   }
 }
 
+/* First-arrival welcome (components/layout/WelcomeMoment). A straight "Z"
+   dozes, then snaps into the Unbored mark at 1.15s with a confetti burst; the
+   copy rises after it. Every animation ends on the real logo and the copy, so
+   cutting the motion short leaves the finished frame. */
+.welcome-backdrop {
+  background:
+    radial-gradient(60% 45% at 50% 38%, oklch(from var(--primary) l c h / 0.14), transparent),
+    color-mix(in oklab, var(--background) 90%, transparent);
+  backdrop-filter: blur(14px);
+  animation: welcome-fade 300ms var(--ease-out) both;
+}
+
+.welcome-leaving {
+  animation: welcome-fade-out 220ms ease-in forwards;
+}
+
+.welcome-glow {
+  background: radial-gradient(circle, oklch(from var(--primary) l c h / 0.45), transparent 65%);
+  animation: welcome-glow 1600ms var(--ease-out) both;
+}
+
+.welcome-zzz {
+  animation: welcome-zzz 1000ms ease-out both;
+}
+
+.welcome-mark {
+  animation:
+    welcome-doze 1150ms ease-in-out both,
+    welcome-kick 420ms 1150ms var(--ease-out) forwards;
+}
+
+.welcome-piece-top {
+  transform-origin: 15px 6px;
+  animation: welcome-top 520ms 1150ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.welcome-piece-mid {
+  transform-origin: 16px 16px;
+  animation: welcome-mid 360ms 1150ms ease-out both;
+}
+
+.welcome-piece-bottom {
+  transform-origin: 17px 27px;
+  animation: welcome-bottom 520ms 1180ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.welcome-shard {
+  animation: welcome-shard 480ms 1200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.welcome-confetti {
+  animation: welcome-confetti 1400ms cubic-bezier(0.15, 0.6, 0.35, 1) both;
+}
+
+.welcome-rise {
+  animation: welcome-rise 520ms var(--ease-out) both;
+}
+
+@keyframes welcome-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes welcome-fade-out {
+  to {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes welcome-glow {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+  75% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+  100% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes welcome-zzz {
+  0% {
+    opacity: 0;
+    transform: translate(0, 8px) scale(0.6);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(10px, -26px) scale(1);
+  }
+}
+
+@keyframes welcome-doze {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  20% {
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(0.94) rotate(-2deg);
+  }
+  80% {
+    opacity: 0.55;
+    transform: scale(0.9) rotate(1deg);
+  }
+  100% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+}
+
+@keyframes welcome-kick {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.18) rotate(-4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes welcome-top {
+  from {
+    transform: translateX(1px) rotate(7deg);
+  }
+}
+
+@keyframes welcome-mid {
+  40% {
+    transform: translate(0.8px, -0.8px) scale(1.06);
+  }
+}
+
+@keyframes welcome-bottom {
+  from {
+    transform: translateX(-1px) rotate(-5deg);
+  }
+}
+
+@keyframes welcome-shard {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes welcome-confetti {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.3) rotate(0);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(var(--dx), var(--dy)) scale(1) rotate(calc(var(--spin) * 0.6));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--dx) * 1.1), calc(var(--dy) + 110px)) scale(0.9)
+      rotate(var(--spin));
+  }
+}
+
+@keyframes welcome-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(6px);
+  }
+}
+
+/* Gridburst: a line that bursts flashes and shrinks away, and the points it
+   earned float up over the board. */
+.gridburst-pop {
+  animation: gridburst-pop 450ms var(--ease-out) both;
+}
+
+.gridburst-float {
+  animation: gridburst-float 700ms var(--ease-out) both;
+}
+
+@keyframes gridburst-pop {
+  0% {
+    background-color: var(--foreground);
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes gridburst-float {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.8);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-28px) scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 1ms !important;
     transition-duration: 1ms !important;
+  }
+  /* The welcome's staging is all delays; without motion it shows at once. */
+  .welcome-backdrop *,
+  .welcome-backdrop {
+    animation-delay: 0ms !important;
   }
 }
 
@@ -293,6 +528,11 @@
 .a11y-reduce-motion *::after {
   animation-duration: 1ms !important;
   transition-duration: 1ms !important;
+}
+
+.a11y-reduce-motion .welcome-backdrop,
+.a11y-reduce-motion .welcome-backdrop * {
+  animation-delay: 0ms !important;
 }
 
 .a11y-larger-text {

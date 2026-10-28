@@ -4,6 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { followUser, resolveUserId, useFollowState } from "@/lib/social/follows";
+import { useAvatarPath } from "@/lib/users/avatars";
+import { avatarUrlFromPath } from "@/lib/users/profile";
 import { cn } from "@/lib/utils";
 import { fmt } from "@/lib/format";
 
@@ -110,6 +112,33 @@ export function Avatar({
         .slice(0, 2)
         .toUpperCase()}
     </span>
+  );
+}
+
+/**
+ * Any account's picture, by username. `path` is the stored avatar path when the
+ * screen already read it (`null` for none); without it the picture is looked up
+ * by username, so every list shows the same picture as the profile page.
+ */
+export function UserAvatar({
+  username,
+  path,
+  size,
+  className,
+}: {
+  username: string | undefined;
+  path?: string | null;
+  size?: "sm" | "md" | "lg" | "xl";
+  className?: string;
+}) {
+  const resolved = useAvatarPath(username, path);
+  return (
+    <Avatar
+      name={username || "player"}
+      src={avatarUrlFromPath(resolved)}
+      size={size}
+      className={className}
+    />
   );
 }
 

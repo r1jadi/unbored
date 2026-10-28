@@ -14,10 +14,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminVisibility } from "@/lib/admin/visibility";
+import { ApiError } from "@/lib/api/client";
 import { signOut, useAuth } from "@/lib/auth/session";
 import { seo } from "@/lib/seo";
+import { deleteAccount } from "@/lib/users/account";
 import { avatarUrl, clearProfile, useProfile, type ProfileState } from "@/lib/users/profile";
 
 export const Route = createFileRoute("/settings/")({
@@ -89,6 +92,9 @@ function Settings() {
   const showAdmin = useAdminVisibility();
   const [logout, setLogout] = useState(false);
   const [del, setDel] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string>();
   const signedIn = auth.status === "authenticated";
 
   return (
@@ -216,26 +222,69 @@ function Settings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={del} onOpenChange={setDel}>
+      <AlertDialog
+        open={del}
+        onOpenChange={(open) => {
+          if (deleting) return;
+          setDel(open);
+          setConfirmText("");
+          setDeleteError(undefined);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete your account?</AlertDialogTitle>
             <AlertDialogDescription>
-              Self-service deletion is not available in this build: there is no verified deletion
-              endpoint yet, so this screen does not pretend to delete anything. To request deletion,
-              open an issue on the project tracker from your signed-in account and a moderator will
-              process it.
+              This permanently deletes your account and everything in it: your profile and picture,
+              scores and leaderboard places, comments, likes, saved games, follows and saved runs.
+              It can't be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <label className="block space-y-1.5" htmlFor="delete-confirm">
+            <span className="text-sm">
+              Type <span className="font-semibold">DELETE</span> to confirm
+            </span>
+            <input
+              id="delete-confirm"
+              value={confirmText}
+              onChange={(event) => setConfirmText(event.target.value)}
+              autoComplete="off"
+              autoCapitalize="characters"
+              disabled={deleting}
+              className="h-11 w-full rounded-lg bg-surface px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
+            />
+          </label>
+          {deleteError && (
+            <p className="text-sm text-destructive" role="alert">
+              {deleteError}
+            </p>
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                window.open("https://github.com/r1jadi/unbored/issues", "_blank", "noreferrer");
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={deleting || confirmText.trim() !== "DELETE"}
+              onClick={async () => {
+                setDeleting(true);
+                setDeleteError(undefined);
+                try {
+                  await deleteAccount();
+                  setDel(false);
+                  toast.success("Your account has been deleted.");
+                  nav({ to: "/welcome" });
+                } catch (error) {
+                  setDeleteError(
+                    error instanceof ApiError
+                      ? error.message
+                      : "Couldn't delete your account. Try again.",
+                  );
+                } finally {
+                  setDeleting(false);
+                }
               }}
             >
-              Open an issue
-            </AlertDialogAction>
+              {deleting ? "Deleting…" : "Delete account"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -2,7 +2,7 @@ import { Link2, Mail, MessageCircle, Send, Trash2 } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { Avatar, ErrorState } from "@/components/common";
+import { Avatar, ErrorState, UserAvatar } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,7 +17,7 @@ import { ApiError } from "@/lib/api/client";
 import { fmt, fmtDate } from "@/lib/format";
 import { absoluteUrl } from "@/lib/seo";
 import { MAX_COMMENT_LENGTH, useComments, type GameComment } from "@/lib/social/engagement";
-import { avatarUrl, avatarUrlFromPath, getProfileState } from "@/lib/users/profile";
+import { avatarUrl, getProfileState } from "@/lib/users/profile";
 
 /**
  * The comment thread for one game.
@@ -191,7 +191,6 @@ function CommentRow({
   // could not be read keeps its row and falls back to the initials avatar rather
   // than disappearing.
   const author = comment.author;
-  const avatar = avatarUrlFromPath(author?.avatar_path);
 
   return (
     <li className="flex gap-3">
@@ -202,7 +201,7 @@ function CommentRow({
           aria-label={`View @${author.username}'s profile`}
           className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <Avatar name={author.username} src={avatar} size="sm" />
+          <UserAvatar username={author.username} path={author.avatar_path} size="sm" />
         </Link>
       ) : (
         <Avatar name="" size="sm" />

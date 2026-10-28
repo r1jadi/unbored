@@ -222,7 +222,7 @@ function Board({
   const accepting = !showing && !levelUp && !verifying && run.outcome === "playing";
 
   // From the first showing beat the run is live: leaving loses it.
-  useReportRunProgress(!verifying && run.outcome === "playing", onFinish);
+  useReportRunProgress(!verifying && run.outcome === "playing", onFinish, session);
 
   // Taps taken in this round so far: the round replays the sequence from its
   // start, so this is also the position the next tap is checked against.

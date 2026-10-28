@@ -1092,6 +1092,40 @@ func TestCompleteSessionAcceptsCrosswordChecksAndReveals(t *testing.T) {
 	}
 }
 
+func TestCompleteSessionAcceptsAGridburstPlacementInTheLastSlot(t *testing.T) {
+	// 191 is slot 2 with its corner on cell 63, the last placement there is.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("gridburst@1", "1", "20000", "[0,191]"), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if len(backend.lastRun.Actions) != 2 || backend.lastRun.Actions[1] != 191 {
+		t.Fatalf("actions = %v, want the submitted placements", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionRejectsAGridburstPlacementPastTheTray(t *testing.T) {
+	// 192 would be a fourth tray slot.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("gridburst@1", "1", "20000", "[0,192]"), "")
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (%#v)", status, body)
+	}
+	if backend.runCalls != 0 {
+		t.Fatal("a placement past the tray reached the verifier")
+	}
+}
+
 func TestCompleteSessionRejectsACrosswordMovePastTheCodes(t *testing.T) {
 	// 1749 would reveal cell 49, past the 7×7 midi.
 	backend := testBackend()

@@ -51,6 +51,8 @@ import {
   SUDOKU_SIDE,
   allowanceMs,
   tierOf,
+  unitsOf,
+  type SudokuDigit,
   type SudokuRun,
   type SudokuTier,
 } from "@/lib/games/sudoku";
@@ -170,6 +172,7 @@ export function SudokuRuntime({
     return (
       <Finished
         slug={slug}
+        run={state.run}
         result={state.result}
         outOfTime={state.run.ending === "time"}
         onRestart={state.restart}
@@ -651,17 +654,19 @@ function cellLabel(
 /** The end of a run: the score the server verified, or a guest's unranked result. */
 function Finished({
   slug,
+  run,
   result,
   outOfTime,
   onRestart,
 }: {
   slug: string;
+  run: SudokuRun;
   result: RunResult;
   outOfTime: boolean;
   onRestart: () => void;
 }) {
   return (
-    <div className="flex flex-1 flex-col justify-center gap-4 px-6 pb-[max(1rem,env(safe-area-inset-bottom))] text-center">
+    <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] text-center">
       <div className="enter flex flex-col items-center gap-2">
         <div className="flex size-12 items-center justify-center rounded-full bg-surface-2">
           {result.ranked ? (
@@ -678,6 +683,8 @@ function Finished({
           } ${result.clearedColumns === 1 ? "board" : "boards"} solved.`}
         </p>
       </div>
+
+      <BoardReview run={run} />
 
       <dl className="mx-auto grid w-full max-w-xs grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-surface p-3">
@@ -711,6 +718,145 @@ function Finished({
 
       <RunEndActions slug={slug} ranked={result.ranked} onRestart={onRestart} autoFocus />
     </div>
+  );
+}
+
+/** One wrong digit on the board the run ended on, and why it was wrong. */
+type Mistake = { cell: number; placed: SudokuDigit; answer: SudokuDigit; reason: string };
+
+function where(cell: number): string {
+  return `Row ${Math.floor(cell / SUDOKU_SIDE) + 1}, column ${(cell % SUDOKU_SIDE) + 1}`;
+}
+
+/** The wrong digits on a board, each with the rule it broke or the digit it needed. */
+function boardMistakes(
+  cells: readonly SudokuDigit[],
+  start: readonly SudokuDigit[],
+  solution: readonly SudokuDigit[],
+): Mistake[] {
+  const mistakes: Mistake[] = [];
+  cells.forEach((placed, cell) => {
+    if (placed === EMPTY || start[cell] !== EMPTY || placed === solution[cell]) return;
+    const answer = solution[cell];
+    const units = unitsOf(cell);
+    const clash = (["row", "column", "box"] as const).find((name) =>
+      units[name].some((other) => other !== cell && cells[other] === placed),
+    );
+    mistakes.push({
+      cell,
+      placed,
+      answer,
+      reason: clash
+        ? `${where(cell)}: your ${placed} repeats the ${placed} already in that ${clash}. It needed a ${answer}.`
+        : `${where(cell)}: a ${placed} fit for the moment, but the board's only solution has a ${answer} there, so the ${placed} would have blocked it later.`,
+    });
+  });
+  return mistakes;
+}
+
+/**
+ * The board the run ended on, checked against its one solution: the digits the
+ * player got right, the ones they got wrong (struck through, with the right one
+ * beside them, and why), and the rest of the board filled in faintly.
+ */
+function BoardReview({ run }: { run: SudokuRun }) {
+  const drawn = useMemo(() => drawBoard(run.seed, run.level), [run.seed, run.level]);
+  const mistakes = useMemo(
+    () => boardMistakes(run.cells, drawn.start, drawn.solution),
+    [run.cells, drawn],
+  );
+  const wrong = new Map(mistakes.map((mistake) => [mistake.cell, mistake]));
+  const open = run.cells.filter((value) => value === EMPTY).length;
+  const shown = mistakes.slice(0, 4);
+
+  let summary: string;
+  if (mistakes.length > 0) {
+    const empties = open ? ` and ${open} ${open === 1 ? "square" : "squares"} still empty` : "";
+    summary = `${mistakes.length} wrong ${mistakes.length === 1 ? "digit" : "digits"}${empties}. A wrong digit doesn't end the run, but it hides the right answer and costs you time.`;
+  } else if (open) {
+    summary = `No mistakes: ${open} ${open === 1 ? "square was" : "squares were"} still empty when the run ended. Here is the rest of the board.`;
+  } else {
+    summary = "Everything you placed was right.";
+  }
+
+  return (
+    <section
+      className="enter mx-auto w-full max-w-sm space-y-3 text-left"
+      aria-label="Your last board"
+    >
+      <h2 className="text-center text-base font-semibold">
+        {mistakes.length > 0
+          ? `Where board ${run.level} went wrong`
+          : `Board ${run.level}, checked`}
+      </h2>
+      <p className="text-center text-xs text-muted-foreground">{summary}</p>
+      <div
+        className="mx-auto grid aspect-square w-full max-w-[18rem] overflow-hidden rounded-lg border-2 bg-surface"
+        style={{
+          borderColor: BOX_EDGE,
+          gridTemplateColumns: `repeat(${SUDOKU_SIDE}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${SUDOKU_SIDE}, minmax(0, 1fr))`,
+        }}
+        role="img"
+        aria-label={`Board ${run.level} checked against its solution. ${summary} ${mistakes
+          .map((mistake) => mistake.reason)
+          .join(" ")}`}
+      >
+        {run.cells.map((value, index) => {
+          const row = Math.floor(index / SUDOKU_SIDE);
+          const column = index % SUDOKU_SIDE;
+          const given = drawn.start[index] !== EMPTY;
+          const mistake = wrong.get(index);
+          const missing = value === EMPTY;
+          return (
+            <div
+              key={index}
+              style={{
+                borderRightWidth:
+                  column < SUDOKU_SIDE - 1 ? ((column + 1) % SUDOKU_BOX === 0 ? 2 : 1) : 0,
+                borderBottomWidth:
+                  row < SUDOKU_SIDE - 1 ? ((row + 1) % SUDOKU_BOX === 0 ? 2 : 1) : 0,
+                borderRightColor: (column + 1) % SUDOKU_BOX === 0 ? BOX_EDGE : CELL_EDGE,
+                borderBottomColor: (row + 1) % SUDOKU_BOX === 0 ? BOX_EDGE : CELL_EDGE,
+              }}
+              className={cn(
+                "relative flex items-center justify-center border-solid text-sm leading-none tabular",
+                given && "font-semibold text-foreground",
+                !given && !missing && !mistake && "font-medium text-primary",
+                mistake && "bg-destructive/15 font-semibold text-destructive",
+                missing && "text-muted-foreground/60",
+              )}
+            >
+              {mistake ? mistake.answer : missing ? drawn.solution[index] : value}
+              {mistake && (
+                <span className="absolute top-[6%] right-[10%] text-[0.55rem] leading-none text-destructive/80 line-through">
+                  {mistake.placed}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <p className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[0.7rem] text-muted-foreground">
+        <span className="text-primary">Yours, right</span>
+        <span className="text-destructive">Wrong (yours struck through)</span>
+        <span>Faint: not filled in</span>
+      </p>
+      {shown.length > 0 && (
+        <ul className="space-y-1.5 text-sm">
+          {shown.map((mistake) => (
+            <li key={mistake.cell} className="rounded-lg bg-surface px-3 py-2">
+              {mistake.reason}
+            </li>
+          ))}
+          {mistakes.length > shown.length && (
+            <li className="text-center text-xs text-muted-foreground">
+              {`…and ${mistakes.length - shown.length} more, marked in red above.`}
+            </li>
+          )}
+        </ul>
+      )}
+    </section>
   );
 }
 

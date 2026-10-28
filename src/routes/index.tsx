@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Feed } from "@/components/game/Feed";
+import { WelcomeMoment } from "@/components/layout/WelcomeMoment";
 import { useGames } from "@/lib/games/catalog";
 import { prefetchFeed } from "@/lib/prefetch";
 import { seo } from "@/lib/seo";
@@ -23,13 +24,16 @@ export const Route = createFileRoute("/")({
 function ForYou() {
   const { status, items, error, retry } = useGames();
   return (
-    <Feed
-      tab="for-you"
-      items={items}
-      loading={status === "loading"}
-      error={status === "error" ? error : undefined}
-      onRetry={retry}
-      onRefresh={retry}
-    />
+    <>
+      <Feed
+        tab="for-you"
+        items={items}
+        loading={status === "loading"}
+        error={status === "error" ? error : undefined}
+        onRetry={retry}
+        onRefresh={retry}
+      />
+      <WelcomeMoment />
+    </>
   );
 }

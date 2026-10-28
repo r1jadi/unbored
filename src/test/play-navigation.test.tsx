@@ -297,11 +297,11 @@ describe("the progress report", () => {
     });
 
     await screen.findByRole("button", { name: "Start run" });
-    expect(report).toHaveBeenLastCalledWith(false, undefined);
+    expect(report).toHaveBeenLastCalledWith(false, undefined, false);
 
     // A live run is reported with the runtime's way to end it and save it.
     await press(screen.getByRole("button", { name: "Start run" }));
     await screen.findByRole("group", { name: "Board 1, 3 by 3" });
-    expect(report).toHaveBeenLastCalledWith(true, expect.any(Function));
+    expect(report).toHaveBeenLastCalledWith(true, expect.any(Function), false);
   });
 });

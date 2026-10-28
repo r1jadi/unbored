@@ -5,6 +5,7 @@ import { ProfileView } from "@/components/social/ProfileView";
 import { listBlockedIds } from "@/lib/settings/blocked";
 import { fetchProfileByUsername, useFollowCounts } from "@/lib/social/follows";
 import { Button } from "@/components/ui/button";
+import { avatarUrlFromPath } from "@/lib/users/profile";
 
 export const Route = createFileRoute("/u/$username/")({
   head: ({ params }) => ({
@@ -27,7 +28,7 @@ function UserProfile() {
   const { username } = Route.useParams();
   const [state, setState] = useState<
     | { status: "loading" }
-    | { status: "ready"; userId: string; name: string; bio?: string }
+    | { status: "ready"; userId: string; name: string; bio?: string; avatarPath?: string }
     | { status: "not-found" }
     | { status: "blocked" }
     | { status: "error"; message: string }
@@ -59,6 +60,7 @@ function UserProfile() {
           userId: profile.id,
           name: profile.display_name,
           bio: profile.bio ?? undefined,
+          avatarPath: profile.avatar_path ?? undefined,
         });
       }
     })().catch((error: unknown) => {
@@ -114,6 +116,7 @@ function UserProfile() {
         username,
         name: state.name,
         bio: state.bio,
+        avatarSrc: avatarUrlFromPath(state.avatarPath),
         userId: state.userId,
         stats: counts.counts,
         statsLoading: counts.status === "loading" || counts.status === "idle",

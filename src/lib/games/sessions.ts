@@ -144,6 +144,15 @@ import {
   type TangoRun,
 } from "@/lib/games/tango";
 import {
+  createRun as createGridburstRun,
+  finish as finishGridburstRun,
+  place as placeGridburst,
+  replay as replayGridburst,
+  submission as gridburstSubmission,
+  GRIDBURST_RULES_VERSION,
+  type GridburstRun,
+} from "@/lib/games/gridburst";
+import {
   createRun,
   finish as finishStack10Run,
   place as placeTile,
@@ -2306,7 +2315,14 @@ export type CrosswordRunState =
       clues: Readonly<Record<string, string>>;
       startedAt: number;
     }
-  | { status: "finished"; session: PlaySession; run: CrosswordRun; result: RunResult }
+  | {
+      status: "finished";
+      session: PlaySession;
+      run: CrosswordRun;
+      result: RunResult;
+      /** Kept so the end of an unsolved run can show every answer with its clue. */
+      clues: Readonly<Record<string, string>>;
+    }
   | {
       status: "error";
       stage: "start" | "submit";
@@ -2413,7 +2429,7 @@ export function useCrosswordRun(gameSlug: string, autoStart = false): CrosswordR
     )
       .then((result) => {
         if (!mounted.current) return;
-        setState({ status: "finished", session, run, result });
+        setState({ status: "finished", session, run, result, clues });
       })
       .catch((error: unknown) => {
         if (!mounted.current) return;
@@ -2717,6 +2733,232 @@ export function useColorMergeRun(gameSlug: string): ColorMergeRunControls {
   }, [state]);
 
   return { ...state, begin, slide, finish, restart, retry, continueRun, newRun };
+}
+
+// ── A run of Gridburst, from session to score ──────────────────────────────
+
+export type GridburstRunState =
+  | { status: "starting" }
+  /**
+   * The player has an unfinished run of this game saved on their account. It is
+   * offered before a new one is started: continue it, or start over.
+   */
+  | { status: "saved"; session: PlaySession; run: GridburstRun; playedMs: number }
+  | { status: "playing"; session: PlaySession; run: GridburstRun }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: GridburstRun }
+  | { status: "finished"; session: PlaySession; run: GridburstRun; result: RunResult }
+  | {
+      status: "error";
+      /** Which half failed: the start of a run, or the submission of one. */
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: GridburstRun;
+    };
+
+export type GridburstRunControls = GridburstRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Ends the saved run, keeping its score, and starts a new one. */
+  newRun: () => void;
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
+  /**
+   * Marks the moment the player pressed Start, so the submitted duration is the
+   * run's and not the time spent reading the rules.
+   */
+  begin: () => void;
+  /** Places the tray piece in `slot` with its corner on `cell`. Ignored unless it fits. */
+  place: (slot: number, cell: number) => void;
+  /** Starts a fresh run, replacing whatever is on the board. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of Gridburst against the session API.
+ *
+ * The same lifecycle as the other four runtimes, because the server treats every
+ * game the same way: a run exists only after the server issued a session under the
+ * game's own rules version, a result exists only after the server verified the
+ * submission, and an error is reported as an error rather than as a score of
+ * zero. A submission is attempted exactly once per run — the effect that triggers
+ * it is guarded — so a re-render cannot send it twice, and a player who retries a
+ * failed submission sends the identical body, which the server recognises.
+ */
+export function useGridburstRun(gameSlug: string): GridburstRunControls {
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<GridburstRunState>({ status: "starting" });
+  const startedAt = useRef(0);
+  // When the run ended, captured once. A retry must send the duration the run
+  // actually took, not the time the retry happened to be made: the submission is
+  // meant to be the same submission, and a number that grows on every attempt
+  // would describe a run that did not happen.
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  // Set by "New run": the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // A new run starts from nothing: keeping the previous board on screen while
+    // a session is issued would show a board with no session behind it.
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    // A signed-in player's unfinished run comes first: it is offered to continue
+    // rather than replaced by a new session behind their back.
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, GRIDBURST_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          const run = replayGridburst(saved.session.seed, saved.actions);
+          setState({ status: "saved", session: saved.session, run, playedMs: saved.playedMs });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: GRIDBURST_RULES_VERSION,
+        });
+      })
+      .then((session) => {
+        if (!session || controller.signal.aborted) return;
+        // The clock starts when the player presses Start (`begin`), not when the
+        // session arrives: reading the rules is not part of the run.
+        setState({ status: "playing", session, run: createGridburstRun(session.seed) });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // Verification. It runs when a run has ended, once, and never for a run that is
+  // still in progress.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run } = state;
+    // Defensive: every run is begun before it can end, but a missing mark must
+    // never turn into a duration measured from the epoch.
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run });
+
+    completeRun(
+      session.id,
+      { ...gridburstSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const place = useCallback((slot: number, cell: number) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = placeGridburst(current.run, slot, cell);
+      // A placement that does not fit returns the same run, and the same
+      // reference means there is nothing to re-render.
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
+  const begin = useCallback(() => {
+    if (startedAt.current === 0) startedAt.current = Date.now();
+  }, []);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishGridburstRun(current.run);
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
+  const continueRun = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "saved") return current;
+      // The run's clock carries on from the time it had already been played.
+      startedAt.current = Date.now() - current.playedMs;
+      return { status: "playing", session: current.session, run: current.run };
+    });
+  }, []);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    // The saved run ends here and keeps its score, like any run the player ends:
+    // it is submitted as it was left. Only then does the new run start, because
+    // starting one closes the player's open session.
+    completeRun(
+      session.id,
+      { ...gridburstSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: state.run.moves }
+      : null,
+    startedAt,
+  );
+
+  const restart = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again. The server recognises a repeated
+      // body as the run it already recorded, so this cannot score twice — and a
+      // new session here would abandon a run that was only a retry away.
+      submitting.current = false;
+      setState({ status: "playing", session: state.session, run: state.run });
+      return;
+    }
+
+    // The run never started: ask for a new session.
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, begin, place, finish, restart, retry, continueRun, newRun };
 }
 
 // ── A run of Don't Touch the Black, from session to score ──────────────────

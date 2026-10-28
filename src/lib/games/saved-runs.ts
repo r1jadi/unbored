@@ -30,6 +30,7 @@ export const RESUMABLE_RULES: ReadonlySet<string> = new Set([
   "one-move@2",
   "color-merge@2",
   "queens@1",
+  "gridburst@1",
 ]);
 
 /** How long after the last move a run is saved. */

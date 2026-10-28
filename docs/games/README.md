@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Thirteen games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Fourteen games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
-**7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku** and the
-**Daily Crossword**. Eleven of them — all but 7 Second and the crossword, the two daily
+**7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
+**Gridburst** and the **Daily Crossword**. Twelve of them — all but 7 Second and the crossword, the two daily
 games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -2043,3 +2043,89 @@ drifts, one of the two suites fails.
 4. **A perfect sixty-answer run** on seed 42 scores **600** and ends itself at the
    cap. Asserted in the client engine; the verifier accepts any line from zero to
    sixty answers, so the line is valid play and the score is its replay.
+
+## Gridburst
+
+Drop the pieces you are dealt onto an 8×8 grid. A full row or column **bursts**.
+Three pieces are dealt at a time; place all three and three more arrive. **There
+is no final tray**: the run ends when none of the pieces left in the tray fits
+anywhere. It is our take on the block-puzzle genre (Block Blast and its kin):
+pieces never rotate, and nothing falls.
+
+### The board
+
+| Thing    | Value                                                                   |
+| -------- | ----------------------------------------------------------------------- |
+| Board    | 8×8, sixty-four cells                                                   |
+| Tray     | Three pieces; a new three when all are placed                           |
+| Pieces   | 37 shapes: 28 everyday (1–4 cells, corners, T, S/Z, L/J) and 9 big (5-in-a-row, 2×3, 3×3, big corners) |
+| Limits   | 4096 placements per submission; a request ceiling, not an ending        |
+| Rules    | `gridburst@1`                                                           |
+| Runtime  | `gridburst` (the catalogue's `games.runtime` value)                     |
+
+### The deal
+
+The generator is the one every game uses (see Stack 10). Each piece is two
+draws, both read from bit 16 up: the first picks the pool — big when
+`(state >> 16) mod 100 < bigPercent(piece)` — and the second the shape within
+it, `(state >> 16) mod poolSize`. `piece` counts every piece dealt so far,
+starting at zero, and the shapes are indexed in the order of `GRIDBURST_SHAPES`
+in `src/lib/games/gridburst.ts`, which `public.gridburst_shape` mirrors.
+
+```
+bigPercent(piece) = min(40, 8 + floor(piece / 12))
+```
+
+The big pool starts at 8% and reaches its 40% ceiling at the 384th piece; the
+board, not a counter, ends the run.
+
+### A placement
+
+A move is `slot × 64 + cell` (0–191): the tray slot, and the cell the piece's
+top-left corner lands on. It must fit — every square on the board and empty —
+and a slot cannot be played twice. After it lands, every full row and column is
+found *before* any is cleared, so a cell on a full row and a full column counts
+toward both and bursts once.
+
+### Scoring
+
+- **1 point** for every square placed.
+- A burst of **L** lines scores **10 × L² × combo**.
+- The **combo** rises by one with every bursting placement and resets to zero
+  after three placements in a row burst nothing.
+- A burst that leaves the board **empty** adds **300**.
+
+### How a run ends
+
+| Outcome | Reason  | When                                                         |
+| ------- | ------- | ------------------------------------------------------------ |
+| `over`  | `stuck` | No piece left in the tray fits anywhere.                     |
+| `over`  | `limit` | The 4096-placement submission bound was reached.             |
+
+The player can end a run at any point and it is scored as it stands. A run can
+be saved and continued, like the other untimed endless games.
+
+### Verified scores
+
+`public.complete_gridburst_run(session, actions, score, duration)` in
+`supabase/migrations/20261117120000_gridburst_sessions.sql` deals the trays,
+replays every placement, bursts the lines and derives the score. Its outcomes and
+ledger behaviour are the same as every other verifier's; the Go service routes
+`gridburst@` runs to it and refuses a placement outside 0–191.
+
+### Test vectors
+
+Asserted by `src/lib/games/gridburst.test.ts`, and replayed through the SQL
+verifier when this game was added:
+
+1. **Opening trays** — seed 1 deals shapes `8, 23, 24`; seed 15 deals
+   `25, 5, 4`; seed `9223372036854775807` deals `19, 15, 24`, which catches a
+   client that rounded the seed to a double.
+2. **Seed 1's greedy line** — the first placement that fits, in slot then cell
+   order: `0,65,131,5,88,155,32,101,135,43,112,182`, twelve pieces, **46**
+   points, no bursts, stuck.
+3. **Seed 15's greedy line** —
+   `0,65,133,6,70,130,0,76,136,4,69,129,3,64,152,28,98,168,45,134`, twenty
+   pieces, five lines, **162** points, stuck.
+4. **The ramp** — `bigPercent` is 8 at pieces 0–11, 9 at 12, 16 at 100 and 40
+   from 384.

@@ -2,12 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Clock, Search as SearchIcon, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
-  Avatar,
   EmptyState,
   ErrorState,
   FollowButton,
   ListSkeleton,
   Page,
+  UserAvatar,
   UserName,
 } from "@/components/common";
 import { GameRow } from "@/components/game/GameCard";
@@ -368,7 +368,7 @@ function PeopleResults({ query, only }: { query: string; only: boolean }) {
             params={{ username: x.username }}
             className="flex min-w-0 flex-1 items-center gap-3"
           >
-            <Avatar name={x.username} />
+            <UserAvatar username={x.username} path={x.avatar_path} />
             <div className="min-w-0 text-sm">
               <UserName username={x.username} />
               <p className="truncate text-xs text-muted-foreground">{x.display_name}</p>

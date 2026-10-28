@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Clock, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { ChainRuntime } from "@/components/game/ChainRuntime";
 import { ColorMergeRuntime } from "@/components/game/ColorMergeRuntime";
+import { GridburstRuntime } from "@/components/game/GridburstRuntime";
 import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
 import { TangoRuntime } from "@/components/game/TangoRuntime";
 import { SudokuRuntime } from "@/components/game/SudokuRuntime";
@@ -26,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { useDocumentTitle } from "@/lib/document-title";
 import { titleFromSlug, useGame } from "@/lib/games/catalog";
 import { CHAIN_RUNTIME } from "@/lib/games/chain";
@@ -34,7 +35,7 @@ import { COLOR_MERGE_RUNTIME } from "@/lib/games/color-merge";
 import { DONT_TOUCH_RUNTIME } from "@/lib/games/dont-touch";
 import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
 import { ONE_MOVE_RUNTIME } from "@/lib/games/one-move";
-import { RunProgressContext } from "@/lib/games/run-progress";
+import { RunLeaveContext, RunProgressContext } from "@/lib/games/run-progress";
 import { prefetchPlay } from "@/lib/prefetch";
 import { QUEENS_RUNTIME } from "@/lib/games/queens";
 import { ZIP_RUNTIME } from "@/lib/games/zip";
@@ -42,6 +43,7 @@ import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
 import { TANGO_RUNTIME } from "@/lib/games/tango";
 import { SUDOKU_RUNTIME } from "@/lib/games/sudoku";
 import { CROSSWORD_RUNTIME } from "@/lib/games/crossword";
+import { GRIDBURST_RUNTIME } from "@/lib/games/gridburst";
 import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
 import { STACK10_RUNTIME } from "@/lib/games/stack10";
 
@@ -85,7 +87,7 @@ export const Route = createFileRoute("/play/$id")({
  * Move, `color-merge` plays Color Merge, `dont-touch` plays Don't Touch the Black,
  * `seven-second` plays 7 Second, `queens` plays Crowns, `zip` plays Trail,
  * `eight-puzzle` plays 8 Puzzle, `tango` plays Sun & Moon, `sudoku` plays Sudoku,
- * `crossword` plays the daily crossword,
+ * `crossword` plays the daily crossword, `gridburst` plays Gridburst,
  * and anything else gets the honest "no runtime
  * yet" screen rather than a board that does not follow that game's rules. Every
  * catalogue game now has a runtime, but the branch stays a feature rather than a
@@ -104,11 +106,16 @@ function PlayScreen() {
  */
 export function Play({ id, autoStart = false }: { id: string; autoStart?: boolean }) {
   // Whether a run is live, and how to end it, reported by the runtime below.
-  const [progress, setProgress] = useState<{ active: boolean; endRun?: () => void }>({
+  const [progress, setProgress] = useState<{
+    active: boolean;
+    endRun?: () => void;
+    resumable?: boolean;
+  }>({
     active: false,
   });
   const report = useCallback(
-    (active: boolean, endRun?: () => void) => setProgress({ active, endRun }),
+    (active: boolean, endRun?: () => void, resumable?: boolean) =>
+      setProgress({ active, endRun, resumable }),
     [],
   );
 
@@ -118,6 +125,7 @@ export function Play({ id, autoStart = false }: { id: string; autoStart?: boolea
         id={id}
         progress={progress.active}
         endRun={progress.endRun}
+        resumable={progress.resumable === true}
         autoStart={autoStart}
       />
     </RunProgressContext.Provider>
@@ -131,17 +139,22 @@ export function Play({ id, autoStart = false }: { id: string; autoStart?: boolea
  * Quitting a live run ends it rather than discarding it: when the runtime has
  * handed over `endRun`, confirming submits the run and the runtime shows its
  * verified score, from where leaving is a single tap. A runtime that offers no
- * way to end its run keeps the old choice, to leave without a score.
+ * way to end its run keeps the old choice, to leave without a score. A run that
+ * is saved as it is played (`resumable`) can also be left as it is, to finish
+ * later: opening the game again offers Continue run or New run.
  */
 export function PlaySurface({
   id,
   progress,
   endRun,
+  resumable = false,
   autoStart = false,
 }: {
   id: string;
   progress: boolean;
   endRun?: () => void;
+  /** The live run is saved to the player's account and can be continued later. */
+  resumable?: boolean;
   /** Start the run without the rules screen (`?start=1`). */
   autoStart?: boolean;
 }) {
@@ -171,7 +184,8 @@ export function PlaySurface({
       state.game.runtime === EIGHT_PUZZLE_RUNTIME ||
       state.game.runtime === TANGO_RUNTIME ||
       state.game.runtime === SUDOKU_RUNTIME ||
-      state.game.runtime === CROSSWORD_RUNTIME);
+      state.game.runtime === CROSSWORD_RUNTIME ||
+      state.game.runtime === GRIDBURST_RUNTIME);
 
   const nav = useNavigate();
   const [confirming, setConfirming] = useState(false);
@@ -183,204 +197,231 @@ export function PlaySurface({
     void nav({ to: "/", replace: true });
   }
 
+  const leave = useMemo(() => ({ resumable, leave: quit }), [resumable]);
+
   return (
-    <div className="fixed inset-0 flex flex-col bg-background">
-      <header className="flex items-center gap-3 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3">
-        <Button
-          variant="glass"
-          size="icon"
-          aria-label="Quit game"
-          onClick={() => (progress ? setConfirming(true) : quit())}
-        >
-          <X />
-        </Button>
-        <div className="flex-1 text-center">
-          <p className="text-xs text-muted-foreground">{title}</p>
-        </div>
-      </header>
-
-      {state.status === "loading" && (
-        <div className="flex flex-1 items-center justify-center">
-          <Clock className="size-5 animate-pulse text-muted-foreground" />
-        </div>
-      )}
-
-      {state.status === "ready" && state.game.runtime === STACK10_RUNTIME && playable && (
-        <Stack10Runtime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
-      )}
-
-      {state.status === "ready" && state.game.runtime === CHAIN_RUNTIME && playable && (
-        <ChainRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
-      )}
-
-      {state.status === "ready" && state.game.runtime === MEMORY_FLASH_RUNTIME && playable && (
-        <MemoryFlashRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
-      )}
-
-      {state.status === "ready" && state.game.runtime === ONE_MOVE_RUNTIME && playable && (
-        <OneMoveRuntime
-          key={state.game.slug}
-          slug={state.game.slug}
-          title={state.game.title}
-          autoStart={autoStart}
-        />
-      )}
-
-      {state.status === "ready" && state.game.runtime === COLOR_MERGE_RUNTIME && playable && (
-        <ColorMergeRuntime
-          key={state.game.slug}
-          slug={state.game.slug}
-          title={state.game.title}
-          autoStart={autoStart}
-        />
-      )}
-
-      {state.status === "ready" && state.game.runtime === DONT_TOUCH_RUNTIME && playable && (
-        <DontTouchRuntime
-          key={state.game.slug}
-          slug={state.game.slug}
-          title={state.game.title}
-          autoStart={autoStart}
-        />
-      )}
-
-      {state.status === "ready" && state.game.runtime === SEVEN_SECOND_RUNTIME && playable && (
-        <SevenSecondRuntime
-          key={state.game.slug}
-          slug={state.game.slug}
-          title={state.game.title}
-          autoStart={autoStart}
-        />
-      )}
-
-      {state.status === "ready" && state.game.runtime === QUEENS_RUNTIME && playable && (
-        <QueensRuntime
-          key={state.game.slug}
-          slug={state.game.slug}
-          title={state.game.title}
-          autoStart={autoStart}
-        />
-      )}
-
-      {state.status === "ready" && state.game.runtime === ZIP_RUNTIME && playable && (
-        <ZipRuntime
-          key={state.game.slug}
-          slug={state.game.slug}
-          title={state.game.title}
-          autoStart={autoStart}
-        />
-      )}
-
-      {state.status === "ready" && state.game.runtime === EIGHT_PUZZLE_RUNTIME && playable && (
-        <EightPuzzleRuntime
-          key={state.game.slug}
-          slug={state.game.slug}
-          title={state.game.title}
-          autoStart={autoStart}
-        />
-      )}
-
-      {state.status === "ready" && state.game.runtime === TANGO_RUNTIME && playable && (
-        <TangoRuntime
-          key={state.game.slug}
-          slug={state.game.slug}
-          title={state.game.title}
-          autoStart={autoStart}
-        />
-      )}
-
-      {state.status === "ready" && state.game.runtime === SUDOKU_RUNTIME && playable && (
-        <SudokuRuntime
-          key={state.game.slug}
-          slug={state.game.slug}
-          title={state.game.title}
-          autoStart={autoStart}
-        />
-      )}
-
-      {state.status === "ready" && state.game.runtime === CROSSWORD_RUNTIME && playable && (
-        <CrosswordRuntime
-          key={state.game.slug}
-          slug={state.game.slug}
-          title={state.game.title}
-          autoStart={autoStart}
-        />
-      )}
-
-      {state.status === "ready" && !(hasShippedRuntime && playable) && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-surface-2">
-            <Clock className="size-5 text-muted-foreground" />
+    <RunLeaveContext.Provider value={leave}>
+      <div className="fixed inset-0 flex flex-col bg-background">
+        <header className="flex items-center gap-3 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3">
+          <Button
+            variant="glass"
+            size="icon"
+            aria-label="Quit game"
+            onClick={() => (progress ? setConfirming(true) : quit())}
+          >
+            <X />
+          </Button>
+          <div className="flex-1 text-center">
+            <p className="text-xs text-muted-foreground">{title}</p>
           </div>
-          <h1 className="text-xl font-semibold">Not playable yet</h1>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            {title} has no runtime yet, so there is nothing to start. It is listed because it is
-            part of the catalogue.
-          </p>
-          <div className="mt-2 w-full">
-            <GameExits slug={id} title={title} />
-          </div>
-        </div>
-      )}
+        </header>
 
-      {state.status === "error" && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-          <h1 className="text-xl font-semibold">Couldn't load this game</h1>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            The catalogue is unavailable, so there is nothing to start.
-          </p>
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={state.retry}>
-              Try again
-            </Button>
-            <Button asChild variant="ghost">
+        {state.status === "loading" && (
+          <div className="flex flex-1 items-center justify-center">
+            <Clock className="size-5 animate-pulse text-muted-foreground" />
+          </div>
+        )}
+
+        {state.status === "ready" && state.game.runtime === STACK10_RUNTIME && playable && (
+          <Stack10Runtime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
+        )}
+
+        {state.status === "ready" && state.game.runtime === CHAIN_RUNTIME && playable && (
+          <ChainRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
+        )}
+
+        {state.status === "ready" && state.game.runtime === MEMORY_FLASH_RUNTIME && playable && (
+          <MemoryFlashRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === ONE_MOVE_RUNTIME && playable && (
+          <OneMoveRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === COLOR_MERGE_RUNTIME && playable && (
+          <ColorMergeRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === DONT_TOUCH_RUNTIME && playable && (
+          <DontTouchRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === SEVEN_SECOND_RUNTIME && playable && (
+          <SevenSecondRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === QUEENS_RUNTIME && playable && (
+          <QueensRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === ZIP_RUNTIME && playable && (
+          <ZipRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === EIGHT_PUZZLE_RUNTIME && playable && (
+          <EightPuzzleRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === TANGO_RUNTIME && playable && (
+          <TangoRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === SUDOKU_RUNTIME && playable && (
+          <SudokuRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === CROSSWORD_RUNTIME && playable && (
+          <CrosswordRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === GRIDBURST_RUNTIME && playable && (
+          <GridburstRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && !(hasShippedRuntime && playable) && (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-surface-2">
+              <Clock className="size-5 text-muted-foreground" />
+            </div>
+            <h1 className="text-xl font-semibold">Not playable yet</h1>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              {title} has no runtime yet, so there is nothing to start. It is listed because it is
+              part of the catalogue.
+            </p>
+            <div className="mt-2 w-full">
+              <GameExits slug={id} title={title} />
+            </div>
+          </div>
+        )}
+
+        {state.status === "error" && (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+            <h1 className="text-xl font-semibold">Couldn't load this game</h1>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              The catalogue is unavailable, so there is nothing to start.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={state.retry}>
+                Try again
+              </Button>
+              <Button asChild variant="ghost">
+                <Link to="/explore">Browse games</Link>
+              </Button>
+            </div>
+            <div className="w-full">
+              <GameExits />
+            </div>
+          </div>
+        )}
+
+        {state.status === "missing" && (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+            <h1 className="text-xl font-semibold">No such game</h1>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              That game is not in the catalogue.
+            </p>
+            <Button asChild variant="play" size="lg" className="mt-2">
               <Link to="/explore">Browse games</Link>
             </Button>
+            <div className="w-full">
+              <GameExits />
+            </div>
           </div>
-          <div className="w-full">
-            <GameExits />
-          </div>
-        </div>
-      )}
+        )}
 
-      {state.status === "missing" && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-          <h1 className="text-xl font-semibold">No such game</h1>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            That game is not in the catalogue.
-          </p>
-          <Button asChild variant="play" size="lg" className="mt-2">
-            <Link to="/explore">Browse games</Link>
-          </Button>
-          <div className="w-full">
-            <GameExits />
-          </div>
-        </div>
-      )}
-
-      {/* A started run is real progress, so ending it is a decision the player
+        {/* A started run is real progress, so ending it is a decision the player
           makes deliberately rather than by a mis-tap on the way out. Ending it
           saves it: the score so far is submitted and verified. */}
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{endRun ? "End this run?" : "Leave this run?"}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {endRun
-                ? "Your run is still going. Ending it now saves your score so far: it is sent for verification, and the board you are on is not scored."
-                : "Your run is still going. Leaving now discards it, and it will not be scored."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep playing</AlertDialogCancel>
-            {endRun ? (
-              <AlertDialogAction onClick={endRun}>End run and save</AlertDialogAction>
-            ) : (
-              <AlertDialogAction onClick={quit}>Leave run</AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        <AlertDialog open={confirming} onOpenChange={setConfirming}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{endRun ? "End this run?" : "Leave this run?"}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {endRun && resumable
+                  ? "Your run is still going. Finish it later and it is waiting for you next time you open this game — or end it now to save your score so far."
+                  : endRun
+                    ? "Your run is still going. Ending it now saves your score so far: it is sent for verification, and the board you are on is not scored."
+                    : "Your run is still going. Leaving now discards it, and it will not be scored."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep playing</AlertDialogCancel>
+              {endRun && resumable && (
+                <AlertDialogAction
+                  className={buttonVariants({ variant: "secondary" })}
+                  onClick={quit}
+                >
+                  Finish later
+                </AlertDialogAction>
+              )}
+              {endRun ? (
+                <AlertDialogAction onClick={endRun}>End run and save</AlertDialogAction>
+              ) : (
+                <AlertDialogAction onClick={quit}>Leave run</AlertDialogAction>
+              )}
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </RunLeaveContext.Provider>
   );
 }

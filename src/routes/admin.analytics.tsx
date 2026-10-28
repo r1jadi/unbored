@@ -12,7 +12,7 @@ import {
   Toolbar,
   type Column,
 } from "@/components/admin/ui";
-import { Avatar } from "@/components/common";
+import { UserAvatar } from "@/components/common";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatAgo,
@@ -108,7 +108,7 @@ export function AnalyticsAdmin() {
       className: "min-w-48",
       cell: (p) => (
         <span className="flex min-w-0 items-center gap-3">
-          <Avatar name={p.username} size="sm" />
+          <UserAvatar username={p.username} size="sm" />
           <span className="truncate text-sm font-medium">@{p.username}</span>
         </span>
       ),
@@ -260,7 +260,7 @@ export function AnalyticsAdmin() {
                   rowKey={(p) => p.username}
                   mobileRow={(p) => (
                     <MobileRow>
-                      <Avatar name={p.username} size="sm" />
+                      <UserAvatar username={p.username} size="sm" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">@{p.username}</span>
                         <span className="block truncate text-xs text-muted-foreground">

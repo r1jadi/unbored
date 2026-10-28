@@ -10,7 +10,8 @@
 //     `complete_color_merge_run`, `complete_dont_touch_run`,
 //     `complete_seven_second_run`, `complete_queens_run`, `complete_zip_run`,
 //     `complete_eight_puzzle_run`, `complete_tango_run`,
-//     `complete_sudoku_run`, `complete_crossword_run`) replays the submitted
+//     `complete_sudoku_run`, `complete_crossword_run`,
+//     `complete_gridburst_run`) replays the submitted
 //     actions, derives the
 //     score and writes the ledger. This service validates
 //     the request shape, maps the verifier's outcome onto an HTTP answer, and
@@ -89,6 +90,8 @@ const (
 	sudokuMaxActions = 8192
 	// crossword@1 carries at most 2048 moves: a day's solve, letters and help.
 	crosswordMaxActions = 2048
+	// gridburst@1 carries at most 4096 placements.
+	gridburstMaxActions = 4096
 	// The bounds a move has to fit. Stack 10 addresses a column and Chain a pad,
 	// both 0 to 3; Color Merge addresses one of its four directions, also 0 to 3;
 	// Memory Flash addresses a cell of its board — sixteen for the retired 4×4
@@ -128,6 +131,9 @@ const (
 	// 48 × 32 + 26 on the 7×7 midi), a check (1600) and a reveal (1700 + cell, up
 	// to 1748). The verifier refuses the codes in between.
 	crosswordMoves = 1749
+	// gridburstMoves is every Gridburst placement: tray slot × 64 + the cell the
+	// piece's corner lands on, from 0 to 191.
+	gridburstMoves = 3 * 64
 )
 
 // Patterns mirror the database constraints, so a bad request is a 400 that names
@@ -381,6 +387,8 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 		limit = sudokuMaxActions
 	case strings.HasPrefix(rules, "crossword@"):
 		limit = crosswordMaxActions
+	case strings.HasPrefix(rules, "gridburst@"):
+		limit = gridburstMaxActions
 	}
 	if len(actions) > limit {
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
@@ -505,6 +513,8 @@ func boardSize(rulesVersion string) int {
 		return sudokuMoves
 	case strings.HasPrefix(rulesVersion, "crossword@"):
 		return crosswordMoves
+	case strings.HasPrefix(rulesVersion, "gridburst@"):
+		return gridburstMoves
 	default:
 		return stackChainPositions
 	}

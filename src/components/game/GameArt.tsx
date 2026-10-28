@@ -64,6 +64,7 @@ export function GameArt({
         {id === "sun-and-moon" && <SunAndMoon />}
         {id === "sudoku" && <Sudoku />}
         {id === "crossword" && <Crossword />}
+        {id === "gridburst" && <Gridburst />}
         {!KNOWN.has(id) && <Generated seed={id} />}
       </div>
     </div>
@@ -85,6 +86,7 @@ const KNOWN = new Set([
   "sun-and-moon",
   "sudoku",
   "crossword",
+  "gridburst",
 ]);
 
 /**
@@ -367,6 +369,34 @@ function Crossword() {
           </div>
         ),
       )}
+    </div>
+  );
+}
+
+function Gridburst() {
+  // A board one placement from bursting: the bottom row is a square short, and
+  // the piece about to land is outlined over the gap.
+  const filled = new Set([
+    9, 10, 17, 18, 19, 26, 21, 22, 29, 33, 34, 37, 38, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52,
+    54, 55, 56, 57, 58, 59, 60, 61, 63,
+  ]);
+  const landing = new Set([53, 62, 45]);
+  const tones = ["bg-game-1", "bg-game-2", "bg-game-4", "bg-game-5", "bg-game-6", "bg-game-7"];
+  return (
+    <div className="grid w-full grid-cols-8 gap-[min(0.8cqw,0.8cqh,0.2rem)] rounded-lg bg-surface-2/60 p-[min(1cqw,1cqh,0.25rem)]">
+      {Array.from({ length: 64 }, (_, cell) => (
+        <div
+          key={cell}
+          className={cn(
+            "aspect-square rounded-[min(0.8cqw,0.8cqh,0.2rem)]",
+            filled.has(cell)
+              ? tones[(cell * 7 + Math.floor(cell / 8)) % tones.length]
+              : landing.has(cell)
+                ? "border-2 border-primary bg-primary/30"
+                : "bg-surface",
+          )}
+        />
+      ))}
     </div>
   );
 }

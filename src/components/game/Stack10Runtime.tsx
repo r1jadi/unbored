@@ -54,7 +54,7 @@ export function Stack10Runtime({ slug, title }: { slug: string; title: string })
   const live = state.status === "playing";
 
   // A live run is progress the player would lose by leaving.
-  useReportRunProgress(live, state.finish);
+  useReportRunProgress(live, state.finish, live ? state.session : undefined);
   useEffect(() => {
     if (!live) return;
     const onKey = (event: KeyboardEvent) => {

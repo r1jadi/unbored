@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { TrendArea } from "@/components/admin/charts";
 import { AdminPage, SectionCard, StatCard, StatusBadge, statusTone } from "@/components/admin/ui";
-import { Avatar, ErrorState, ListSkeleton } from "@/components/common";
+import { ErrorState, ListSkeleton, UserAvatar } from "@/components/common";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatAgo,
@@ -215,7 +215,7 @@ export function Overview() {
                       key={`${a.kind}-${a.at}-${i}`}
                       className="flex items-center gap-3 px-4 py-3"
                     >
-                      <Avatar name={a.actor} size="sm" />
+                      <UserAvatar username={a.actor} size="sm" />
                       <p className="min-w-0 flex-1 text-sm">
                         <span className="font-medium">@{a.actor}</span>{" "}
                         <span className="text-muted-foreground">{a.action}</span>{" "}

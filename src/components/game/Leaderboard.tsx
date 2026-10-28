@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { CircleSlash, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { Avatar, EmptyState, ErrorState, ListSkeleton } from "@/components/common";
+import { EmptyState, ErrorState, ListSkeleton, UserAvatar } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/session";
 import { fetchProfilesByIds, listFollowees } from "@/lib/social/follows";
@@ -109,7 +109,7 @@ export function LeaderboardList({
             <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
               {row.rank}
             </span>
-            <Avatar name={row.username || "player"} size="sm" />
+            <UserAvatar username={row.username} size="sm" />
             <span className="flex-1 truncate text-sm">
               {row.username ? `@${row.username}` : "A former player"}
             </span>
@@ -259,7 +259,7 @@ function FollowingBoard({ gameSlug, period }: { gameSlug: string; period: BoardP
           <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
             {row.rank}
           </span>
-          <Avatar name={row.username || "player"} size="sm" />
+          <UserAvatar username={row.username} size="sm" />
           <span className="flex-1 truncate text-sm">@{row.username}</span>
           <span className="font-semibold tabular">{row.score}</span>
         </li>
@@ -376,7 +376,7 @@ export function OverallBoardList({
               <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
                 {row.rank}
               </span>
-              <Avatar name={row.username || "player"} size="sm" />
+              <UserAvatar username={row.username} size="sm" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm">
                   {row.username ? `@${row.username}` : "A former player"}

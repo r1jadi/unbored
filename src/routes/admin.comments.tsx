@@ -17,7 +17,7 @@ import {
   useDebounced,
   type Column,
 } from "@/components/admin/ui";
-import { Avatar } from "@/components/common";
+import { UserAvatar } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import {
   ADMIN_LIMIT,
@@ -105,7 +105,7 @@ export function CommentsAdmin() {
       head: "Author",
       cell: (c) => (
         <span className="flex items-center gap-2">
-          <Avatar name={c.authorUsername} size="sm" />
+          <UserAvatar username={c.authorUsername} size="sm" />
           <span className="truncate text-sm">@{c.authorUsername}</span>
         </span>
       ),
@@ -236,7 +236,7 @@ export function CommentsAdmin() {
             rowKey={(c) => c.id}
             mobileRow={(c) => (
               <MobileRow>
-                <Avatar name={c.authorUsername} size="sm" />
+                <UserAvatar username={c.authorUsername} size="sm" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm">{c.body}</span>
                   <span className="block truncate text-xs text-muted-foreground">

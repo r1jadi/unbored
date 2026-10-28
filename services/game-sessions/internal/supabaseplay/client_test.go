@@ -312,6 +312,24 @@ func TestCompleteRunRoutesCrosswordRulesToCrosswordVerifier(t *testing.T) {
 	}
 }
 
+func TestCompleteRunRoutesGridburstRulesToGridburstVerifier(t *testing.T) {
+	rec := newRecorder(t, http.StatusOK, resultRow)
+
+	if _, err := rec.client(t).CompleteRun(context.Background(), CompleteRequest{
+		SessionID:    "ffffffff-1111-4111-8111-ffffffffffff",
+		RulesVersion: "gridburst@1",
+		Actions:      []int32{0, 65, 131},
+		Score:        11,
+		DurationMS:   20000,
+	}); err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+
+	if rec.path != "/rest/v1/rpc/complete_gridburst_run" {
+		t.Fatalf("path = %s, want the Gridburst verifier function", rec.path)
+	}
+}
+
 func TestCompleteRunRoutesSudokuRulesToSudokuVerifier(t *testing.T) {
 	rec := newRecorder(t, http.StatusOK, resultRow)
 

@@ -238,7 +238,8 @@ func (c *Client) CompleteRun(ctx context.Context, request CompleteRequest) (Resu
 // complete_seven_second_run, a Queens run by complete_queens_run, a Zip run by
 // complete_zip_run, an 8 Puzzle run by complete_eight_puzzle_run, a Tango run by
 // complete_tango_run, a Sudoku run by complete_sudoku_run, a crossword run by
-// complete_crossword_run, and anything else by
+// complete_crossword_run, a Gridburst run by complete_gridburst_run, and
+// anything else by
 // complete_stack10_run — which
 // answers wrong_rules for a version it does not implement, so an unknown version
 // is still a refusal, never a pass.
@@ -268,6 +269,8 @@ func completeFunction(rulesVersion string) string {
 		return "complete_sudoku_run"
 	case strings.HasPrefix(rulesVersion, "crossword@"):
 		return "complete_crossword_run"
+	case strings.HasPrefix(rulesVersion, "gridburst@"):
+		return "complete_gridburst_run"
 	default:
 		return "complete_stack10_run"
 	}

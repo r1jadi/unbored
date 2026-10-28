@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { Avatar, EmptyState, ErrorState, Page, PageHeader } from "@/components/common";
+import { Avatar, EmptyState, ErrorState, Page, PageHeader, UserAvatar } from "@/components/common";
 import { LegalBody, privacy, terms } from "@/components/legal";
 import { allSettings } from "@/components/settings/config";
 import { ProfileForm } from "@/components/settings/ProfileForm";
@@ -737,7 +737,7 @@ function BlockedSection({ signedIn }: { signedIn: boolean }) {
     <Group>
       {list.map((u) => (
         <div key={u.id} className="flex items-center gap-3 px-4 py-3">
-          <Avatar name={u.username} size="sm" />
+          <UserAvatar username={u.username} size="sm" />
           <span className="flex-1 text-sm">@{u.username}</span>
           <Button
             size="sm"

@@ -13,12 +13,22 @@
  * anything by itself.
  *
  * Only games with a right move to point at have one: Stack 10, Color Merge,
- * One Move, Crowns, Trail, 8 Puzzle, Sun & Moon and Sudoku. Trail's hint is the
+ * One Move, Crowns, Trail, 8 Puzzle, Sun & Moon, Sudoku and Gridburst. Trail's hint is the
  * next cell of the path and carries no reason: a path has no single rule that
  * forces its next step. Chain and Memory Flash test memory, and Don't Touch the
  * Black and 7 Second are against the clock, so a hint would be the answer rather
  * than help.
  */
+import {
+  GRIDBURST_CELLS,
+  GRIDBURST_SIZE,
+  burst as burstGridburst,
+  canPlace as canPlaceGridburst,
+  dropped as droppedGridburst,
+  fitsAnywhere,
+  fullLines,
+  type GridburstRun,
+} from "@/lib/games/gridburst";
 import {
   COLOR_MERGE_DIRECTIONS,
   DOWN,
@@ -160,6 +170,47 @@ export function colorMergeHint(
       best.gain > 0
         ? `Sliding ${name} merges the most tiles of any slide: +${best.gain}.`
         : `No slide merges anything yet. Sliding ${name} moves the board so new pairs can line up.`,
+  };
+}
+
+// ── Gridburst ───────────────────────────────────────────────────────────────
+
+/**
+ * Gridburst: the placement that bursts the most lines, and among equals the one
+ * that leaves the most of the tray still placeable.
+ */
+export function gridburstHint(
+  run: GridburstRun,
+): { slot: number; cell: number; reason: string } | null {
+  let best: { slot: number; cell: number; lines: number; open: number } | null = null;
+  for (let slot = 0; slot < run.tray.length; slot += 1) {
+    const shape = run.tray[slot];
+    if (shape === null) continue;
+    for (let cell = 0; cell < GRIDBURST_CELLS; cell += 1) {
+      if (!canPlaceGridburst(run, slot, cell)) continue;
+      const filled = droppedGridburst(run.board, shape, cell);
+      const { rows, columns } = fullLines(filled);
+      const lines = rows.length + columns.length;
+      const after = lines > 0 ? burstGridburst(filled) : filled;
+      const open = run.tray.filter(
+        (other, index) => index !== slot && other !== null && fitsAnywhere(after, other),
+      ).length;
+      if (!best || lines > best.lines || (lines === best.lines && open > best.open)) {
+        best = { slot, cell, lines, open };
+      }
+    }
+  }
+  if (!best) return null;
+  const { slot, cell, lines } = best;
+  const row = Math.floor(cell / GRIDBURST_SIZE) + 1;
+  const column = (cell % GRIDBURST_SIZE) + 1;
+  return {
+    slot,
+    cell,
+    reason:
+      lines > 0
+        ? `Piece ${slot + 1} at row ${row}, column ${column} bursts ${lines} ${lines === 1 ? "line" : "lines"}.`
+        : `Nothing bursts yet. Piece ${slot + 1} at row ${row}, column ${column} keeps room for the rest of your tray.`,
   };
 }
 

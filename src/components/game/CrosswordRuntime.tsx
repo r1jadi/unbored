@@ -162,7 +162,15 @@ export function CrosswordRuntime({
   }
 
   if (state.status === "finished") {
-    return <Finished slug={slug} run={state.run} result={state.result} onRestart={state.restart} />;
+    return (
+      <Finished
+        slug={slug}
+        run={state.run}
+        result={state.result}
+        clues={state.clues}
+        onRestart={state.restart}
+      />
+    );
   }
 
   return (
@@ -681,16 +689,23 @@ function Finished({
   slug,
   run,
   result,
+  clues,
   onRestart,
 }: {
   slug: string;
   run: CrosswordRun;
   result: RunResult;
+  clues: Readonly<Record<string, string>>;
   onRestart: () => void;
 }) {
   const solved = run.ending === "solved";
   return (
-    <div className="flex flex-1 flex-col justify-center gap-4 px-6 pb-[max(1rem,env(safe-area-inset-bottom))] text-center">
+    <div
+      className={cn(
+        "flex flex-1 flex-col gap-4 overflow-y-auto px-6 pb-[max(1rem,env(safe-area-inset-bottom))] text-center",
+        solved ? "justify-center" : "pt-2",
+      )}
+    >
       <div className="enter flex flex-col items-center gap-2">
         <div className="flex size-12 items-center justify-center rounded-full bg-surface-2">
           {result.ranked ? (
@@ -711,6 +726,8 @@ function Finished({
           </p>
         )}
       </div>
+
+      {!solved && <AnswerReview run={run} clues={clues} />}
 
       <dl className="mx-auto grid w-full max-w-xs grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-surface p-3">
@@ -751,6 +768,119 @@ function Finished({
         )}
       </RunEndActions>
     </div>
+  );
+}
+
+/**
+ * The answers to a crossword the player did not finish: the solved grid, with
+ * what they had wrong struck through and what they left empty filled in, then
+ * every clue with its answer.
+ */
+function AnswerReview({
+  run,
+  clues,
+}: {
+  run: CrosswordRun;
+  clues: Readonly<Record<string, string>>;
+}) {
+  const { puzzle } = run;
+  const { side } = puzzle;
+  let right = 0;
+  let wrong = 0;
+  let empty = 0;
+  for (let cell = 0; cell < puzzle.solution.length; cell += 1) {
+    if (puzzle.solution[cell] === "#") continue;
+    const letter = run.letters[cell];
+    if (!letter) empty += 1;
+    else if (letter === puzzle.solution[cell]) right += 1;
+    else wrong += 1;
+  }
+  const groups: [string, CrosswordEntry[]][] = [
+    ["Across", puzzle.entries.filter((entry) => entry.across)],
+    ["Down", puzzle.entries.filter((entry) => !entry.across)],
+  ];
+
+  return (
+    <section className="enter mx-auto w-full max-w-sm space-y-3 text-left" aria-label="The answers">
+      <h2 className="text-center text-base font-semibold">Here's how it solves</h2>
+      <p className="text-center text-xs text-muted-foreground">
+        {`You had ${right} ${right === 1 ? "letter" : "letters"} right${
+          wrong ? `, ${wrong} wrong` : ""
+        }${empty ? ` and ${empty} left empty` : ""}.`}
+      </p>
+      <div
+        className="mx-auto grid aspect-square w-full max-w-[16rem] overflow-hidden rounded-lg border-2"
+        style={{
+          borderColor: INK,
+          background: INK,
+          gridTemplateColumns: `repeat(${side}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${side}, minmax(0, 1fr))`,
+          gap: 1,
+        }}
+        role="img"
+        aria-label={`The solved grid: ${puzzle.entries
+          .map((entry) => `${entry.number} ${entry.across ? "across" : "down"} ${entry.answer}`)
+          .join(", ")}`}
+      >
+        {[...puzzle.solution].map((answer, cell) => {
+          if (answer === "#") return <div key={cell} style={{ background: INK }} />;
+          const letter = run.letters[cell];
+          const missed = !letter;
+          const mistaken = !!letter && letter !== answer;
+          const number = puzzle.numbers[cell];
+          return (
+            <div
+              key={cell}
+              className={cn(
+                "relative flex items-center justify-center font-semibold uppercase leading-none",
+                side === 7 ? "text-sm" : "text-lg",
+                missed ? "text-blue-700" : mistaken ? "text-red-600" : "text-zinc-900",
+              )}
+              style={{ background: mistaken ? "#fee2e2" : PAPER }}
+            >
+              {number > 0 && (
+                <span className="absolute left-[6%] top-[4%] text-[0.5rem] font-medium leading-none text-zinc-500">
+                  {number}
+                </span>
+              )}
+              {answer}
+              {mistaken && (
+                <span className="absolute bottom-[4%] right-[8%] text-[0.55rem] font-medium leading-none text-red-600/80 line-through">
+                  {letter}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <p className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[0.7rem] text-muted-foreground">
+        <span>Black: you had it</span>
+        <span className="text-red-500">Red: you had it wrong (yours struck through)</span>
+        <span className="text-blue-500">Blue: left empty</span>
+      </p>
+      {groups.map(([heading, list]) => (
+        <div key={heading}>
+          <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {heading}
+          </h3>
+          <ul className="mt-1 space-y-1 text-sm">
+            {list.map((entry) => (
+              <li key={`${entry.number}${entry.across}`} className="flex gap-2">
+                <span className="w-5 shrink-0 text-right font-medium tabular text-muted-foreground">
+                  {entry.number}
+                </span>
+                <span className="min-w-0 flex-1">
+                  {clues[entry.answer] ?? ""}{" "}
+                  <span className="font-semibold tracking-wider whitespace-nowrap">
+                    {entry.answer}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
   );
 }
 

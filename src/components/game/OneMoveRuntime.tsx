@@ -203,7 +203,7 @@ function Board({
   }, [started]);
 
   // A started, unverified run is progress the player would lose by leaving.
-  useReportRunProgress(started && !verifying && run.outcome === "playing", onFinish);
+  useReportRunProgress(started && !verifying && run.outcome === "playing", onFinish, session);
 
   // A restored board gets a beat before the next one, with a note when it grows.
   const nextSide = boardSize(run.level);

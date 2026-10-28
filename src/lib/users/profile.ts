@@ -38,6 +38,7 @@ import {
   type SessionRole,
 } from "@/lib/auth/session";
 import { publicConfig } from "@/lib/config";
+import { rememberAvatar } from "@/lib/users/avatars";
 
 /** Routes implemented by `services/users`. Kept together so they cannot drift. */
 const Routes = {
@@ -112,6 +113,8 @@ const listeners = new Set<() => void>();
 
 function adopt(next: ProfileState): ProfileState {
   state = next;
+  // Lists that look pictures up by username must see a change straight away.
+  if (next.status === "ready") rememberAvatar(next.profile.username, next.profile.avatarPath);
   for (const listener of listeners) listener();
   return next;
 }

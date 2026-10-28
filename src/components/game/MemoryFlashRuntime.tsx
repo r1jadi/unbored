@@ -202,7 +202,7 @@ function Board({
   const accepting = !showing && !between && !levelUp && !verifying && run.outcome === "playing";
 
   // From the first showing beat the run is live: leaving loses it.
-  useReportRunProgress(!verifying && run.outcome === "playing", onFinish);
+  useReportRunProgress(!verifying && run.outcome === "playing", onFinish, session);
 
   const pattern = patternAt(seed, round);
   const remaining = Math.max(0, round - run.entered.length);

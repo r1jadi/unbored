@@ -39,7 +39,7 @@ export const terms = [
   ],
   [
     "7. Deletion and data handling",
-    "Self-service deletion is not available in this build; request deletion through the project issue tracker from your signed-in account. Deletion removes your profile and social relationships; scores on public leaderboards may be retained without attribution where leaderboard integrity requires it. See the Privacy Policy for what is collected and how long it is kept.",
+    "You can delete your account at any time from Settings. Deletion is immediate and permanent: it removes your profile and picture, scores and leaderboard entries, comments, likes, saved games, follows, blocks, notifications and saved runs. Moderators with actions on record are removed by an administrator, so the moderation log stays accountable. See the Privacy Policy for what is collected and how long it is kept.",
   ],
   [
     "8. Availability, changes and third parties",
@@ -86,7 +86,7 @@ export const privacy = [
   ],
   [
     "Retention and deletion",
-    "Data is kept while your account is active. Self-service deletion is not available in this build; request deletion through the project issue tracker. The deletion target is removal of profile, preferences, follows, blocks and notifications within 30 days; scores on public leaderboards may be retained without attribution for integrity. Backups, if any, age out on the provider's schedule.",
+    "Data is kept while your account is active. You can delete your account from Settings at any time; deletion immediately removes your profile and picture, preferences, scores, comments, likes, saves, follows, blocks and notifications. Backups, if any, age out on the provider's schedule.",
   ],
   [
     "Your choices and rights",

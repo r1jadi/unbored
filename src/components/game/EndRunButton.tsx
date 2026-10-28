@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 
 import {
   AlertDialog,
@@ -10,14 +10,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { RunLeaveContext } from "@/lib/games/run-progress";
 
 /**
  * End run, with a confirmation.
  *
  * Ending a run saves it: the runtime submits the run as it stands and shows the
  * score the server verified. The confirmation is there because it also ends the
- * run for good, and a mis-tap next to the board should not.
+ * run for good, and a mis-tap next to the board should not. A run that is saved
+ * as it is played can instead be left to finish later, from the same dialog.
  */
 export function EndRunButton({
   score,
@@ -30,6 +32,8 @@ export function EndRunButton({
   onEnd: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const leave = useContext(RunLeaveContext);
+  const later = leave?.resumable === true;
 
   return (
     <>
@@ -43,11 +47,21 @@ export function EndRunButton({
           <AlertDialogHeader>
             <AlertDialogTitle>End this run?</AlertDialogTitle>
             <AlertDialogDescription>
-              {`Your score of ${score} is kept and sent for verification.`}
+              {later
+                ? `Finish later and the run is waiting for you next time — or end it now and your score of ${score} is kept and sent for verification.`
+                : `Your score of ${score} is kept and sent for verification.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep playing</AlertDialogCancel>
+            {later && (
+              <AlertDialogAction
+                className={buttonVariants({ variant: "secondary" })}
+                onClick={leave.leave}
+              >
+                Finish later
+              </AlertDialogAction>
+            )}
             <AlertDialogAction onClick={onEnd}>End run</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

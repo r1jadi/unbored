@@ -253,5 +253,10 @@ describe("finishing", () => {
 
     expect(await screen.findByText("Not solved today")).toBeInTheDocument();
     expect(completionBody(spy).score).toBe(0);
+    // Giving up shows how the grid solves, with every answer beside its clue.
+    expect(screen.getByText("Here's how it solves")).toBeInTheDocument();
+    for (const answer of ["ARCH", "WIRE", "RAVEN", "AREA", "TERM"]) {
+      expect(screen.getByText(answer)).toBeInTheDocument();
+    }
   });
 });
