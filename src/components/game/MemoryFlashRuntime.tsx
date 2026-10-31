@@ -25,6 +25,7 @@ import {
   showMs,
   type MemoryFlashRun,
 } from "@/lib/games/memory-flash";
+import { points } from "@/lib/format";
 
 /**
  * Memory Flash, playing for real.
@@ -212,7 +213,7 @@ function Board({
       <div className="flex items-center justify-between gap-3 py-2">
         <dl className="flex items-baseline gap-1">
           <dt className="text-xs text-muted-foreground">Score</dt>
-          <dd className="text-2xl font-semibold tabular">{run.score}</dd>
+          <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="tabular">Round {round}</span>
@@ -304,7 +305,7 @@ function Board({
       <p className="pt-1 text-center text-xs text-muted-foreground" aria-live="polite">
         {verifying
           ? "The cells entered so far are your score if the server agrees."
-          : "Rebuild each pattern in any order. A wrong cell ends the run. Ten points a round, with no final pattern."}
+          : "Rebuild each pattern in any order. A wrong cell ends the run. 100 points a round, with no final pattern."}
       </p>
       <EndRunButton
         score={run.score}
@@ -359,7 +360,7 @@ function Finished({
         <p className="text-sm text-muted-foreground">
           {run.stopped ? "Run ended" : "Pattern broken"}
         </p>
-        <p className="text-5xl font-semibold tabular">{result.score}</p>
+        <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
           {`${result.tilesPlaced} cells tapped, ${result.clearedColumns} rounds cleared.`}
         </p>
@@ -377,7 +378,7 @@ function Finished({
         {result.personalBest !== null && (
           <div className="rounded-xl bg-surface p-3">
             <dt className="text-xs text-muted-foreground">Your best</dt>
-            <dd className="font-semibold tabular">{result.personalBest}</dd>
+            <dd className="font-semibold tabular">{points(result.personalBest)}</dd>
           </div>
         )}
         {result.rank !== null && (

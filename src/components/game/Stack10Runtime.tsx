@@ -25,6 +25,7 @@ import {
   STACK10_TILES,
   type Stack10Run,
 } from "@/lib/games/stack10";
+import { points } from "@/lib/format";
 
 /**
  * Stack 10, playing for real.
@@ -195,7 +196,7 @@ function Board({
       <div className="flex items-center justify-between gap-3 py-2">
         <dl className="flex items-baseline gap-1">
           <dt className="text-xs text-muted-foreground">Score</dt>
-          <dd className="text-2xl font-semibold tabular">{run.score}</dd>
+          <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="tabular">Tile {placed + 1}</span>
@@ -361,7 +362,7 @@ function Finished({
               ? "Submission limit reached"
               : "Run over"}
         </p>
-        <p className="text-5xl font-semibold tabular">{result.score}</p>
+        <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
           {run.stopped || run.endReason === "limit"
             ? `${result.tilesPlaced} tiles placed, ${result.clearedColumns} columns cleared.`
@@ -381,7 +382,7 @@ function Finished({
         {result.personalBest !== null && (
           <div className="rounded-xl bg-surface p-3">
             <dt className="text-xs text-muted-foreground">Your best</dt>
-            <dd className="font-semibold tabular">{result.personalBest}</dd>
+            <dd className="font-semibold tabular">{points(result.personalBest)}</dd>
           </div>
         )}
         {result.rank !== null && (

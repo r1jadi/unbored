@@ -54,6 +54,7 @@ import {
 } from "@/lib/games/tango";
 import { useHint } from "@/lib/games/use-hint";
 import { useSettledClashes } from "@/lib/games/use-settled-clashes";
+import { points } from "@/lib/format";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["tango"];
@@ -268,7 +269,7 @@ function Board({
       <div className="flex items-center justify-between gap-3 py-2">
         <dl className="flex items-baseline gap-1">
           <dt className="text-xs text-muted-foreground">Score</dt>
-          <dd className="text-2xl font-semibold tabular">{run.score}</dd>
+          <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="tabular">Board {run.level}</span>
@@ -423,7 +424,7 @@ function Board({
           <AlertDialogHeader>
             <AlertDialogTitle>End this run?</AlertDialogTitle>
             <AlertDialogDescription>
-              {`Your score of ${run.score} is kept and sent for verification. The board you are on is not scored.`}
+              {`Your score of ${points(run.score)} is kept and sent for verification. The board you are on is not scored.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -464,7 +465,7 @@ function statusLine(run: TangoRun, verifying: boolean, clashing: boolean): strin
   if (clashing) return "Something clashes: the red cells break a rule.";
   const start = drawBoardStart(run);
   if (run.levelsCleared > 0 && run.cells.every((value, cell) => value === start[cell])) {
-    return `Board ${run.level - 1} solved, +60. Board ${run.level} starts with ${givenCount(run.level)} cells.`;
+    return `Board ${run.level - 1} solved, +${points(60)}. Board ${run.level} starts with ${givenCount(run.level)} cells.`;
   }
   return `Board ${run.level} — three suns and three moons in every line.`;
 }
@@ -516,7 +517,7 @@ function Finished({
           )}
         </div>
         <p className="text-sm text-muted-foreground">{outOfTime ? "Time's up" : "Run ended"}</p>
-        <p className="text-5xl font-semibold tabular">{result.score}</p>
+        <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
           {`${result.tilesPlaced} ${result.tilesPlaced === 1 ? "tap" : "taps"}, ${
             result.clearedColumns
@@ -536,7 +537,7 @@ function Finished({
         {result.personalBest !== null && (
           <div className="rounded-xl bg-surface p-3">
             <dt className="text-xs text-muted-foreground">Your best</dt>
-            <dd className="font-semibold tabular">{result.personalBest}</dd>
+            <dd className="font-semibold tabular">{points(result.personalBest)}</dd>
           </div>
         )}
         {result.rank !== null && (

@@ -35,6 +35,7 @@ import {
   type PlaySession,
   type RunResult,
 } from "@/lib/games/sessions";
+import { points } from "@/lib/format";
 
 /**
  * 7 Second, playing for real.
@@ -349,7 +350,7 @@ function Table({
         <dl className="flex gap-4 text-right">
           <div>
             <dt className="text-xs text-muted-foreground">Score</dt>
-            <dd className="text-2xl font-semibold tabular">{run.score}</dd>
+            <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Correct</dt>
@@ -475,7 +476,7 @@ function Finished({
         <p className="text-sm text-muted-foreground">
           {run.endReason === "answers" ? "Sixty answers — the deck is done" : "Time's up"}
         </p>
-        <p className="text-5xl font-semibold tabular">{result.score}</p>
+        <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
           {run.correct} correct of {run.answers.length} answered
         </p>
@@ -493,7 +494,7 @@ function Finished({
         {result.personalBest !== null && (
           <div className="rounded-xl bg-surface p-3">
             <dt className="text-xs text-muted-foreground">Your best</dt>
-            <dd className="font-semibold tabular">{result.personalBest}</dd>
+            <dd className="font-semibold tabular">{points(result.personalBest)}</dd>
           </div>
         )}
         {result.rank !== null && (

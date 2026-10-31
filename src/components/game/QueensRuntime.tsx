@@ -40,6 +40,7 @@ import {
   type PlaySession,
   type RunResult,
 } from "@/lib/games/sessions";
+import { points } from "@/lib/format";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["queens"];
@@ -299,7 +300,7 @@ function Board({
       <div className="flex items-center justify-between gap-3 py-2">
         <dl className="flex items-baseline gap-1">
           <dt className="text-xs text-muted-foreground">Score</dt>
-          <dd className="text-2xl font-semibold tabular">{run.score}</dd>
+          <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="tabular">Board {run.level}</span>
@@ -439,7 +440,7 @@ function Board({
           <AlertDialogHeader>
             <AlertDialogTitle>End this run?</AlertDialogTitle>
             <AlertDialogDescription>
-              {`Your score of ${run.score} is kept and sent for verification. The board you are on is not scored.`}
+              {`Your score of ${points(run.score)} is kept and sent for verification. The board you are on is not scored.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -482,7 +483,7 @@ function statusLine(run: QueensRun, verifying: boolean): string {
   }
   if (run.levelsCleared > 0 && run.cells.every((cell) => cell === "empty")) {
     const solved = boardSize(run.level - 1);
-    return `Board ${run.level - 1} solved, +${solved * 10}. Board ${run.level} is ${boardSize(run.level)}×${boardSize(run.level)}.`;
+    return `Board ${run.level - 1} solved, +${points(solved * 10)}. Board ${run.level} is ${boardSize(run.level)}×${boardSize(run.level)}.`;
   }
   return `Board ${run.level} — one crown per row, column and colour.`;
 }
@@ -538,7 +539,7 @@ function Finished({
           )}
         </div>
         <p className="text-sm text-muted-foreground">{stopped ? "Run ended" : "Out of mistakes"}</p>
-        <p className="text-5xl font-semibold tabular">{result.score}</p>
+        <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
           {`${result.tilesPlaced} ${result.tilesPlaced === 1 ? "tap" : "taps"}, ${
             result.clearedColumns
@@ -558,7 +559,7 @@ function Finished({
         {result.personalBest !== null && (
           <div className="rounded-xl bg-surface p-3">
             <dt className="text-xs text-muted-foreground">Your best</dt>
-            <dd className="font-semibold tabular">{result.personalBest}</dd>
+            <dd className="font-semibold tabular">{points(result.personalBest)}</dd>
           </div>
         )}
         {result.rank !== null && (

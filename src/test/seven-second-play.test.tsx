@@ -304,7 +304,7 @@ describe("the clock", () => {
 
     // 6.0 left, plus 1.5 for the right answer.
     expect(screen.getByRole("timer")).toHaveTextContent("7.5s");
-    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("10");
+    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("100");
     expect(screen.getByText(/Correct — 1.5 seconds back\./)).toBeInTheDocument();
     // The next challenge is on screen, not the one just answered.
     expect(screen.getByText(/^9 − 5$/)).toBeInTheDocument();
@@ -333,7 +333,7 @@ describe("the clock", () => {
 
     fireEvent.keyDown(window, { key: "1" });
 
-    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("10");
+    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("100");
   });
 
   it("takes one answer from two key presses in the same frame", async () => {
@@ -350,7 +350,7 @@ describe("the clock", () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "2" }));
     });
 
-    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("10");
+    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("100");
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(12000);
@@ -431,7 +431,7 @@ describe("the end of a run", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    expect(screen.getByText("999")).toBeInTheDocument();
+    expect(screen.getByText("9990")).toBeInTheDocument();
     expect(screen.getByText("1 correct of 2 answered")).toBeInTheDocument();
     // A guest's run is verified and explicitly unranked.
     expect(screen.getByText(/This was a guest run/)).toBeInTheDocument();
@@ -514,7 +514,7 @@ describe("the end of a run", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    expect(screen.getByText("10")).toBeInTheDocument();
+    expect(screen.getByText("100")).toBeInTheDocument();
     const sessions = spy.mock.calls.filter((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(sessions).toHaveLength(1);
     const bodies = spy.mock.calls

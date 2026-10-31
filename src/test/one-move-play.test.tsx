@@ -254,7 +254,7 @@ describe("playing the board", () => {
     expect(screen.getByText("Board 2")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Board 2, 3 by 3" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /^Row \d+ column \d+,/ })).toHaveLength(9);
-    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("10");
+    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("100");
     expect(screen.queryByText(/saved/i)).not.toBeInTheDocument();
 
     // Board two wins on cell 8: row three, column three.
@@ -343,9 +343,9 @@ describe("finishing a run", () => {
     await screen.findByRole("button", { name: /play again/i });
     expect(screen.getByText("One move missed")).toBeInTheDocument();
     // The verified 40, not the 10 the board had accumulated.
-    expect(screen.getByText("40")).toBeInTheDocument();
+    expect(screen.getByText("400")).toBeInTheDocument();
     expect(screen.getByText("2 taps, 1 board restored.")).toBeInTheDocument();
-    expect(screen.getByText("120")).toBeInTheDocument(); // personal best
+    expect(screen.getByText("1200")).toBeInTheDocument(); // personal best
     expect(screen.getByText("#2")).toBeInTheDocument(); // rank
     expect(screen.getByText(/Verified by replaying your taps on the server/)).toBeInTheDocument();
   });
@@ -398,7 +398,7 @@ describe("finishing a run", () => {
     tapIndex(8, 2);
     fireEvent.click(screen.getByRole("button", { name: "End run" }));
     const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent("Your score of 20 is kept");
+    expect(dialog).toHaveTextContent("Your score of 200 is kept");
     fireEvent.click(within(dialog).getByRole("button", { name: "End run" }));
 
     await screen.findByRole("button", { name: /play again/i });
@@ -480,7 +480,7 @@ describe("finishing a run", () => {
     fireEvent.click(screen.getByRole("button", { name: /try submitting again/i }));
 
     await screen.findByRole("button", { name: /play again/i });
-    expect(screen.getByText("40")).toBeInTheDocument();
+    expect(screen.getByText("400")).toBeInTheDocument();
     const sessions = spy.mock.calls.filter((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(sessions).toHaveLength(1);
     const bodies = spy.mock.calls

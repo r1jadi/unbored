@@ -14,6 +14,7 @@ import {
 } from "@/lib/games/sessions";
 import { useOverallBoard } from "@/lib/games/overall-board";
 import { cn } from "@/lib/utils";
+import { points } from "@/lib/format";
 
 const ROW = "flex items-center gap-3 px-4 py-3.5 md:rounded-lg md:px-2";
 
@@ -132,7 +133,7 @@ export function LeaderboardList({
               <span className="flex-1 truncate text-sm">
                 {row.username ? `@${row.username}` : "A former player"}
               </span>
-              <span className="font-semibold tabular">{row.score}</span>
+              <span className="font-semibold tabular">{points(row.score)}</span>
             </PlayerRow>
           </li>
         ))}
@@ -147,7 +148,7 @@ export function LeaderboardList({
             {me.rank}
           </span>
           <span className="flex-1 text-sm font-medium">You</span>
-          <span className="font-semibold tabular">{me.score}</span>
+          <span className="font-semibold tabular">{points(me.score)}</span>
         </Link>
       )}
     </div>
@@ -283,7 +284,7 @@ function FollowingBoard({ gameSlug, period }: { gameSlug: string; period: BoardP
             </span>
             <UserAvatar username={row.username} size="sm" />
             <span className="flex-1 truncate text-sm">@{row.username}</span>
-            <span className="font-semibold tabular">{row.score}</span>
+            <span className="font-semibold tabular">{points(row.score)}</span>
           </PlayerRow>
         </li>
       ))}

@@ -47,6 +47,7 @@ import {
   type ZipBoard,
   type ZipRun,
 } from "@/lib/games/zip";
+import { points } from "@/lib/format";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["zip"];
@@ -296,7 +297,7 @@ function Board({
       <div className="flex items-center justify-between gap-3 py-2">
         <dl className="flex items-baseline gap-1">
           <dt className="text-xs text-muted-foreground">Score</dt>
-          <dd className="text-2xl font-semibold tabular">{run.score}</dd>
+          <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="tabular">Board {run.level}</span>
@@ -505,7 +506,7 @@ function Board({
           <AlertDialogHeader>
             <AlertDialogTitle>End this run?</AlertDialogTitle>
             <AlertDialogDescription>
-              {`Your score of ${run.score} is kept and sent for verification. The board you are on is not scored.`}
+              {`Your score of ${points(run.score)} is kept and sent for verification. The board you are on is not scored.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -526,7 +527,7 @@ function statusLine(run: ZipRun, drawn: ZipBoard, verifying: boolean): string {
   }
   if (run.levelsCleared > 0 && run.path.length === 0) {
     const solved = boardSize(run.level - 1);
-    return `Board ${run.level - 1} solved, +${solved * 10}. Start on 1.`;
+    return `Board ${run.level - 1} solved, +${points(solved * 10)}. Start on 1.`;
   }
   if (run.path.length === 0) return `Board ${run.level} — start on 1.`;
   return `Every cell, 1 to ${drawn.last} in order.`;
@@ -575,7 +576,7 @@ function Finished({
           )}
         </div>
         <p className="text-sm text-muted-foreground">{outOfTime ? "Time's up" : "Run ended"}</p>
-        <p className="text-5xl font-semibold tabular">{result.score}</p>
+        <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
           {`${result.clearedColumns} ${result.clearedColumns === 1 ? "board" : "boards"} solved.`}
         </p>
@@ -593,7 +594,7 @@ function Finished({
         {result.personalBest !== null && (
           <div className="rounded-xl bg-surface p-3">
             <dt className="text-xs text-muted-foreground">Your best</dt>
-            <dd className="font-semibold tabular">{result.personalBest}</dd>
+            <dd className="font-semibold tabular">{points(result.personalBest)}</dd>
           </div>
         )}
         {result.rank !== null && (

@@ -364,7 +364,7 @@ describe("the board", () => {
     playMoves(LINE_ONE);
 
     expect(screen.getByRole("group", { name: "Board 2, 9 by 9" })).toBeInTheDocument();
-    expect(scoreShown()).toBe("90");
+    expect(scoreShown()).toBe("900");
     expect(screen.getByText(/Board 1 solved, \+90/)).toBeInTheDocument();
     expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuemax"))).toBe(600);
   }, 15000);
@@ -399,7 +399,7 @@ describe("finishing a run", () => {
 
     await screen.findByRole("button", { name: /play again/i });
     expect(screen.getByText("Run ended")).toBeInTheDocument();
-    expect(screen.getByText("270")).toBeInTheDocument();
+    expect(screen.getByText("2700")).toBeInTheDocument();
     expect(completionBody(spy).score).toBe(90);
   }, 15000);
 

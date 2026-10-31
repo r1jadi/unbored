@@ -299,7 +299,7 @@ describe("playing the board", () => {
     [0, 0, 1, 0].forEach(pressColumn);
 
     expect(screen.getByText("Score")).toBeInTheDocument();
-    expect(screen.getByText("20")).toBeInTheDocument();
+    expect(screen.getByText("200")).toBeInTheDocument();
     expect(screen.queryByText(/saved/i)).not.toBeInTheDocument();
   });
 });
@@ -322,11 +322,11 @@ describe("finishing a run", () => {
     await screen.findByRole("button", { name: /play again/i });
     expect(screen.getByText("Run over")).toBeInTheDocument();
     // The verified 60, not the 55 the board had accumulated.
-    expect(screen.getByText("60")).toBeInTheDocument();
+    expect(screen.getByText("600")).toBeInTheDocument();
     expect(
       screen.getByText("A column passed ten after 14 tiles; 3 columns cleared."),
     ).toBeInTheDocument();
-    expect(screen.getByText("88")).toBeInTheDocument(); // personal best
+    expect(screen.getByText("880")).toBeInTheDocument(); // personal best
     expect(screen.getByText("#4")).toBeInTheDocument(); // rank
     expect(screen.getByText(/Verified by replaying your moves on the server/)).toBeInTheDocument();
 
@@ -432,7 +432,7 @@ describe("finishing a run", () => {
     fireEvent.click(screen.getByRole("button", { name: /try submitting again/i }));
 
     await screen.findByRole("button", { name: /play again/i });
-    expect(screen.getByText("60")).toBeInTheDocument();
+    expect(screen.getByText("600")).toBeInTheDocument();
     const sessions = spy.mock.calls.filter((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(sessions).toHaveLength(1);
   });

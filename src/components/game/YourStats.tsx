@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth/session";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, points } from "@/lib/format";
 import { useMyGameStats } from "@/lib/games/saved-runs";
 import { StreakNote } from "@/components/game/StreakNote";
 
@@ -53,10 +53,10 @@ export function YourStats({ slug }: { slug: string }) {
           {(
             [
               // Exact numbers: this is the player's own record, not a feed count.
-              ["Best", bestScore === null ? "—" : bestScore.toLocaleString()],
+              ["Best", bestScore === null ? "—" : points(bestScore).toLocaleString()],
               ["Rank", rank === null ? "—" : `#${rank.toLocaleString()}`],
               ["Runs", runs.toLocaleString()],
-              ["Total points", totalScore.toLocaleString()],
+              ["Total points", points(totalScore).toLocaleString()],
             ] as const
           ).map(([label, value]) => (
             <div key={label} className="rounded-lg bg-surface p-2">

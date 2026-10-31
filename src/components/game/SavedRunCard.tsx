@@ -2,6 +2,7 @@ import { History, Play, RotateCcw } from "lucide-react";
 
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { Button } from "@/components/ui/button";
+import { points } from "@/lib/format";
 
 /**
  * An unfinished run, found on the player's account.
@@ -44,7 +45,7 @@ export function SavedRunCard({
         <dl className="grid w-full grid-cols-2 gap-2 text-sm">
           <div className="rounded-xl bg-surface p-3">
             <dt className="text-xs text-muted-foreground">Score so far</dt>
-            <dd className="text-lg font-semibold tabular">{score}</dd>
+            <dd className="text-lg font-semibold tabular">{points(score)}</dd>
           </div>
           <div className="rounded-xl bg-surface p-3">
             <dt className="text-xs text-muted-foreground">Left at</dt>
@@ -67,7 +68,7 @@ export function SavedRunCard({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          {`Starting a new run ends this one and keeps its score of ${score}.`}
+          {`Starting a new run ends this one and keeps its score of ${points(score)}.`}
         </p>
       </div>
     </div>

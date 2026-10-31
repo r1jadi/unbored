@@ -228,7 +228,7 @@ describe("sliding tiles", () => {
 
     expect(screen.getByRole("group", { name: /^Board 2, 3 by 3/ })).toBeInTheDocument();
     expect(screen.getByText(/Board 1 solved, \+10/)).toBeInTheDocument();
-    expect(scoreShown()).toBe("10");
+    expect(scoreShown()).toBe("100");
     expect(screen.getByText("0 moves · par 9")).toBeInTheDocument();
     expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuemax"))).toBe(75);
   });
@@ -263,7 +263,7 @@ describe("finishing a run", () => {
 
     await screen.findByRole("button", { name: /play again/i });
     expect(screen.getByText("Run ended")).toBeInTheDocument();
-    expect(screen.getByText("40")).toBeInTheDocument();
+    expect(screen.getByText("400")).toBeInTheDocument();
     expect(screen.getByText("60 slides, 4 boards solved.")).toBeInTheDocument();
     expect(completionBody(spy).score).toBe(10);
   });

@@ -254,7 +254,7 @@ describe("tapping the row at the line", () => {
 
     fireEvent.click(tile(1, 3));
 
-    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("10");
+    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("100");
     expect(screen.getByText("1 cleared")).toBeInTheDocument();
     expect(screen.queryByText(/saved/i)).not.toBeInTheDocument();
   });
@@ -268,7 +268,7 @@ describe("tapping the row at the line", () => {
     fireEvent.click(white);
     fireEvent.click(white);
 
-    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("10");
+    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("100");
     expect(spy.mock.calls.some((call) => String(call[0]).includes("/complete"))).toBe(false);
   });
 
@@ -291,7 +291,7 @@ describe("tapping the row at the line", () => {
 
     fireEvent.keyDown(conveyor(), { key: "3" });
 
-    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("10");
+    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("100");
   });
 
   it("accepts A, S and D as lanes too", async () => {
@@ -320,7 +320,7 @@ describe("tapping the row at the line", () => {
     expect(body.progress.rulesVersion).toBe("dont-touch@2");
     expect(body.score).toBe(0);
     // The verified number is the server's, not a local tally.
-    expect(screen.getByText("990")).toBeInTheDocument();
+    expect(screen.getByText("9900")).toBeInTheDocument();
   });
 
   it("sends the whites it cleared before a black tap", async () => {
@@ -557,7 +557,7 @@ describe("after a run", () => {
     fireEvent.click(screen.getByRole("button", { name: /try submitting again/i }));
 
     await screen.findByRole("button", { name: /play again/i });
-    expect(screen.getByText("990")).toBeInTheDocument();
+    expect(screen.getByText("9900")).toBeInTheDocument();
     const sessions = spy.mock.calls.filter((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(sessions).toHaveLength(1);
     const bodies = spy.mock.calls

@@ -453,6 +453,21 @@
   }
 }
 
+/* Updraft (components/game/UpdraftRuntime): the glider bobs while it waits for
+   its first flap, and the ground's stripes scroll with the field. */
+.updraft-hover {
+  animation: updraft-hover 900ms ease-in-out infinite alternate;
+}
+
+@keyframes updraft-hover {
+  from {
+    transform: translateY(-40%);
+  }
+  to {
+    transform: translateY(40%);
+  }
+}
+
 @keyframes gridburst-float {
   0% {
     opacity: 0;

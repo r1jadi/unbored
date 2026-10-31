@@ -292,7 +292,7 @@ describe("playing the board", () => {
     const body = JSON.parse(String(completion?.[1]?.body ?? "{}"));
     expect(body.progress.actions).toHaveLength(67);
     expect(body.score).toBe(66);
-    expect(screen.getByText("66")).toBeInTheDocument();
+    expect(screen.getByText("660")).toBeInTheDocument();
     expect(screen.getByText("67 taps placed, 11 rounds cleared.")).toBeInTheDocument();
   }, 20000);
 
@@ -328,7 +328,7 @@ describe("playing the board", () => {
     // The score readout next to the Score term — `getByText("1")` would also
     // match the pads' own number chips.
     const scoreTerm = screen.getByText("Score");
-    expect(scoreTerm.closest("dl")?.querySelector("dd")?.textContent).toBe("1");
+    expect(scoreTerm.closest("dl")?.querySelector("dd")?.textContent).toBe("10");
     expect(screen.queryByText(/saved/i)).not.toBeInTheDocument();
   });
 });
@@ -374,9 +374,9 @@ describe("finishing a run", () => {
     await screen.findByRole("button", { name: /play again/i });
     expect(screen.getByText("Chain broken")).toBeInTheDocument();
     // The verified 7, not the 2 the board had accumulated.
-    expect(screen.getByText("7")).toBeInTheDocument();
+    expect(screen.getByText("70")).toBeInTheDocument();
     expect(screen.getByText("3 taps placed, 1 rounds cleared.")).toBeInTheDocument();
-    expect(screen.getByText("9")).toBeInTheDocument(); // personal best
+    expect(screen.getByText("90")).toBeInTheDocument(); // personal best
     expect(screen.getByText("#2")).toBeInTheDocument(); // rank
     expect(screen.getByText(/Verified by replaying your taps on the server/)).toBeInTheDocument();
   }, 15000);
@@ -451,7 +451,7 @@ describe("finishing a run", () => {
     fireEvent.click(screen.getByRole("button", { name: /try submitting again/i }));
 
     await screen.findByRole("button", { name: /play again/i });
-    expect(screen.getByText("7")).toBeInTheDocument();
+    expect(screen.getByText("70")).toBeInTheDocument();
     const sessions = spy.mock.calls.filter((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(sessions).toHaveLength(1);
   });

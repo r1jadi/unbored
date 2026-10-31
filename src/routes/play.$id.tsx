@@ -17,6 +17,7 @@ import { QueensRuntime } from "@/components/game/QueensRuntime";
 import { ZipRuntime } from "@/components/game/ZipRuntime";
 import { SevenSecondRuntime } from "@/components/game/SevenSecondRuntime";
 import { Stack10Runtime } from "@/components/game/Stack10Runtime";
+import { UpdraftRuntime } from "@/components/game/UpdraftRuntime";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +47,7 @@ import { CROSSWORD_RUNTIME } from "@/lib/games/crossword";
 import { GRIDBURST_RUNTIME } from "@/lib/games/gridburst";
 import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
 import { STACK10_RUNTIME } from "@/lib/games/stack10";
+import { UPDRAFT_RUNTIME } from "@/lib/games/updraft";
 
 /**
  * `?start=1` starts the run straight away instead of showing the game's rules
@@ -88,6 +90,7 @@ export const Route = createFileRoute("/play/$id")({
  * `seven-second` plays 7 Second, `queens` plays Crowns, `zip` plays Trail,
  * `eight-puzzle` plays 8 Puzzle, `tango` plays Sun & Moon, `sudoku` plays Sudoku,
  * `crossword` plays the daily crossword, `gridburst` plays Gridburst,
+ * `updraft` plays Updraft,
  * and anything else gets the honest "no runtime
  * yet" screen rather than a board that does not follow that game's rules. Every
  * catalogue game now has a runtime, but the branch stays a feature rather than a
@@ -185,7 +188,8 @@ export function PlaySurface({
       state.game.runtime === TANGO_RUNTIME ||
       state.game.runtime === SUDOKU_RUNTIME ||
       state.game.runtime === CROSSWORD_RUNTIME ||
-      state.game.runtime === GRIDBURST_RUNTIME);
+      state.game.runtime === GRIDBURST_RUNTIME ||
+      state.game.runtime === UPDRAFT_RUNTIME);
 
   const nav = useNavigate();
   const [confirming, setConfirming] = useState(false);
@@ -330,6 +334,15 @@ export function PlaySurface({
 
         {state.status === "ready" && state.game.runtime === GRIDBURST_RUNTIME && playable && (
           <GridburstRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === UPDRAFT_RUNTIME && playable && (
+          <UpdraftRuntime
             key={state.game.slug}
             slug={state.game.slug}
             title={state.game.title}

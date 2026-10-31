@@ -298,14 +298,14 @@ describe("playing the board", () => {
     BOARD_ONE.forEach((index) => placeQueen(index, 5));
 
     expect(screen.getByRole("group", { name: "Board 2, 6 by 6" })).toBeInTheDocument();
-    expect(screen.getByText("Board 1 solved, +50. Board 2 is 6×6.")).toBeInTheDocument();
-    expect(scoreShown()).toBe("50");
+    expect(screen.getByText("Board 1 solved, +500. Board 2 is 6×6.")).toBeInTheDocument();
+    expect(scoreShown()).toBe("500");
     expect(screen.getAllByRole("button", { name: CELL })).toHaveLength(36);
     expect(screen.queryByText(/saved/i)).not.toBeInTheDocument();
 
     BOARD_TWO.forEach((index) => placeQueen(index, 6));
     expect(screen.getByRole("group", { name: "Board 3, 6 by 6" })).toBeInTheDocument();
-    expect(scoreShown()).toBe("110");
+    expect(scoreShown()).toBe("1100");
   });
 
   it("keeps every cell a real button and the board inside a square that fits", async () => {
@@ -387,8 +387,8 @@ describe("finishing a run", () => {
     placeQueen(3, 5);
 
     await screen.findByRole("button", { name: /play again/i });
-    expect(screen.getByText("70")).toBeInTheDocument();
-    expect(screen.getByText("260")).toBeInTheDocument(); // personal best
+    expect(screen.getByText("700")).toBeInTheDocument();
+    expect(screen.getByText("2600")).toBeInTheDocument(); // personal best
     expect(screen.getByText("#3")).toBeInTheDocument(); // rank
     expect(screen.getByText(/Verified by replaying your taps on the server/)).toBeInTheDocument();
   });

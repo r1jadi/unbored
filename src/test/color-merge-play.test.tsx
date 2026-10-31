@@ -325,7 +325,7 @@ describe("sliding the board", () => {
 
     // The two 2s merge into a 4 — the tile that was created is the score.
     expect(screen.getByRole("gridcell", { name: "Row 4 column 1, 4" })).toBeInTheDocument();
-    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("4");
+    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("40");
     expect(screen.getByText("Slide 1")).toBeInTheDocument();
     expect(screen.queryByText(/saved/i)).not.toBeInTheDocument();
   });
@@ -461,9 +461,9 @@ describe("finishing a run", () => {
 
     expect(screen.getByText("The board locked")).toBeInTheDocument();
     // The verified 400, not the 468 the board accumulated.
-    expect(screen.getByText("400")).toBeInTheDocument();
+    expect(screen.getByText("4000")).toBeInTheDocument();
     expect(screen.getByText(`${RUN.length} slides, best tile 64.`)).toBeInTheDocument();
-    expect(screen.getByText("512")).toBeInTheDocument(); // personal best
+    expect(screen.getByText("5120")).toBeInTheDocument(); // personal best
     expect(screen.getByText("#3")).toBeInTheDocument(); // rank
     expect(screen.getByText(/Verified by replaying your slides on the server/)).toBeInTheDocument();
 
@@ -562,7 +562,7 @@ describe("finishing a run", () => {
     fireEvent.click(screen.getByRole("button", { name: /try submitting again/i }));
 
     await screen.findByRole("button", { name: /play again/i });
-    expect(screen.getByText("400")).toBeInTheDocument();
+    expect(screen.getByText("4000")).toBeInTheDocument();
     const sessions = spy.mock.calls.filter((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(sessions).toHaveLength(1);
     const bodies = spy.mock.calls
