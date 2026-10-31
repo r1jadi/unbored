@@ -1126,6 +1126,39 @@ func TestCompleteSessionRejectsAGridburstPlacementPastTheTray(t *testing.T) {
 	}
 }
 
+func TestCompleteSessionAcceptsAnUpdraftStopOnTheLastTick(t *testing.T) {
+	// 216001 is a stop at tick 108000, the end of the thirty-minute bound.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("updraft@1", "1", "20000", "[0,40,216001]"), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if len(backend.lastRun.Actions) != 3 || backend.lastRun.Actions[2] != 216001 {
+		t.Fatalf("actions = %v, want the submitted flaps and stop", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionRejectsAnUpdraftActionPastTheLastTick(t *testing.T) {
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("updraft@1", "1", "20000", "[0,216002]"), "")
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (%#v)", status, body)
+	}
+	if backend.runCalls != 0 {
+		t.Fatal("an action past the last tick reached the verifier")
+	}
+}
+
 func TestCompleteSessionRejectsACrosswordMovePastTheCodes(t *testing.T) {
 	// 1749 would reveal cell 49, past the 7×7 midi.
 	backend := testBackend()

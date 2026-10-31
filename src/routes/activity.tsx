@@ -9,7 +9,7 @@ import {
   Section,
 } from "@/components/common";
 import { Button } from "@/components/ui/button";
-import { fmt, fmtDate } from "@/lib/format";
+import { fmt, fmtDate, points } from "@/lib/format";
 import { useActivity } from "@/lib/social/engagement";
 import { seo } from "@/lib/seo";
 
@@ -95,7 +95,7 @@ function Activity() {
                 key={`${entry.game?.slug ?? "game"}-${entry.createdAt}-${i}`}
                 className="flex items-center gap-3 px-4 py-3"
               >
-                <span className="font-semibold tabular">{fmt(entry.score)}</span>
+                <span className="font-semibold tabular">{fmt(points(entry.score))}</span>
                 <span className="min-w-0 flex-1 truncate text-sm">
                   {entry.game ? (
                     <Link

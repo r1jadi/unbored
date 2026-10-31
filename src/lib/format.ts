@@ -19,6 +19,20 @@ export const fmt = (n: number): string =>
       : `${n}`;
 
 /**
+ * How many points a unit of score is worth on screen.
+ *
+ * Scores are stored and verified in the rules' own units (a cleared Stack 10
+ * column is 10, a Gridburst cell 1), and the server's checks compare those
+ * exactly. Every score a player sees is shown multiplied by this, so a clear
+ * reads +100 — and because it is applied to every score shown, the boards, a
+ * personal best and a run in progress always agree with one another.
+ */
+export const SCORE_SCALE = 10;
+
+/** A score as shown to players: see `SCORE_SCALE`. */
+export const points = (score: number): number => score * SCORE_SCALE;
+
+/**
  * A stored timestamp as a short, local date.
  *
  * It returns `undefined` for a missing or unparseable value rather than

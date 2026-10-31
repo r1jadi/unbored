@@ -65,6 +65,7 @@ export function GameArt({
         {id === "sudoku" && <Sudoku />}
         {id === "crossword" && <Crossword />}
         {id === "gridburst" && <Gridburst />}
+        {id === "updraft" && <Updraft />}
         {!KNOWN.has(id) && <Generated seed={id} />}
       </div>
     </div>
@@ -87,6 +88,7 @@ const KNOWN = new Set([
   "sudoku",
   "crossword",
   "gridburst",
+  "updraft",
 ]);
 
 /**
@@ -397,6 +399,34 @@ function Gridburst() {
           )}
         />
       ))}
+    </div>
+  );
+}
+
+function Updraft() {
+  // Two columns and the glider threading the first gap, rising.
+  const columns = [
+    { left: 18, top: 30, gap: 30 },
+    { left: 62, top: 18, gap: 30 },
+  ];
+  return (
+    <div className="relative size-full overflow-hidden rounded-xl bg-surface-2/60">
+      {columns.map((column) => (
+        <div key={column.left}>
+          <div
+            className="absolute top-0 w-[18%] rounded-b-md bg-game-2"
+            style={{ left: `${column.left}%`, height: `${column.top}%` }}
+          />
+          <div
+            className="absolute bottom-[10%] w-[18%] rounded-t-md bg-game-2"
+            style={{ left: `${column.left}%`, top: `${column.top + column.gap}%` }}
+          />
+        </div>
+      ))}
+      <div className="absolute inset-x-0 bottom-0 h-[10%] bg-surface" />
+      <div className="absolute top-[42%] left-[20%] aspect-square w-[14%] -rotate-12 rounded-full bg-primary ring-2 ring-background/40">
+        <span className="absolute top-[22%] right-[14%] size-[30%] rounded-full bg-background" />
+      </div>
     </div>
   );
 }

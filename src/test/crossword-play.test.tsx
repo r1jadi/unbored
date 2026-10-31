@@ -154,7 +154,7 @@ describe("starting a run", () => {
     expect(
       screen.getByRole("button", { name: new RegExp(`^${first.number} Across: `) }),
     ).toBeInTheDocument();
-    expect(worthShown()).toBe(1000);
+    expect(worthShown()).toBe(10000);
   });
 
   it("says when today's ranked crossword is already done", async () => {
@@ -209,7 +209,7 @@ describe("the grid", () => {
     typeAt(target, GRID[target] === "Z" ? "Y" : "Z");
     fireEvent.click(screen.getByRole("button", { name: /^Check/ }));
     expect(cell(target)).toHaveAccessibleName(/, wrong$/);
-    expect(worthShown()).toBe(950);
+    expect(worthShown()).toBe(9500);
   });
 
   it("reveals the selected letter for a cost, and locks it", async () => {
@@ -221,7 +221,7 @@ describe("the grid", () => {
     fireEvent.click(cell(target));
     fireEvent.click(screen.getByRole("button", { name: /^Letter/ }));
     expect(cell(target)).toHaveAccessibleName(new RegExp(`, ${GRID[target]}, revealed$`));
-    expect(worthShown()).toBe(900);
+    expect(worthShown()).toBe(9000);
   });
 });
 
@@ -233,7 +233,7 @@ describe("finishing", () => {
 
     for (const index of WHITE) typeAt(index, GRID[index]);
 
-    expect(await screen.findByText("912")).toBeInTheDocument();
+    expect(await screen.findByText("9120")).toBeInTheDocument();
     const body = completionBody(spy);
     expect(body.progress.rulesVersion).toBe("crossword@1");
     expect(body.progress.actions).toEqual(

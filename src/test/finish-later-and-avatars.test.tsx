@@ -34,7 +34,7 @@ describe("Finish later", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "End run" }));
-    await screen.findByText("Your score of 42 is kept and sent for verification.");
+    await screen.findByText("Your score of 420 is kept and sent for verification.");
     expect(screen.queryByRole("button", { name: "Finish later" })).toBeNull();
   });
 });

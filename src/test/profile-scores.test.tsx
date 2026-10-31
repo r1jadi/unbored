@@ -77,7 +77,7 @@ describe("profile score tabs", () => {
     await renderProfile();
 
     expect(screen.getByRole("link", { name: "Stack 10" })).toBeInTheDocument();
-    expect(screen.getByText("55")).toBeInTheDocument();
+    expect(screen.getByText("550")).toBeInTheDocument();
     expect(screen.queryByText("No scores yet")).toBeNull();
   });
 

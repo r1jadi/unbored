@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Fourteen games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Fifteen games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Gridburst** and the **Daily Crossword**. Twelve of them — all but 7 Second and the crossword, the two daily
+**Gridburst**, **Updraft** and the **Daily Crossword**. Thirteen of them — all but 7 Second and the crossword, the two daily
 games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -38,9 +38,9 @@ A signed-in player keeps more than their scores:
   seed, so the board, score and level are exactly where they were — or **New
   run**, which submits the saved run as it was left (keeping its score, like any
   ended run) and starts a fresh one. A saved run stays open for twelve hours after
-  its last save. Trail, 8 Puzzle, Sun & Moon, Sudoku, 7 Second and Don't Touch the
-  Black do not resume:
-  their clocks or conveyors cannot pause.
+  its last save. Trail, 8 Puzzle, Sun & Moon, Sudoku, 7 Second, Don't Touch the
+  Black and Updraft do not resume:
+  their clocks, conveyors or gliders cannot pause.
 - **Stats per game**, on the game's page: runs played, best score, rank, total
   points and when they last played, from their verified scores.
 
@@ -2129,3 +2129,111 @@ verifier when this game was added:
    pieces, five lines, **162** points, stuck.
 4. **The ramp** — `bigPercent` is 8 at pieces 0–11, 9 at 12, 16 at 100 and 40
    from 384.
+
+## Updraft
+
+A glider falls; a tap lifts it. Columns scroll in from the right, each with a gap.
+Thread the gap and score; touch a column or the ground and the run is over.
+**There is no last column**: the field speeds up and the gaps narrow until the
+player slips or chooses to stop. It is a one-button flier in the tradition of
+_Flappy Bird_, rebuilt so that a server can replay every flight.
+
+| Thing   | Value                                                     |
+| ------- | --------------------------------------------------------- |
+| Field   | 75 000 × 100 000 world units; the ground's top at 88 000  |
+| Clock   | 60 ticks a second; at most 108 000 ticks (thirty minutes) |
+| Actions | at most 8192: `2 × tick` a flap, `2 × tick + 1` a stop    |
+| Rules   | `updraft@1`                                               |
+| Runtime | `updraft` (the catalogue's `games.runtime` value)         |
+
+### Time is part of the rules
+
+Every other game's rules are untimed: the screen's clock decides _when_ a move can
+be made, and the verifier replays only _what_ was made. A flight cannot be split
+that way — where the glider is depends on exactly when each flap landed — so
+Updraft's world advances in fixed ticks, sixty a second, and a flap is the tick it
+lands on. The screen's clock decides only how many ticks have passed (never more
+than four in one frame, so a stalled tab drops time rather than fast-forwarding
+into a column); the engine decides what a tick does.
+
+All of the physics is whole numbers. A float could round differently in a browser
+and in Postgres; an integer cannot.
+
+### A tick
+
+1. A flap queued for this tick sets the vertical speed to **−1400**; otherwise
+   gravity adds **75**, up to a fall of **2200** a tick.
+2. The glider — a circle of radius **3200** at x = **22 000** — moves. The top of
+   the field is a ceiling it rests against, not a wall that ends the run.
+3. The field scrolls **400** a tick, plus **4** for every column passed, up to
+   **560** from the fortieth column on.
+4. Touching the ground, the column just passed or the next one ends the run,
+   before any score this tick.
+5. A column whose middle is now behind the glider is passed: one point, shown as
+   10 like every score.
+
+One flap a tick: a second tap before the tick runs is the same flap.
+
+### The columns
+
+Column _k_ stands at world x = 90 000 + 42 000 _k_ and is 13 000 wide. Its gap is
+30 000 high less 200 a column, never under **23 000** (from column 35 on) — still
+three and a half glider heights. Where the gap sits comes from the session's seed,
+with the generator every game uses, one draw per column read from bit 16 up:
+
+```
+state₀ = ((seed mod 2³²) + 2³²) mod 2³²   // 2654435769 if that is 0
+stateₖ₊₁ = (stateₖ × 1664525 + 1013904223) mod 2³²
+draw(k) = stateₖ₊₁ >> 16
+
+column 0:  top = 10 000 + draw mod (gapHigh − 10 000 + 1)
+column k:  lo = max(10 000, top(k−1) − 24 000)
+           hi = min(gapHigh, top(k−1) + 24 000)
+           top = lo + draw mod (hi − lo + 1)
+where gapHigh = 88 000 − 10 000 − gap(k)
+```
+
+The 24 000 limit on how far one gap moves from the next is what keeps the field
+fair at full speed: a simple pilot that only flaps when it sinks near the bottom of
+the gap is still flying after 258 columns on every seed the suite tries.
+
+### Endings and the stop
+
+| Ending  | When                                                                   |
+| ------- | ---------------------------------------------------------------------- |
+| Crash   | The glider touched a column or the ground. Replayed, never claimed.    |
+| Stopped | The player ended the run. The stop is the last action, `2 × tick + 1`. |
+| Limit   | The thirty-minute bound. Scored as it stands.                          |
+
+The stop has to be an action. Without it the verifier would let the glider fall on
+after the last flap — which is exactly what it does for a crash — and a falling
+glider can still drift through one more gap, scoring a column the player never saw.
+A flap queued for a tick that never ran is dropped from a stopped run.
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261120120000_updraft_sessions.sql`.
+
+- `public.complete_updraft_run(session, actions, score, duration)` replays the
+  flight tick by tick from the seed, derives the score, compares it with the claim,
+  and only then closes the session and records it. Actions must be strictly
+  increasing, nothing may follow the stop or the crash, and the flight may not have
+  lasted longer than its session has been open (plus two seconds): the screen's
+  clock never runs faster than real time, so neither may a submission.
+- `public.updraft_hits` is the collision test, an internal of the verifier.
+- `public.start_game_session` accepts (`updraft`, `updraft@1`) with a two-hour
+  session; `tile_count` is the 8192-action bound.
+- The Go service routes `updraft@` to the verifier and refuses an action past
+  `2 × 108 000 + 1` before it reaches the database.
+
+### Test vectors
+
+Asserted in [`src/lib/games/updraft.test.ts`](../../src/lib/games/updraft.test.ts);
+the verifier was checked against the engine on 72 flights across six seeds
+(crashes, stops, the same flaps without their stop, and sloppy pilots).
+
+1. **Seed 1's first six gap tops** — `25496, 34200, 43246, 36086, 15398, 34216`.
+2. **Seed 1, no flaps** — the glider falls from 44 000 and hits the ground on tick
+   **33**, scoring 0.
+3. **An immediate stop** — `[1]` records a run of zero ticks and zero points.

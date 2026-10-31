@@ -58,7 +58,7 @@ export const GAME_RULES = {
       },
       {
         lead: "A wrong tap",
-        text: "breaks the chain and ends the run. Every correct tap scores a point, and there is no final round.",
+        text: "breaks the chain and ends the run. Every correct tap scores 10 points, and there is no final round.",
       },
     ],
   },
@@ -72,7 +72,7 @@ export const GAME_RULES = {
       },
       {
         lead: "One wrong or repeated cell",
-        text: "ends the run. A rebuilt pattern is ten points.",
+        text: "ends the run. A rebuilt pattern is 100 points.",
       },
       {
         lead: "No final pattern.",
@@ -94,7 +94,7 @@ export const GAME_RULES = {
       },
       {
         lead: "A wrong tap",
-        text: "ends the run. The board grows as you go; every restored board is ten points, and there is no final board.",
+        text: "ends the run. The board grows as you go; every restored board is 100 points, and there is no final board.",
       },
     ],
   },
@@ -148,7 +148,7 @@ export const GAME_RULES = {
       },
       {
         lead: "A right answer",
-        text: "adds 1.5 seconds and scores 10 points.",
+        text: "adds 1.5 seconds and scores 100 points.",
       },
       {
         lead: "A wrong answer",
@@ -174,7 +174,7 @@ export const GAME_RULES = {
       },
       {
         lead: "A wrong crown",
-        text: "is a mistake, and the third one ends the run. Every board has one solution and is worth ten points a row; the boards grow as you go, and you can end the run whenever you like.",
+        text: "is a mistake, and the third one ends the run. Every board has one solution and is worth 100 points a row; the boards grow as you go, and you can end the run whenever you like.",
       },
     ],
   },
@@ -192,7 +192,7 @@ export const GAME_RULES = {
       },
       {
         lead: "The clock",
-        text: "starts at 60 seconds, and every solved board adds five seconds a row. Each board is worth ten points a row, the boards grow as you go, and the run ends when the clock does.",
+        text: "starts at 60 seconds, and every solved board adds five seconds a row. Each board is worth 100 points a row, the boards grow as you go, and the run ends when the clock does.",
       },
     ],
   },
@@ -210,7 +210,7 @@ export const GAME_RULES = {
       },
       {
         lead: "The clock",
-        text: "starts at 60 seconds, and every solved board adds 15 seconds and ten points. The run ends when the clock does.",
+        text: "starts at 60 seconds, and every solved board adds 15 seconds and 100 points. The run ends when the clock does.",
       },
     ],
   },
@@ -232,7 +232,7 @@ export const GAME_RULES = {
       },
       {
         lead: "The clock",
-        text: "starts at two minutes, and every solved board adds 45 seconds and sixty points. Each board starts with fewer cells filled, and the run ends when the clock does.",
+        text: "starts at two minutes, and every solved board adds 45 seconds and 600 points. Each board starts with fewer cells filled, and the run ends when the clock does.",
       },
     ],
   },
@@ -254,7 +254,7 @@ export const GAME_RULES = {
       },
       {
         lead: "The clock",
-        text: "starts at six minutes. Boards start gentle and get harder, and every solved board scores ninety points and adds the next board's time. The run ends when the clock does.",
+        text: "starts at six minutes. Boards start gentle and get harder, and every solved board scores 900 points and adds the next board's time. The run ends when the clock does.",
       },
     ],
   },
@@ -272,7 +272,7 @@ export const GAME_RULES = {
       },
       {
         lead: "Faster scores more.",
-        text: "A mini is worth 1000 if you solve it within 30 seconds, a midi 2000 within a minute; after that it slips four points a second.",
+        text: "A mini is worth 10,000 if you solve it within 30 seconds, a midi 20,000 within a minute; after that it slips 40 points a second.",
       },
       {
         lead: "Stuck?",
@@ -290,7 +290,7 @@ export const GAME_RULES = {
       },
       {
         lead: "Fill a row or column",
-        text: "and it bursts. Every square placed is a point; bursting L lines at once scores 10 × L², times your combo.",
+        text: "and it bursts. Every square placed is 10 points; bursting L lines at once scores 100 × L², times your combo.",
       },
       {
         lead: "Keep the combo.",
@@ -299,6 +299,28 @@ export const GAME_RULES = {
       {
         lead: "No final tray.",
         text: "Place all three pieces and three more arrive, bigger ones more often as you go. The run ends when nothing in your tray fits.",
+      },
+    ],
+  },
+  updraft: {
+    heading: "Ride the updraft",
+    summary: "Tap to lift the glider. Thread the gaps between the columns.",
+    rules: [
+      {
+        lead: "Tap to flap",
+        text: "— or click, or press Space. Each flap lifts the glider; between flaps it falls.",
+      },
+      {
+        lead: "Thread the gaps.",
+        text: "Every column you get through is 10 points.",
+      },
+      {
+        lead: "Don't touch",
+        text: "a column or the ground: either one ends the run. The top of the sky is safe to brush.",
+      },
+      {
+        lead: "No last column.",
+        text: "The field speeds up and the gaps narrow as you go, until you slip or end the run.",
       },
     ],
   },

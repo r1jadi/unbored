@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 
 import type { LevelUp } from "@/lib/games/level-up";
+import { points } from "@/lib/format";
 
 /**
  * The beat between two levels, laid over the board: what was solved, what it
@@ -38,7 +39,7 @@ export function LevelUpOverlay({
         {unit} {levelUp.solved} solved
       </p>
       {levelUp.gained > 0 && (
-        <p className="text-3xl font-semibold tabular text-primary">+{levelUp.gained}</p>
+        <p className="text-3xl font-semibold tabular text-primary">+{points(levelUp.gained)}</p>
       )}
       <p className="text-sm text-muted-foreground">Next: {next}</p>
       {note && (

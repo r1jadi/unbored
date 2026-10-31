@@ -23,7 +23,7 @@ import {
   useAdminScores,
   type AdminScore,
 } from "@/lib/admin/api";
-import { fmt } from "@/lib/format";
+import { fmt, points } from "@/lib/format";
 
 export const Route = createFileRoute("/admin/leaderboards")({
   head: () => ({
@@ -82,7 +82,9 @@ export function ScoresAdmin() {
       key: "score",
       head: "Score",
       className: "text-right",
-      cell: (s) => <span className="font-mono text-sm font-semibold tabular">{fmt(s.score)}</span>,
+      cell: (s) => (
+        <span className="font-mono text-sm font-semibold tabular">{fmt(points(s.score))}</span>
+      ),
     },
     {
       key: "game",
@@ -179,7 +181,9 @@ export function ScoresAdmin() {
                     {s.gameTitle} · {formatAgo(s.createdAt) ?? "—"}
                   </span>
                 </span>
-                <span className="font-mono text-sm font-semibold tabular">{fmt(s.score)}</span>
+                <span className="font-mono text-sm font-semibold tabular">
+                  {fmt(points(s.score))}
+                </span>
               </MobileRow>
             )}
           />

@@ -25,6 +25,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { points } from "@/lib/format";
 
 const tabs = ["Best scores", "Activity", "Saved", "Recent", "Achievements"] as const;
 
@@ -95,7 +96,7 @@ function BestScores({ state }: { state: ScoreList }) {
               <span className="text-muted-foreground">A game</span>
             )}
           </span>
-          <span className="font-semibold tabular">{entry.score}</span>
+          <span className="font-semibold tabular">{points(entry.score)}</span>
         </li>
       ))}
     </ul>

@@ -175,14 +175,14 @@ describe("an unfinished run", () => {
       await screen.findByRole("heading", { name: "Pick up where you left off?" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Board 2")).toBeInTheDocument();
-    expect(screen.getByText("10")).toBeInTheDocument();
+    expect(screen.getByText("100")).toBeInTheDocument();
     // Nothing was replaced behind the player's back.
     expect(calls(spy, "/api/v1/sessions")).toHaveLength(0);
 
     fireEvent.click(screen.getByRole("button", { name: /Continue run/ }));
 
     expect(await screen.findByRole("group", { name: "Board 2, 3 by 3" })).toBeInTheDocument();
-    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("10");
+    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("100");
     expect(calls(spy, "/api/v1/sessions")).toHaveLength(0);
   });
 
@@ -252,10 +252,10 @@ describe("your stats", () => {
     await renderAt(<YourStats slug="one-move" />);
 
     const stats = await screen.findByRole("region", { name: "Your stats" });
-    expect(stats).toHaveTextContent("340");
+    expect(stats).toHaveTextContent("3,400");
     expect(stats).toHaveTextContent("#4");
     expect(stats).toHaveTextContent("12");
-    expect(stats).toHaveTextContent("2,150");
+    expect(stats).toHaveTextContent("21,500");
     expect(stats).toHaveTextContent(/Last played/);
   });
 

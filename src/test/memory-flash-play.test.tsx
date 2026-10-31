@@ -298,7 +298,7 @@ describe("playing the board", () => {
 
     // Still playing, at the score the twelve clears earned, on the next board.
     expect(screen.getByText("Round 13")).toBeInTheDocument();
-    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("120");
+    expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("1200");
     expect(screen.queryByRole("button", { name: /play again/i })).toBeNull();
     expect(screen.getAllByRole("button", { name: /^Cell \d+,/ })).toHaveLength(25);
 
@@ -331,7 +331,7 @@ describe("playing the board", () => {
     // The score readout next to the Score term — `getByText("10")` would also
     // match nothing else, but the term is the unambiguous anchor.
     const scoreTerm = screen.getByText("Score");
-    expect(scoreTerm.closest("dl")?.querySelector("dd")?.textContent).toBe("10");
+    expect(scoreTerm.closest("dl")?.querySelector("dd")?.textContent).toBe("100");
     expect(screen.queryByText(/saved/i)).not.toBeInTheDocument();
   });
 });
@@ -373,9 +373,9 @@ describe("finishing a run", () => {
     await screen.findByRole("button", { name: /play again/i });
     expect(screen.getByText("Pattern broken")).toBeInTheDocument();
     // The verified 40, not the 10 the board had accumulated.
-    expect(screen.getByText("40")).toBeInTheDocument();
+    expect(screen.getByText("400")).toBeInTheDocument();
     expect(screen.getByText("3 cells tapped, 1 rounds cleared.")).toBeInTheDocument();
-    expect(screen.getByText("100")).toBeInTheDocument(); // personal best
+    expect(screen.getByText("1000")).toBeInTheDocument(); // personal best
     expect(screen.getByText("#2")).toBeInTheDocument(); // rank
     expect(screen.getByText(/Verified by replaying your taps on the server/)).toBeInTheDocument();
   }, 15000);
@@ -453,7 +453,7 @@ describe("finishing a run", () => {
     fireEvent.click(screen.getByRole("button", { name: /try submitting again/i }));
 
     await screen.findByRole("button", { name: /play again/i });
-    expect(screen.getByText("40")).toBeInTheDocument();
+    expect(screen.getByText("400")).toBeInTheDocument();
     const sessions = spy.mock.calls.filter((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(sessions).toHaveLength(1);
   }, 15000);

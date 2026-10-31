@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { RunLeaveContext } from "@/lib/games/run-progress";
+import { points } from "@/lib/format";
 
 /**
  * End run, with a confirmation.
@@ -48,8 +49,8 @@ export function EndRunButton({
             <AlertDialogTitle>End this run?</AlertDialogTitle>
             <AlertDialogDescription>
               {later
-                ? `Finish later and the run is waiting for you next time — or end it now and your score of ${score} is kept and sent for verification.`
-                : `Your score of ${score} is kept and sent for verification.`}
+                ? `Finish later and the run is waiting for you next time — or end it now and your score of ${points(score)} is kept and sent for verification.`
+                : `Your score of ${points(score)} is kept and sent for verification.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

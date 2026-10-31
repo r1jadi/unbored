@@ -254,7 +254,7 @@ describe("the board", () => {
     tapCells(LINE_ONE);
 
     expect(screen.getByRole("group", { name: "Board 2, 6 by 6" })).toBeInTheDocument();
-    expect(scoreShown()).toBe("60");
+    expect(scoreShown()).toBe("600");
     expect(screen.getByText(/Board 1 solved, \+60/)).toBeInTheDocument();
     expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuemax"))).toBe(165);
   });
@@ -289,7 +289,7 @@ describe("finishing a run", () => {
 
     await screen.findByRole("button", { name: /play again/i });
     expect(screen.getByText("Run ended")).toBeInTheDocument();
-    expect(screen.getByText("180")).toBeInTheDocument();
+    expect(screen.getByText("1800")).toBeInTheDocument();
     expect(completionBody(spy).score).toBe(60);
   });
 

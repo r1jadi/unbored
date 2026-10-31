@@ -64,6 +64,15 @@ import {
   type DontTouchRun,
 } from "@/lib/games/dont-touch";
 import {
+  createRun as createUpdraftRun,
+  finish as finishUpdraftRun,
+  flap as flapUpdraft,
+  step as stepUpdraft,
+  submission as updraftSubmission,
+  UPDRAFT_RULES_VERSION,
+  type UpdraftRun,
+} from "@/lib/games/updraft";
+import {
   answer as answerSevenSecond,
   createRun as createSevenSecondRun,
   finish as finishSevenSecondRun,
@@ -3139,6 +3148,170 @@ export function useDontTouchRun(gameSlug: string): DontTouchRunControls {
   }, [state]);
 
   return { ...state, begin, tap, finish, miss, restart, retry };
+}
+
+// ── A run of Updraft, from session to score ────────────────────────────────
+
+export type UpdraftRunState =
+  | { status: "starting" }
+  | { status: "playing"; session: PlaySession; run: UpdraftRun }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: UpdraftRun }
+  | { status: "finished"; session: PlaySession; run: UpdraftRun; result: RunResult }
+  | {
+      status: "error";
+      /** Which half failed: the start of a run, or the submission of one. */
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: UpdraftRun;
+    };
+
+export type UpdraftRunControls = UpdraftRunState & {
+  /**
+   * Marks the moment the player pressed Start, so the submitted duration is the
+   * run's and not the time spent reading the rules.
+   */
+  begin: () => void;
+  /** Queues a flap for the next tick. Ignored unless the run is live. */
+  flap: () => void;
+  /** Runs `ticks` ticks of the world: the screen's clock decides how many. */
+  advance: (ticks: number) => void;
+  /** Ends the run because the player stopped. */
+  finish: () => void;
+  /** Starts a fresh run, replacing whatever is in the air. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of Updraft against the session API.
+ *
+ * The same lifecycle as Don't Touch the Black's (`useDontTouchRun`): a run exists
+ * only after the server issued a session under `updraft@1`, a result exists only
+ * after the server verified the submission, and a failed submission keeps the
+ * run so the identical body can be sent again.
+ *
+ * The screen owns the clock and calls `advance` with however many ticks have
+ * elapsed; the engine owns what a tick does. A flap is recorded against the tick
+ * it lands on, so the server replays exactly the flight that was flown.
+ */
+export function useUpdraftRun(gameSlug: string): UpdraftRunControls {
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<UpdraftRunState>({ status: "starting" });
+  const startedAt = useRef(0);
+  // When the run ended, captured once, so a retry sends the duration the run
+  // took rather than the time the retry happened to be made.
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    startSession(gameSlug, {
+      signal: controller.signal,
+      rulesVersion: UPDRAFT_RULES_VERSION,
+    })
+      .then((session) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "playing", session, run: createUpdraftRun(session.seed) });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // Verification: once, when a run has ended.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run } = state;
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run });
+
+    completeRun(
+      session.id,
+      { ...updraftSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const flap = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = flapUpdraft(current.run);
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
+  const advance = useCallback((ticks: number) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      let run = current.run;
+      for (let i = 0; i < ticks && run.outcome === "playing"; i += 1) run = stepUpdraft(run);
+      return run === current.run ? current : { ...current, run };
+    });
+  }, []);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishUpdraftRun(current.run);
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
+  const begin = useCallback(() => {
+    if (startedAt.current === 0) startedAt.current = Date.now();
+  }, []);
+
+  const restart = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again; the server recognises it.
+      submitting.current = false;
+      setState({ status: "playing", session: state.session, run: state.run });
+      return;
+    }
+
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, begin, flap, advance, finish, restart, retry };
 }
 
 // ── A run of 7 Second, from session to score ───────────────────────────────
