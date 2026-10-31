@@ -42,7 +42,7 @@ export function LeaderboardPage({ gameId }: { gameId?: string }) {
         title={game ? `${game.title} leaderboard` : gameId ? "Leaderboards" : "All games"}
         subtitle="Verified scores only."
       />
-      <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-3 md:px-0">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-4 md:px-0">
         <Link
           to="/leaderboards"
           className={cn(
@@ -75,7 +75,7 @@ export function LeaderboardPage({ gameId }: { gameId?: string }) {
           </span>
         )}
       </div>
-      <div className="flex items-center justify-between gap-3 px-4 pb-2 md:px-0">
+      <div className="flex items-center justify-between gap-3 px-4 pb-4 md:px-0">
         <Tabs value={scope} onValueChange={(value) => setScope(value as BoardScope)}>
           <TabsList>
             <TabsTrigger value="global">Global</TabsTrigger>

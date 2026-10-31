@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/common";
 import { ProfileView } from "@/components/social/ProfileView";
+import { useAuth } from "@/lib/auth/session";
 import { listBlockedIds } from "@/lib/settings/blocked";
 import { fetchProfileByUsername, useFollowCounts } from "@/lib/social/follows";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,16 @@ function UserProfile() {
   // and re-read after every follow or unfollow (see `useFollowCounts`), so the
   // numbers on screen always describe the same account as the header.
   const counts = useFollowCounts(state.status === "ready" ? state.userId : undefined);
+
+  // A link to your own username (a leaderboard row, a comment) opens your own
+  // profile, with its settings and saved games, not the public view of it.
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const me = auth.status === "authenticated" ? auth.session.userId : undefined;
+  const mine = state.status === "ready" && state.userId === me;
+  useEffect(() => {
+    if (mine) void navigate({ to: "/profile", replace: true });
+  }, [mine, navigate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,7 +87,7 @@ function UserProfile() {
     };
   }, [username]);
 
-  if (state.status === "loading") {
+  if (state.status === "loading" || mine) {
     return <ProfileView user={{ username, name: username, statsLoading: true }} loading />;
   }
   if (state.status === "not-found") {

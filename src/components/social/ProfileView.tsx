@@ -327,7 +327,7 @@ export function ProfileView({
           </div>
 
           <div
-            className="no-scrollbar mt-6 flex gap-5 overflow-x-auto border-b border-border px-4 text-sm md:px-0"
+            className="no-scrollbar mt-8 flex gap-6 overflow-x-auto border-b border-border px-4 text-sm md:px-0"
             role="tablist"
           >
             {visible.map((t) => (
@@ -349,7 +349,7 @@ export function ProfileView({
             ))}
           </div>
 
-          <div className="pt-4">
+          <div className="pt-6">
             {skeleton ? (
               <GridSkeleton count={4} />
             ) : (

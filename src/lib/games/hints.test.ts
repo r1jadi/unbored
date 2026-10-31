@@ -9,10 +9,18 @@ import {
   tap as slideTile,
 } from "@/lib/games/eight-puzzle";
 import {
+  GRIDBURST_CELLS,
+  canPlace as canPlaceGridburst,
+  createRun as createGridburst,
+  place as placeGridburst,
+  type GridburstRun,
+} from "@/lib/games/gridburst";
+import {
   HINT_COOLDOWN_MS,
   HINT_IDLE_MS,
   colorMergeHint,
   eightPuzzleHint,
+  gridburstHint,
   oneMoveHint,
   queensHint,
   stack10Hint,
@@ -62,6 +70,26 @@ describe("hints", () => {
     expect(hint).not.toBeNull();
     expect(canSlide(run, hint!.direction)).toBe(true);
     expect(hint!.reason).toMatch(/^(Sliding|No slide)/);
+  });
+
+  it("Gridburst: no hint when every placement left ends the run", () => {
+    // Two lone gaps in every row and column, none side by side: the single
+    // square fits and bursts nothing, the domino never fits — so after any
+    // placement the run is stuck.
+    const board = Array.from({ length: GRIDBURST_CELLS }, (_, cell) =>
+      (Math.floor(cell / 8) + (cell % 8)) % 4 === 0 ? 0 : 1,
+    );
+    const run = { ...createGridburst(1), board, tray: [0, 1, null] } as GridburstRun;
+    expect(canPlaceGridburst(run, 0, 0)).toBe(true);
+    expect(gridburstHint(run)).toBeNull();
+
+    // With room for the domino, the hint keeps it.
+    board[40] = 0;
+    board[41] = 0;
+    const roomy = { ...run, board } as GridburstRun;
+    const hint = gridburstHint(roomy);
+    expect(hint).not.toBeNull();
+    expect(placeGridburst(roomy, hint!.slot, hint!.cell).outcome).toBe("playing");
   });
 
   it("One Move: names the row first, then the cell", () => {
@@ -157,9 +185,9 @@ describe("useHint", () => {
     expect(result.current.hint).toBe(0);
     expect(result.current.waitSeconds).toBe(HINT_COOLDOWN_MS / 1000);
 
-    // Asking during the wait does nothing.
+    // Asking during the wait does nothing (one call to offer, one to ask).
     act(() => result.current.ask());
-    expect(compute).toHaveBeenCalledTimes(1);
+    expect(compute).toHaveBeenCalledTimes(2);
 
     // The countdown ticks once a second, as it does on screen.
     for (let second = 0; second < HINT_COOLDOWN_MS / 1000; second += 1) {
@@ -172,6 +200,15 @@ describe("useHint", () => {
     // A right move clears the hint and starts the idle wait again.
     rerender({ progress: 1 });
     expect(result.current.hint).toBeNull();
+    expect(result.current.offered).toBe(false);
+  });
+
+  it("offers nothing when there is no hint to give", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() =>
+      useHint({ progress: 0, active: true, compute: () => null }),
+    );
+    act(() => vi.advanceTimersByTime(HINT_IDLE_MS));
     expect(result.current.offered).toBe(false);
   });
 });

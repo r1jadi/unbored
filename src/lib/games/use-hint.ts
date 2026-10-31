@@ -13,7 +13,8 @@ import { HINT_COOLDOWN_MS, HINT_IDLE_MS } from "@/lib/games/hints";
  *
  * `compute` is read when the player asks, so a hint always describes the board
  * as it is at that moment. `asked` counts the hints since the last right move,
- * for a game whose hints get more specific (One Move).
+ * for a game whose hints get more specific (One Move). When `compute` has no
+ * hint — every move left would end the run — the button is not offered.
  */
 export function useHint<T>({
   progress,
@@ -41,7 +42,8 @@ export function useHint<T>({
     setAsked(0);
     setReadyAt(0);
     if (!active) return;
-    const timer = setTimeout(() => setOffered(true), HINT_IDLE_MS);
+    // No hint to give — e.g. every move left loses — means no button at all.
+    const timer = setTimeout(() => setOffered(latest.current(0) !== null), HINT_IDLE_MS);
     return () => clearTimeout(timer);
   }, [progress, active]);
 
@@ -55,7 +57,13 @@ export function useHint<T>({
   const ask = useCallback(() => {
     const at = Date.now();
     if (at < readyAt) return;
-    setHint(latest.current(asked));
+    const next = latest.current(asked);
+    if (next === null) {
+      setOffered(false);
+      setHint(null);
+      return;
+    }
+    setHint(next);
     setAsked((n) => n + 1);
     setReadyAt(at + HINT_COOLDOWN_MS);
     setNow(at);

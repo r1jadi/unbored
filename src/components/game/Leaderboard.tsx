@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { CircleSlash, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { EmptyState, ErrorState, ListSkeleton, UserAvatar } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,27 @@ import {
   type BoardScope,
 } from "@/lib/games/sessions";
 import { useOverallBoard } from "@/lib/games/overall-board";
+import { cn } from "@/lib/utils";
+
+const ROW = "flex items-center gap-3 px-4 py-3.5 md:rounded-lg md:px-2";
+
+/**
+ * One board row: a link to the player's profile, or plain when the account is
+ * gone and there is no profile to open.
+ */
+function PlayerRow({ username, children }: { username: string | null; children: ReactNode }) {
+  if (!username) return <div className={ROW}>{children}</div>;
+  return (
+    <Link
+      to="/u/$username"
+      params={{ username }}
+      aria-label={`View @${username}'s profile`}
+      className={cn(ROW, "transition-colors hover:bg-surface active:bg-surface")}
+    >
+      {children}
+    </Link>
+  );
+}
 
 /**
  * A game's leaderboard.
@@ -102,29 +123,32 @@ export function LeaderboardList({
     <div>
       <ol className="divide-y divide-border">
         {entries.map((row) => (
-          <li
-            key={`${row.rank}-${row.username}`}
-            className="enter flex items-center gap-3 px-4 py-2.5 md:rounded-lg md:px-2"
-          >
-            <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
-              {row.rank}
-            </span>
-            <UserAvatar username={row.username} size="sm" />
-            <span className="flex-1 truncate text-sm">
-              {row.username ? `@${row.username}` : "A former player"}
-            </span>
-            <span className="font-semibold tabular">{row.score}</span>
+          <li key={`${row.rank}-${row.username}`} className="enter">
+            <PlayerRow username={row.username}>
+              <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
+                {row.rank}
+              </span>
+              <UserAvatar username={row.username} size="sm" />
+              <span className="flex-1 truncate text-sm">
+                {row.username ? `@${row.username}` : "A former player"}
+              </span>
+              <span className="font-semibold tabular">{row.score}</span>
+            </PlayerRow>
           </li>
         ))}
       </ol>
       {pinMe && me && (
-        <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] mt-2 flex items-center gap-3 border-y border-primary/30 bg-surface px-4 py-3 md:bottom-0 md:rounded-lg md:border md:px-2">
+        <Link
+          to="/profile"
+          aria-label="View your profile"
+          className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] mt-3 flex items-center gap-3 border-y border-primary/30 bg-surface px-4 py-3 md:bottom-0 md:rounded-lg md:border md:px-2"
+        >
           <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
             {me.rank}
           </span>
           <span className="flex-1 text-sm font-medium">You</span>
           <span className="font-semibold tabular">{me.score}</span>
-        </div>
+        </Link>
       )}
     </div>
   );
@@ -252,16 +276,15 @@ function FollowingBoard({ gameSlug, period }: { gameSlug: string; period: BoardP
   return (
     <ol className="divide-y divide-border">
       {rows.map((row) => (
-        <li
-          key={`${row.rank}-${row.username}`}
-          className="enter flex items-center gap-3 px-4 py-2.5 md:rounded-lg md:px-2"
-        >
-          <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
-            {row.rank}
-          </span>
-          <UserAvatar username={row.username} size="sm" />
-          <span className="flex-1 truncate text-sm">@{row.username}</span>
-          <span className="font-semibold tabular">{row.score}</span>
+        <li key={`${row.rank}-${row.username}`} className="enter">
+          <PlayerRow username={row.username}>
+            <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
+              {row.rank}
+            </span>
+            <UserAvatar username={row.username} size="sm" />
+            <span className="flex-1 truncate text-sm">@{row.username}</span>
+            <span className="font-semibold tabular">{row.score}</span>
+          </PlayerRow>
         </li>
       ))}
     </ol>
@@ -369,36 +392,39 @@ export function OverallBoardList({
       ) : (
         <ol className="divide-y divide-border">
           {rows.map((row) => (
-            <li
-              key={`${row.rank}-${row.username}`}
-              className="enter flex items-center gap-3 px-4 py-2.5 md:rounded-lg md:px-2"
-            >
-              <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
-                {row.rank}
-              </span>
-              <UserAvatar username={row.username} size="sm" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm">
-                  {row.username ? `@${row.username}` : "A former player"}
+            <li key={`${row.rank}-${row.username}`} className="enter">
+              <PlayerRow username={row.username}>
+                <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
+                  {row.rank}
                 </span>
-                <span className="block text-xs text-muted-foreground">
-                  {row.games === 1 ? "1 game" : `${row.games} games`}
+                <UserAvatar username={row.username} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm">
+                    {row.username ? `@${row.username}` : "A former player"}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {row.games === 1 ? "1 game" : `${row.games} games`}
+                  </span>
                 </span>
-              </span>
-              <span className="font-semibold tabular">{row.rating}</span>
+                <span className="font-semibold tabular">{row.rating}</span>
+              </PlayerRow>
             </li>
           ))}
         </ol>
       )}
 
       {pinMe && me && (
-        <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] mt-2 flex items-center gap-3 border-y border-primary/30 bg-surface px-4 py-3 md:bottom-0 md:rounded-lg md:border md:px-2">
+        <Link
+          to="/profile"
+          aria-label="View your profile"
+          className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] mt-3 flex items-center gap-3 border-y border-primary/30 bg-surface px-4 py-3 md:bottom-0 md:rounded-lg md:border md:px-2"
+        >
           <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
             {me.rank}
           </span>
           <span className="flex-1 text-sm font-medium">You</span>
           <span className="font-semibold tabular">{me.rating}</span>
-        </div>
+        </Link>
       )}
     </div>
   );

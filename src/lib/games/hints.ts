@@ -27,6 +27,7 @@ import {
   dropped as droppedGridburst,
   fitsAnywhere,
   fullLines,
+  place as placeGridburst,
   type GridburstRun,
 } from "@/lib/games/gridburst";
 import {
@@ -35,6 +36,7 @@ import {
   LEFT,
   RIGHT,
   canSlide,
+  slide as slideColorMerge,
   slideGain,
   type ColorMergeDirection,
   type ColorMergeRun,
@@ -152,13 +154,18 @@ const DIRECTION_NAMES: Record<ColorMergeDirection, string> = {
   [LEFT]: "left",
 };
 
-/** Color Merge: the slide that merges the most, or any slide that moves the board. */
+/**
+ * Color Merge: the slide that merges the most, or any slide that moves the board.
+ * A slide that locks the board ends the run, so it is never the hint; null when
+ * every slide left does.
+ */
 export function colorMergeHint(
   run: ColorMergeRun,
 ): { direction: ColorMergeDirection; reason: string } | null {
   let best: { direction: ColorMergeDirection; gain: number } | null = null;
   for (const direction of COLOR_MERGE_DIRECTIONS) {
     if (!canSlide(run, direction)) continue;
+    if (slideColorMerge(run, direction).endReason === "locked") continue;
     const gain = slideGain(run.board, direction);
     if (best === null || gain > best.gain) best = { direction, gain };
   }
@@ -177,7 +184,9 @@ export function colorMergeHint(
 
 /**
  * Gridburst: the placement that bursts the most lines, and among equals the one
- * that leaves the most of the tray still placeable.
+ * that leaves the most of the tray still placeable. A placement after which
+ * nothing fits ends the run, so it is never the hint; null when every placement
+ * left does.
  */
 export function gridburstHint(
   run: GridburstRun,
@@ -188,6 +197,7 @@ export function gridburstHint(
     if (shape === null) continue;
     for (let cell = 0; cell < GRIDBURST_CELLS; cell += 1) {
       if (!canPlaceGridburst(run, slot, cell)) continue;
+      if (placeGridburst(run, slot, cell).endReason === "stuck") continue;
       const filled = droppedGridburst(run.board, shape, cell);
       const { rows, columns } = fullLines(filled);
       const lines = rows.length + columns.length;

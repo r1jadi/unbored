@@ -133,7 +133,7 @@ function SearchPage() {
 
   return (
     <Page>
-      <div className="sticky top-0 z-30 bg-background/90 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-2 backdrop-blur-xl md:static md:px-0 md:pt-8">
+      <div className="sticky top-0 z-30 bg-background/90 px-4 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-4 backdrop-blur-xl md:static md:px-0 md:pt-8">
         <Label htmlFor="q" className="sr-only">
           Search
         </Label>

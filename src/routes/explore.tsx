@@ -122,9 +122,7 @@ export function Explore() {
 
       <Section title="Categories" action={<More to="/categories" />}>
         {categories.status === "loading" ? (
-          <div className="px-4 md:px-0">
-            <GridSkeleton count={3} />
-          </div>
+          <GridSkeleton count={3} />
         ) : categories.status === "error" ? (
           <div className="px-4 md:px-0">
             <SectionError onRetry={categories.retry}>

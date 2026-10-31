@@ -128,7 +128,7 @@ function Notifications() {
           </Button>
         }
       />
-      <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-2 md:px-0">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-4 md:px-0">
         {filters.map((f) => (
           <button
             key={f}
@@ -158,7 +158,7 @@ function Notifications() {
           body="New follows, comments and score updates show up here."
         />
       ) : (
-        <ul>
+        <ul className="divide-y divide-border md:space-y-1 md:divide-y-0">
           {list.map((item) => {
             const Icon = icon[item.kind];
             const actor =
@@ -173,7 +173,7 @@ function Notifications() {
               <li
                 key={item.id}
                 className={cn(
-                  "enter flex items-center gap-3 px-4 py-3 md:rounded-lg md:px-3",
+                  "enter flex items-center gap-3 px-4 py-3.5 md:rounded-lg md:px-3",
                   !item.readAt && "bg-surface",
                 )}
               >

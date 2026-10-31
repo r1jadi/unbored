@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Field } from "@/components/auth/AuthLayout";
@@ -121,6 +121,7 @@ function validateUsername(value: string): string | undefined {
 }
 
 function Editor({ profile }: { profile: Profile }) {
+  const navigate = useNavigate();
   // The form edits a draft that starts as the stored profile. Keeping it as
   // `undefined` until the first keystroke means the fields always show what the
   // server holds, and an edit in progress is never silently replaced by a
@@ -209,6 +210,8 @@ function Editor({ profile }: { profile: Profile }) {
     try {
       await changeAvatar(chosen);
       toast.success("Photo updated");
+      // Show the new photo where others see it.
+      void navigate({ to: "/profile" });
     } catch (error) {
       setBanner(profileErrorMessage(error));
     } finally {

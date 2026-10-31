@@ -282,7 +282,14 @@ function RootComponent() {
       )}
       {/* Dev-only safe-area/PWA probe (dead-code-eliminated in production). */}
       {import.meta.env.DEV ? <SafeAreaDiagnostics /> : null}
-      <Toaster position="top-center" theme="dark" />
+      {/* The page draws under the status bar (`viewport-fit=cover`), so the
+          toasts sit below the safe area — otherwise they hide behind the notch. */}
+      <Toaster
+        position="top-center"
+        theme="dark"
+        offset={{ top: "calc(env(safe-area-inset-top) + 24px)" }}
+        mobileOffset={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
+      />
       <Analytics />
     </QueryClientProvider>
   );

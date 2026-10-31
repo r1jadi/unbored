@@ -33,8 +33,14 @@ async function renderForm() {
     component: () => <p>Settings section</p>,
   });
 
+  const profile = createRoute({
+    getParentRoute: () => root,
+    path: "/profile",
+    component: () => <p>Your profile</p>,
+  });
+
   const router = createRouter({
-    routeTree: root.addChildren([index, login, section]),
+    routeTree: root.addChildren([index, login, section, profile]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
 
@@ -367,6 +373,8 @@ describe("ProfileForm", () => {
     // The path is inside the caller's own folder, which is what the storage
     // policy and the database's check constraint both require.
     expect(body.avatarPath).toMatch(new RegExp(`^${testUserID}/[0-9a-f-]{36}\\.png$`));
+    // Once saved, the player is taken to their profile to see it.
+    expect(await screen.findByText("Your profile")).toBeInTheDocument();
   });
 
   it("asks for a sign-in instead of showing a profile, and calls nothing", async () => {
