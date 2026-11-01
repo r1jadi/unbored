@@ -64,7 +64,10 @@ const shared = {
   // The browser calls the gateway from the web port, so it must be allowed.
   CORS_ALLOWED_ORIGINS: [
     ...new Set([
-      ...(fileEnv.CORS_ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean),
+      ...(fileEnv.CORS_ALLOWED_ORIGINS || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
       local(PORTS.web),
     ]),
   ].join(","),
