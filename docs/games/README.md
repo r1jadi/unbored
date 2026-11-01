@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Fifteen games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Sixteen games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Gridburst**, **Updraft** and the **Daily Crossword**. Thirteen of them — all but 7 Second and the crossword, the two daily
+**Gridburst**, **Updraft**, **Decant** and the **Daily Crossword**. Fourteen of them — all but 7 Second and the crossword, the two daily
 games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -38,8 +38,8 @@ A signed-in player keeps more than their scores:
   seed, so the board, score and level are exactly where they were — or **New
   run**, which submits the saved run as it was left (keeping its score, like any
   ended run) and starts a fresh one. A saved run stays open for twelve hours after
-  its last save. Trail, 8 Puzzle, Sun & Moon, Sudoku, 7 Second, Don't Touch the
-  Black and Updraft do not resume:
+  its last save. Trail, 8 Puzzle, Sun & Moon, Sudoku, Decant, 7 Second, Don't
+  Touch the Black and Updraft do not resume:
   their clocks, conveyors or gliders cannot pause.
 - **Stats per game**, on the game's page: runs played, best score, rank, total
   points and when they last played, from their verified scores.
@@ -2237,3 +2237,98 @@ the verifier was checked against the engine on 72 flights across six seeds
 2. **Seed 1, no flaps** — the glider falls from 44 000 and hits the ground on tick
    **33**, scoring 0.
 3. **An immediate stop** — `[1]` records a run of zero ticks and zero points.
+
+## Decant
+
+The colour-sorting puzzle — the one sold as Magic Sort, Water Sort and Ball Sort —
+as an endless run against a clock. Tubes of stacked colour, four units to a tube,
+and two empty tubes: pour from tube to tube until every tube holds one colour.
+
+| Thing   | Value                                                                     |
+| ------- | ------------------------------------------------------------------------- |
+| Tubes   | Four units each; one per colour, plus two empty                           |
+| Colours | 3 on boards 1–2, one more every second board, 9 from board 13             |
+| Clock   | 60 s to start, +5 s per colour of every solved board, −15 s per extra tube |
+| Slack   | 20 s: how late after its clock a run may still reach the server           |
+| Actions | 8192 at most: `from × 16 + to` a pour, 253 extra tube, 254 undo, 255 restart |
+| Rules   | `decant@1`                                                                |
+| Runtime | `decant` (the catalogue's `games.runtime` value)                          |
+
+### How the real game works, and what this one keeps
+
+A pour moves the top of one tube onto another — onto an empty tube or onto the
+same colour only — and it moves the whole run of that colour from the top, or as
+much of it as fits. The board is solved when every tube is empty or full of one
+colour. The originals have no clock and a booster to add a tube. This version keeps
+the rules and the booster exactly, and adds the clock that every endless puzzle
+here runs against, because a ranked run needs an ending the server can check.
+
+### The boards
+
+As in the originals, a board is every unit shuffled into full tubes:
+
+```
+colours(level) = min(9, 3 + ⌊(level − 1) / 2⌋)
+state₀ = ((seed mod 2³²) + 2³²) mod 2³²             // 2654435769 if that is 0
+stateₙ = (stateₙ₋₁ × 1664525 + 1013904223) mod 2³²   // advanced once per level
+t = stateₙ; draw() = t ← (t × 22695477 + 1) mod 2³²; t >> 16
+units = 1,1,1,1, 2,2,2,2, …                         // four of every colour
+for i = len − 1 down to 1: swap units[i], units[draw() mod (i + 1)]
+tube k = units[4k … 4k + 3], bottom first; then two empty tubes
+```
+
+Shuffled boards are not guaranteed solvable, but with two empty tubes they all but
+always are: every one of 1 500 sampled boards from three to nine colours was. The
+first design scrambled a solved board backwards, pour by pour, which guarantees a
+solution — but the result rarely has the originals' shape (every tube full), so it
+was dropped. For the rare board that cannot be sorted, and for a player who has
+poured themself into a corner, there are the originals' controls: undo, restart
+the board, and once per board an extra empty tube for fifteen seconds of clock.
+
+### Actions
+
+| Action          | Code             | Allowed when                                        |
+| --------------- | ---------------- | --------------------------------------------------- |
+| Pour            | `from × 16 + to` | A different tube, not empty, onto room and its colour |
+| Extra tube      | 253              | Not already added on this board                     |
+| Undo            | 254              | A pour on this board has not been undone            |
+| Restart         | 255              | Something has been poured on this board             |
+
+The extra tube cannot be undone, and the pours before it cannot be undone across
+it; a restart keeps it. A pour that sorts the board scores **ten points per
+colour**, adds five seconds per colour to the clock, and deals the next board.
+
+### How a run ends, and the server's clock
+
+As in 8 Puzzle: the session is issued when the player presses Start, the run ends
+when the clock reaches zero or the player ends it, and the verifier refuses a run
+that reaches it more than `decant_budget_ms(boards solved, extra tubes) +
+decant_slack_ms()` after the session started (`out_of_time`, a `422`). Any prefix
+of a legal line is a valid submission: the score never goes down.
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261121120000_decant_sessions.sql`.
+
+- `public.decant_board(seed, level)` is the deal; internals, not granted to a
+  client.
+- `public.complete_decant_run(session, actions, score, duration)` replays every
+  action as above, derives the score, compares it with the claim, checks the clock,
+  and only then records it. The Go service routes `decant@` runs to it and accepts
+  up to 8192 actions on 0 to 255.
+- `20261121120100_decant_playable.sql` inserts the catalogue record (Puzzle).
+
+### Test vectors
+
+Asserted in [`src/lib/games/decant.test.ts`](../../src/lib/games/decant.test.ts);
+the verifier was checked against the engine on 32 runs across eight seeds (solved
+boards, undos, restarts, extra tubes, runs stopped mid-board, up to thirteen boards)
+and on the deals of a full-width seed.
+
+1. **Seed 1, board 1** — `2133 2223 3111 - -` (tubes bottom to top, `-` empty).
+2. **Seed 1, board 2** — `1213 1221 3233 - -`.
+3. **Seed 1, board 13** — `2832 1943 8265 1364 5983 1587 7674 1469 5297 - -`.
+4. **The clock** — a run that solved nothing is on time at 79 s and `out_of_time`
+   at 81 s; with an extra tube it is `out_of_time` at 66 s.
+

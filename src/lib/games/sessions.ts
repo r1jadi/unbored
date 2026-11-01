@@ -64,6 +64,18 @@ import {
   type DontTouchRun,
 } from "@/lib/games/dont-touch";
 import {
+  addTube as addDecantTube,
+  budgetMs as decantBudgetMs,
+  createRun as createDecantRun,
+  DECANT_RULES_VERSION,
+  finish as finishDecantRun,
+  pour as pourDecant,
+  restart as resetDecantBoard,
+  submission as decantSubmission,
+  undo as undoDecant,
+  type DecantRun,
+} from "@/lib/games/decant";
+import {
   createRun as createUpdraftRun,
   finish as finishUpdraftRun,
   flap as flapUpdraft,
@@ -3312,6 +3324,224 @@ export function useUpdraftRun(gameSlug: string): UpdraftRunControls {
   }, [state]);
 
   return { ...state, begin, flap, advance, finish, restart, retry };
+}
+
+// ── A run of Decant, from Start to score ───────────────────────────────────
+
+export type DecantRunState =
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | {
+      status: "playing";
+      session: PlaySession;
+      run: DecantRun;
+      /** When the clock runs out, as a `Date.now()` timestamp. */
+      deadline: number;
+    }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: DecantRun; deadline: number }
+  | { status: "finished"; session: PlaySession; run: DecantRun; result: RunResult }
+  | {
+      status: "error";
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: DecantRun;
+    };
+
+export type DecantRunControls = DecantRunState & {
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
+  begin: () => void;
+  /** Pours one tube onto another. Ignored unless the run is live and the pour is allowed. */
+  pour: (from: number, to: number) => void;
+  /** Takes back the last pour on this board. */
+  undo: () => void;
+  /** Puts this board back as it was dealt. */
+  reset: () => void;
+  /** Adds an empty tube to this board, once, for fifteen seconds of clock. */
+  addTube: () => void;
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
+  /** Back to the rules, for a fresh run. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of Decant against the session API.
+ *
+ * The same lifecycle as 8 Puzzle, for the same reason: the run is against a clock
+ * the verifier times from the session's start (`out_of_time`), so the session is
+ * issued when the player presses Start, the clock starts when it arrives, and the
+ * run ends by itself when the clock reaches zero. The deadline follows the run:
+ * a solved board pushes it back, an extra tube brings it forward.
+ */
+export function useDecantRun(gameSlug: string, autoStart = false): DecantRunControls {
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<DecantRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
+  const startedAt = useRef(0);
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  const signedIn = !!getAccessToken();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // A session is requested only once Start has been pressed (`attempt` > 0).
+  useEffect(() => {
+    if (attempt === 0) return;
+    const controller = new AbortController();
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    startSession(gameSlug, { signal: controller.signal, rulesVersion: DECANT_RULES_VERSION })
+      .then((session) => {
+        if (controller.signal.aborted) return;
+        const run = createDecantRun(session.seed);
+        startedAt.current = Date.now();
+        setState({
+          status: "playing",
+          session,
+          run,
+          deadline: startedAt.current + decantBudgetMs(0),
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // The clock. When it reaches zero the run is over, and verification follows.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome !== "playing") return;
+    const remaining = state.deadline - Date.now();
+    const timer = setTimeout(
+      () => {
+        setState((current) => {
+          if (current.status !== "playing" || current.run.outcome !== "playing") return current;
+          if (Date.now() < current.deadline) return { ...current };
+          endedAt.current = current.deadline;
+          return { ...current, run: finishDecantRun(current.run, "time") };
+        });
+      },
+      Math.max(0, remaining),
+    );
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  // Verification: once, when a run has ended.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run, deadline } = state;
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run, deadline });
+
+    completeRun(
+      session.id,
+      { ...decantSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  /** Applies a move unless the clock has already run out, and moves the deadline. */
+  const act = useCallback((move: (run: DecantRun) => DecantRun) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      // A move after the deadline — a backgrounded tab can hold its timer back —
+      // ends the run instead: the clock has already run out.
+      if (Date.now() >= current.deadline) {
+        if (current.run.outcome !== "playing") return current;
+        endedAt.current = current.deadline;
+        return { ...current, run: finishDecantRun(current.run, "time") };
+      }
+      const next = move(current.run);
+      if (next === current.run) return current;
+      return {
+        ...current,
+        run: next,
+        deadline: startedAt.current + decantBudgetMs(next.levelsCleared, next.extraTubes),
+      };
+    });
+  }, []);
+
+  const pour = useCallback(
+    (from: number, to: number) => act((run) => pourDecant(run, from, to)),
+    [act],
+  );
+  const undo = useCallback(() => act(undoDecant), [act]);
+  const reset = useCallback(() => act(resetDecantBoard), [act]);
+  const addTube = useCallback(() => act(addDecantTube), [act]);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishDecantRun(current.run, "stopped");
+      if (next === current.run) return current;
+      endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    // Tap to play skips the rules on Play again too: straight to a new session.
+    if (autoStart) {
+      setState({ status: "starting" });
+      setAttempt((n) => n + 1);
+    } else {
+      setState({ status: "intro" });
+    }
+  }, [autoStart]);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again. The clock is already over, so the
+      // deadline only has to exist; it no longer moves.
+      submitting.current = false;
+      setState({ status: "playing", session: state.session, run: state.run, deadline: 0 });
+      return;
+    }
+
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, signedIn, begin, pour, undo, reset, addTube, finish, restart, retry };
 }
 
 // ── A run of 7 Second, from session to score ───────────────────────────────

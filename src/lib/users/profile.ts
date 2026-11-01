@@ -38,6 +38,7 @@ import {
   type SessionRole,
 } from "@/lib/auth/session";
 import { publicConfig } from "@/lib/config";
+import { AVATAR_TYPES, MAX_AVATAR_BYTES, prepareAvatar } from "@/lib/users/avatar-image";
 import { rememberAvatar } from "@/lib/users/avatars";
 
 /** Routes implemented by `services/users`. Kept together so they cannot drift. */
@@ -47,14 +48,6 @@ const Routes = {
 
 /** The bucket the storage migration creates for profile pictures. */
 const AVATAR_BUCKET = "avatars";
-
-/** The bucket's own limits, repeated here so a bad file fails before it is sent. */
-const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
-const AVATAR_TYPES: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-};
 
 /** One `public.profiles` row as the API exposes it. Never contains a secret. */
 export type Profile = {
@@ -297,11 +290,14 @@ export async function updateProfile(patch: ProfilePatch): Promise<Profile> {
  * The file goes to Storage first, then the profile is pointed at it, because the
  * database check constraint only accepts a path of the form `<account id>/<file>`
  * — the object has to exist under the caller's own folder before it can be
- * referenced. Replacing a picture leaves the previous object in place: removing
+ * referenced. A large photo is shrunk first (`prepareAvatar`). Replacing a picture leaves the previous object in place: removing
  * it is a deletion the UI does not offer, and a failed cleanup must never break a
  * successful upload.
  */
-export async function changeAvatar(file: File): Promise<Profile> {
+export async function changeAvatar(chosen: File): Promise<Profile> {
+  // A photo straight off a phone is usually over the bucket's 2 MB: it is
+  // scaled down and re-encoded here rather than refused.
+  const file = await prepareAvatar(chosen);
   const extension = AVATAR_TYPES[file.type];
   if (!extension) {
     throw new ApiError("Choose a PNG, JPEG or WebP image.", { code: "bad_request" });

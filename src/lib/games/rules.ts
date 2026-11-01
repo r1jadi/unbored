@@ -302,6 +302,28 @@ export const GAME_RULES = {
       },
     ],
   },
+  decant: {
+    heading: "Pour until it's sorted",
+    summary: "Pour the colours between the tubes until each tube holds just one.",
+    rules: [
+      {
+        lead: "Tap a tube, then another,",
+        text: "to pour. It only lands on an empty tube or on the same colour, and the whole top layer of that colour goes — as much as fits.",
+      },
+      {
+        lead: "Sort every tube",
+        text: "into a single colour to solve the board: 10 points per colour, and 5 more seconds on the clock per colour.",
+      },
+      {
+        lead: "Stuck?",
+        text: "Undo a pour, restart the board, or add one empty tube to it for 15 seconds of clock.",
+      },
+      {
+        lead: "No last board.",
+        text: "Boards start with three colours and gain one every second board, up to nine. The run ends when the clock does.",
+      },
+    ],
+  },
   updraft: {
     heading: "Ride the updraft",
     summary: "Tap to lift the glider. Thread the gaps between the columns.",

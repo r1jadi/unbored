@@ -226,7 +226,7 @@ function Editor({ profile }: { profile: Profile }) {
         <input
           ref={file}
           type="file"
-          accept="image/png,image/jpeg,image/webp"
+          accept="image/*"
           className="hidden"
           aria-label="Choose a profile picture"
           onChange={pick}

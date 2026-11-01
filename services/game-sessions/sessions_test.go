@@ -1159,6 +1159,40 @@ func TestCompleteSessionRejectsAnUpdraftActionPastTheLastTick(t *testing.T) {
 	}
 }
 
+func TestCompleteSessionAcceptsDecantPoursAndControls(t *testing.T) {
+	// 187 is 11 × 16 + 11, the highest pour code on a twelve-tube board; 253, 254
+	// and 255 are the extra tube, undo and restart.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("decant@1", "1", "20000", "[3,187,253,254,255]"), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if len(backend.lastRun.Actions) != 5 || backend.lastRun.Actions[4] != 255 {
+		t.Fatalf("actions = %v, want the submitted actions", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionRejectsADecantActionPastTheCodes(t *testing.T) {
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("decant@1", "1", "20000", "[3,256]"), "")
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (%#v)", status, body)
+	}
+	if backend.runCalls != 0 {
+		t.Fatal("an action past the codes reached the verifier")
+	}
+}
+
 func TestCompleteSessionRejectsACrosswordMovePastTheCodes(t *testing.T) {
 	// 1749 would reveal cell 49, past the 7×7 midi.
 	backend := testBackend()

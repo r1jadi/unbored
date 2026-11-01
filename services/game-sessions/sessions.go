@@ -11,7 +11,8 @@
 //     `complete_seven_second_run`, `complete_queens_run`, `complete_zip_run`,
 //     `complete_eight_puzzle_run`, `complete_tango_run`,
 //     `complete_sudoku_run`, `complete_crossword_run`,
-//     `complete_gridburst_run`, `complete_updraft_run`) replays the submitted
+//     `complete_gridburst_run`, `complete_updraft_run`,
+//     `complete_decant_run`) replays the submitted
 //     actions, derives the
 //     score and writes the ledger. This service validates
 //     the request shape, maps the verifier's outcome onto an HTTP answer, and
@@ -95,6 +96,8 @@ const (
 	// updraft@1 carries at most 8192 actions: flaps, and the stop that ends a run
 	// the player ended.
 	updraftMaxActions = 8192
+	// decant@1 carries at most 8192 actions: pours, undos, restarts and extra tubes.
+	decantMaxActions = 8192
 	// The bounds a move has to fit. Stack 10 addresses a column and Chain a pad,
 	// both 0 to 3; Color Merge addresses one of its four directions, also 0 to 3;
 	// Memory Flash addresses a cell of its board — sixteen for the retired 4×4
@@ -141,6 +144,9 @@ const (
 	// 2 × tick + 1 for a stop, over the 108 000 ticks (thirty minutes at sixty a
 	// second) a run may last.
 	updraftActions = 2*108000 + 2
+	// decantActions is every Decant action: a pour as from × 16 + to (up to 187
+	// with twelve tubes), then 253 an extra tube, 254 undo and 255 restart.
+	decantActions = 256
 )
 
 // Patterns mirror the database constraints, so a bad request is a 400 that names
@@ -398,6 +404,8 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 		limit = gridburstMaxActions
 	case strings.HasPrefix(rules, "updraft@"):
 		limit = updraftMaxActions
+	case strings.HasPrefix(rules, "decant@"):
+		limit = decantMaxActions
 	}
 	if len(actions) > limit {
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
@@ -526,6 +534,8 @@ func boardSize(rulesVersion string) int {
 		return gridburstMoves
 	case strings.HasPrefix(rulesVersion, "updraft@"):
 		return updraftActions
+	case strings.HasPrefix(rulesVersion, "decant@"):
+		return decantActions
 	default:
 		return stackChainPositions
 	}

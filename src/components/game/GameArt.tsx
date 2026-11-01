@@ -66,6 +66,7 @@ export function GameArt({
         {id === "crossword" && <Crossword />}
         {id === "gridburst" && <Gridburst />}
         {id === "updraft" && <Updraft />}
+        {id === "decant" && <Decant />}
         {!KNOWN.has(id) && <Generated seed={id} />}
       </div>
     </div>
@@ -89,6 +90,7 @@ const KNOWN = new Set([
   "crossword",
   "gridburst",
   "updraft",
+  "decant",
 ]);
 
 /**
@@ -427,6 +429,42 @@ function Updraft() {
       <div className="absolute top-[42%] left-[20%] aspect-square w-[14%] -rotate-12 rounded-full bg-primary ring-2 ring-background/40">
         <span className="absolute top-[22%] right-[14%] size-[30%] rounded-full bg-background" />
       </div>
+    </div>
+  );
+}
+
+function Decant() {
+  // Five tubes mid-sort: one finished, one being poured into, two still mixed.
+  const tubes = [
+    ["bg-game-5", "bg-game-1", "bg-game-4", "bg-game-1"],
+    ["bg-game-2", "bg-game-2", "bg-game-2", "bg-game-2"],
+    ["bg-game-4", "bg-game-5", "bg-game-4"],
+    ["bg-game-1", "bg-game-5"],
+    ["bg-game-5", "bg-game-4", "bg-game-2", "bg-game-2"],
+  ];
+  return (
+    <div className="flex size-full items-end justify-center gap-[min(3cqw,3cqh,0.75rem)] pb-[8%]">
+      {tubes.map((units, t) => (
+        <div
+          key={t}
+          className={cn(
+            "flex h-[78%] w-[15%] flex-col-reverse gap-[min(0.6cqw,0.6cqh,0.15rem)] overflow-hidden rounded-t-[min(1cqw,1cqh,0.25rem)] rounded-b-full border-2 p-[min(0.6cqw,0.6cqh,0.15rem)]",
+            t === 1 ? "border-success/70" : "border-foreground/20",
+            t === 3 && "-translate-y-[8%] border-primary",
+          )}
+        >
+          {units.map((tone, u) => (
+            <div
+              key={u}
+              className={cn(
+                "h-[calc(25%-2px)] w-full shrink-0",
+                tone,
+                u === 0 ? "rounded-b-full" : "rounded-[min(0.5cqw,0.5cqh,0.125rem)]",
+              )}
+            />
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
