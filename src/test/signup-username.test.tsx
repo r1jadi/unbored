@@ -264,7 +264,7 @@ describe("choosing a username during sign-up", () => {
     expect(JSON.parse(String(signUps[0][1]?.body))).toMatchObject({ username: "last_second" });
   });
 
-  it("shows the saved username, read-only, when finishing a confirmed or OAuth sign-up", async () => {
+  it("offers the saved username as an editable starting value when finishing a confirmed or OAuth sign-up", async () => {
     mockFetch((url, init) => {
       if (url.includes("/api/v1/auth/sign-in")) return jsonResponse(sessionPayload(false));
       if (url.endsWith("/api/v1/users/me")) return jsonResponse(profilePayload("player_one"));
@@ -279,7 +279,54 @@ describe("choosing a username during sign-up", () => {
     expect(await screen.findByText("Choose your name")).toBeInTheDocument();
     const input = (await screen.findByLabelText("Username")) as HTMLInputElement;
     await waitFor(() => expect(input.value).toBe("player_one"));
-    expect(input).toBeDisabled();
-    expect(input.value).toBe("player_one");
+    expect(input).toBeEnabled();
+    expect(input).not.toHaveAttribute("readonly");
+    expect(screen.getByText("This is your current username.")).toBeInTheDocument();
+  });
+
+  it("writes a username changed while finishing sign-up together with the display name", async () => {
+    const patches: Array<Record<string, unknown>> = [];
+    let marked = false;
+    mockFetch((url, init) => {
+      if (url.includes("/api/v1/auth/username-available")) {
+        return jsonResponse({ username: "my_new_name", available: true });
+      }
+      if (url.includes("/api/v1/auth/sign-in")) return jsonResponse(sessionPayload(false));
+      if (url.endsWith("/api/v1/users/me")) {
+        if (init?.method === "PATCH") {
+          patches.push(JSON.parse(String(init.body)));
+          return jsonResponse(profilePayload("my_new_name"));
+        }
+        return jsonResponse(profilePayload("player_one"));
+      }
+      if (url.endsWith("/api/v1/auth/session")) {
+        return jsonResponse(sessionPayload(marked).session);
+      }
+      if (url.startsWith(supabaseBase)) {
+        // The availability check finds no row; the registration marker is written.
+        if (init?.method === "PATCH") {
+          marked = true;
+          return jsonResponse([{ onboarded_at: marker }]);
+        }
+        return jsonResponse([]);
+      }
+      throw new Error(`unexpected fetch ${init?.method ?? "GET"} ${url}`);
+    });
+
+    await signIn("player@example.com", "correct-horse");
+    await renderApp("/signup");
+
+    await screen.findByText("Choose your name");
+    await waitFor(() =>
+      expect((screen.getByLabelText("Username") as HTMLInputElement).value).toBe("player_one"),
+    );
+    await enterName("New Player", "my_new_name");
+    expect(await screen.findByText("Username is available")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await acceptTerms();
+    fireEvent.click(screen.getByRole("button", { name: "Agree and create account" }));
+
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0]).toEqual({ displayName: "New Player", username: "my_new_name" });
   });
 });

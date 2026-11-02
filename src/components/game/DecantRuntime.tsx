@@ -32,13 +32,13 @@ import {
   budgetMs,
   canPour,
   coloursFor,
-  DECANT_BONUS_MS_PER_COLOUR,
   DECANT_DEPTH,
   DECANT_EXTRA_TUBE_MS,
   isComplete,
   type DecantRun,
   type Tube,
 } from "@/lib/games/decant";
+import { formatClockGain } from "@/lib/games/clock";
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
@@ -407,9 +407,9 @@ function Board({
             <LevelUpOverlay
               levelUp={levelUp}
               unit="Board"
-              next={`Board ${run.level} · ${colours} colours · clock +${
-                (DECANT_BONUS_MS_PER_COLOUR * coloursFor(run.level - 1)) / 1000
-              } s`}
+              next={`Board ${run.level} · ${colours} colours · clock +${formatClockGain(
+                budgetMs(run.levelsCleared) - budgetMs(run.levelsCleared - 1),
+              )}`}
               note={colours > coloursFor(run.level - 1) ? "One more colour from here." : undefined}
             />
           )}
@@ -453,7 +453,9 @@ function Board({
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
             ? "The pours you made are your score if the server agrees."
-            : `A solved board adds ${DECANT_BONUS_MS_PER_COLOUR / 1000} seconds per colour.`}
+            : `Solving this board adds ${formatClockGain(
+                budgetMs(run.levelsCleared + 1) - budgetMs(run.levelsCleared),
+              )}.`}
         </p>
         <Button variant="ghost" size="sm" disabled={!accepting} onClick={() => setConfirming(true)}>
           End run

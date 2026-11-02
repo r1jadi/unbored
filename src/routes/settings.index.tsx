@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronRight, LogOut, Shield, Trash2 } from "lucide-react";
+import { ChevronRight, LogOut, MessageSquareHeart, Shield, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Avatar, Page, PageHeader } from "@/components/common";
 import { settingsGroups } from "@/components/settings/config";
@@ -117,6 +117,22 @@ function Settings() {
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
       )}
+      <Link
+        to="/settings/$section"
+        params={{ section: "feedback" }}
+        className="press mx-4 mt-4 flex items-center gap-3 rounded-xl bg-gradient-to-br from-primary/15 via-surface to-surface p-3 md:mx-0"
+      >
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15">
+          <MessageSquareHeart className="size-5" strokeWidth={1.75} />
+        </span>
+        <span className="flex-1">
+          <span className="block text-sm font-medium">Help shape Unbored</span>
+          <span className="block text-xs text-muted-foreground">
+            We&apos;re new and change daily. Tell us what to fix, add or keep.
+          </span>
+        </span>
+        <ChevronRight className="size-4 text-muted-foreground" />
+      </Link>
       {settingsGroups.map((g) => (
         <section key={g.label} className="mt-6">
           <h2 className="px-4 pb-2 text-xs font-medium text-muted-foreground md:px-0">{g.label}</h2>

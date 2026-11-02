@@ -36,7 +36,7 @@
  *
  * ## The endless game, against the clock
  *
- * A run is a race: one clock that starts at six minutes, timed by the server from
+ * A run is a race: one clock that starts at six minutes forty, timed by the server from
  * the session's start. Every solved board scores ten points a row and adds the
  * next board's allowance — more for the harder tiers. A wrong digit never ends a
  * run: the player fixes it, and the clock is what is spent.
@@ -46,12 +46,13 @@
  */
 
 import { SUDOKU_BANK, SUDOKU_PER_TIER, SUDOKU_TIERS } from "@/lib/games/sudoku-bank";
+import { taperedBonusMs } from "@/lib/games/clock";
 
 /** The `runtime` value the catalogue must carry for these rules to play a game. */
 export const SUDOKU_RUNTIME = "sudoku";
 
 /** The rules the server can verify. Sent with every run and pinned to a session. */
-export const SUDOKU_RULES_VERSION = "sudoku@2";
+export const SUDOKU_RULES_VERSION = "sudoku@3";
 
 /** The board is always 9×9, in 3×3 boxes. */
 export const SUDOKU_SIDE = 9;
@@ -61,7 +62,7 @@ export const SUDOKU_BOX = 3;
 export const SUDOKU_MAX_ACTIONS = 8192;
 
 /** The clock a run starts with. */
-export const SUDOKU_START_MS = 360_000;
+export const SUDOKU_START_MS = 400_000;
 
 /** The time a board of each tier is given: what solving the board before it adds. */
 export const SUDOKU_ALLOWANCE_MS = [240_000, 300_000, 480_000, 600_000] as const;
@@ -177,11 +178,14 @@ export function allowanceMs(level: number): number {
 
 /**
  * The clock a run has earned once `levelsCleared` boards are solved, in ms: six
- * minutes, plus the allowance of the board after each one solved.
+ * minutes forty, plus the allowance of the board after each one solved, shrunk by
+ * the taper (`clock.ts`) for the board just solved.
  */
 export function budgetMs(levelsCleared: number): number {
   let total = SUDOKU_START_MS;
-  for (let level = 1; level <= levelsCleared; level += 1) total += allowanceMs(level + 1);
+  for (let level = 1; level <= levelsCleared; level += 1) {
+    total += taperedBonusMs(allowanceMs(level + 1), level);
+  }
   return total;
 }
 

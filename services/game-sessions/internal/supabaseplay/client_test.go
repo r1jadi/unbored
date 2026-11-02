@@ -366,6 +366,24 @@ func TestCompleteRunRoutesDecantRulesToDecantVerifier(t *testing.T) {
 	}
 }
 
+func TestCompleteRunRoutesMiniSudokuRulesToMiniSudokuVerifier(t *testing.T) {
+	rec := newRecorder(t, http.StatusOK, resultRow)
+
+	if _, err := rec.client(t).CompleteRun(context.Background(), CompleteRequest{
+		SessionID:    "ffffffff-1111-4111-8111-ffffffffffff",
+		RulesVersion: "mini-sudoku@1",
+		Actions:      []int32{1, 16, 24},
+		Score:        0,
+		DurationMS:   20000,
+	}); err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+
+	if rec.path != "/rest/v1/rpc/complete_mini_sudoku_run" {
+		t.Fatalf("path = %s, want the Mini Sudoku verifier function", rec.path)
+	}
+}
+
 func TestCompleteRunRoutesSudokuRulesToSudokuVerifier(t *testing.T) {
 	rec := newRecorder(t, http.StatusOK, resultRow)
 

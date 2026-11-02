@@ -25,13 +25,13 @@ import {
   board as drawBoard,
   budgetMs,
   cellForArrow,
-  EIGHT_PUZZLE_BONUS_MS,
   EIGHT_PUZZLE_SIDE,
   fewestMoves,
   lineTaps,
   scrambleLength,
   type EightPuzzleRun,
 } from "@/lib/games/eight-puzzle";
+import { formatClockGain } from "@/lib/games/clock";
 import { eightPuzzleHint } from "@/lib/games/hints";
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { GAME_RULES } from "@/lib/games/rules";
@@ -390,7 +390,9 @@ function Board({
               <LevelUpOverlay
                 levelUp={levelUp}
                 unit="Board"
-                next={`Board ${run.level} · par ${par} · clock +${EIGHT_PUZZLE_BONUS_MS / 1000} s`}
+                next={`Board ${run.level} · par ${par} · clock +${formatClockGain(
+                  budgetMs(run.levelsCleared) - budgetMs(run.levelsCleared - 1),
+                )}`}
                 note={fullyScrambled ? "Every board is fully scrambled from here." : undefined}
               />
             )}
@@ -403,7 +405,7 @@ function Board({
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
             ? "The slides you made are your score if the server agrees."
-            : `A solved board adds ${EIGHT_PUZZLE_BONUS_MS / 1000} seconds. Arrow keys slide too.`}
+            : `Solving this board adds ${formatClockGain(budgetMs(run.levelsCleared + 1) - budgetMs(run.levelsCleared))}. Arrow keys slide too.`}
         </p>
         <Button variant="ghost" size="sm" disabled={!accepting} onClick={() => setConfirming(true)}>
           End run

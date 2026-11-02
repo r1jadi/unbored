@@ -119,12 +119,14 @@ describe("the boards", () => {
 });
 
 describe("the clock", () => {
-  it("starts at sixty seconds and adds five seconds a row per solved board", () => {
-    expect(budgetMs(0)).toBe(60_000);
-    expect(budgetMs(1)).toBe(85_000);
-    expect(budgetMs(2)).toBe(110_000);
-    expect(budgetMs(3)).toBe(140_000);
-    expect(budgetMs(9)).toBe(60_000 + 2 * 25_000 + 6 * 30_000 + 35_000);
+  it("starts at seventy-five seconds and adds five seconds a row per solved board, tapered", () => {
+    expect(budgetMs(0)).toBe(75_000);
+    expect(budgetMs(1)).toBe(105_000);
+    expect(budgetMs(2)).toBe(132_500);
+    expect(budgetMs(3)).toBe(162_500);
+    expect(budgetMs(9)).toBe(
+      75_000 + 30_000 + 27_500 + 30_000 + 27_000 + 24_000 + 21_000 + 18_000 + 15_000 + 17_500,
+    );
   });
 });
 
@@ -139,7 +141,7 @@ describe("a run", () => {
       outcome: "playing",
       ending: null,
     });
-    expect(ZIP_RULES_VERSION).toBe("zip@1");
+    expect(ZIP_RULES_VERSION).toBe("zip@2");
   });
 
   it("starts the path only on the cell numbered 1", () => {
@@ -198,7 +200,7 @@ describe("a run", () => {
   it("assembles the submission from the run", () => {
     const run = finish(playLine("1", SEED_ONE_LINE), "stopped");
     expect(submission(run)).toEqual({
-      rulesVersion: "zip@1",
+      rulesVersion: "zip@2",
       actions: SEED_ONE_LINE,
       score: 50,
       tapsPlaced: SEED_ONE_LINE.length,

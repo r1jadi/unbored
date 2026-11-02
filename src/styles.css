@@ -453,7 +453,7 @@
   }
 }
 
-/* Updraft (components/game/UpdraftRuntime): the glider bobs while it waits for
+/* Flutter (components/game/UpdraftRuntime): the glider bobs while it waits for
    its first flap, and the ground's stripes scroll with the field. */
 .updraft-hover {
   animation: updraft-hover 900ms ease-in-out infinite alternate;

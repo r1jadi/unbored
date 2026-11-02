@@ -41,6 +41,7 @@ const DYNAMIC_PATHS = [
     "gridburst",
     "updraft",
     "decant",
+    "mini-sudoku",
   ].map((id) => `/games/${id}`),
 ];
 

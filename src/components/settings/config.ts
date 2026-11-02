@@ -4,6 +4,7 @@ import {
   HelpCircle,
   Info,
   Link2,
+  MessageSquareHeart,
   Lock,
   Palette,
   Shield,
@@ -77,6 +78,13 @@ export const settingsGroups: { label: string; items: SettingsItem[] }[] = [
   {
     label: "Support",
     items: [
+      {
+        slug: "feedback",
+        title: "Send feedback",
+        desc: "Ideas, bugs, kind words",
+        icon: MessageSquareHeart,
+        pageTitle: "Send feedback",
+      },
       { slug: "help", title: "Help", desc: "FAQ and contact", icon: HelpCircle, pageTitle: "Help" },
       {
         slug: "terms",

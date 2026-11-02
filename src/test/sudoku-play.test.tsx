@@ -32,7 +32,7 @@ function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
     id: "edededed-1111-4111-8111-edededededed",
     gameSlug: "sudoku",
-    rulesVersion: "sudoku@2",
+    rulesVersion: "sudoku@3",
     seed: "1",
     tileCount: 8192,
     startedAt: "2026-11-14T12:00:00.000Z",
@@ -181,14 +181,14 @@ describe("starting a run", () => {
 
     expect(JSON.parse(String(sessionCalls(spy)[0][1]?.body ?? "{}"))).toEqual({
       gameSlug: "sudoku",
-      rulesVersion: "sudoku@2",
+      rulesVersion: "sudoku@3",
       client: "web/1.0",
     });
     expect(screen.getAllByRole("button", { name: CELL })).toHaveLength(81);
     expect(screen.getByText("45 cells left")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Time left" })).toHaveAttribute(
       "aria-valuenow",
-      "360",
+      "400",
     );
   });
 });
@@ -366,7 +366,7 @@ describe("the board", () => {
     expect(screen.getByRole("group", { name: "Board 2, 9 by 9" })).toBeInTheDocument();
     expect(scoreShown()).toBe("900");
     expect(screen.getByText(/Board 1 solved, \+90/)).toBeInTheDocument();
-    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuemax"))).toBe(600);
+    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuemax"))).toBe(688);
   }, 15000);
 });
 
@@ -377,15 +377,15 @@ describe("finishing a run", () => {
     await startRun();
 
     playMoves(LINE_ONE);
-    // Past the 600 seconds the first board earned: the next move finds the clock over.
-    const later = Date.now() + 601_000;
+    // Past the 688 seconds the first board earned: the next move finds the clock over.
+    const later = Date.now() + 689_000;
     vi.spyOn(Date, "now").mockImplementation(() => later);
     playMoves([5]); // a 5 in cell 0 of board two
 
     await screen.findByRole("button", { name: /play again/i });
     expect(screen.getByText("Time's up")).toBeInTheDocument();
     const body = completionBody(spy);
-    expect(body.progress.rulesVersion).toBe("sudoku@2");
+    expect(body.progress.rulesVersion).toBe("sudoku@3");
     expect(body.progress.actions).toEqual(LINE_ONE);
     expect(body.score).toBe(90);
   }, 15000);

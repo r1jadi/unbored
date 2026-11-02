@@ -26,18 +26,21 @@
  * ## The endless game, against the clock
  *
  * Like 8 Puzzle, a run is a series of boards against one clock that the server
- * times: sixty seconds to start, and every solved board adds five seconds and ten
- * points per colour. The session is issued when the player presses Start, and the
+ * times: seventy-five seconds to start, and every solved board adds five seconds
+ * per colour — more for the first boards, less for later ones (`clock.ts`) — and
+ * ten points per colour. The session is issued when the player presses Start, and the
  * verifier refuses a run that arrives later than its clock allowed
  * (`out_of_time`). Undo, restart and the extra tube are actions too, so the server
  * replays them.
  */
 
+import { taperedBonusMs } from "@/lib/games/clock";
+
 /** The `runtime` value the catalogue must carry for these rules to play a game. */
 export const DECANT_RUNTIME = "decant";
 
 /** The rules the server can verify. Sent with every run and pinned to a session. */
-export const DECANT_RULES_VERSION = "decant@1";
+export const DECANT_RULES_VERSION = "decant@2";
 
 /** Units a tube holds. */
 export const DECANT_DEPTH = 4;
@@ -51,8 +54,11 @@ export const DECANT_MAX_COLOURS = 9;
 /** The most actions one submission may carry: a request ceiling, not a last board. */
 export const DECANT_MAX_ACTIONS = 8192;
 
-/** The clock a run starts with, and what every solved board adds per colour. */
-export const DECANT_START_MS = 60_000;
+/**
+ * The clock a run starts with, and what every solved board adds per colour
+ * before the taper (`clock.ts`).
+ */
+export const DECANT_START_MS = 75_000;
 export const DECANT_BONUS_MS_PER_COLOUR = 5_000;
 /** What the extra tube costs. */
 export const DECANT_EXTRA_TUBE_MS = 15_000;
@@ -133,13 +139,13 @@ export function coloursFor(level: number): number {
 }
 
 /**
- * The clock a run has earned, in ms: sixty seconds, five more per colour of every
- * solved board, less fifteen for every extra tube.
+ * The clock a run has earned, in ms: seventy-five seconds, five more per colour of
+ * every solved board as the taper shrinks it, less fifteen for every extra tube.
  */
 export function budgetMs(levelsCleared: number, extraTubes = 0): number {
   let ms = DECANT_START_MS - DECANT_EXTRA_TUBE_MS * extraTubes;
   for (let level = 1; level <= levelsCleared; level += 1) {
-    ms += DECANT_BONUS_MS_PER_COLOUR * coloursFor(level);
+    ms += taperedBonusMs(DECANT_BONUS_MS_PER_COLOUR * coloursFor(level), level);
   }
   return ms;
 }

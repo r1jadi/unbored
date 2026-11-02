@@ -13,7 +13,7 @@ import { clearSession } from "@/lib/auth/session";
 import { UPDRAFT_TICK_MS, replay } from "@/lib/games/updraft";
 
 /**
- * Updraft on screen.
+ * Flutter (slug `updraft`) on screen.
  *
  * Driven through the real API client against a stubbed server, with the
  * animation clock under the test's control: every frame is advanced by hand, so
@@ -121,7 +121,7 @@ async function renderRuntime() {
     createRoute({
       getParentRoute: () => root,
       path: "/",
-      component: () => <UpdraftRuntime slug="updraft" title="Updraft" />,
+      component: () => <UpdraftRuntime slug="updraft" title="Flutter" />,
     }),
     createRoute({ getParentRoute: () => root, path: "/games/$id", component: () => <p>Game</p> }),
     createRoute({
@@ -144,16 +144,16 @@ async function renderRuntime() {
 
 async function startRun() {
   fireEvent.click(await screen.findByRole("button", { name: "Start run" }));
-  return screen.getByRole("button", { name: /^Updraft field/ });
+  return screen.getByRole("button", { name: /^Flutter field/ });
 }
 
-describe("Updraft", () => {
-  it("asks for an Updraft session and shows the rules before the field", async () => {
+describe("Flutter", () => {
+  it("asks for a Flutter session and shows the rules before the field", async () => {
     const spy = mockPlayback();
     await renderRuntime();
 
     expect(await screen.findByRole("heading", { name: "Ride the updraft" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Updraft field/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Flutter field/ })).not.toBeInTheDocument();
     const start = spy.mock.calls.find((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(JSON.parse(String(start?.[1]?.body ?? "{}"))).toEqual({
       gameSlug: "updraft",

@@ -63,6 +63,7 @@ export function GameArt({
         {id === "8-puzzle" && <EightPuzzle />}
         {id === "sun-and-moon" && <SunAndMoon />}
         {id === "sudoku" && <Sudoku />}
+        {id === "mini-sudoku" && <MiniSudoku />}
         {id === "crossword" && <Crossword />}
         {id === "gridburst" && <Gridburst />}
         {id === "updraft" && <Updraft />}
@@ -87,6 +88,7 @@ const KNOWN = new Set([
   "8-puzzle",
   "sun-and-moon",
   "sudoku",
+  "mini-sudoku",
   "crossword",
   "gridburst",
   "updraft",
@@ -310,6 +312,38 @@ function SunAndMoon() {
                 : "bg-game-1 shadow-[inset_0.25em_-0.1em_0_0_var(--color-surface)]",
             )}
           />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MiniSudoku() {
+  // Seed 1's first board as it starts, box by box (two rows tall, three wide):
+  // the givens, and one digit just placed.
+  const cells = "000503530040006215210030400002623450".split("").map(Number);
+  const boxes = Array.from({ length: 6 }, (_, box) =>
+    Array.from({ length: 6 }, (_, index) => {
+      const row = Math.floor(box / 2) * 2 + Math.floor(index / 3);
+      const column = (box % 2) * 3 + (index % 3);
+      return row * 6 + column;
+    }),
+  );
+  return (
+    <div className="grid w-full grid-cols-2 gap-[min(1cqw,1cqh,0.25rem)] rounded-xl bg-surface-2 p-[min(1cqw,1cqh,0.25rem)]">
+      {boxes.map((box, b) => (
+        <div key={b} className="grid grid-cols-3 gap-px overflow-hidden rounded-sm">
+          {box.map((cell) => (
+            <div
+              key={cell}
+              className={cn(
+                "flex aspect-square items-center justify-center text-[min(3.5cqw,3.5cqh,0.85rem)] font-semibold leading-none",
+                cell === 0 ? "bg-game-3 text-background" : "bg-surface text-foreground",
+              )}
+            >
+              {cell === 0 ? 1 : cells[cell] || ""}
+            </div>
+          ))}
         </div>
       ))}
     </div>

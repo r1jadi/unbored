@@ -32,8 +32,9 @@
  * ## The endless game, against the clock
  *
  * A numbered-path puzzle is a speed puzzle, and so is this: a run is a series of boards
- * against one clock. The clock starts at sixty seconds and every solved board adds
- * five seconds per row. When it reaches zero the run is over; the player may also
+ * against one clock. The clock starts at seventy-five seconds and every solved board
+ * adds five seconds per row — more for the first boards, less for later ones
+ * (`clock.ts`). When it reaches zero the run is over; the player may also
  * end it early. A solved board scores ten points per row. The clock is enforced by
  * the server's own time, not the client's: a Zip session is issued when the player
  * presses Start, and the verifier refuses a run that arrives later than the time
@@ -43,11 +44,13 @@
  * verified it.
  */
 
+import { taperedBonusMs } from "@/lib/games/clock";
+
 /** The `runtime` value the catalogue must carry for these rules to play a game. */
 export const ZIP_RUNTIME = "zip";
 
 /** The rules the server can verify. Sent with every run and pinned to a session. */
-export const ZIP_RULES_VERSION = "zip@1";
+export const ZIP_RULES_VERSION = "zip@2";
 
 /** The largest board. Boards grow from 5×5 to 7×7 and stay there. */
 export const ZIP_MAX_SIDE = 7;
@@ -56,7 +59,7 @@ export const ZIP_MAX_SIDE = 7;
 export const ZIP_MAX_ACTIONS = 8192;
 
 /** The clock a run starts with. */
-export const ZIP_START_MS = 60_000;
+export const ZIP_START_MS = 75_000;
 
 /** The time a solved board adds, per row of that board. */
 export const ZIP_BONUS_MS_PER_ROW = 5_000;
@@ -168,11 +171,14 @@ export function boardSize(level: number): number {
   return ZIP_MAX_SIDE;
 }
 
-/** The clock a run has earned once `levelsCleared` boards are solved, in ms. */
+/**
+ * The clock a run has earned once `levelsCleared` boards are solved, in ms: each
+ * board's five seconds a row, shrunk by the taper (`clock.ts`).
+ */
 export function budgetMs(levelsCleared: number): number {
   let total = ZIP_START_MS;
   for (let level = 1; level <= levelsCleared; level += 1) {
-    total += ZIP_BONUS_MS_PER_ROW * boardSize(level);
+    total += taperedBonusMs(ZIP_BONUS_MS_PER_ROW * boardSize(level), level);
   }
   return total;
 }

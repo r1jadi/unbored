@@ -38,12 +38,12 @@ import {
   type PlaySession,
   type RunResult,
 } from "@/lib/games/sessions";
+import { formatClockGain } from "@/lib/games/clock";
 import {
   board as drawBoard,
   boardSize,
   budgetMs,
   canMove,
-  ZIP_BONUS_MS_PER_ROW,
   type ZipBoard,
   type ZipRun,
 } from "@/lib/games/zip";
@@ -487,9 +487,9 @@ function Board({
               <LevelUpOverlay
                 levelUp={levelUp}
                 unit="Board"
-                next={`Board ${run.level} · ${nextSide}×${nextSide} · clock +${
-                  (ZIP_BONUS_MS_PER_ROW * boardSize(levelUp.solved)) / 1000
-                } s`}
+                next={`Board ${run.level} · ${nextSide}×${nextSide} · clock +${formatClockGain(
+                  budgetMs(run.levelsCleared) - budgetMs(run.levelsCleared - 1),
+                )}`}
                 note={grew ? `Boards are ${nextSide}×${nextSide} from here.` : undefined}
               />
             )}
@@ -502,7 +502,7 @@ function Board({
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
             ? "The path you drew is your score if the server agrees."
-            : `A solved board adds ${(ZIP_BONUS_MS_PER_ROW * size) / 1000} seconds.`}
+            : `Solving this board adds ${formatClockGain(budgetMs(run.levelsCleared + 1) - budgetMs(run.levelsCleared))}.`}
         </p>
         <Button variant="ghost" size="sm" disabled={!accepting} onClick={() => setConfirming(true)}>
           End run

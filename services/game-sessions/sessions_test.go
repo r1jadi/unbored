@@ -1177,6 +1177,39 @@ func TestCompleteSessionAcceptsDecantPoursAndControls(t *testing.T) {
 	}
 }
 
+func TestCompleteSessionAcceptsAMiniSudokuMoveOnTheBoard(t *testing.T) {
+	// 356 is a 6 in cell 35, the last move the 6×6 board has.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("mini-sudoku@1", "60", "20000", "[1,16,24,350,356]"), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if len(backend.lastRun.Actions) != 5 || backend.lastRun.Actions[4] != 356 {
+		t.Fatalf("actions = %v, want the submitted actions", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionRejectsAMiniSudokuMovePastTheBoard(t *testing.T) {
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("mini-sudoku@1", "0", "20000", "[360]"), "")
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (%#v)", status, body)
+	}
+	if backend.runCalls != 0 {
+		t.Fatal("a move outside the Mini Sudoku board reached the verifier")
+	}
+}
+
 func TestCompleteSessionRejectsADecantActionPastTheCodes(t *testing.T) {
 	backend := testBackend()
 	server := testServer(t, backend)

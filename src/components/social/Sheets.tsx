@@ -1,6 +1,6 @@
-import { Link2, Mail, MessageCircle, Send, Trash2 } from "lucide-react";
+import { Link2, Mail, MessageCircle, Reply, Send, Trash2, X } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Avatar, ErrorState, UserAvatar } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,9 @@ import { avatarUrl, getProfileState } from "@/lib/users/profile";
  * over-long bodies never reach the database — and the CHECK constraint stays
  * the authority behind it. Bodies render as plain text, so no markup a caller
  * typed can execute.
+ *
+ * Replies sit one level deep under the comment they answer: the reply control
+ * appears on top-level comments only, matching what the database accepts.
  */
 export function CommentsSheet({
   open,
@@ -58,6 +61,26 @@ export function CommentsSheet({
   const thread = useComments(open ? (gameId ?? undefined) : undefined);
   const [draft, setDraft] = useState("");
   const [postError, setPostError] = useState<string>();
+  const [replyTo, setReplyTo] = useState<GameComment | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+
+  // Top-level comments in order, each with its replies. A reply whose parent is
+  // not in the list (hidden or removed) is not shown on its own.
+  const threads = useMemo(() => {
+    const replies = new Map<string, GameComment[]>();
+    for (const item of thread.items) {
+      if (item.parentId === null) continue;
+      const list = replies.get(item.parentId) ?? [];
+      list.push(item);
+      replies.set(item.parentId, list);
+    }
+    return thread.items
+      .filter((item) => item.parentId === null)
+      .map((item) => ({ comment: item, replies: replies.get(item.id) ?? [] }));
+  }, [thread.items]);
+
+  // A reply target that has since been deleted is dropped.
+  const activeReply = replyTo && thread.items.some((i) => i.id === replyTo.id) ? replyTo : null;
 
   const total = thread.count ?? count ?? null;
 
@@ -66,8 +89,9 @@ export function CommentsSheet({
     if (thread.posting) return;
     setPostError(undefined);
     try {
-      await thread.post(draft);
+      await thread.post(draft, activeReply?.id);
       setDraft("");
+      setReplyTo(null);
     } catch (error) {
       setPostError(error instanceof ApiError ? error.message : "Couldn't post the comment.");
     }
@@ -111,29 +135,66 @@ export function CommentsSheet({
             </div>
           ) : (
             <ul className="space-y-4">
-              {thread.items.map((comment) => (
+              {threads.map(({ comment, replies }) => (
                 <CommentRow
                   key={comment.id}
                   comment={comment}
                   mine={myId !== null && comment.authorId === myId}
                   onDelete={() => thread.remove(comment.id)}
-                />
+                  onReply={
+                    auth.status === "authenticated"
+                      ? () => {
+                          setReplyTo(comment);
+                          input.current?.focus();
+                        }
+                      : undefined
+                  }
+                >
+                  {replies.length > 0 && (
+                    <ul className="mt-3 space-y-3" aria-label="Replies">
+                      {replies.map((reply) => (
+                        <CommentRow
+                          key={reply.id}
+                          comment={reply}
+                          mine={myId !== null && reply.authorId === myId}
+                          onDelete={() => thread.remove(reply.id)}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </CommentRow>
               ))}
             </ul>
           )}
         </div>
         {auth.status === "authenticated" ? (
           <form className="safe-bottom border-t border-border p-3" onSubmit={(e) => void submit(e)}>
+            {activeReply && (
+              <div className="mb-2 flex items-center justify-between rounded-full bg-surface-2 px-3 py-1 text-xs text-muted-foreground">
+                <span className="truncate">
+                  Replying to {activeReply.author ? `@${activeReply.author.username}` : "a player"}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Cancel reply"
+                  className="ml-2 shrink-0 hover:text-foreground"
+                  onClick={() => setReplyTo(null)}
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            )}
             <Label htmlFor="comment" className="sr-only">
-              Add a comment
+              {activeReply ? "Write a reply" : "Add a comment"}
             </Label>
             <div className="flex items-center gap-2">
               <Avatar name={name} src={avatar} size="sm" />
               <input
                 id="comment"
+                ref={input}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="Add a comment…"
+                placeholder={activeReply ? "Add a reply…" : "Add a comment…"}
                 maxLength={MAX_COMMENT_LENGTH + 1}
                 aria-describedby={postError ? "comment-error" : undefined}
                 className="h-10 flex-1 rounded-full bg-surface-2 px-4 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
@@ -141,7 +202,7 @@ export function CommentsSheet({
               <Button
                 type="submit"
                 size="icon"
-                aria-label="Post comment"
+                aria-label={activeReply ? "Post reply" : "Post comment"}
                 disabled={thread.posting || draft.trim() === ""}
                 className="rounded-full"
               >
@@ -177,10 +238,16 @@ function CommentRow({
   comment,
   mine,
   onDelete,
+  onReply,
+  children,
 }: {
   comment: GameComment;
   mine: boolean;
   onDelete: () => Promise<void>;
+  /** Present on top-level comments of a signed-in viewer only. */
+  onReply?: () => void;
+  /** The nested replies, rendered under the body. */
+  children?: ReactNode;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -223,50 +290,64 @@ function CommentRow({
           {edited && <span className="text-xs text-muted-foreground">· edited</span>}
         </div>
         <p className="mt-0.5 text-sm break-words whitespace-pre-wrap">{comment.body}</p>
-        {mine && (
-          <div className="mt-1">
-            {confirming ? (
-              <span className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">Delete this comment?</span>
+        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+          {onReply && (
+            <button
+              type="button"
+              aria-label={`Reply to ${author ? `@${author.username}` : "this comment"}`}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={onReply}
+            >
+              <Reply className="size-3.5" />
+              Reply
+            </button>
+          )}
+          {mine && (
+            <div>
+              {confirming ? (
+                <span className="flex items-center gap-2 text-xs">
+                  <span className="text-muted-foreground">Delete this comment?</span>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="font-medium text-destructive underline underline-offset-4 disabled:opacity-50"
+                    onClick={() => {
+                      setBusy(true);
+                      void onDelete()
+                        .catch(() => {
+                          toast.error("Couldn't delete the comment.");
+                        })
+                        .finally(() => {
+                          setBusy(false);
+                          setConfirming(false);
+                        });
+                    }}
+                  >
+                    Delete
+                  </button>
+                  <button
+                    type="button"
+                    className="text-muted-foreground underline underline-offset-4"
+                    onClick={() => setConfirming(false)}
+                  >
+                    Keep
+                  </button>
+                </span>
+              ) : (
                 <button
                   type="button"
-                  disabled={busy}
-                  className="font-medium text-destructive underline underline-offset-4 disabled:opacity-50"
-                  onClick={() => {
-                    setBusy(true);
-                    void onDelete()
-                      .catch(() => {
-                        toast.error("Couldn't delete the comment.");
-                      })
-                      .finally(() => {
-                        setBusy(false);
-                        setConfirming(false);
-                      });
-                  }}
+                  aria-label="Delete comment"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
+                  onClick={() => setConfirming(true)}
                 >
+                  <Trash2 className="size-3.5" />
                   Delete
                 </button>
-                <button
-                  type="button"
-                  className="text-muted-foreground underline underline-offset-4"
-                  onClick={() => setConfirming(false)}
-                >
-                  Keep
-                </button>
-              </span>
-            ) : (
-              <button
-                type="button"
-                aria-label="Delete comment"
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
-                onClick={() => setConfirming(true)}
-              >
-                <Trash2 className="size-3.5" />
-                Delete
-              </button>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
+        {children}
       </div>
     </li>
   );

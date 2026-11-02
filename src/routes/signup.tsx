@@ -144,23 +144,31 @@ function Signup() {
   // The database decides (`onboarded_at` through the session), never a local
   // guess, so a reload mid-way lands back on the same step.
   const completing = auth.status === "authenticated" && auth.session.onboarded === false;
-  // On the completion path the account (and its profile row) already exists, so
-  // there is nothing to choose: the username was written by the sign-up trigger
-  // before the confirmation email was sent. It is shown, not editable.
+  // On the completion path the account (and its profile row) already exists with
+  // a username the sign-up trigger wrote — for a Google sign-up, a generated one.
+  // It is offered as the starting value and can be changed here: a different one
+  // is checked for availability like any chosen at sign-up, then written with the
+  // display name.
   const storedUsername =
     completing && profileState.status === "ready" ? profileState.profile.username : undefined;
   const chosenUsername = normalizeUsername(username);
+  // Keeping the stored username needs no availability check: it is already ours.
+  const keepingStored =
+    completing && storedUsername !== undefined && chosenUsername === storedUsername;
   const usernameUsable =
-    completing ||
+    keepingStored ||
     (usernameStatus.state === "available" && usernameStatus.username === chosenUsername);
-  const usernameMessage = usernameError ?? usernameStatusMessage(usernameStatus);
+  const usernameMessage =
+    usernameError ??
+    (keepingStored ? "This is your current username." : usernameStatusMessage(usernameStatus));
   const usernameTone =
     usernameError !== undefined ||
-    usernameStatus.state === "taken" ||
-    usernameStatus.state === "invalid" ||
-    usernameStatus.state === "error"
+    (!keepingStored &&
+      (usernameStatus.state === "taken" ||
+        usernameStatus.state === "invalid" ||
+        usernameStatus.state === "error"))
       ? "text-destructive"
-      : usernameStatus.state === "available"
+      : !keepingStored && usernameStatus.state === "available"
         ? "text-primary"
         : "text-muted-foreground";
   // Signing in to an account that already exists must never lead back into the
@@ -176,6 +184,13 @@ function Signup() {
     setStep((current) => (current === 0 ? 1 : current));
     setDisplayName((current) => (current === "" ? storedPendingDisplayName() : current));
   }, [completing]);
+
+  // The stored username fills the field once it has loaded, and never overwrites
+  // what the person has already typed.
+  useEffect(() => {
+    if (storedUsername === undefined) return;
+    setUsername((current) => (current === "" ? storedUsername : current));
+  }, [storedUsername]);
 
   // A fresh "taken" answer is more precise than the server's refusal text that
   // sent the visitor back here; keep the field in sync with what the check now
@@ -270,11 +285,28 @@ function Signup() {
     setErr(undefined);
     setBusy(true);
     try {
-      await completeRegistration(displayName.trim());
+      await completeRegistration(
+        displayName.trim(),
+        completing && !keepingStored ? chosenUsername : undefined,
+      );
       forgetPendingDisplayName();
       await loadSession();
       nav({ to: "/account-created" });
     } catch (error) {
+      // A username the server refused (taken in the meantime, or malformed) sends
+      // the person back to the name step, where the field can be fixed.
+      if (
+        completing &&
+        error instanceof ApiError &&
+        error.details.some((detail) => detail.field === "username")
+      ) {
+        setErr(undefined);
+        setErrCode(undefined);
+        setUsernameError(error.message);
+        setUsernameCheck((value) => value + 1);
+        setStep(1);
+        return;
+      }
       setErr(authErrorMessage(error));
       setErrCode(error instanceof ApiError ? error.code : "unknown_error");
     } finally {
@@ -432,7 +464,7 @@ function Signup() {
             }
             setNameError(undefined);
 
-            if (!completing) {
+            if (completing ? !keepingStored : true) {
               // The same rule the API and the database apply. Format problems
               // are reported here; a name the check has not cleared (or has
               // cleared for a different value) never moves the form forward.
@@ -464,63 +496,44 @@ function Signup() {
               error={nameError}
             />
 
-            {completing ? (
-              <div className="space-y-1.5">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  value={storedUsername ?? ""}
-                  readOnly
-                  disabled
-                  aria-describedby="username-saved"
-                  className="h-12 rounded-lg bg-surface text-base md:text-sm"
-                  placeholder={storedUsername ? undefined : "Loading your username…"}
+            <div className="space-y-1.5">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                name="username"
+                required
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={username}
+                onChange={(e) => {
+                  // Normalization while typing keeps what is on screen equal
+                  // to what would be stored (and what the check asked about).
+                  setUsername(e.target.value.toLowerCase());
+                  setUsernameError(undefined);
+                }}
+                aria-invalid={
+                  usernameError !== undefined ||
+                  usernameStatus.state === "invalid" ||
+                  usernameStatus.state === "taken" ||
+                  usernameStatus.state === "error"
+                }
+                aria-describedby="username-status"
+                className="h-12 rounded-lg bg-surface text-base md:text-sm"
+              />
+              <p
+                id="username-status"
+                role="status"
+                aria-live="polite"
+                className={cn("flex items-center gap-1.5 text-xs", usernameTone)}
+              >
+                <UsernameStatusIcon
+                  status={usernameStatus}
+                  hasError={usernameError !== undefined}
                 />
-                <p id="username-saved" className="text-xs text-muted-foreground">
-                  Your username is already saved on your profile — it was applied when this account
-                  was created, even while the confirmation email was pending.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  name="username"
-                  required
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  value={username}
-                  onChange={(e) => {
-                    // Normalization while typing keeps what is on screen equal
-                    // to what would be stored (and what the check asked about).
-                    setUsername(e.target.value.toLowerCase());
-                    setUsernameError(undefined);
-                  }}
-                  aria-invalid={
-                    usernameError !== undefined ||
-                    usernameStatus.state === "invalid" ||
-                    usernameStatus.state === "taken" ||
-                    usernameStatus.state === "error"
-                  }
-                  aria-describedby="username-status"
-                  className="h-12 rounded-lg bg-surface text-base md:text-sm"
-                />
-                <p
-                  id="username-status"
-                  role="status"
-                  aria-live="polite"
-                  className={cn("flex items-center gap-1.5 text-xs", usernameTone)}
-                >
-                  <UsernameStatusIcon
-                    status={usernameStatus}
-                    hasError={usernameError !== undefined}
-                  />
-                  {usernameMessage}
-                </p>
-              </div>
-            )}
+                {usernameMessage}
+              </p>
+            </div>
             <p className="text-xs text-muted-foreground">
               Three to 24 letters, numbers or underscores. This is how others find you; it is
               unique, so capitals are stored in lowercase.

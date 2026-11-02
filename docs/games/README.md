@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Sixteen games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Seventeen games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Gridburst**, **Updraft**, **Decant** and the **Daily Crossword**. Fourteen of them — all but 7 Second and the crossword, the two daily
+**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant** and the **Daily Crossword**. Fifteen of them — all but 7 Second and the crossword, the two daily
 games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -38,8 +38,8 @@ A signed-in player keeps more than their scores:
   seed, so the board, score and level are exactly where they were — or **New
   run**, which submits the saved run as it was left (keeping its score, like any
   ended run) and starts a fresh one. A saved run stays open for twelve hours after
-  its last save. Trail, 8 Puzzle, Sun & Moon, Sudoku, Decant, 7 Second, Don't
-  Touch the Black and Updraft do not resume:
+  its last save. Trail, 8 Puzzle, Sun & Moon, Sudoku, Mini Sudoku, Decant, 7 Second, Don't
+  Touch the Black and Flutter do not resume:
   their clocks, conveyors or gliders cannot pause.
 - **Stats per game**, on the game's page: runs played, best score, rank, total
   points and when they last played, from their verified scores.
@@ -47,6 +47,27 @@ A signed-in player keeps more than their scores:
 Saved moves are never a score. A continued run is verified like any other, when
 it is submitted. See `supabase/migrations/20261108120000_saved_progress.sql` and
 `src/lib/games/saved-runs.ts`.
+
+## The tapered clock
+
+Trail, 8 Puzzle, Sun & Moon, Sudoku and Decant play boards against one clock that
+every solved board winds back. Since `zip@2`, `eight-puzzle@2`, `tango@2`,
+`sudoku@3` and `decant@2` the clock tapers: a run starts with a little more time
+(75 s instead of 60; Sun & Moon 140 s instead of 120; Sudoku 400 s instead of
+360), and each solved board adds its game's bonus scaled by the board's number:
+
+| Board solved | 1    | 2    | 3    | 4   | 5   | 6   | 7   | 8 and on |
+| ------------ | ---- | ---- | ---- | --- | --- | --- | --- | -------- |
+| Bonus        | 120% | 110% | 100% | 90% | 80% | 70% | 60% | 50%      |
+
+So a run opens gently and tightens as it goes. Every bonus is whole seconds times a
+whole percentage, so the client (`src/lib/games/clock.ts`) and the verifier
+(`public.clock_taper_pct` and each game's `*_tapered_budget_ms`) agree to the
+millisecond. The verifiers still replay the older versions on their old, flat
+clocks, so a session opened before the change still verifies. See
+`supabase/migrations/20261123120000_tapered_clocks.sql`. The per-game sections
+below describe each game's base clock; where they name a `*_budget_ms` function,
+the new versions use its `*_tapered_budget_ms` twin.
 
 ## Stack 10
 
@@ -968,10 +989,10 @@ Every board has exactly one solution.
 | Thing   | Value                                                                   |
 | ------- | ----------------------------------------------------------------------- |
 | Board   | 5×5 for levels 1–2, 6×6 for 3–8, then 7×7 for every board               |
-| Clock   | 60 s to start, +5 s per row of every solved board                       |
+| Clock   | 75 s to start, +5 s per row of every solved board, tapered (see below)  |
 | Slack   | 20 s: how late after its clock a run may still reach the server         |
 | Cells   | 8192 at most in one submission: a request bound, not a level            |
-| Rules   | `zip@1`                                                                 |
+| Rules   | `zip@2` (the verifier still replays `zip@1`, on its old clock)          |
 | Runtime | `zip` (the catalogue's `games.runtime` value)                           |
 
 ### How the real game works, and what this one keeps
@@ -1113,9 +1134,9 @@ read 1 to 8 in reading order with the gap in the bottom-right corner.
 | -------- | --------------------------------------------------------------- |
 | Board    | 3×3, always                                                     |
 | Scramble | 10 gap steps on board one, +3 a board, up to 80                 |
-| Clock    | 60 s to start, +15 s per solved board; 20 s of slack            |
+| Clock    | 75 s to start, +15 s per solved board, tapered; 20 s of slack   |
 | Slides   | 8192 at most in one submission: a request bound, not a level    |
-| Rules    | `eight-puzzle@1`                                                |
+| Rules    | `eight-puzzle@2` (the verifier still replays `eight-puzzle@1`)  |
 | Runtime  | `eight-puzzle` (the catalogue's `games.runtime` value; slug `8-puzzle`) |
 
 ### The boards
@@ -1211,9 +1232,9 @@ one solution.
 | Board   | 6×6, always                                                     |
 | Givens  | 9 cells on board one, one fewer a board, never fewer than 3     |
 | Signs   | `=` and `×` between neighbours, added until the board is unique |
-| Clock   | 120 s to start, +45 s per solved board; 20 s of slack           |
+| Clock   | 140 s to start, +45 s per solved board, tapered; 20 s of slack  |
 | Taps    | 8192 at most in one submission: a request bound, not a level    |
-| Rules   | `tango@1`                                                       |
+| Rules   | `tango@2` (the verifier still replays `tango@1`)                |
 | Runtime | `tango` (the catalogue's `games.runtime` value)                 |
 
 ### The boards
@@ -1310,9 +1331,9 @@ Some cells start filled, and every board has exactly one solution.
 | Board   | 9×9 in 3×3 boxes, always                                                 |
 | Boards  | from a bank of 200 graded puzzles, one solution each                     |
 | Tiers   | boards 1–2 gentle, 3–5 easy, 6–9 medium, then hard                       |
-| Clock   | 360 s to start; each solved board adds the next one's allowance; 20 s of slack |
+| Clock   | 400 s to start; each solved board adds the next one's allowance, tapered; 20 s of slack |
 | Moves   | 8192 at most in one submission: a request bound, not a level             |
-| Rules   | `sudoku@2` (the verifier still replays `sudoku@1`)                       |
+| Rules   | `sudoku@3` (the verifier still replays `sudoku@2` and `sudoku@1`)        |
 | Runtime | `sudoku` (the catalogue's `games.runtime` value)                         |
 
 ### The bank and the tiers
@@ -1423,6 +1444,132 @@ reading order, 0 empty).
 4. **The clock** — a session started seven hundred seconds earlier: board one
    alone (360 + 240 s, + 20 s) is `out_of_time`; both boards (360 + 240 + 300 s,
    + 20 s) are on time.
+
+## Mini Sudoku
+
+Sudoku on a 6×6 grid: quick to start, hard to put down. Fill the grid so that
+every row, every column and every 2×3 box (two rows tall, three wide) holds the
+digits 1 to 6 once each. Some cells start filled, and every board has exactly one
+solution. It plays as Sudoku does — an endless run against a clock — on a board
+that takes a minute or two instead of ten.
+
+### The board
+
+| Thing   | Value                                                                              |
+| ------- | ---------------------------------------------------------------------------------- |
+| Board   | 6×6 in boxes two rows tall and three columns wide, always                          |
+| Boards  | from a bank of 120 puzzles, one solution each                                      |
+| Tiers   | boards 1–2 gentle (19 givens), 3–5 easy (16), 6–9 medium (14), then hard (12)      |
+| Clock   | 120 s to start; each solved board adds the next one's allowance, tapered; 15 s of slack |
+| Moves   | 8192 at most in one submission: a request bound, not a level                       |
+| Rules   | `mini-sudoku@1`                                                                    |
+| Runtime | `mini-sudoku` (the catalogue's `games.runtime` value)                              |
+
+### The bank and the tiers
+
+Every board comes from a bank of 120 puzzles in four tiers of 30, generated by
+`scripts/generate-mini-sudoku-bank.mjs` and copied exactly into
+`src/lib/games/mini-sudoku-bank.ts` and `public.mini_sudoku_bank()`. Each puzzle
+is checked to have exactly one solution; the tiers differ in how many cells they
+give:
+
+| Tier   | Boards | Givens | Allowance |
+| ------ | ------ | ------ | --------- |
+| gentle | 1–2    | 19     | 60 s      |
+| easy   | 3–5    | 16     | 75 s      |
+| medium | 6–9    | 14     | 105 s     |
+| hard   | 10+    | 12     | 135 s     |
+
+The bank is a fixed asset: regenerating it changes every board, so it needs a new
+rules version.
+
+### A board: a bank puzzle, disguised
+
+The same disguise as Sudoku, fitted to the 6×6 grid (three bands of two rows, two
+stacks of three columns). Relabelling the digits, shuffling rows within a band, the
+bands, columns within a stack and the stacks all keep a puzzle's solutions
+one-for-one, so a bank puzzle stays unique however it is disguised.
+
+```
+state₀ = ((seed mod 2³²) + 2³²) mod 2³²            // as Sudoku, Crowns and Trail
+if state₀ = 0 then state₀ = 2654435769
+stateₙ = (stateₙ₋₁ × 1664525 + 1013904223) mod 2³²  // advanced once per level
+t = stateₙ; draw() = t ← (t × 22695477 + 1) mod 2³²; t >> 16
+shuffle(xs): Fisher–Yates, i from |xs| − 1 down to 1, j = draw() mod (i + 1)
+tier(n)  = 0 if n ≤ 2, 1 if n ≤ 5, 2 if n ≤ 9, else 3
+puzzle   = bank[tier(n) × 30 + draw() mod 30]
+digits   = shuffle([1..6])                           // digit d becomes digits[d]
+rows     = bands = shuffle([0,1,2]); for each band b in that order:
+           for w in shuffle([0,1]): 2b + w
+columns  = stacks = shuffle([0,1]); for each stack s in that order:
+           for w in shuffle([0,1,2]): 3s + w
+start(r, c) = relabel(puzzle(rows[r], columns[c]))   // 0 stays empty
+```
+
+A board is solved when it is **full and obeys the rules**.
+
+### A move, scoring and the clock
+
+A move is one number, **cell × 10 + digit**: it puts the digit (1–6) in the cell
+(0–35), or clears the cell when the digit is 0, so moves run from 0 to 356. A
+given, a cell off the board, a digit above 6, or a move that leaves the cell as it
+was is not a move. The screen marks digits that repeat in a row, column or box, but
+a wrong digit never ends a run — the player fixes it, and the clock is what is
+spent. Pencil notes, Undo and hints are display, as in Sudoku.
+
+A move that leaves the board solved scores **sixty points** (ten a row; the screen
+shows ten times that, as it does for every game), adds the next board's allowance
+to the clock — scaled by `clock_taper_pct` for the board just solved, as in the
+other timed games — and deals the next board. The run ends when the clock reaches
+zero or the player ends it; any prefix of a legal line is valid, because the score
+never goes down.
+
+The verifier refuses a run that reaches it more than
+`mini_sudoku_budget_ms(boards solved) + mini_sudoku_slack_ms()` after the session
+started (`out_of_time`, a `422`), where the budget is 120 s plus, for each solved
+board, the allowance of the board after it, tapered.
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261126120000_mini_sudoku_sessions.sql`.
+
+- `public.mini_sudoku_start(seed, level)` returns a board's starting cells (36
+  values); `mini_sudoku_bank()`, `mini_sudoku_tier(level)`,
+  `mini_sudoku_allowance_ms(tier)` and `mini_sudoku_budget_ms(cleared)` are the
+  bank, the tiers and the clock; `mini_sudoku_solved(cells)` is the solved check.
+  All are internals.
+- `public.start_game_session` issues (`mini-sudoku`, `mini-sudoku@1`); the session
+  reports `tile_count` 8192 and lives twelve hours.
+- `public.complete_mini_sudoku_run(session, actions, score, duration)` replays the
+  moves, derives the score, compares it with the claim, checks the clock and only
+  then records it. The Go service routes `mini-sudoku@` runs to it and accepts up
+  to 8192 moves from 0 to 359.
+- `20261126120100_mini_sudoku_playable.sql` inserts the catalogue record (Puzzle).
+  It lands last, after the service and the client are deployed.
+
+### Test vectors
+
+Each vector is asserted by both the SQL suite and the client engine (cells in
+reading order, 0 empty).
+
+1. **Seed 1's first two boards** (both gentle, 19 givens) start from
+   `000503530040006215210030400002623450` and
+   `240015531002600400403256004000320060`. Seed 1's boards 3, 6 and 10 have 16,
+   14 and 12 givens.
+2. **A full-width seed** — `9223372036854775807`'s first board starts from
+   `530040040305103462020510000100304056`.
+3. **Seed 1, a line** — board one filled by the moves
+   `1,16,24,42,82,91,116,123,134,205,216,234,255,261,273,286,351`: **60 points**,
+   17 moves. Board two filled by
+   `26,33,96,104,135,142,163,171,191,241,256,275,282,293,325,331,354` after it:
+   **120 points**, 34 moves.
+4. **The clock** — a session started two hundred and eighty seconds earlier: board
+   one alone (120 + 72 s, + 15 s) is `out_of_time`; both boards (120 + 72 + 82.5 s,
+   + 15 s) are on time.
+
+Asserted in [`src/lib/games/mini-sudoku.test.ts`](../../src/lib/games/mini-sudoku.test.ts)
+and `tests/security/rls_test.sql`.
 
 ## Daily Crossword
 
@@ -2130,7 +2277,11 @@ verifier when this game was added:
 4. **The ramp** — `bigPercent` is 8 at pieces 0–11, 9 at 12, 16 at 100 and 40
    from 384.
 
-## Updraft
+## Flutter
+
+Formerly **Updraft**. Its slug, runtime and rules version keep the old name
+(`updraft`, `updraft`, `updraft@1`), so links, sessions and recorded scores are
+unchanged; only the title players see was renamed.
 
 A glider falls; a tap lifts it. Columns scroll in from the right, each with a gap.
 Thread the gap and score; touch a column or the ground and the run is over.
@@ -2151,7 +2302,7 @@ _Flappy Bird_, rebuilt so that a server can replay every flight.
 Every other game's rules are untimed: the screen's clock decides _when_ a move can
 be made, and the verifier replays only _what_ was made. A flight cannot be split
 that way — where the glider is depends on exactly when each flap landed — so
-Updraft's world advances in fixed ticks, sixty a second, and a flap is the tick it
+Flutter's world advances in fixed ticks, sixty a second, and a flap is the tick it
 lands on. The screen's clock decides only how many ticks have passed (never more
 than four in one frame, so a stalled tab drops time rather than fast-forwarding
 into a column); the engine decides what a tick does.
@@ -2248,10 +2399,10 @@ and two empty tubes: pour from tube to tube until every tube holds one colour.
 | ------- | ------------------------------------------------------------------------- |
 | Tubes   | Four units each; one per colour, plus two empty                           |
 | Colours | 3 on boards 1–2, one more every second board, 9 from board 13             |
-| Clock   | 60 s to start, +5 s per colour of every solved board, −15 s per extra tube |
+| Clock   | 75 s to start, +5 s per colour of every solved board, tapered, −15 s per extra tube |
 | Slack   | 20 s: how late after its clock a run may still reach the server           |
 | Actions | 8192 at most: `from × 16 + to` a pour, 253 extra tube, 254 undo, 255 restart |
-| Rules   | `decant@1`                                                                |
+| Rules   | `decant@2` (the verifier still replays `decant@1`)                        |
 | Runtime | `decant` (the catalogue's `games.runtime` value)                          |
 
 ### How the real game works, and what this one keeps

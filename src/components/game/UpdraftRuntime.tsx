@@ -50,7 +50,7 @@ const across = (units: number) => `${(units / UPDRAFT_WIDTH) * 100}%`;
 const down = (units: number) => `${(units / UPDRAFT_HEIGHT) * 100}%`;
 
 /**
- * Updraft, playing for real.
+ * Flutter (slug `updraft`), playing for real.
  *
  * The field is a view onto `useUpdraftRun`, which owns the whole lifecycle: a
  * session issued by the server, the columns laid out from its seed, and the score
@@ -315,7 +315,7 @@ function Field({
           ref={fieldRef}
           tabIndex={0}
           role="button"
-          aria-label="Updraft field. Tap, click or press Space to flap."
+          aria-label="Flutter field. Tap, click or press Space to flap."
           aria-disabled={!accepting}
           onPointerDown={(event) => {
             event.preventDefault();

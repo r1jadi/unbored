@@ -192,7 +192,7 @@ export const GAME_RULES = {
       },
       {
         lead: "The clock",
-        text: "starts at 60 seconds, and every solved board adds five seconds a row. Each board is worth 100 points a row, the boards grow as you go, and the run ends when the clock does.",
+        text: "starts at 75 seconds, and every solved board adds about five seconds a row: a little more early on, less as the run goes. Each board is worth 100 points a row, the boards grow as you go, and the run ends when the clock does.",
       },
     ],
   },
@@ -210,7 +210,7 @@ export const GAME_RULES = {
       },
       {
         lead: "The clock",
-        text: "starts at 60 seconds, and every solved board adds 15 seconds and 100 points. The run ends when the clock does.",
+        text: "starts at 75 seconds, and every solved board adds 100 points and time: 18 seconds for the first, less with each board after, down to 7.5. The run ends when the clock does.",
       },
     ],
   },
@@ -232,7 +232,7 @@ export const GAME_RULES = {
       },
       {
         lead: "The clock",
-        text: "starts at two minutes, and every solved board adds 45 seconds and 600 points. Each board starts with fewer cells filled, and the run ends when the clock does.",
+        text: "starts at 2:20, and every solved board adds 600 points and time: 54 seconds for the first, less with each board after, down to 22.5. Each board starts with fewer cells filled, and the run ends when the clock does.",
       },
     ],
   },
@@ -254,7 +254,29 @@ export const GAME_RULES = {
       },
       {
         lead: "The clock",
-        text: "starts at six minutes. Boards start gentle and get harder, and every solved board scores 900 points and adds the next board's time. The run ends when the clock does.",
+        text: "starts at 6:40. Boards start gentle and get harder, and every solved board scores 900 points and adds time for the next one: generous early on, tighter as the run goes. The run ends when the clock does.",
+      },
+    ],
+  },
+  "mini-sudoku": {
+    heading: "One to six",
+    summary: "A small Sudoku on a 6×6 grid. Beat the clock.",
+    rules: [
+      {
+        lead: "Fill the grid",
+        text: "so that every row, every column and every 2×3 box (two rows tall, three wide) holds the digits 1 to 6 once each. Every board has exactly one solution.",
+      },
+      {
+        lead: "Pick a cell",
+        text: "and tap a number to place it, or Erase to clear it. You can also type 1 to 6, and move with the arrow keys. Cells that start filled stay as they are; a digit that repeats is marked in red.",
+      },
+      {
+        lead: "Notes and Undo",
+        text: "Turn on Notes (or press N) to jot small candidate digits in a cell; placing a digit tidies them away. Undo (Ctrl+Z) steps back.",
+      },
+      {
+        lead: "The clock",
+        text: "starts at 2:00. Boards start gentle and get harder, and every solved board scores 600 points and adds time for the next one: generous early on, tighter as the run goes. The run ends when the clock does.",
       },
     ],
   },
@@ -312,7 +334,7 @@ export const GAME_RULES = {
       },
       {
         lead: "Sort every tube",
-        text: "into a single colour to solve the board: 10 points per colour, and 5 more seconds on the clock per colour.",
+        text: "into a single colour to solve the board: 10 points per colour, and about 5 more seconds on the clock per colour: a little more early on, less as the run goes.",
       },
       {
         lead: "Stuck?",

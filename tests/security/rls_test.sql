@@ -400,6 +400,10 @@ select rls_test.denied($$update public.profiles set display_name = 'anon' where 
   'anon cannot write profiles');
 select rls_test.denied($$select * from public.saves$$,
   'saved games are not readable by anonymous callers at all');
+select rls_test.denied(
+  $$insert into public.feedback (user_id, mood, category, message) values ('11111111-1111-4111-8111-111111111111', 3, 'idea', 'anon feedback')$$,
+  'anonymous callers cannot send feedback'
+);
 
 reset role;
 
@@ -432,6 +436,43 @@ select rls_test.denied(
   $$update public.profiles set is_suspended = false where id = '55555555-5555-4555-8555-555555555555'$$,
   'a player cannot clear another account''s suspension'
 );
+-- Feedback
+select rls_test.allow(
+  $$insert into public.feedback (user_id, mood, category, message) values ('11111111-1111-4111-8111-111111111111', 4, 'idea', 'Add a dark mode for the feed')$$,
+  'a player can send feedback'
+);
+select rls_test.denied(
+  $$insert into public.feedback (user_id, mood, category, message) values ('22222222-2222-4222-8222-222222222222', 4, 'idea', 'sent as someone else')$$,
+  'a player cannot send feedback as another user'
+);
+select rls_test.rejected(
+  $$insert into public.feedback (user_id, mood, category, message) values ('11111111-1111-4111-8111-111111111111', 9, 'idea', 'mood out of range')$$,
+  'feedback mood is constrained to 1-5'
+);
+select rls_test.rejected(
+  $$insert into public.feedback (user_id, mood, category, message) values ('11111111-1111-4111-8111-111111111111', 3, 'spam', 'unknown category')$$,
+  'feedback category is constrained to the known set'
+);
+select rls_test.denied(
+  $$update public.feedback set message = 'edited later' where user_id = '11111111-1111-4111-8111-111111111111'$$,
+  'feedback cannot be edited through the Data API'
+);
+select rls_test.visible($$select id from public.feedback$$, 1, 'a player reads only their own feedback');
+do $$
+begin
+  for i in 1..4 loop
+    insert into public.feedback (user_id, mood, category, message)
+    values ('11111111-1111-4111-8111-111111111111', 3, 'other', 'message number ' || i);
+  end loop;
+  begin
+    insert into public.feedback (user_id, mood, category, message)
+    values ('11111111-1111-4111-8111-111111111111', 3, 'other', 'one too many');
+    raise exception 'ASSERTION FAILED: feedback is rate limited per hour';
+  exception when check_violation then
+    raise notice 'ok   feedback is rate limited per hour';
+  end;
+end $$;
+
 -- Usernames are writable by their own account only. The format CHECK and the
 -- case-insensitive unique index stay the authority behind the API's validation:
 -- 'BOB' never reaches the index because the format check rejects uppercase
@@ -509,6 +550,23 @@ select rls_test.denied(
 select rls_test.denied(
   $$insert into public.comments (game_id, author_id, body) values ('aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', '22222222-2222-4222-8222-222222222222', 'not mine')$$,
   'a player cannot post as another user'
+);
+
+select rls_test.allow(
+  $$insert into public.comments (id, game_id, author_id, parent_id, body) values ('bbbbbbbb-4444-4444-8444-bbbbbbbbbbbb', 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', '11111111-1111-4111-8111-111111111111', 'bbbbbbbb-3333-4333-8333-bbbbbbbbbbbb', 'a reply')$$,
+  'a player can reply to a visible top-level comment'
+);
+select rls_test.denied(
+  $$insert into public.comments (game_id, author_id, parent_id, body) values ('aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', '11111111-1111-4111-8111-111111111111', 'bbbbbbbb-4444-4444-8444-bbbbbbbbbbbb', 'a reply to a reply')$$,
+  'replies are one level deep'
+);
+select rls_test.denied(
+  $$insert into public.comments (game_id, author_id, parent_id, body) values ('aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', '11111111-1111-4111-8111-111111111111', 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb', 'reply to a hidden comment')$$,
+  'a hidden comment cannot be replied to'
+);
+select rls_test.denied(
+  $$insert into public.comments (game_id, author_id, parent_id, body) values ('aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', '22222222-2222-4222-8222-222222222222', 'bbbbbbbb-3333-4333-8333-bbbbbbbbbbbb', 'reply as someone else')$$,
+  'a player cannot post a reply as another user'
 );
 
 -- Social writes are always attributed to the verified caller
@@ -678,7 +736,7 @@ select rls_test.ok(
   'a moderator reads staff status from the database rather than from a claim'
 );
 select rls_test.visible($$select id from public.reports$$, 1, 'a moderator sees the report queue');
-select rls_test.visible($$select id from public.comments$$, 3, 'a moderator sees hidden comments');
+select rls_test.visible($$select id from public.comments$$, 4, 'a moderator sees hidden comments');
 select rls_test.allow(
   $$update public.reports set status = 'reviewing'$$,
   'a moderator can triage a report'
@@ -1538,6 +1596,15 @@ reset role;
 \set sudoku2_session      'a9a9a9a9-1111-4111-8111-a9a9a9a9a9a9'
 \set sudoku2_open_session 'a9a9a9a9-2222-4222-8222-a9a9a9a9a9a9'
 \set sudoku2_late_session 'a9a9a9a9-3333-4333-8333-a9a9a9a9a9a9'
+-- Mini Sudoku mini-sudoku@1: seed 1's first board is filled by :mini_board_one;
+-- :mini_two_boards fills the first and then the second: 60 points, then 120.
+\set mini_board_one 'array[1,16,24,42,82,91,116,123,134,205,216,234,255,261,273,286,351]'
+\set mini_two_boards 'array[1,16,24,42,82,91,116,123,134,205,216,234,255,261,273,286,351,26,33,96,104,135,142,163,171,191,241,256,275,282,293,325,331,354]'
+\set mini_game          'b8b8b8b8-aaaa-4aaa-8aaa-b8b8b8b8b8b8'
+\set mini_session       'b8b8b8b8-1111-4111-8111-b8b8b8b8b8b8'
+\set mini_open_session  'b8b8b8b8-2222-4222-8222-b8b8b8b8b8b8'
+\set mini_late_session  'b8b8b8b8-3333-4333-8333-b8b8b8b8b8b8'
+\set mini_old_session   'b8b8b8b8-5555-4555-8555-b8b8b8b8b8b8'
 -- The daily crossword, on fixed days: day 20000 is a Friday (a mini), 20001 a
 -- Saturday (a midi). A line types each white square's letter in reading order
 -- (cell × 32 + letter). See the Daily Crossword section of docs/games/README.md.
@@ -1586,6 +1653,8 @@ insert into public.games (id, owner_id, slug, title, status, published_at, runti
   (:'tango_game', :'alice', 'fixture-tango', 'Fixture Tango', 'published', now(), 'tango', true,
    (select id from public.categories where slug = 'logic')),
   (:'sudoku_game', :'alice', 'fixture-sudoku', 'Fixture Sudoku', 'published', now(), 'sudoku', true,
+   (select id from public.categories where slug = 'logic')),
+  (:'mini_game', :'alice', 'fixture-mini-sudoku', 'Fixture Mini Sudoku', 'published', now(), 'mini-sudoku', true,
    (select id from public.categories where slug = 'logic')),
   (:'crossword_game', :'alice', 'fixture-crossword', 'Fixture Crossword', 'published', now(), 'crossword', true,
    (select id from public.categories where slug = 'word'));
@@ -1723,6 +1792,12 @@ insert into public.game_sessions (id, game_id, user_id, seed, rules_version, sta
   (:'sudoku2_session',      :'sudoku_game', :'alice', 1, 'sudoku@2', now() - interval '30 seconds',  now() + interval '2 hours', null),
   (:'sudoku2_open_session', :'sudoku_game', :'alice', 1, 'sudoku@2', now() - interval '30 seconds',  now() + interval '2 hours', null),
   (:'sudoku2_late_session', :'sudoku_game', :'alice', 1, 'sudoku@2', now() - interval '700 seconds', now() + interval '2 hours', null),
+  -- Mini Sudoku fixtures, all on seed 1: thirty seconds into the two-minute
+  -- opening clock, except the late one at two hundred and eighty seconds.
+  (:'mini_session',      :'mini_game', :'alice', 1, 'mini-sudoku@1', now() - interval '30 seconds',  now() + interval '12 hours', null),
+  (:'mini_open_session', :'mini_game', :'alice', 1, 'mini-sudoku@1', now() - interval '30 seconds',  now() + interval '12 hours', null),
+  (:'mini_late_session', :'mini_game', :'alice', 1, 'mini-sudoku@1', now() - interval '280 seconds', now() + interval '12 hours', null),
+  (:'mini_old_session',  :'mini_game', :'alice', 1, 'mini-sudoku@0', now() - interval '30 seconds',  now() + interval '12 hours', null),
   -- Crossword fixtures. Ten seconds in is inside every grace period, so a solve
   -- scores its full base; ten minutes in is past the floor. Most are other
   -- players' or other days' so the once-a-day rule leaves them alone; the
@@ -1940,6 +2015,50 @@ select rls_test.ok(
   not public.sudoku_solved((public.sudoku_draw(1, 1))[82:162])
     and not public.sudoku_solved(array_fill(1, array[81])),
   'a Sudoku grid with empty cells, or one digit everywhere, is not solved'
+);
+-- The Mini Sudoku board draw, asserted directly against the client engine: a
+-- bank puzzle, relabelled and shuffled, 36 cells with 0 empty.
+select rls_test.ok(
+  public.mini_sudoku_start(1, 1) = array[0,0,0,5,0,3,5,3,0,0,4,0,0,0,6,2,1,5,2,1,0,0,3,0,4,0,0,0,0,2,6,2,3,4,5,0]
+    and public.mini_sudoku_start(1, 2) = array[2,4,0,0,1,5,5,3,1,0,0,2,6,0,0,4,0,0,4,0,3,2,5,6,0,0,4,0,0,0,3,2,0,0,6,0]
+    and public.mini_sudoku_start(1, 10) = array[1,0,4,3,5,0,0,0,0,0,0,4,4,0,3,6,0,0,0,1,0,0,0,0,6,0,0,0,0,5,0,0,0,0,0,2]
+    and public.mini_sudoku_start(9223372036854775807, 1) = array[5,3,0,0,4,0,0,4,0,3,0,5,1,0,3,4,6,2,0,2,0,5,1,0,0,0,0,1,0,0,3,0,4,0,5,6],
+  'mini_sudoku_start draws the boards the client engine draws'
+);
+select rls_test.ok(
+  public.mini_sudoku_start(0, 3) = public.mini_sudoku_start(2654435769, 3)
+    and public.mini_sudoku_start(0, 3) = array[0,0,1,3,0,2,3,6,0,0,5,1,0,2,0,6,0,4,0,0,0,0,2,0,2,1,0,0,0,6,4,0,6,0,0,0],
+  'a zero Mini Sudoku seed is the fixed fallback state'
+);
+select rls_test.ok(
+  (select bool_and((select count(*) from unnest(public.mini_sudoku_start(5, level)) v where v <> 0)
+               = (array[19, 16, 14, 12])[public.mini_sudoku_tier(level) + 1])
+     from generate_series(1, 20) as level),
+  'every Mini Sudoku board starts with its tier''s number of givens'
+);
+select rls_test.ok(
+  cardinality(public.mini_sudoku_bank()) = 120
+    and (select bool_and(char_length(p) = 36 and p ~ '^[0-6]{36}$') from unnest(public.mini_sudoku_bank()) p),
+  'the Mini Sudoku bank is 120 puzzles of 36 cells'
+);
+select rls_test.ok(
+  public.mini_sudoku_tier(1) = 0 and public.mini_sudoku_tier(2) = 0 and public.mini_sudoku_tier(3) = 1
+    and public.mini_sudoku_tier(6) = 2 and public.mini_sudoku_tier(10) = 3
+    and public.mini_sudoku_budget_ms(0) = 120000 and public.mini_sudoku_budget_ms(1) = 192000
+    and public.mini_sudoku_budget_ms(2) = 274500 and public.mini_sudoku_budget_ms(3) = 349500
+    and public.mini_sudoku_budget_ms(8) = 690000,
+  'the Mini Sudoku tiers and tapered clock match the client engine'
+);
+select rls_test.raises(
+  $$select public.mini_sudoku_start(1, 0)$$,
+  '22023', 'a Mini Sudoku level before the first is a request error'
+);
+select rls_test.ok(
+  public.mini_sudoku_solved(array[1,6,4,5,2,3,5,3,2,1,4,6,3,4,6,2,1,5,2,1,5,6,3,4,4,5,1,3,6,2,6,2,3,4,5,1])
+    and not public.mini_sudoku_solved(array[1,6,4,5,2,3,5,3,2,1,4,6,3,4,6,2,1,5,2,1,5,6,3,4,4,5,1,3,6,2,6,2,3,4,1,5])
+    and not public.mini_sudoku_solved(array[1,6,4,5,2,3,5,3,2,1,4,6,3,4,6,2,1,5,2,1,5,6,3,4,4,5,1,3,6,2,6,2,3,4,5,0])
+    and not public.mini_sudoku_solved(array[1,2,3]),
+  'mini_sudoku_solved wants every row, column and 2×3 box to hold 1 to 6'
 );
 select rls_test.raises(
   $$select public.sudoku_draw(1, 0)$$,
@@ -2313,11 +2432,11 @@ select rls_test.visible(
 );
 -- `fixture-%` are this suite's own playable games (the ones the refusal paths
 -- need), so the claim is about the catalogue: of the games this repository
--- ships, only the sixteen with runtimes are playable.
+-- ships, only the seventeen with runtimes are playable.
 select rls_test.visible(
   $$select 1 from public.games
-     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
-  0, 'no shipped game besides the sixteen runtimes is marked playable'
+     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
+  0, 'no shipped game besides the seventeen runtimes is marked playable'
 );
 select rls_test.says_field(
   $$public.start_game_session('stack-10', 'stack-10@1', 'test/1.0')$$,
@@ -2545,6 +2664,22 @@ select rls_test.visible(
   $$select 1 from public.games where slug = 'sudoku' and title = 'Sudoku' and playable
        and runtime = 'sudoku' and status = 'published' and is_official$$,
   1, 'the shipped Sudoku game is published, playable and names its runtime'
+);
+select rls_test.says_field(
+  $$public.start_game_session('mini-sudoku', 'mini-sudoku@1', 'test/1.0')$$,
+  'tile_count', '8192', 'a Mini Sudoku session reports its submission bound'
+);
+select rls_test.says_field(
+  $$public.start_game_session('mini-sudoku', 'mini-sudoku@1', 'test/1.0')$$,
+  'rules_version', 'mini-sudoku@1', 'a Mini Sudoku session pins its rules'
+);
+select rls_test.says(
+  $$public.start_game_session('mini-sudoku', 'sudoku@3', 'test/1.0')$$,
+  'unsupported_runtime', 'Mini Sudoku does not accept the Sudoku rules'
+);
+select rls_test.says(
+  $$public.start_game_session('sudoku', 'mini-sudoku@1', 'test/1.0')$$,
+  'unsupported_runtime', 'Sudoku does not accept the Mini Sudoku rules'
 );
 select rls_test.says_field(
   $$public.start_game_session('sudoku', 'sudoku@1', 'test/1.0')$$,
@@ -3991,6 +4126,53 @@ select rls_test.ok(
      from public.complete_sudoku_run(
        'a9a9a9a9-3333-4333-8333-a9a9a9a9a9a9'::uuid, :sudoku2_two_boards, 180, 690000) r),
   'a solved sudoku@2 board buys the next board''s allowance'
+);
+
+-- ── Mini Sudoku mini-sudoku@1 ──
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 60 and r.cleared_columns = 1 and r.tiles_placed = 17
+     from public.complete_mini_sudoku_run(
+       'b8b8b8b8-1111-4111-8111-b8b8b8b8b8b8'::uuid, :mini_board_one, 60, 25000) r),
+  'a Mini Sudoku run is recorded: one board solved, seventeen moves, 60 points'
+);
+select rls_test.says(
+  $$public.complete_mini_sudoku_run('b8b8b8b8-2222-4222-8222-b8b8b8b8b8b8'::uuid, array[30], 0, 25000)$$,
+  'invalid_actions', 'a Mini Sudoku cell that started filled cannot be changed'
+);
+select rls_test.says(
+  $$public.complete_mini_sudoku_run('b8b8b8b8-2222-4222-8222-b8b8b8b8b8b8'::uuid, array[17], 0, 25000)$$,
+  'invalid_actions', 'a Mini Sudoku digit above six is impossible play'
+);
+select rls_test.says(
+  $$public.complete_mini_sudoku_run('b8b8b8b8-2222-4222-8222-b8b8b8b8b8b8'::uuid, array[361], 0, 25000)$$,
+  'invalid_actions', 'a Mini Sudoku cell off the board is impossible play'
+);
+select rls_test.says_field(
+  format($$public.complete_mini_sudoku_run('b8b8b8b8-2222-4222-8222-b8b8b8b8b8b8'::uuid, %s, 999, 25000)$$, :'mini_two_boards'),
+  'score', '120', 'the Mini Sudoku replay is the score, and it is reported back'
+);
+select rls_test.says(
+  $$public.complete_mini_sudoku_run('b8b8b8b8-5555-4555-8555-b8b8b8b8b8b8'::uuid, array[1], 0, 25000)$$,
+  'wrong_rules', 'a session that pinned other rules is not replayed as Mini Sudoku'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 120 and r.cleared_columns = 2 and r.tiles_placed = 34
+     from public.complete_mini_sudoku_run(
+       'b8b8b8b8-2222-4222-8222-b8b8b8b8b8b8'::uuid, :mini_two_boards, 120, 25000) r),
+  'a Mini Sudoku run that solved two boards is recorded at 120'
+);
+-- The clock is the server's. The late session started two hundred and eighty
+-- seconds ago: one solved board earns 192 s (+15 s of slack), too late; two earn
+-- 274.5 s (+15), on time.
+select rls_test.says(
+  format($$public.complete_mini_sudoku_run('b8b8b8b8-3333-4333-8333-b8b8b8b8b8b8'::uuid, %s, 60, 270000)$$, :'mini_board_one'),
+  'out_of_time', 'a Mini Sudoku run that arrives after its clock ran out is refused'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 120
+     from public.complete_mini_sudoku_run(
+       'b8b8b8b8-3333-4333-8333-b8b8b8b8b8b8'::uuid, :mini_two_boards, 120, 270000) r),
+  'a solved Mini Sudoku board buys the next board''s allowance'
 );
 
 -- ── The daily crossword ──

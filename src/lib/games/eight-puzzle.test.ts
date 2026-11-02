@@ -96,8 +96,8 @@ describe("the par", () => {
 });
 
 describe("the clock", () => {
-  it("starts at sixty seconds and adds fifteen per solved board", () => {
-    expect([0, 1, 4].map(budgetMs)).toEqual([60_000, 75_000, 120_000]);
+  it("starts at seventy-five seconds and adds fifteen per solved board, tapered", () => {
+    expect([0, 1, 4].map(budgetMs)).toEqual([75_000, 93_000, 138_000]);
   });
 });
 
@@ -112,7 +112,7 @@ describe("a run", () => {
       score: 0,
       outcome: "playing",
     });
-    expect(EIGHT_PUZZLE_RULES_VERSION).toBe("eight-puzzle@1");
+    expect(EIGHT_PUZZLE_RULES_VERSION).toBe("eight-puzzle@2");
   });
 
   it("slides only a tile next to the gap", () => {
@@ -168,7 +168,7 @@ describe("a run", () => {
   it("assembles the submission from the run", () => {
     const run = finish(playLine("1", [...SOLVE_ONE, 4, 7]), "stopped");
     expect(submission(run)).toEqual({
-      rulesVersion: "eight-puzzle@1",
+      rulesVersion: "eight-puzzle@2",
       actions: [...SOLVE_ONE, 4, 7],
       score: 10,
       tapsPlaced: 12,

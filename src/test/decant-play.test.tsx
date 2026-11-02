@@ -33,7 +33,7 @@ function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
     id: "11111111-2222-4333-8444-555555555555",
     gameSlug: "decant",
-    rulesVersion: "decant@1",
+    rulesVersion: "decant@2",
     seed: "1",
     tileCount: 8192,
     startedAt: "2026-11-21T12:00:00.000Z",
@@ -141,7 +141,7 @@ describe("Decant", () => {
     const start = spy.mock.calls.find((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(JSON.parse(String(start?.[1]?.body ?? "{}"))).toMatchObject({
       gameSlug: "decant",
-      rulesVersion: "decant@1",
+      rulesVersion: "decant@2",
     });
   });
 

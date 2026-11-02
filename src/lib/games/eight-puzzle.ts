@@ -25,7 +25,8 @@
  * ## The endless game, against the clock
  *
  * Like Zip, a run is a series of boards against one clock that the server times:
- * sixty seconds to start, fifteen more for every solved board, ten points a board.
+ * seventy-five seconds to start, fifteen more for every solved board — more for the
+ * first boards, less for later ones (`clock.ts`) — and ten points a board.
  * The session is issued when the player presses Start, and the verifier refuses a
  * run that arrives later than the time its solved boards earned (`out_of_time`).
  * The player may end a run at any time and keep its score.
@@ -34,11 +35,13 @@
  * verified it.
  */
 
+import { taperedBonusMs } from "@/lib/games/clock";
+
 /** The `runtime` value the catalogue must carry for these rules to play a game. */
 export const EIGHT_PUZZLE_RUNTIME = "eight-puzzle";
 
 /** The rules the server can verify. Sent with every run and pinned to a session. */
-export const EIGHT_PUZZLE_RULES_VERSION = "eight-puzzle@1";
+export const EIGHT_PUZZLE_RULES_VERSION = "eight-puzzle@2";
 
 /** The board is always 3×3. */
 export const EIGHT_PUZZLE_SIDE = 3;
@@ -46,8 +49,8 @@ export const EIGHT_PUZZLE_SIDE = 3;
 /** The most slides one submission may carry: a request ceiling, not a final board. */
 export const EIGHT_PUZZLE_MAX_ACTIONS = 8192;
 
-/** The clock a run starts with, and what every solved board adds. */
-export const EIGHT_PUZZLE_START_MS = 60_000;
+/** The clock a run starts with, and what every solved board adds before the taper. */
+export const EIGHT_PUZZLE_START_MS = 75_000;
 export const EIGHT_PUZZLE_BONUS_MS = 15_000;
 
 /** How late after its clock ran out the server still accepts a run. */
@@ -125,7 +128,11 @@ export function scrambleLength(level: number): number {
 
 /** The clock a run has earned once `levelsCleared` boards are solved, in ms. */
 export function budgetMs(levelsCleared: number): number {
-  return EIGHT_PUZZLE_START_MS + EIGHT_PUZZLE_BONUS_MS * Math.max(0, levelsCleared);
+  let total = EIGHT_PUZZLE_START_MS;
+  for (let level = 1; level <= levelsCleared; level += 1) {
+    total += taperedBonusMs(EIGHT_PUZZLE_BONUS_MS, level);
+  }
+  return total;
 }
 
 /** Row and column steps of the gap, in the order a direction draw picks them. */

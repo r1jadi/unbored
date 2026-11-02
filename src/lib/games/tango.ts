@@ -27,7 +27,8 @@
  * ## The endless game, against the clock
  *
  * Like Zip and 8 Puzzle, a run is a race: one clock
- * that starts at two minutes and gains forty-five seconds with every solved board,
+ * that starts at two minutes twenty and gains forty-five seconds with every solved
+ * board — more for the first boards, less for later ones (`clock.ts`) —
  * timed by the server from the session's start. A solved board scores ten points
  * a row. A tap cycles a cell — sun, moon, empty — so a run is never ended by a
  * wrong symbol: a player fixes it, and the clock is what is spent. The boards stay
@@ -38,11 +39,13 @@
  * verified it.
  */
 
+import { taperedBonusMs } from "@/lib/games/clock";
+
 /** The `runtime` value the catalogue must carry for these rules to play a game. */
 export const TANGO_RUNTIME = "tango";
 
 /** The rules the server can verify. Sent with every run and pinned to a session. */
-export const TANGO_RULES_VERSION = "tango@1";
+export const TANGO_RULES_VERSION = "tango@2";
 
 /** The board is always 6×6. */
 export const TANGO_SIDE = 6;
@@ -50,8 +53,8 @@ export const TANGO_SIDE = 6;
 /** The most taps one submission may carry: a request ceiling, not a final board. */
 export const TANGO_MAX_ACTIONS = 8192;
 
-/** The clock a run starts with, and what every solved board adds. */
-export const TANGO_START_MS = 120_000;
+/** The clock a run starts with, and what every solved board adds before the taper. */
+export const TANGO_START_MS = 140_000;
 export const TANGO_BONUS_MS = 45_000;
 
 /** How late after its clock ran out the server still accepts a run. */
@@ -183,7 +186,11 @@ export function givenCount(level: number): number {
 
 /** The clock a run has earned once `levelsCleared` boards are solved, in ms. */
 export function budgetMs(levelsCleared: number): number {
-  return TANGO_START_MS + TANGO_BONUS_MS * Math.max(0, levelsCleared);
+  let total = TANGO_START_MS;
+  for (let level = 1; level <= levelsCleared; level += 1) {
+    total += taperedBonusMs(TANGO_BONUS_MS, level);
+  }
+  return total;
 }
 
 /**

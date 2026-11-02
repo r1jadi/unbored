@@ -32,7 +32,7 @@ type OnboardedRow = { onboarded_at: string | null };
  * Records that the caller finished signing up. Safe to call again: an account
  * that is already registered resolves without a write.
  */
-export async function completeRegistration(displayName?: string): Promise<void> {
+export async function completeRegistration(displayName?: string, username?: string): Promise<void> {
   const auth = getAuthState();
   const token = getAccessToken();
   if (auth.status !== "authenticated" || !token) {
@@ -43,10 +43,16 @@ export async function completeRegistration(displayName?: string): Promise<void> 
   }
 
   const name = displayName?.trim() ?? "";
-  if (name !== "") {
+  // A username is only passed when the person chose one other than the one the
+  // account was given (a Google sign-up is assigned a generated one).
+  const chosen = username?.trim() ?? "";
+  if (name !== "" || chosen !== "") {
     // The name is written through the users API first: a refused name must not
     // leave an account marked registered with a name that was never stored.
-    await updateProfile({ displayName: name });
+    await updateProfile({
+      ...(name !== "" ? { displayName: name } : {}),
+      ...(chosen !== "" ? { username: chosen } : {}),
+    });
   }
 
   const id = encodeURIComponent(auth.session.userId);

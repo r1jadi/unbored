@@ -30,7 +30,7 @@ function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
     id: "efefefef-1111-4111-8111-efefefefefef",
     gameSlug: "sun-and-moon",
-    rulesVersion: "tango@1",
+    rulesVersion: "tango@2",
     seed: "1",
     tileCount: 8192,
     startedAt: "2026-11-11T12:00:00.000Z",
@@ -170,14 +170,14 @@ describe("starting a run", () => {
 
     expect(JSON.parse(String(sessionCalls(spy)[0][1]?.body ?? "{}"))).toEqual({
       gameSlug: "sun-and-moon",
-      rulesVersion: "tango@1",
+      rulesVersion: "tango@2",
       client: "web/1.0",
     });
     expect(screen.getAllByRole("button", { name: CELL })).toHaveLength(36);
     expect(screen.getByText("27 cells left")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Time left" })).toHaveAttribute(
       "aria-valuenow",
-      "120",
+      "140",
     );
   });
 });
@@ -256,7 +256,7 @@ describe("the board", () => {
     expect(screen.getByRole("group", { name: "Board 2, 6 by 6" })).toBeInTheDocument();
     expect(scoreShown()).toBe("600");
     expect(screen.getByText(/Board 1 solved, \+60/)).toBeInTheDocument();
-    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuemax"))).toBe(165);
+    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuemax"))).toBe(194);
   });
 });
 
@@ -268,14 +268,14 @@ describe("finishing a run", () => {
 
     tapCells(LINE_ONE);
     // Past the 165 seconds the first board earned: the next tap finds the clock over.
-    const later = Date.now() + 166_000;
+    const later = Date.now() + 195_000;
     vi.spyOn(Date, "now").mockImplementation(() => later);
     tapCells([0]); // empty on board two
 
     await screen.findByRole("button", { name: /play again/i });
     expect(screen.getByText("Time's up")).toBeInTheDocument();
     const body = completionBody(spy);
-    expect(body.progress.rulesVersion).toBe("tango@1");
+    expect(body.progress.rulesVersion).toBe("tango@2");
     expect(body.progress.actions).toEqual(LINE_ONE);
     expect(body.score).toBe(60);
   });

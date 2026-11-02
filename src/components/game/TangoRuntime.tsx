@@ -39,6 +39,7 @@ import {
   type PlaySession,
   type RunResult,
 } from "@/lib/games/sessions";
+import { formatClockGain } from "@/lib/games/clock";
 import {
   board as drawBoard,
   budgetMs,
@@ -47,7 +48,6 @@ import {
   givenCount,
   MOON,
   SUN,
-  TANGO_BONUS_MS,
   TANGO_SIDE,
   type TangoRun,
   type TangoValue,
@@ -405,9 +405,9 @@ function Board({
               <LevelUpOverlay
                 levelUp={levelUp}
                 unit="Board"
-                next={`Board ${run.level} · ${givenCount(run.level)} cells to start · clock +${
-                  TANGO_BONUS_MS / 1000
-                } s`}
+                next={`Board ${run.level} · ${givenCount(run.level)} cells to start · clock +${formatClockGain(
+                  budgetMs(run.levelsCleared) - budgetMs(run.levelsCleared - 1),
+                )}`}
                 note={fewest ? "Boards start with three cells from here." : undefined}
               />
             )}
@@ -420,7 +420,7 @@ function Board({
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
             ? "The taps you made are your score if the server agrees."
-            : `Tap for a sun, again for a moon. A solved board adds ${TANGO_BONUS_MS / 1000} seconds.`}
+            : `Tap for a sun, again for a moon. Solving this board adds ${formatClockGain(budgetMs(run.levelsCleared + 1) - budgetMs(run.levelsCleared))}.`}
         </p>
         <Button variant="ghost" size="sm" disabled={!accepting} onClick={() => setConfirming(true)}>
           End run

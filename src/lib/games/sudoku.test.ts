@@ -188,11 +188,11 @@ describe("the rules on a board", () => {
 });
 
 describe("the clock", () => {
-  it("starts at six minutes and adds the next board's allowance per solved board", () => {
+  it("starts at six minutes forty and adds the next board's allowance per solved board, tapered", () => {
     // Board 2 is gentle (+4 min), 3 easy (+5), 6 medium (+8), 10 hard (+10).
-    expect([0, 1, 2].map(budgetMs)).toEqual([360_000, 600_000, 900_000]);
-    expect(budgetMs(5) - budgetMs(4)).toBe(480_000);
-    expect(budgetMs(9) - budgetMs(8)).toBe(600_000);
+    expect([0, 1, 2].map(budgetMs)).toEqual([400_000, 688_000, 1_018_000]);
+    expect(budgetMs(5) - budgetMs(4)).toBe(384_000);
+    expect(budgetMs(9) - budgetMs(8)).toBe(300_000);
   });
 });
 
@@ -206,7 +206,7 @@ describe("a run", () => {
       score: 0,
       outcome: "playing",
     });
-    expect(SUDOKU_RULES_VERSION).toBe("sudoku@2");
+    expect(SUDOKU_RULES_VERSION).toBe("sudoku@3");
   });
 
   it("puts a digit in a cell, replaces it, and clears it", () => {
@@ -263,7 +263,7 @@ describe("a run", () => {
   it("assembles the submission from the run", () => {
     const run = finish(playLine("1", LINE_ONE), "stopped");
     expect(submission(run)).toEqual({
-      rulesVersion: "sudoku@2",
+      rulesVersion: "sudoku@3",
       actions: LINE_ONE,
       score: 90,
       tapsPlaced: LINE_ONE.length,

@@ -151,8 +151,8 @@ describe("conflicts", () => {
 });
 
 describe("the clock", () => {
-  it("starts at two minutes and adds forty-five seconds per solved board", () => {
-    expect([0, 1, 2].map(budgetMs)).toEqual([120_000, 165_000, 210_000]);
+  it("starts at two minutes twenty and adds forty-five seconds per solved board, tapered", () => {
+    expect([0, 1, 2].map(budgetMs)).toEqual([140_000, 194_000, 243_500]);
   });
 });
 
@@ -166,7 +166,7 @@ describe("a run", () => {
       score: 0,
       outcome: "playing",
     });
-    expect(TANGO_RULES_VERSION).toBe("tango@1");
+    expect(TANGO_RULES_VERSION).toBe("tango@2");
   });
 
   it("cycles a cell: sun, moon, empty", () => {
@@ -217,7 +217,7 @@ describe("a run", () => {
   it("assembles the submission from the run", () => {
     const run = finish(playLine("1", LINE_ONE), "stopped");
     expect(submission(run)).toEqual({
-      rulesVersion: "tango@1",
+      rulesVersion: "tango@2",
       actions: LINE_ONE,
       score: 60,
       tapsPlaced: LINE_ONE.length,

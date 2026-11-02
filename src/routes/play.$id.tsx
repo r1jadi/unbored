@@ -10,6 +10,7 @@ import { TangoRuntime } from "@/components/game/TangoRuntime";
 import { SudokuRuntime } from "@/components/game/SudokuRuntime";
 import { CrosswordRuntime } from "@/components/game/CrosswordRuntime";
 import { DecantRuntime } from "@/components/game/DecantRuntime";
+import { MiniSudokuRuntime } from "@/components/game/MiniSudokuRuntime";
 import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
 import { GameExits } from "@/components/game/GameExits";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
@@ -36,6 +37,7 @@ import { titleFromSlug, useGame } from "@/lib/games/catalog";
 import { CHAIN_RUNTIME } from "@/lib/games/chain";
 import { COLOR_MERGE_RUNTIME } from "@/lib/games/color-merge";
 import { DECANT_RUNTIME } from "@/lib/games/decant";
+import { MINI_SUDOKU_RUNTIME } from "@/lib/games/mini-sudoku";
 import { DONT_TOUCH_RUNTIME } from "@/lib/games/dont-touch";
 import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
 import { ONE_MOVE_RUNTIME } from "@/lib/games/one-move";
@@ -93,7 +95,7 @@ export const Route = createFileRoute("/play/$id")({
  * `seven-second` plays 7 Second, `queens` plays Crowns, `zip` plays Trail,
  * `eight-puzzle` plays 8 Puzzle, `tango` plays Sun & Moon, `sudoku` plays Sudoku,
  * `crossword` plays the daily crossword, `gridburst` plays Gridburst,
- * `updraft` plays Updraft, `decant` plays Decant,
+ * `updraft` plays Flutter, `decant` plays Decant, `mini-sudoku` plays Mini Sudoku,
  * and anything else gets the honest "no runtime
  * yet" screen rather than a board that does not follow that game's rules. Every
  * catalogue game now has a runtime, but the branch stays a feature rather than a
@@ -193,7 +195,8 @@ export function PlaySurface({
       state.game.runtime === CROSSWORD_RUNTIME ||
       state.game.runtime === GRIDBURST_RUNTIME ||
       state.game.runtime === UPDRAFT_RUNTIME ||
-      state.game.runtime === DECANT_RUNTIME);
+      state.game.runtime === DECANT_RUNTIME ||
+      state.game.runtime === MINI_SUDOKU_RUNTIME);
 
   const nav = useNavigate();
   const [confirming, setConfirming] = useState(false);
@@ -357,6 +360,15 @@ export function PlaySurface({
 
         {state.status === "ready" && state.game.runtime === DECANT_RUNTIME && playable && (
           <DecantRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === MINI_SUDOKU_RUNTIME && playable && (
+          <MiniSudokuRuntime
             key={state.game.slug}
             slug={state.game.slug}
             title={state.game.title}

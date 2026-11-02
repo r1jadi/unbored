@@ -10,9 +10,10 @@
  *     duplicate guard, so a second like conflicts instead of inserting and
  *     concurrent requests cannot create two rows. Likes are public; states are
  *     per-caller.
- *   - `public.comments` (game_id, author_id, body, …) — top-level only
- *     (`parent_id IS NULL` is enforced by RLS), 1–2000 characters by CHECK, on
- *     published games only. Authors read their own hidden rows; everyone else
+ *   - `public.comments` (game_id, author_id, parent_id, body, …) — top-level
+ *     comments and one level of replies (RLS requires a reply's parent to be a
+ *     visible top-level comment on the same game), 1–2000 characters by CHECK,
+ *     on published games only. Authors read their own hidden rows; everyone else
  *     reads visible ones. Authors delete their own; hiding runs through the
  *     moderation service, never through this module.
  *   - `public.saves` (user_id, game_id) — private rows: no anonymous grant, and
@@ -53,6 +54,7 @@ type CommentRow = {
   id: string;
   game_id: string;
   author_id: string;
+  parent_id: string | null;
   body: string;
   created_at: string;
   updated_at: string | null;
@@ -80,6 +82,8 @@ export type GameComment = {
   id: string;
   gameId: string;
   authorId: string;
+  /** The top-level comment this replies to, or null for a top-level comment. */
+  parentId: string | null;
   body: string;
   createdAt: string;
   editedAt: string | null;
@@ -281,6 +285,7 @@ function toComment(row: CommentRow, authors: Map<string, PublicProfile>): GameCo
     id: row.id,
     gameId: row.game_id,
     authorId: row.author_id,
+    parentId: row.parent_id ?? null,
     body: row.body,
     createdAt: row.created_at,
     editedAt: row.updated_at,
@@ -300,7 +305,7 @@ export async function fetchComments(
   let rows: CommentRow[];
   try {
     rows = await restGet<CommentRow[]>(
-      `comments?game_id=eq.${encodeURIComponent(gameId)}&select=id,game_id,author_id,body,created_at,updated_at&order=created_at.asc&limit=${limit}`,
+      `comments?game_id=eq.${encodeURIComponent(gameId)}&select=id,game_id,author_id,parent_id,body,created_at,updated_at&order=created_at.asc&limit=${limit}`,
     );
   } catch (error) {
     throw toApiError(error, "comment");
@@ -322,11 +327,15 @@ export async function fetchCommentCount(gameId: string): Promise<number> {
 /**
  * Posts a comment as the signed-in caller. The body is validated here — empty
  * and over-long bodies never reach the database — and again by the CHECK
- * constraint, which stays the authority. Replies are not accepted: RLS only
- * stores top-level comments, so a `parent_id` would be refused as another
- * user's thread shape rather than quietly dropped.
+ * constraint, which stays the authority. A `parentId` makes the comment a
+ * reply; RLS accepts it only when the parent is a visible top-level comment on
+ * the same game, so threads stay one level deep.
  */
-export async function postComment(gameId: string, body: string): Promise<GameComment> {
+export async function postComment(
+  gameId: string,
+  body: string,
+  parentId?: string,
+): Promise<GameComment> {
   const { token, userId } = requireCaller();
   const text = body.trim();
   if (text === "") {
@@ -344,7 +353,12 @@ export async function postComment(gameId: string, body: string): Promise<GameCom
       "comments",
       "POST",
       token,
-      { game_id: gameId, author_id: userId, body: text },
+      {
+        game_id: gameId,
+        author_id: userId,
+        body: text,
+        ...(parentId ? { parent_id: parentId } : {}),
+      },
       "return=representation",
     );
     rows = (await response.json()) as CommentRow[];
@@ -379,7 +393,7 @@ export async function listMyComments(limit = 20): Promise<GameComment[]> {
   let rows: CommentRow[];
   try {
     rows = await restGet<CommentRow[]>(
-      `comments?author_id=eq.${userId}&select=id,game_id,author_id,body,created_at,updated_at&order=created_at.desc&limit=${limit}`,
+      `comments?author_id=eq.${userId}&select=id,game_id,author_id,parent_id,body,created_at,updated_at&order=created_at.desc&limit=${limit}`,
       token,
     );
   } catch (error) {
@@ -864,7 +878,7 @@ export type CommentsState = {
   loading: boolean;
   posting: boolean;
   error: string | undefined;
-  post: (body: string) => Promise<void>;
+  post: (body: string, parentId?: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
   retry: () => void;
 };
@@ -904,11 +918,11 @@ export function useComments(gameId: string | undefined): CommentsState {
   }, [gameId, tick]);
 
   const post = useCallback(
-    async (body: string) => {
+    async (body: string, parentId?: string) => {
       if (!gameId || posting) return;
       setPosting(true);
       try {
-        await postComment(gameId, body);
+        await postComment(gameId, body, parentId);
         const [rows, total] = await Promise.all([
           fetchComments(gameId),
           fetchCommentCount(gameId).catch(() => null),
@@ -924,11 +938,16 @@ export function useComments(gameId: string | undefined): CommentsState {
     [gameId, posting],
   );
 
-  const remove = useCallback(async (id: string) => {
-    await deleteComment(id);
-    setItems((rows) => rows.filter((row) => row.id !== id));
-    setCount((total) => (total === null ? null : Math.max(0, total - 1)));
-  }, []);
+  const remove = useCallback(
+    async (id: string) => {
+      await deleteComment(id);
+      // Deleting a top-level comment cascades to its replies in the database.
+      const removed = 1 + items.filter((row) => row.parentId === id).length;
+      setItems((rows) => rows.filter((row) => row.id !== id && row.parentId !== id));
+      setCount((total) => (total === null ? null : Math.max(0, total - removed)));
+    },
+    [items],
+  );
 
   const retry = useCallback(() => setTick((n) => n + 1), []);
 

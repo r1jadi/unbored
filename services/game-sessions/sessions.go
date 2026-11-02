@@ -12,7 +12,7 @@
 //     `complete_eight_puzzle_run`, `complete_tango_run`,
 //     `complete_sudoku_run`, `complete_crossword_run`,
 //     `complete_gridburst_run`, `complete_updraft_run`,
-//     `complete_decant_run`) replays the submitted
+//     `complete_decant_run`, `complete_mini_sudoku_run`) replays the submitted
 //     actions, derives the
 //     score and writes the ledger. This service validates
 //     the request shape, maps the verifier's outcome onto an HTTP answer, and
@@ -98,6 +98,8 @@ const (
 	updraftMaxActions = 8192
 	// decant@1 carries at most 8192 actions: pours, undos, restarts and extra tubes.
 	decantMaxActions = 8192
+	// mini-sudoku@1 carries at most 8192 moves.
+	miniSudokuMaxActions = 8192
 	// The bounds a move has to fit. Stack 10 addresses a column and Chain a pad,
 	// both 0 to 3; Color Merge addresses one of its four directions, also 0 to 3;
 	// Memory Flash addresses a cell of its board — sixteen for the retired 4×4
@@ -133,6 +135,9 @@ const (
 	// sudokuMoves is every move on the 9×9 board: cell × 10 + digit, from 0
 	// (cell 0 cleared) to 809 (a 9 in cell 80).
 	sudokuMoves = 810
+	// miniSudokuMoves is every move on the 6×6 board: cell × 10 + digit, from 0
+	// (cell 0 cleared) to 356 (a 6 in cell 35).
+	miniSudokuMoves = 360
 	// crosswordMoves is every crossword move: a letter as cell × 32 + code (up to
 	// 48 × 32 + 26 on the 7×7 midi), a check (1600) and a reveal (1700 + cell, up
 	// to 1748). The verifier refuses the codes in between.
@@ -398,6 +403,8 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 		limit = tangoMaxActions
 	case strings.HasPrefix(rules, "sudoku@"):
 		limit = sudokuMaxActions
+	case strings.HasPrefix(rules, "mini-sudoku@"):
+		limit = miniSudokuMaxActions
 	case strings.HasPrefix(rules, "crossword@"):
 		limit = crosswordMaxActions
 	case strings.HasPrefix(rules, "gridburst@"):
@@ -481,7 +488,7 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnprocessable,
 			"That score is not the one this run produces."))
 	case "out_of_time":
-		// Zip, 8 Puzzle, Tango and Sudoku: the run reached the server later than the clock its
+		// Zip, 8 Puzzle, Tango, Sudoku and Mini Sudoku: the run reached the server later than the clock its
 		// solved boards earned, timed from the session's own start.
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnprocessable,
 			"That run finished after its clock ran out, so it cannot be scored."))
@@ -528,6 +535,8 @@ func boardSize(rulesVersion string) int {
 		return tangoCells
 	case strings.HasPrefix(rulesVersion, "sudoku@"):
 		return sudokuMoves
+	case strings.HasPrefix(rulesVersion, "mini-sudoku@"):
+		return miniSudokuMoves
 	case strings.HasPrefix(rulesVersion, "crossword@"):
 		return crosswordMoves
 	case strings.HasPrefix(rulesVersion, "gridburst@"):

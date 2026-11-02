@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { EmptyState, ErrorState, ListSkeleton, Page, PageHeader } from "@/components/common";
+import { useEffect, useState, type ReactNode } from "react";
+import { EmptyState, ErrorState, ListSkeleton, Page } from "@/components/common";
+import { FeedTabs } from "@/components/game/Feed";
 import { GameRow } from "@/components/game/GameCard";
 import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -58,8 +59,7 @@ function Following() {
 
   if (auth.status !== "authenticated") {
     return (
-      <Page>
-        <PageHeader title="Following" />
+      <FollowingPage>
         <EmptyState
           icon={Users}
           title="Sign in to follow creators"
@@ -72,36 +72,33 @@ function Following() {
             </Button>
           }
         />
-      </Page>
+      </FollowingPage>
     );
   }
 
   if (followeeCount === undefined) {
     return (
-      <Page>
-        <PageHeader title="Following" />
+      <FollowingPage>
         <ListSkeleton rows={4} avatar={false} />
-      </Page>
+      </FollowingPage>
     );
   }
 
   if (followError) {
     return (
-      <Page>
-        <PageHeader title="Following" />
+      <FollowingPage>
         <ErrorState
           title="Couldn't load follows"
           body={followError}
           onRetry={() => setAuthTick((n) => n + 1)}
         />
-      </Page>
+      </FollowingPage>
     );
   }
 
   if (followeeCount === 0) {
     return (
-      <Page>
-        <PageHeader title="Following" />
+      <FollowingPage>
         <EmptyState
           icon={Users}
           title="You're not following anyone yet"
@@ -112,7 +109,7 @@ function Following() {
             </Button>
           }
         />
-      </Page>
+      </FollowingPage>
     );
   }
 
@@ -124,8 +121,7 @@ function FollowingGames() {
 
   if (feed.status === "anonymous") {
     return (
-      <Page>
-        <PageHeader title="Following" />
+      <FollowingPage>
         <EmptyState
           icon={Users}
           title="Sign in to follow creators"
@@ -138,42 +134,39 @@ function FollowingGames() {
             </Button>
           }
         />
-      </Page>
+      </FollowingPage>
     );
   }
 
   if (feed.status === "loading") {
     return (
-      <Page>
-        <PageHeader title="Following" />
+      <FollowingPage>
         <ListSkeleton rows={4} avatar={false} />
-      </Page>
+      </FollowingPage>
     );
   }
 
   if (feed.status === "error" && feed.items.length === 0) {
     return (
-      <Page>
-        <PageHeader title="Following" />
+      <FollowingPage>
         <ErrorState
           title="Couldn't load the following feed"
           body={catalogErrorMessage(feed.error)}
           onRetry={feed.retry}
         />
-      </Page>
+      </FollowingPage>
     );
   }
 
   if (feed.status === "ready" && feed.items.length === 0) {
     return (
-      <Page>
-        <PageHeader title="Following" />
+      <FollowingPage>
         <EmptyState
           icon={Users}
           title="No published games yet"
           body="The creators you follow haven't published any games. Check back later."
         />
-      </Page>
+      </FollowingPage>
     );
   }
 
@@ -181,8 +174,7 @@ function FollowingGames() {
   const failedMore = feed.status === "error" && items.length > 0;
 
   return (
-    <Page>
-      <PageHeader title="Following" subtitle={`${items.length} games from creators you follow`} />
+    <FollowingPage>
       <div>
         {items.map((game) => (
           <GameRow key={game.slug} game={game} />
@@ -203,6 +195,16 @@ function FollowingGames() {
         </div>
       )}
       {!failedMore && feed.status === "loading-more" && <ListSkeleton rows={2} avatar={false} />}
-    </Page>
+    </FollowingPage>
+  );
+}
+
+/** The pill toggle stays pinned above every state of this feed. */
+function FollowingPage({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <FeedTabs tab="following" />
+      <Page className="pt-[calc(4.25rem+env(safe-area-inset-top))] md:pt-24">{children}</Page>
+    </>
   );
 }

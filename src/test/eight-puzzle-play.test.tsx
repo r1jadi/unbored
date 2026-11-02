@@ -28,7 +28,7 @@ function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
     id: "cdcdcdcd-1111-4111-8111-cdcdcdcdcdcd",
     gameSlug: "8-puzzle",
-    rulesVersion: "eight-puzzle@1",
+    rulesVersion: "eight-puzzle@2",
     seed: "1",
     tileCount: 8192,
     startedAt: "2026-11-06T12:00:00.000Z",
@@ -154,21 +154,21 @@ describe("starting a run", () => {
 
     expect(screen.getByRole("heading", { name: "Slide it home" })).toBeInTheDocument();
     expect(screen.getByText(/1 to 8 in reading/)).toBeInTheDocument();
-    expect(screen.getByText(/starts at 60 seconds/)).toBeInTheDocument();
+    expect(screen.getByText(/starts at 75 seconds/)).toBeInTheDocument();
     expect(spy).not.toHaveBeenCalled();
 
     await startRun();
 
     expect(JSON.parse(String(sessionCalls(spy)[0][1]?.body ?? "{}"))).toEqual({
       gameSlug: "8-puzzle",
-      rulesVersion: "eight-puzzle@1",
+      rulesVersion: "eight-puzzle@2",
       client: "web/1.0",
     });
     expect(screen.getAllByRole("button", { name: TILE })).toHaveLength(8);
     expect(screen.getByText("0 moves · par 10")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Time left" })).toHaveAttribute(
       "aria-valuenow",
-      "60",
+      "75",
     );
   });
 });
@@ -230,7 +230,7 @@ describe("sliding tiles", () => {
     expect(screen.getByText(/Board 1 solved, \+10/)).toBeInTheDocument();
     expect(scoreShown()).toBe("100");
     expect(screen.getByText("0 moves · par 9")).toBeInTheDocument();
-    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuemax"))).toBe(75);
+    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuemax"))).toBe(93);
   });
 });
 
@@ -242,14 +242,14 @@ describe("finishing a run", () => {
 
     slide(SOLVE_ONE);
     // Seventy-six seconds later: past the 75 the first board earned.
-    const later = Date.now() + 76_000;
+    const later = Date.now() + 94_000;
     vi.spyOn(Date, "now").mockImplementation(() => later);
     slide([4]);
 
     await screen.findByRole("button", { name: /play again/i });
     expect(screen.getByText("Time's up")).toBeInTheDocument();
     const body = completionBody(spy);
-    expect(body.progress.rulesVersion).toBe("eight-puzzle@1");
+    expect(body.progress.rulesVersion).toBe("eight-puzzle@2");
     expect(body.progress.actions).toEqual(SOLVE_ONE);
     expect(body.score).toBe(10);
   });

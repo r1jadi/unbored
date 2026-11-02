@@ -40,6 +40,7 @@ import {
   type PlaySession,
   type RunResult,
 } from "@/lib/games/sessions";
+import { formatClockGain } from "@/lib/games/clock";
 import {
   board as drawBoard,
   budgetMs,
@@ -49,7 +50,6 @@ import {
   SUDOKU_BOX,
   SUDOKU_POINTS_PER_BOARD,
   SUDOKU_SIDE,
-  allowanceMs,
   tierOf,
   unitsOf,
   type SudokuDigit,
@@ -530,9 +530,9 @@ function Board({
               <LevelUpOverlay
                 levelUp={levelUp}
                 unit="Board"
-                next={`Board ${run.level} · ${tierOf(run.level)} · clock +${
-                  allowanceMs(run.level) / 60_000
-                } min`}
+                next={`Board ${run.level} · ${tierOf(run.level)} · clock +${formatClockGain(
+                  budgetMs(run.levelsCleared) - budgetMs(run.levelsCleared - 1),
+                )}`}
                 note={steppedUp ? TIER_NOTES[tierOf(run.level)] : undefined}
               />
             )}

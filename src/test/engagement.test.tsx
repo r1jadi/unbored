@@ -54,6 +54,7 @@ type CommentRow = {
   id: string;
   game_id: string;
   author_id: string;
+  parent_id?: string | null;
   body: string;
   created_at: string;
   updated_at: string | null;
@@ -313,10 +314,18 @@ function createSupabaseDouble() {
         if (text === "" || text.length > 2000) {
           return errorResponse(400, "body length");
         }
+        // Replies: the parent must be a top-level comment on the same game.
+        if (body.parent_id) {
+          const parent = db.comments.find((r) => r.id === body.parent_id);
+          if (!parent || parent.game_id !== body.game_id || parent.parent_id) {
+            return errorResponse(403, "reply parent");
+          }
+        }
         const row: CommentRow = {
           id: `cccccccc-0000-4111-8111-${String(db.commentSeq++).padStart(12, "0")}`,
           game_id: body.game_id,
           author_id: me,
+          parent_id: body.parent_id ?? null,
           body: text,
           created_at: "2026-10-14T12:00:00.000Z",
           updated_at: "2026-10-14T12:00:00.000Z",
@@ -329,7 +338,7 @@ function createSupabaseDouble() {
         const id = params.get("id")?.replace(/^eq\./, "");
         const row = db.comments.find((r) => r.id === id);
         if (row && row.author_id !== me) return errorResponse(403, "attribution");
-        db.comments = db.comments.filter((r) => r.id !== id);
+        db.comments = db.comments.filter((r) => r.id !== id && r.parent_id !== id);
         return new Response(null, { status: 204 });
       }
     }
@@ -543,6 +552,20 @@ describe("comments validate, persist and attribute", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].body).toBe("Love the daily loop.");
     expect(await fetchCommentCount(GAME_ID)).toBe(1);
+  });
+
+  it("posts a reply with its parent and refuses a reply to a reply", async () => {
+    const { handler, db } = createSupabaseDouble();
+    stubApiAndSupabase(handler);
+    await signInAsPlayer();
+
+    const parent = await postComment(GAME_ID, "Top");
+    const reply = await postComment(GAME_ID, "Answer", parent.id);
+    expect(reply.parentId).toBe(parent.id);
+    expect(parent.parentId).toBeNull();
+    expect(db.comments.at(-1)?.parent_id).toBe(parent.id);
+
+    await expect(postComment(GAME_ID, "Too deep", reply.id)).rejects.toBeInstanceOf(ApiError);
   });
 
   it("deletes an own comment and keeps the list honest", async () => {
@@ -928,6 +951,84 @@ describe("comments sheet", () => {
     fireEvent.click(screen.getByText("Delete", { selector: "button" }));
     await waitFor(() => expect(screen.queryByText("Mine")).not.toBeInTheDocument());
     expect(screen.getByText("0 comments")).toBeInTheDocument();
+  });
+
+  it("replies to a comment and nests the reply under it", async () => {
+    const { handler, db } = createSupabaseDouble();
+    db.comments.push({
+      id: "cccccccc-1111-4111-8111-cccccccccccc",
+      game_id: GAME_ID,
+      author_id: OTHER,
+      body: "Nora's take",
+      created_at: "2026-10-14T11:00:00.000Z",
+      updated_at: "2026-10-14T11:00:00.000Z",
+    });
+    stubApiAndSupabase(handler);
+    await signInAsPlayer();
+
+    await renderSheet();
+    await waitFor(() => expect(screen.getByText("Nora's take")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Reply to @nora" }));
+    expect(screen.getByText("Replying to @nora")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Add a reply…"), {
+      target: { value: "Agreed!" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Post reply" }));
+
+    await waitFor(() => expect(screen.getByText("Agreed!")).toBeInTheDocument());
+    expect(db.comments.at(-1)).toMatchObject({
+      parent_id: "cccccccc-1111-4111-8111-cccccccccccc",
+      body: "Agreed!",
+    });
+    const replies = screen.getByRole("list", { name: "Replies" });
+    expect(replies).toHaveTextContent("Agreed!");
+    // Back to a top-level composer, and replies cannot be replied to.
+    expect(screen.getByPlaceholderText("Add a comment…")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Reply to/ })).toHaveLength(1);
+    expect(screen.getByText("2 comments")).toBeInTheDocument();
+  });
+
+  it("cancels a reply and posts a top-level comment instead", async () => {
+    const { handler, db } = createSupabaseDouble();
+    db.comments.push({
+      id: "cccccccc-1111-4111-8111-cccccccccccc",
+      game_id: GAME_ID,
+      author_id: OTHER,
+      body: "Nora's take",
+      created_at: "2026-10-14T11:00:00.000Z",
+      updated_at: "2026-10-14T11:00:00.000Z",
+    });
+    stubApiAndSupabase(handler);
+    await signInAsPlayer();
+
+    await renderSheet();
+    await waitFor(() => expect(screen.getByText("Nora's take")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Reply to @nora" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel reply" }));
+    fireEvent.change(screen.getByPlaceholderText("Add a comment…"), { target: { value: "Solo" } });
+    fireEvent.click(screen.getByRole("button", { name: "Post comment" }));
+
+    await waitFor(() => expect(screen.getByText("Solo")).toBeInTheDocument());
+    expect(db.comments.at(-1)?.parent_id ?? null).toBeNull();
+  });
+
+  it("offers no reply control to anonymous visitors", async () => {
+    const { handler, db } = createSupabaseDouble();
+    db.comments.push({
+      id: "cccccccc-1111-4111-8111-cccccccccccc",
+      game_id: GAME_ID,
+      author_id: OTHER,
+      body: "Nora's take",
+      created_at: "2026-10-14T11:00:00.000Z",
+      updated_at: "2026-10-14T11:00:00.000Z",
+    });
+    stubApiAndSupabase(handler);
+
+    await renderSheet();
+    await waitFor(() => expect(screen.getByText("Nora's take")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /^Reply to/ })).not.toBeInTheDocument();
   });
 
   it("shows the sign-in prompt to anonymous visitors", async () => {

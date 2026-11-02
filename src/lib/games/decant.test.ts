@@ -127,9 +127,9 @@ describe("Decant rules", () => {
   });
 
   it("charges the clock for an extra tube and pays it for solved boards", () => {
-    expect(budgetMs(0)).toBe(60_000);
-    expect(budgetMs(2)).toBe(60_000 + 15_000 + 15_000);
-    expect(budgetMs(3, 1)).toBe(60_000 + 15_000 + 15_000 + 20_000 - 15_000);
+    expect(budgetMs(0)).toBe(75_000);
+    expect(budgetMs(2)).toBe(75_000 + 18_000 + 16_500);
+    expect(budgetMs(3, 1)).toBe(75_000 + 18_000 + 16_500 + 20_000 - 15_000);
   });
 
   it("ignores impossible actions and anything after the end", () => {

@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Avatar, EmptyState, ErrorState, Page, PageHeader, UserAvatar } from "@/components/common";
 import { LegalBody, privacy, terms } from "@/components/legal";
 import { allSettings } from "@/components/settings/config";
+import { FeedbackForm } from "@/components/settings/FeedbackForm";
 import { ProfileForm } from "@/components/settings/ProfileForm";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -406,6 +407,8 @@ function Body({ section }: { section: string }) {
       return <ConnectedSection signedIn={signedIn} />;
     case "blocked":
       return <BlockedSection signedIn={signedIn} />;
+    case "feedback":
+      return <FeedbackForm />;
     case "help":
       return (
         <>

@@ -49,44 +49,7 @@ export function Feed({
 
   return (
     <div className="relative">
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-20 md:left-60 lg:left-64">
-        <div className="pointer-events-auto mx-auto flex max-w-[460px] items-center justify-between px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] md:pt-9">
-          <LogoMark className="size-6 md:invisible" />
-          <nav className="flex gap-1 rounded-full glass p-1" aria-label="Feed">
-            {(
-              [
-                ["/", "For You", "for-you"],
-                ["/following", "Following", "following"],
-              ] as const
-            ).map(([to, label, key]) => (
-              <Link
-                key={key}
-                to={to}
-                onClick={(event) => {
-                  if (tab !== key || key !== "for-you") return;
-                  event.preventDefault();
-                  requestFeedRefresh();
-                }}
-                className={cn(
-                  "press rounded-full px-3.5 py-1.5 text-sm",
-                  tab === key
-                    ? "bg-foreground text-background font-medium"
-                    : "text-muted-foreground",
-                )}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-          <Link
-            to="/search"
-            aria-label="Search"
-            className="press flex size-9 items-center justify-center rounded-full glass md:invisible"
-          >
-            <Search className="size-[18px]" />
-          </Link>
-        </div>
-      </div>
+      <FeedTabs tab={tab} />
       <div
         ref={scroller}
         className="no-scrollbar h-dvh snap-y snap-mandatory overflow-y-auto overscroll-contain"
@@ -108,6 +71,48 @@ export function Feed({
         ) : (
           items.map((game) => <FeedItem key={game.slug} game={game} />)
         )}
+      </div>
+    </div>
+  );
+}
+
+/** The fixed For You / Following pill, shared so it persists across both feeds. */
+export function FeedTabs({ tab }: { tab: "for-you" | "following" }) {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-20 md:left-60 lg:left-64">
+      <div className="pointer-events-auto mx-auto flex max-w-[460px] items-center justify-between px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] md:pt-9">
+        <LogoMark className="size-6 md:invisible" />
+        <nav className="flex gap-1 rounded-full glass p-1" aria-label="Feed">
+          {(
+            [
+              ["/", "For You", "for-you"],
+              ["/following", "Following", "following"],
+            ] as const
+          ).map(([to, label, key]) => (
+            <Link
+              key={key}
+              to={to}
+              onClick={(event) => {
+                if (tab !== key || key !== "for-you") return;
+                event.preventDefault();
+                requestFeedRefresh();
+              }}
+              className={cn(
+                "press rounded-full px-3.5 py-1.5 text-sm",
+                tab === key ? "bg-foreground text-background font-medium" : "text-muted-foreground",
+              )}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <Link
+          to="/search"
+          aria-label="Search"
+          className="press flex size-9 items-center justify-center rounded-full glass md:invisible"
+        >
+          <Search className="size-[18px]" />
+        </Link>
       </div>
     </div>
   );
