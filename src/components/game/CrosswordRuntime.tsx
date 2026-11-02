@@ -53,6 +53,7 @@ import {
   type RunResult,
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
+import { useGameSounds } from "@/lib/sound";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["crossword"];
@@ -285,6 +286,12 @@ function Board({
   onReveal: (cells: readonly number[]) => void;
   onFinish: () => void;
 }) {
+  useGameSounds({
+    moves: run.moves.length,
+    score: 0,
+    over: run.outcome === "over",
+    ending: run.ending === "solved" ? "win" : "stop",
+  });
   const { puzzle } = run;
   const side = puzzle.side;
   const [now, setNow] = useState(() => Date.now());

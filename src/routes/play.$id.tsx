@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Clock, X } from "lucide-react";
+import { Clock, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import { ChainRuntime } from "@/components/game/ChainRuntime";
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useDocumentTitle } from "@/lib/document-title";
+import { useSoundEnabled } from "@/lib/sound";
 import { titleFromSlug, useGame } from "@/lib/games/catalog";
 import { CHAIN_RUNTIME } from "@/lib/games/chain";
 import { COLOR_MERGE_RUNTIME } from "@/lib/games/color-merge";
@@ -221,6 +222,7 @@ export function PlaySurface({
           <div className="flex-1 text-center">
             <p className="text-xs text-muted-foreground">{title}</p>
           </div>
+          <SoundToggle />
         </header>
 
         {state.status === "loading" && (
@@ -448,5 +450,21 @@ export function PlaySurface({
         </AlertDialog>
       </div>
     </RunLeaveContext.Provider>
+  );
+}
+
+/** Turns game sound effects on or off; the choice is remembered on this device. */
+function SoundToggle() {
+  const [on, setOn] = useSoundEnabled();
+  return (
+    <Button
+      variant="glass"
+      size="icon"
+      aria-label={on ? "Mute sound effects" : "Unmute sound effects"}
+      aria-pressed={!on}
+      onClick={() => setOn(!on)}
+    >
+      {on ? <Volume2 /> : <VolumeX />}
+    </Button>
   );
 }

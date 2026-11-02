@@ -28,6 +28,7 @@ import {
   type RunResult,
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
+import { useGameSounds } from "@/lib/sound";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["dont-touch"];
@@ -199,6 +200,12 @@ function Conveyor({
   slug: string;
   title: string;
 }) {
+  useGameSounds({
+    moves: run.taps.length,
+    score: run.score,
+    over: run.outcome === "over",
+    ending: run.endReason === "stop" ? "stop" : "lose",
+  });
   // A retry of a failed submission re-mounts this conveyor with the run it
   // already has; a run with taps has started, so the rules must not reappear.
   const [started, setStarted] = useState(autoStart || run.taps.length > 0);

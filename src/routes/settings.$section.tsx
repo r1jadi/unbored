@@ -13,6 +13,7 @@ import { changePassword, fetchLinkedProviders, signOut, useAuth } from "@/lib/au
 import { offeredLanguages, useLanguage } from "@/lib/settings/language";
 import { useTheme, type Appearance } from "@/lib/settings/theme";
 import { useAccessibility } from "@/lib/settings/accessibility";
+import { useSoundEnabled } from "@/lib/sound";
 import {
   defaultPreferences,
   loadPreferences,
@@ -184,6 +185,7 @@ function Body({ section }: { section: string }) {
   const { language, setLanguage } = useLanguage();
   const { choice, setChoice } = useTheme();
   const { prefs: a11y, setPrefs: setA11y } = useAccessibility();
+  const [soundOn, setSoundOn] = useSoundEnabled();
 
   // The language page is only a choice when there is more than one language to
   // pick; until then an old link to it lands on "Setting not found".
@@ -370,6 +372,15 @@ function Body({ section }: { section: string }) {
               desc="Minimise animations across the app"
               checked={a11y.reduceMotion}
               onChange={(v) => setA11y({ ...a11y, reduceMotion: v })}
+            />
+          </Group>
+          <Group title="Sound">
+            <Toggle
+              id="a5"
+              label="Game sound effects"
+              desc="Play sounds for moves, clears and the end of a run"
+              checked={soundOn}
+              onChange={setSoundOn}
             />
           </Group>
           <Group title="Display">

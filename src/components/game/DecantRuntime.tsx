@@ -49,6 +49,7 @@ import {
   type RunResult,
 } from "@/lib/games/sessions";
 import { cn } from "@/lib/utils";
+import { useGameSounds } from "@/lib/sound";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES.decant;
@@ -248,6 +249,13 @@ function Board({
   onAddTube: () => void;
   onFinish: () => void;
 }) {
+  useGameSounds({
+    moves: run.actions.length,
+    score: run.score,
+    cleared: run.levelsCleared,
+    over: run.outcome === "over",
+    ending: run.ending === "time" ? "lose" : "stop",
+  });
   const [confirming, setConfirming] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [held, setHeld] = useState<number | null>(null);

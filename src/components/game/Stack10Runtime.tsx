@@ -26,6 +26,7 @@ import {
   type Stack10Run,
 } from "@/lib/games/stack10";
 import { points } from "@/lib/format";
+import { useGameSounds } from "@/lib/sound";
 
 /**
  * Stack 10, playing for real.
@@ -181,6 +182,13 @@ function Board({
   /** Ends the run where it stands and submits it. */
   onFinish: () => void;
 }) {
+  useGameSounds({
+    moves: run.actions.length,
+    score: run.score,
+    cleared: run.clearedColumns,
+    over: run.outcome === "over",
+    ending: run.stopped || run.endReason === "limit" ? "stop" : "lose",
+  });
   const tile = run.nextTile;
   const readout = progress(run);
   const placed = readout.placed;

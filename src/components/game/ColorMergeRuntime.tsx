@@ -46,6 +46,7 @@ import {
   type RunResult,
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
+import { useGameSounds } from "@/lib/sound";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["color-merge"];
@@ -204,6 +205,12 @@ function Board({
   slug: string;
   title: string;
 }) {
+  useGameSounds({
+    moves: run.moves.length,
+    score: run.score,
+    over: run.outcome === "over",
+    ending: run.stopped || run.endReason === "limit" ? "stop" : "lose",
+  });
   // A retry of a failed submission re-mounts this board with the run it already
   // has; a run with slides has started, so the rules must not reappear. A fresh
   // run has no slides and does see them.

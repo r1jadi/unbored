@@ -25,6 +25,7 @@ import {
   type ChainRun,
 } from "@/lib/games/chain";
 import { points } from "@/lib/format";
+import { useGameSounds } from "@/lib/sound";
 
 /**
  * Chain, playing for real.
@@ -181,6 +182,13 @@ function Board({
   /** Ends the run where it stands and submits it. */
   onFinish: () => void;
 }) {
+  useGameSounds({
+    moves: run.taps.length,
+    score: run.score,
+    cleared: run.roundsCleared,
+    over: run.outcome === "over",
+    ending: run.stopped ? "stop" : "lose",
+  });
   const [showing, setShowing] = useState(true);
   const [lit, setLit] = useState<number | null>(null);
   const round = run.round;

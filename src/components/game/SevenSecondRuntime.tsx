@@ -36,6 +36,7 @@ import {
   type RunResult,
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
+import { useGameSounds } from "@/lib/sound";
 
 /**
  * 7 Second, playing for real.
@@ -189,6 +190,13 @@ function Table({
   slug: string;
   title: string;
 }) {
+  useGameSounds({
+    moves: run.answers.length,
+    score: run.score,
+    mistakes: run.answers.length - run.correct,
+    over: run.outcome === "over",
+    ending: run.endReason === "answers" ? "win" : "lose",
+  });
   // A retry of a failed submission re-mounts this table with the run it already
   // has; a run with answers has started, so the rules must not reappear.
   const [started, setStarted] = useState(autoStart || run.answers.length > 0);

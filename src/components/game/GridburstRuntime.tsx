@@ -33,6 +33,7 @@ import {
 import { useHint } from "@/lib/games/use-hint";
 import { cn } from "@/lib/utils";
 import { points } from "@/lib/format";
+import { useGameSounds } from "@/lib/sound";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES.gridburst;
@@ -198,6 +199,14 @@ function Board({
   slug: string;
   title: string;
 }) {
+  useGameSounds({
+    moves: run.moves.length,
+    score: run.score,
+    cleared: run.lines,
+    mistakes: run.misses,
+    over: run.outcome === "over",
+    ending: run.stopped || run.endReason === "limit" ? "stop" : "lose",
+  });
   const [started, setStarted] = useState(autoStart || run.moves.length > 0);
   useEffect(() => {
     if (autoStart && run.moves.length === 0) onBegin();

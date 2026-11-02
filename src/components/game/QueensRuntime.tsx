@@ -41,6 +41,7 @@ import {
   type RunResult,
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
+import { useGameSounds } from "@/lib/sound";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["queens"];
@@ -211,6 +212,14 @@ function Board({
   slug: string;
   title: string;
 }) {
+  useGameSounds({
+    moves: run.taps.length,
+    score: run.score,
+    cleared: run.levelsCleared,
+    mistakes: run.mistakes,
+    over: run.outcome === "over",
+    ending: run.stopped ? "stop" : "lose",
+  });
   const [started, setStarted] = useState(autoStart || run.taps.length > 0);
 
   // Tap to play skips the rules: the run, and its clock, start at once.

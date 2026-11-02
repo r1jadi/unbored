@@ -43,6 +43,7 @@ import {
   type RunResult,
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
+import { useGameSounds } from "@/lib/sound";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["eight-puzzle"];
@@ -217,6 +218,13 @@ function Board({
   onTap: (cell: number) => void;
   onFinish: () => void;
 }) {
+  useGameSounds({
+    moves: run.taps.length,
+    score: run.score,
+    cleared: run.levelsCleared,
+    over: run.outcome === "over",
+    ending: run.ending === "time" ? "lose" : "stop",
+  });
   const [confirming, setConfirming] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const boardRef = useRef<HTMLDivElement>(null);

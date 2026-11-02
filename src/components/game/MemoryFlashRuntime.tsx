@@ -26,6 +26,7 @@ import {
   type MemoryFlashRun,
 } from "@/lib/games/memory-flash";
 import { points } from "@/lib/format";
+import { useGameSounds } from "@/lib/sound";
 
 /**
  * Memory Flash, playing for real.
@@ -163,6 +164,13 @@ function Board({
   /** Ends the run where it stands and submits it. */
   onFinish: () => void;
 }) {
+  useGameSounds({
+    moves: run.taps.length,
+    score: run.score,
+    cleared: run.roundsCleared,
+    over: run.outcome === "over",
+    ending: run.stopped ? "stop" : "lose",
+  });
   const round = run.round;
   const seed = run.seed;
   const side = boardSide(round);

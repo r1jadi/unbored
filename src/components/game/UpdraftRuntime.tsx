@@ -30,6 +30,7 @@ import {
   type RunResult,
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
+import { useGameSounds } from "@/lib/sound";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES.updraft;
@@ -171,6 +172,12 @@ function Field({
   slug: string;
   title: string;
 }) {
+  useGameSounds({
+    moves: run.actions.length,
+    score: run.passed,
+    over: run.outcome === "over",
+    ending: run.stopped || run.endReason === "limit" ? "stop" : "lose",
+  });
   // A retried submission re-mounts with a run that has flown: no rules again.
   const [started, setStarted] = useState(autoStart || run.tick > 0);
 

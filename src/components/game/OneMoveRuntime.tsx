@@ -25,6 +25,7 @@ import {
   type RunResult,
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
+import { useGameSounds } from "@/lib/sound";
 
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["one-move"];
@@ -183,6 +184,13 @@ function Board({
   slug: string;
   title: string;
 }) {
+  useGameSounds({
+    moves: run.taps.length,
+    score: run.score,
+    cleared: run.levelsCleared,
+    over: run.outcome === "over",
+    ending: run.stopped ? "stop" : "lose",
+  });
   // A retry of a failed submission re-mounts this board with the run it already
   // has; a run with taps has started, so the intro must not reappear. A fresh run
   // has no taps and does see it.
