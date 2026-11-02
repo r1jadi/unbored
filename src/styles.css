@@ -468,6 +468,113 @@
   }
 }
 
+/* Huedini (components/game/HuediniRuntime): glossy blocks that glide, walls
+   with a hatch, and a leaving block that runs out through its gate in a burst. */
+.huedini-block {
+  transition-property: top, left;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.huedini-face {
+  background:
+    linear-gradient(180deg, oklch(1 0 0 / 0.32), oklch(1 0 0 / 0) 46%),
+    linear-gradient(0deg, oklch(0 0 0 / 0.16), oklch(0 0 0 / 0) 40%), var(--hue);
+  box-shadow:
+    inset 0 1.5px 0 oklch(1 0 0 / 0.45),
+    inset 0 -3px 0 oklch(0 0 0 / 0.18),
+    0 4px 10px -4px oklch(0 0 0 / 0.55);
+  transition: transform 120ms ease-out;
+}
+
+.huedini-block:active .huedini-face {
+  transform: scale(0.96);
+}
+
+.huedini-wall {
+  background: repeating-linear-gradient(
+    135deg,
+    oklch(0.5 0.01 270 / 0.5) 0 3px,
+    oklch(0.35 0.01 270 / 0.5) 3px 7px
+  );
+  box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.06);
+}
+
+.huedini-leave {
+  animation-name: huedini-leave;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0);
+  animation-fill-mode: both;
+}
+
+@keyframes huedini-leave {
+  0% {
+    transform: translate(var(--from-x), var(--from-y));
+    opacity: 1;
+  }
+  45% {
+    transform: translate(0, 0) scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--out-x), var(--out-y)) scale(0.4);
+    opacity: 0;
+  }
+}
+
+.huedini-spark {
+  opacity: 0;
+  animation: huedini-spark 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes huedini-spark {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--spark-x)), calc(-50% + var(--spark-y))) scale(0.2)
+      rotate(90deg);
+  }
+}
+
+.huedini-gate-flash {
+  animation: huedini-gate-flash 600ms ease-out;
+}
+
+@keyframes huedini-gate-flash {
+  0% {
+    filter: brightness(1);
+  }
+  30% {
+    filter: brightness(1.8);
+    transform: scale(1.12);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+/* Scatter (components/game/ScatterRuntime): a jammed tile shakes in place. */
+.scatter-jam {
+  animation: scatter-jam 320ms ease-in-out;
+}
+
+@keyframes scatter-jam {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-12%);
+  }
+  50% {
+    transform: translateX(10%);
+  }
+  75% {
+    transform: translateX(-6%);
+  }
+}
+
 @keyframes gridburst-float {
   0% {
     opacity: 0;

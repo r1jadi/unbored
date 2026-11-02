@@ -239,7 +239,7 @@ func (c *Client) CompleteRun(ctx context.Context, request CompleteRequest) (Resu
 // complete_zip_run, an 8 Puzzle run by complete_eight_puzzle_run, a Tango run by
 // complete_tango_run, a Sudoku run by complete_sudoku_run, a crossword run by
 // complete_crossword_run, a Gridburst run by complete_gridburst_run, an Updraft
-// run by complete_updraft_run, a Decant run by complete_decant_run, a Mini Sudoku run by
+// run by complete_updraft_run, a Decant run by complete_decant_run, a Scatter run by complete_scatter_run, a Huedini run by complete_huedini_run, a Mini Sudoku run by
 // complete_mini_sudoku_run, and anything
 // else by
 // complete_stack10_run — which
@@ -279,6 +279,10 @@ func completeFunction(rulesVersion string) string {
 		return "complete_updraft_run"
 	case strings.HasPrefix(rulesVersion, "decant@"):
 		return "complete_decant_run"
+	case strings.HasPrefix(rulesVersion, "scatter@"):
+		return "complete_scatter_run"
+	case strings.HasPrefix(rulesVersion, "huedini@"):
+		return "complete_huedini_run"
 	default:
 		return "complete_stack10_run"
 	}

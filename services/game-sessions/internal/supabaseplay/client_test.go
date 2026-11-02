@@ -565,3 +565,39 @@ func TestErrorsCarryACodeAndNoBody(t *testing.T) {
 		t.Fatalf("the upstream message leaked into the error: %s", apiErr.Error())
 	}
 }
+
+func TestCompleteRunRoutesScatterRulesToScatterVerifier(t *testing.T) {
+	rec := newRecorder(t, http.StatusOK, resultRow)
+
+	if _, err := rec.client(t).CompleteRun(context.Background(), CompleteRequest{
+		SessionID:    "ffffffff-1111-4111-8111-ffffffffffff",
+		RulesVersion: "scatter@1",
+		Actions:      []int32{0, 15, 48},
+		Score:        1,
+		DurationMS:   20000,
+	}); err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+
+	if rec.path != "/rest/v1/rpc/complete_scatter_run" {
+		t.Fatalf("path = %s, want the Scatter verifier function", rec.path)
+	}
+}
+
+func TestCompleteRunRoutesHuediniRulesToHuediniVerifier(t *testing.T) {
+	rec := newRecorder(t, http.StatusOK, resultRow)
+
+	if _, err := rec.client(t).CompleteRun(context.Background(), CompleteRequest{
+		SessionID:    "ffffffff-1111-4111-8111-ffffffffffff",
+		RulesVersion: "huedini@1",
+		Actions:      []int32{1, 254, 255},
+		Score:        0,
+		DurationMS:   20000,
+	}); err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+
+	if rec.path != "/rest/v1/rpc/complete_huedini_run" {
+		t.Fatalf("path = %s, want the Huedini verifier function", rec.path)
+	}
+}

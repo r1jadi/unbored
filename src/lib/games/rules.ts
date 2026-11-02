@@ -346,6 +346,50 @@ export const GAME_RULES = {
       },
     ],
   },
+  huedini: {
+    heading: "Every block escapes",
+    summary: "Slide each block out through the gate of its own colour.",
+    rules: [
+      {
+        lead: "Drag a block",
+        text: "up, down, left or right, and it slides until a wall, another block or the edge stops it. On a keyboard, focus a block and use the arrow keys.",
+      },
+      {
+        lead: "Gates",
+        text: "sit in the board's frame. A block that reaches a gate of its own colour, lined up so the gate covers its whole width, slips out.",
+      },
+      {
+        lead: "Blocks get in each other's way,",
+        text: "so the order matters: move one aside to open a path for another. Undo or restart the board any time.",
+      },
+      {
+        lead: "The clock",
+        text: "starts at 75 seconds. Clear a board for 10 points per block and time for the next one; boards grow trickier, and the time they add tightens as the run goes. The run ends when the clock does.",
+      },
+    ],
+  },
+  scatter: {
+    heading: "Clear the way",
+    summary: "Send every arrow off the board. Mind what stands in its lane.",
+    rules: [
+      {
+        lead: "Tap a tile",
+        text: "and it flies off the board the way its arrow points: 10 points. It only goes if nothing stands between it and the edge.",
+      },
+      {
+        lead: "A blocked tile jams",
+        text: "and stays where it is. Three jams end the run.",
+      },
+      {
+        lead: "Turnstiles",
+        text: "carry a ⟳ badge: every tile that escapes turns each of them a quarter turn clockwise. Wait for one to face a clear lane.",
+      },
+      {
+        lead: "No last board.",
+        text: "Clear a board for 50 more, and the next is bigger and busier. A board where no tile can leave is lost for a jam.",
+      },
+    ],
+  },
   updraft: {
     heading: "Ride the updraft",
     summary: "Tap to lift the glider. Thread the gaps between the columns.",

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Feed } from "@/components/game/Feed";
 import { WelcomeMoment } from "@/components/layout/WelcomeMoment";
 import { useMemo } from "react";
-import { byPlays, FEED_QUERY, useGames } from "@/lib/games/catalog";
+import { FEED_QUERY, forYouOrder, useGames } from "@/lib/games/catalog";
 import { prefetchFeed } from "@/lib/prefetch";
 import { seo } from "@/lib/seo";
 
@@ -16,16 +16,17 @@ export const Route = createFileRoute("/")({
 /**
  * The "For You" feed.
  *
- * It lists the catalogue by popularity: the most played game first and the least
- * played last, from the completed runs the database counts. There is no
+ * It lists the catalogue by popularity, from the completed runs the database
+ * counts, with room kept for launches: a game published in the last two weeks
+ * is guaranteed the third card and every third card after it, so a new game is
+ * seen before it has had time to collect plays (`forYouOrder`). There is no
  * personalisation: a recommendation service does not exist, so every viewer sees
  * the same order. Naming the feed "For You" is the product's label; the order is
- * the one the catalogue can honestly produce. Games with the same number of runs
- * keep the catalogue's newest-first order.
+ * the one the catalogue can honestly produce.
  */
 function ForYou() {
   const { status, items, error, retry } = useGames(FEED_QUERY);
-  const ranked = useMemo(() => byPlays(items), [items]);
+  const ranked = useMemo(() => forYouOrder(items), [items]);
   return (
     <>
       <Feed

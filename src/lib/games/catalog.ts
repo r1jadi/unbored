@@ -76,6 +76,55 @@ export function byPlays(games: readonly Game[]): Game[] {
     .map(({ game }) => game);
 }
 
+/** How long after launch a game counts as new on For You. */
+export const FRESH_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+
+/** The feed positions held for new games, by index: the third card, then every third. */
+export const FRESH_SLOT_START = 2;
+export const FRESH_SLOT_EVERY = 3;
+
+/** Whether `game` launched within the fresh window before `now`. */
+export function isFresh(game: Pick<Game, "publishedAt">, now: number): boolean {
+  if (!game.publishedAt) return false;
+  const published = Date.parse(game.publishedAt);
+  return Number.isFinite(published) && now - published < FRESH_WINDOW_MS;
+}
+
+/**
+ * The For You order: the most played games on top, with room kept for new ones.
+ *
+ * Ranking by plays alone buries every launch, since a new game starts at zero
+ * and sits under games that have had months to collect runs. So the feed is a
+ * merge of two queues, both ranked by plays (ties newest first):
+ *
+ *   - **established** games, which earn their place by plays alone;
+ *   - **fresh** games, published within {@link FRESH_WINDOW_MS}.
+ *
+ * Fresh games are guaranteed the third card and every third card after it. At
+ * every other position the queue whose next game has more plays goes first, so
+ * a launch that is already popular climbs above its slot on its own merit.
+ * Once its window closes a game is established and competes on plays alone.
+ * When either queue runs out the other fills the rest.
+ */
+export function forYouOrder(games: readonly Game[], now: number = Date.now()): Game[] {
+  const ranked = byPlays(games);
+  const fresh = ranked.filter((game) => isFresh(game, now));
+  const established = ranked.filter((game) => !isFresh(game, now));
+
+  const ordered: Game[] = [];
+  let f = 0;
+  let e = 0;
+  while (f < fresh.length || e < established.length) {
+    const index = ordered.length;
+    const slot = index >= FRESH_SLOT_START && (index - FRESH_SLOT_START) % FRESH_SLOT_EVERY === 0;
+    const takeFresh =
+      e >= established.length ||
+      (f < fresh.length && (slot || fresh[f]!.plays > established[e]!.plays));
+    ordered.push(takeFresh ? fresh[f++]! : established[e++]!);
+  }
+  return ordered;
+}
+
 /**
  * The For You feed's query: the whole catalogue in one read, so that ordering it
  * by plays ranks every game rather than only the newest page.

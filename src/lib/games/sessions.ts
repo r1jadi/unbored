@@ -76,6 +76,26 @@ import {
   type DecantRun,
 } from "@/lib/games/decant";
 import {
+  createRun as createScatterRun,
+  finish as finishScatterRun,
+  SCATTER_RULES_VERSION,
+  submission as scatterSubmission,
+  tap as tapScatter,
+  type ScatterRun,
+} from "@/lib/games/scatter";
+import {
+  budgetMs as huediniBudgetMs,
+  createRun as createHuediniRun,
+  finish as finishHuediniRun,
+  HUEDINI_RULES_VERSION,
+  move as moveHuedini,
+  restart as resetHuediniBoard,
+  submission as huediniSubmission,
+  undo as undoHuedini,
+  type Direction as HuediniDirection,
+  type HuediniRun,
+} from "@/lib/games/huedini";
+import {
   createRun as createUpdraftRun,
   finish as finishUpdraftRun,
   flap as flapUpdraft,
@@ -3756,6 +3776,385 @@ export function useDecantRun(gameSlug: string, autoStart = false): DecantRunCont
   }, [state]);
 
   return { ...state, signedIn, begin, pour, undo, reset, addTube, finish, restart, retry };
+}
+
+// ── A run of Huedini, from Start to score ──────────────────────────────────
+
+export type HuediniRunState =
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | {
+      status: "playing";
+      session: PlaySession;
+      run: HuediniRun;
+      /** When the clock runs out, as a `Date.now()` timestamp. */
+      deadline: number;
+    }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: HuediniRun; deadline: number }
+  | { status: "finished"; session: PlaySession; run: HuediniRun; result: RunResult }
+  | {
+      status: "error";
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: HuediniRun;
+    };
+
+export type HuediniRunControls = HuediniRunState & {
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
+  begin: () => void;
+  /** Slides a block, by id. Ignored unless the run is live and the block can move that way. */
+  move: (block: number, dir: HuediniDirection) => void;
+  /** Takes back the last move on this board. */
+  undo: () => void;
+  /** Puts this board back as it was dealt. */
+  reset: () => void;
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
+  /** Back to the rules, for a fresh run. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of Huedini against the session API.
+ *
+ * Decant's lifecycle, for the same reason: the run is against a clock the
+ * verifier times from the session's start (`out_of_time`), so the session is
+ * issued when the player presses Start, the clock starts when it arrives, and the
+ * run ends by itself when the clock reaches zero. A cleared board pushes the
+ * deadline back.
+ */
+export function useHuediniRun(gameSlug: string, autoStart = false): HuediniRunControls {
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<HuediniRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
+  const startedAt = useRef(0);
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  const signedIn = !!getAccessToken();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // A session is requested only once Start has been pressed (`attempt` > 0).
+  useEffect(() => {
+    if (attempt === 0) return;
+    const controller = new AbortController();
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    startSession(gameSlug, { signal: controller.signal, rulesVersion: HUEDINI_RULES_VERSION })
+      .then((session) => {
+        if (controller.signal.aborted) return;
+        const run = createHuediniRun(session.seed);
+        startedAt.current = Date.now();
+        setState({
+          status: "playing",
+          session,
+          run,
+          deadline: startedAt.current + huediniBudgetMs(0),
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // The clock. When it reaches zero the run is over, and verification follows.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome !== "playing") return;
+    const remaining = state.deadline - Date.now();
+    const timer = setTimeout(
+      () => {
+        setState((current) => {
+          if (current.status !== "playing" || current.run.outcome !== "playing") return current;
+          if (Date.now() < current.deadline) return { ...current };
+          endedAt.current = current.deadline;
+          return { ...current, run: finishHuediniRun(current.run, "time") };
+        });
+      },
+      Math.max(0, remaining),
+    );
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  // Verification: once, when a run has ended.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run, deadline } = state;
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run, deadline });
+
+    completeRun(
+      session.id,
+      { ...huediniSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  /** Applies a move unless the clock has already run out, and moves the deadline. */
+  const act = useCallback((move: (run: HuediniRun) => HuediniRun) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      // A move after the deadline — a backgrounded tab can hold its timer back —
+      // ends the run instead: the clock has already run out.
+      if (Date.now() >= current.deadline) {
+        if (current.run.outcome !== "playing") return current;
+        endedAt.current = current.deadline;
+        return { ...current, run: finishHuediniRun(current.run, "time") };
+      }
+      const next = move(current.run);
+      if (next === current.run) return current;
+      return {
+        ...current,
+        run: next,
+        deadline: startedAt.current + huediniBudgetMs(next.levelsCleared),
+      };
+    });
+  }, []);
+
+  const move = useCallback(
+    (block: number, dir: HuediniDirection) =>
+      act((run) => {
+        const target = run.board.blocks.find((other) => other.id === block);
+        return target ? moveHuedini(run, target, dir) : run;
+      }),
+    [act],
+  );
+  const undo = useCallback(() => act(undoHuedini), [act]);
+  const reset = useCallback(() => act(resetHuediniBoard), [act]);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishHuediniRun(current.run, "stopped");
+      if (next === current.run) return current;
+      endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    // Tap to play skips the rules on Play again too: straight to a new session.
+    if (autoStart) {
+      setState({ status: "starting" });
+      setAttempt((n) => n + 1);
+    } else {
+      setState({ status: "intro" });
+    }
+  }, [autoStart]);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again. The clock is already over, so the
+      // deadline only has to exist; it no longer moves.
+      submitting.current = false;
+      setState({ status: "playing", session: state.session, run: state.run, deadline: 0 });
+      return;
+    }
+
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, signedIn, begin, move, undo, reset, finish, restart, retry };
+}
+
+// ── A run of Scatter, from Start to score ──────────────────────────────────
+
+export type ScatterRunState =
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | { status: "playing"; session: PlaySession; run: ScatterRun }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: ScatterRun }
+  | { status: "finished"; session: PlaySession; run: ScatterRun; result: RunResult }
+  | {
+      status: "error";
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: ScatterRun;
+    };
+
+export type ScatterRunControls = ScatterRunState & {
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for a session. */
+  begin: () => void;
+  /** Taps the tile on a cell. Ignored unless the run is live and there is a tile there. */
+  tap: (cell: number) => void;
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
+  /** Back to the rules, for a fresh run. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of Scatter against the session API.
+ *
+ * Decant's lifecycle without the clock: the rules first, a session issued on
+ * Start, boards dealt from its seed, and verification once the run ends — at the
+ * third jam, or when the player ends it.
+ */
+export function useScatterRun(gameSlug: string, autoStart = false): ScatterRunControls {
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<ScatterRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
+  const startedAt = useRef(0);
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  const signedIn = !!getAccessToken();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // A session is requested only once Start has been pressed (`attempt` > 0).
+  useEffect(() => {
+    if (attempt === 0) return;
+    const controller = new AbortController();
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    startSession(gameSlug, { signal: controller.signal, rulesVersion: SCATTER_RULES_VERSION })
+      .then((session) => {
+        if (controller.signal.aborted) return;
+        startedAt.current = Date.now();
+        setState({ status: "playing", session, run: createScatterRun(session.seed) });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // Verification: once, when a run has ended.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run } = state;
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run });
+
+    completeRun(
+      session.id,
+      { ...scatterSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const tap = useCallback((cell: number) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = tapScatter(current.run, cell);
+      if (next === current.run) return current;
+      if (next.outcome !== "playing") endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishScatterRun(current.run);
+      if (next === current.run) return current;
+      endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    // Tap to play skips the rules on Play again too: straight to a new session.
+    if (autoStart) {
+      setState({ status: "starting" });
+      setAttempt((n) => n + 1);
+    } else {
+      setState({ status: "intro" });
+    }
+  }, [autoStart]);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again.
+      submitting.current = false;
+      setState({ status: "playing", session: state.session, run: state.run });
+      return;
+    }
+
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, signedIn, begin, tap, finish, restart, retry };
 }
 
 // ── A run of 7 Second, from session to score ───────────────────────────────

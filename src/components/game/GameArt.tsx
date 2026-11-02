@@ -68,6 +68,8 @@ export function GameArt({
         {id === "gridburst" && <Gridburst />}
         {id === "updraft" && <Updraft />}
         {id === "decant" && <Decant />}
+        {id === "scatter" && <Scatter />}
+        {id === "huedini" && <Huedini />}
         {!KNOWN.has(id) && <Generated seed={id} />}
       </div>
     </div>
@@ -93,6 +95,8 @@ const KNOWN = new Set([
   "gridburst",
   "updraft",
   "decant",
+  "scatter",
+  "huedini",
 ]);
 
 /**
@@ -499,6 +503,76 @@ function Decant() {
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+function Scatter() {
+  // A board mid-clear: arrows pointing every way, one turnstile, gaps where tiles left.
+  const board = [0, 1, -1, 1, 2, 4, 3, -1, -1, 0, 6, 2, 3, -1, 0, 1];
+  const arrows = ["↑", "→", "↓", "←"];
+  return (
+    <div className="grid aspect-square h-[78%] grid-cols-4 gap-[min(1.5cqw,1.5cqh,0.4rem)]">
+      {board.map((tile, i) => (
+        <div
+          key={i}
+          className={cn(
+            "flex items-center justify-center rounded-[min(1.5cqw,1.5cqh,0.4rem)] text-[min(7cqw,7cqh,1.75rem)] font-bold leading-none",
+            tile < 0
+              ? "bg-foreground/5"
+              : tile >= 4
+                ? "border-2 border-game-7 bg-game-7/20 text-game-7"
+                : "bg-foreground text-background",
+          )}
+        >
+          {tile < 0 ? null : arrows[tile % 4]}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Huedini() {
+  // A 4×4 board in its frame: blocks lined up for their gates, one mid-escape.
+  const blocks = [
+    { r: 0, c: 0, h: 1, w: 2, hue: "oklch(0.64 0.21 25)" },
+    { r: 1, c: 2, h: 2, w: 1, hue: "oklch(0.62 0.17 250)" },
+    { r: 2, c: 0, h: 2, w: 2, hue: "oklch(0.86 0.17 95)" },
+    { r: 3, c: 3, h: 1, w: 1, hue: "oklch(0.7 0.18 150)" },
+  ];
+  return (
+    <div className="relative aspect-square h-[80%] rounded-[12%] bg-foreground/10">
+      <span
+        className="absolute left-[30%] top-[2%] h-[4%] w-[40%] rounded-full"
+        style={{ backgroundColor: "oklch(0.62 0.17 250)" }}
+      />
+      <span
+        className="absolute right-[2%] top-[56%] h-[22%] w-[4%] rounded-full"
+        style={{ backgroundColor: "oklch(0.7 0.18 150)" }}
+      />
+      <span
+        className="absolute bottom-[2%] left-[8%] h-[4%] w-[40%] rounded-full"
+        style={{ backgroundColor: "oklch(0.86 0.17 95)" }}
+      />
+      <div className="absolute inset-[7%]">
+        {blocks.map((b, i) => (
+          <span
+            key={i}
+            className="absolute p-[3%]"
+            style={{
+              top: `${b.r * 25}%`,
+              left: `${b.c * 25}%`,
+              height: `${b.h * 25}%`,
+              width: `${b.w * 25}%`,
+            }}
+          >
+            <span
+              className="huedini-face block size-full rounded-[18%]"
+              style={{ ["--hue" as string]: b.hue }}
+            />
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

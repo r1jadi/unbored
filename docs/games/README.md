@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Seventeen games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Nineteen games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant** and the **Daily Crossword**. Fifteen of them — all but 7 Second and the crossword, the two daily
+**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini** and the **Daily Crossword**. Seventeen of them — all but 7 Second and the crossword, the two daily
 games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -38,7 +38,7 @@ A signed-in player keeps more than their scores:
   seed, so the board, score and level are exactly where they were — or **New
   run**, which submits the saved run as it was left (keeping its score, like any
   ended run) and starts a fresh one. A saved run stays open for twelve hours after
-  its last save. Trail, 8 Puzzle, Sun & Moon, Sudoku, Mini Sudoku, Decant, 7 Second, Don't
+  its last save. Trail, 8 Puzzle, Sun & Moon, Sudoku, Mini Sudoku, Decant, Huedini, 7 Second, Don't
   Touch the Black and Flutter do not resume:
   their clocks, conveyors or gliders cannot pause.
 - **Stats per game**, on the game's page: runs played, best score, rank, total
@@ -2483,3 +2483,154 @@ and on the deals of a full-width seed.
 4. **The clock** — a run that solved nothing is on time at 79 s and `out_of_time`
    at 81 s; with an extra tube it is `out_of_time` at 66 s.
 
+## Scatter
+
+An original arrow puzzle. A grid of arrow tiles: tap one and it flies off the
+board the way it points, if nothing stands in its lane; otherwise it jams. Some
+tiles are turnstiles, which turn with every escape, so the order a board is
+cleared in matters. Boards grow and crowd up with no last one.
+
+| Thing      | Value                                                                    |
+| ---------- | ------------------------------------------------------------------------ |
+| Board      | 4×4 for boards 1–2, 5×5 for 3–5, 6×6 for 6–9, 7×7 from board 10          |
+| Tiles      | 50% of the cells on board one, five points more a board, up to 80%       |
+| Turnstiles | None on boards 1–2, then one more a board, up to a quarter of the tiles  |
+| Score      | One unit (10 on screen) an escape; five more (50) a cleared board        |
+| Ending     | The third jam, or the player ending the run; no clock                    |
+| Actions    | 4096 taps at most, each the cell index on the board it was made on       |
+| Rules      | `scatter@1`                                                              |
+| Runtime    | `scatter` (the catalogue's `games.runtime` value)                       |
+
+### The rules
+
+- A tap on a tile whose lane — every cell from it to the edge, the way its arrow
+  points — is empty sends it off the board. It scores one unit, and every
+  turnstile left on the board turns a quarter clockwise.
+- A tap on a tile whose lane holds another tile is a **jam**: the tile stays and
+  nothing turns. Three jams end the run.
+- Clearing the last tile scores five more and deals the next board.
+- After every tap, a board where no tile can leave is **lost**: it costs a jam and
+  the next board is dealt, without the bonus. Without turnstiles that cannot
+  happen — removing a tile only ever opens lanes — but turnstiles can end up all
+  facing blocked lanes.
+- A tap on an empty cell, off the board or after the run ended is not a move; the
+  verifier refuses a run that contains one (`invalid_actions`).
+
+### The boards
+
+A board is built backwards from a solution, so every board can be cleared. Draws
+come from One Move's outer LCG advanced once per level and a second LCG started at
+that state (the top sixteen bits of each state), as Decant draws its boards. For
+each tile in turn a start cell and a start direction are drawn; from the start cell
+on (wrapping), the first free cell with a clear lane in some direction — tried from
+the start direction, clockwise — takes the tile facing it. Its lane only has to be
+clear of the tiles placed before it, because those are the ones still on the board
+when it leaves: a solution clears tiles in the reverse of the order they were
+placed. A tile that fits nowhere ends the dealing, so a crowded board can hold a
+few fewer tiles than its target.
+
+Then, for each turnstile, a start index among the placed tiles is drawn, and the
+first one from there (wrapping) that is not a turnstile yet becomes one, turned
+back a quarter for every tile that leaves before it in that solution — so it faces
+its clear lane exactly when its turn comes.
+
+`public.scatter_board(seed, level)` and `board()` in `src/lib/games/scatter.ts`
+are the same function. A board is written as one digit a cell, row by row: 0 for
+empty, else 1 + direction (0 up, 1 right, 2 down, 3 left), plus 4 for a turnstile.
+
+### Pinned boards
+
+1. **Seed 12345, board 1** — `0022043204020003`.
+2. **Seed 12345, board 3** — `0440401022500014403233200`.
+3. **Seed 987654321, board 10** — `1111118807074236037222333222522822000003224003332`.
+
+### The verifier
+
+`public.complete_scatter_run` in `supabase/migrations/20261128120000_scatter_sessions.sql`
+replays the taps from the session's seed with the rules above and compares the
+claimed score with its own (`score_mismatch`). It reports boards cleared as
+`cleared_columns` and escapes as `tiles_placed`. Any prefix of a legal line is a
+valid run, because the score only grows. The session is issued on Start and lives
+twelve hours; the run does not resume.
+
+## Huedini
+
+An original sliding-block puzzle. Coloured blocks, a few walls, and gates of
+each colour set into the board's frame: drag a block and it slides until
+something stops it; lined up with a gate of its own colour, it slips out. Blocks
+stand in each other's way, so a board is a puzzle about order — which block to
+move aside, and where — against a tapered clock, like Decant's.
+
+| Thing   | Value                                                                        |
+| ------- | ---------------------------------------------------------------------------- |
+| Boards  | From a bank of 160 (four tiers of 40), colours relabelled by the seed       |
+| Tiers   | gentle (boards 1–2, 5×5), easy (3–5, 6×6), tricky (6–9, 6×6), hard (10+, 7×7) |
+| Blocks  | 1×1, 1×2 and 2×1; 2×2 too from the tricky tier; up to six colours            |
+| Clock   | 75 s to start; a cleared board adds the next board's allowance (30, 40, 50 or 60 s by tier), tapered; 20 s of slack |
+| Score   | One unit (10 on screen) per block when its board is cleared                  |
+| Actions | 8192 at most: `top-left cell × 4 + direction` a slide, 254 undo, 255 restart |
+| Rules   | `huedini@1`                                                                  |
+| Runtime | `huedini` (the catalogue's `games.runtime` value)                           |
+
+### The rules
+
+- A slide moves one block, cell by cell, the way it was dragged (0 up, 1 right,
+  2 down, 3 left), until the next step would hit a wall, another block or the
+  edge. A slide that cannot move the block at all is not a move.
+- At the edge the block leaves the board if that edge has a gate of its colour
+  that covers its whole width: gates are two cells wide, so a two-wide block
+  must line up exactly and a one-wide block may sit on either cell. Otherwise it
+  stops against the edge.
+- Clearing the last block scores one unit per block the board was dealt and deals
+  the next board. Undo takes back the last move on this board; restart deals it
+  again. Neither crosses into a cleared board.
+
+### The bank
+
+`scripts/generate-huedini-bank.mjs` builds each board **backwards** from the
+empty board, so every board can be cleared: walls (never on the outer ring) and
+one gate a colour first, then a random walk of reverse steps — an *un-exit* puts
+a new block in front of a gate of its colour and pulls it inward along free
+cells, an *un-slide* takes a block resting against something and pulls it back
+the other way. Played forwards, the walk is a solution. An A* search (a lower
+bound of one move per block, two for a block not lined up with any gate of its
+colour) then finds each board's shortest solution, and a tier keeps the boards
+that need the right number of set-up moves beyond one per block:
+
+| Tier   | Blocks | Colours | Set-up moves | Shortest solutions |
+| ------ | ------ | ------- | ------------ | ------------------ |
+| gentle | 3–4    | 3       | 1–3          | 4–7 moves          |
+| easy   | 5      | 4       | 2–5          | 7–10 moves         |
+| tricky | 6      | 4       | 4–8          | 10–14 moves        |
+| hard   | 7–8    | 5       | 5–10         | 12–18 moves        |
+
+`huedini.test.ts` re-solves every board with the game's own rules and checks
+it finds the length the generator wrote beside it, so the two copies of the
+rules agree. The bank is a fixed asset: changing it changes every board, so it
+needs a new rules version.
+
+A board is written `side|cells|colours|gates`: the cells row by row (`.` empty,
+`#` a wall, a letter per block, `a` the first in reading order), one colour digit
+per block in letter order, and three digits per gate — edge, its first cell along
+that edge, and its colour.
+
+### The boards
+
+Draws come from One Move's outer LCG advanced once per level and a second LCG
+started at that state (the top sixteen bits of each state), as Decant draws its
+boards. The first draw picks the entry in the level's tier; then the colours 1–6
+are shuffled by a Fisher–Yates pass from the last down, each swap partner the next
+draw modulo the colours left, and colour `k` of the entry becomes the
+shuffle's `k`th. `public.huedini_board(seed, level)` and `board()` in
+`src/lib/games/huedini.ts` are the same function; `huedini.test.ts` pins three of
+their boards.
+
+### The verifier
+
+`public.complete_huedini_run` in `supabase/migrations/20261129120000_huedini_sessions.sql`
+replays every slide, undo and restart from the session's seed (`huedini_slide` is
+the slide rule), refuses a move that is not possible (`invalid_actions`), compares
+the claimed score with its own (`score_mismatch`), and refuses a run that arrives
+later than its cleared boards' clock plus the slack (`out_of_time`). It reports
+boards cleared as `cleared_columns` and moves as `tiles_placed`. The session is
+issued on Start and lives twelve hours; the run does not resume.

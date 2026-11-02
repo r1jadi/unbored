@@ -1693,3 +1693,70 @@ func TestSessionResponseCarriesNoFabricatedNumbers(t *testing.T) {
 		}
 	}
 }
+
+func TestCompleteSessionAcceptsAScatterTapOnTheBoard(t *testing.T) {
+	// 48 is the last cell of the 7×7 board, the largest Scatter deals.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("scatter@1", "1", "20000", "[0,15,48]"), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if len(backend.lastRun.Actions) != 3 || backend.lastRun.Actions[2] != 48 {
+		t.Fatalf("actions = %v, want the submitted actions", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionRejectsAScatterTapPastTheBoard(t *testing.T) {
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("scatter@1", "0", "20000", "[49]"), "")
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (%#v)", status, body)
+	}
+	if backend.runCalls != 0 {
+		t.Fatal("a tap outside the Scatter board reached the verifier")
+	}
+}
+
+func TestCompleteSessionAcceptsHuediniSlidesAndControls(t *testing.T) {
+	// 195 is the last cell of the 7×7 board sliding left; 254 and 255 are undo
+	// and restart.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("huedini@1", "0", "20000", "[1,195,254,255]"), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if len(backend.lastRun.Actions) != 4 || backend.lastRun.Actions[3] != 255 {
+		t.Fatalf("actions = %v, want the submitted actions", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionRejectsAHuediniActionPastTheCodes(t *testing.T) {
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("huedini@1", "0", "20000", "[256]"), "")
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (%#v)", status, body)
+	}
+	if backend.runCalls != 0 {
+		t.Fatal("an action past the Huedini codes reached the verifier")
+	}
+}

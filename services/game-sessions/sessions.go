@@ -100,6 +100,10 @@ const (
 	decantMaxActions = 8192
 	// mini-sudoku@1 carries at most 8192 moves.
 	miniSudokuMaxActions = 8192
+	// scatter@1 carries at most 4096 taps.
+	scatterMaxActions = 4096
+	// huedini@1 carries at most 8192 actions: slides, undos and restarts.
+	huediniMaxActions = 8192
 	// The bounds a move has to fit. Stack 10 addresses a column and Chain a pad,
 	// both 0 to 3; Color Merge addresses one of its four directions, also 0 to 3;
 	// Memory Flash addresses a cell of its board — sixteen for the retired 4×4
@@ -152,6 +156,11 @@ const (
 	// decantActions is every Decant action: a pour as from × 16 + to (up to 187
 	// with twelve tubes), then 253 an extra tube, 254 undo and 255 restart.
 	decantActions = 256
+	// scatterCells is the largest Scatter board, 7×7: a tap addresses a cell.
+	scatterCells = 49
+	// huediniActions is every Huedini action: a slide as top-left cell × 4 +
+	// direction (up to 195 on the 7×7 board), then 254 undo and 255 restart.
+	huediniActions = 256
 )
 
 // Patterns mirror the database constraints, so a bad request is a 400 that names
@@ -413,6 +422,10 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 		limit = updraftMaxActions
 	case strings.HasPrefix(rules, "decant@"):
 		limit = decantMaxActions
+	case strings.HasPrefix(rules, "scatter@"):
+		limit = scatterMaxActions
+	case strings.HasPrefix(rules, "huedini@"):
+		limit = huediniMaxActions
 	}
 	if len(actions) > limit {
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
@@ -545,6 +558,10 @@ func boardSize(rulesVersion string) int {
 		return updraftActions
 	case strings.HasPrefix(rulesVersion, "decant@"):
 		return decantActions
+	case strings.HasPrefix(rulesVersion, "scatter@"):
+		return scatterCells
+	case strings.HasPrefix(rulesVersion, "huedini@"):
+		return huediniActions
 	default:
 		return stackChainPositions
 	}
