@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FeedbackForm } from "@/components/settings/FeedbackForm";
@@ -42,6 +49,26 @@ function stubBackend(feedbackStatus = 201) {
     }),
   );
   return inserts;
+}
+
+/**
+ * The form inside a router: before the session is known it can show a link to
+ * the sign-in page, and a link needs a router even when the test never follows it.
+ */
+async function renderForm() {
+  const root = createRootRoute();
+  const routes = [
+    createRoute({ getParentRoute: () => root, path: "/", component: () => <FeedbackForm /> }),
+    createRoute({ getParentRoute: () => root, path: "/login", component: () => <p>Sign in</p> }),
+  ];
+  const router = createRouter({
+    routeTree: root.addChildren(routes),
+    history: createMemoryHistory({ initialEntries: ["/"] }),
+  });
+  render(<RouterProvider router={router} />);
+  await act(async () => {
+    await router.load();
+  });
 }
 
 beforeEach(() => {
@@ -100,7 +127,7 @@ describe("FeedbackForm", () => {
   it("needs a mood and a message, then sends and thanks the player", async () => {
     const inserts = stubBackend();
     await signIn("player@example.com", "correct-horse");
-    render(<FeedbackForm />);
+    await renderForm();
 
     const send = screen.getByRole("button", { name: "Send feedback" });
     expect(send).toBeDisabled();
@@ -131,7 +158,7 @@ describe("FeedbackForm", () => {
   it("shows the refusal and keeps the note when sending fails", async () => {
     stubBackend(400);
     await signIn("player@example.com", "correct-horse");
-    render(<FeedbackForm />);
+    await renderForm();
 
     fireEvent.click(screen.getByRole("radio", { name: "Good" }));
     fireEvent.change(screen.getByLabelText("Your note"), { target: { value: "Nice work" } });
