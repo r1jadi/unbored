@@ -38,6 +38,7 @@ import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminCommentsRouteImport } from './routes/admin.comments'
 import { Route as AdminFeaturedRouteImport } from './routes/admin.featured'
+import { Route as AdminFeedbackRouteImport } from './routes/admin.feedback'
 import { Route as AdminGamesRouteImport } from './routes/admin.games'
 import { Route as AdminLeaderboardsRouteImport } from './routes/admin.leaderboards'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
@@ -203,6 +204,11 @@ const AdminFeaturedRoute = AdminFeaturedRouteImport.update({
   path: '/featured',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminFeedbackRoute = AdminFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminGamesRoute = AdminGamesRouteImport.update({
   id: '/games',
   path: '/games',
@@ -328,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/comments': typeof AdminCommentsRoute
   '/admin/featured': typeof AdminFeaturedRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/games': typeof AdminGamesRoute
   '/admin/leaderboards': typeof AdminLeaderboardsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -377,6 +384,7 @@ export interface FileRoutesByTo {
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/comments': typeof AdminCommentsRoute
   '/admin/featured': typeof AdminFeaturedRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/games': typeof AdminGamesRoute
   '/admin/leaderboards': typeof AdminLeaderboardsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -428,6 +436,7 @@ export interface FileRoutesById {
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/comments': typeof AdminCommentsRoute
   '/admin/featured': typeof AdminFeaturedRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/games': typeof AdminGamesRoute
   '/admin/leaderboards': typeof AdminLeaderboardsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -480,6 +489,7 @@ export interface FileRouteTypes {
     | '/admin/categories'
     | '/admin/comments'
     | '/admin/featured'
+    | '/admin/feedback'
     | '/admin/games'
     | '/admin/leaderboards'
     | '/admin/notifications'
@@ -529,6 +539,7 @@ export interface FileRouteTypes {
     | '/admin/categories'
     | '/admin/comments'
     | '/admin/featured'
+    | '/admin/feedback'
     | '/admin/games'
     | '/admin/leaderboards'
     | '/admin/notifications'
@@ -579,6 +590,7 @@ export interface FileRouteTypes {
     | '/admin/categories'
     | '/admin/comments'
     | '/admin/featured'
+    | '/admin/feedback'
     | '/admin/games'
     | '/admin/leaderboards'
     | '/admin/notifications'
@@ -845,6 +857,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFeaturedRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/feedback': {
+      id: '/admin/feedback'
+      path: '/feedback'
+      fullPath: '/admin/feedback'
+      preLoaderRoute: typeof AdminFeedbackRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/games': {
       id: '/admin/games'
       path: '/games'
@@ -986,6 +1005,7 @@ interface AdminRouteChildren {
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCommentsRoute: typeof AdminCommentsRoute
   AdminFeaturedRoute: typeof AdminFeaturedRoute
+  AdminFeedbackRoute: typeof AdminFeedbackRoute
   AdminGamesRoute: typeof AdminGamesRoute
   AdminLeaderboardsRoute: typeof AdminLeaderboardsRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
@@ -1001,6 +1021,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCommentsRoute: AdminCommentsRoute,
   AdminFeaturedRoute: AdminFeaturedRoute,
+  AdminFeedbackRoute: AdminFeedbackRoute,
   AdminGamesRoute: AdminGamesRoute,
   AdminLeaderboardsRoute: AdminLeaderboardsRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,

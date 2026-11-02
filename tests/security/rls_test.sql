@@ -872,6 +872,8 @@ select rls_test.denied($$select * from public.admin_report_directory()$$,
   'a player cannot read the moderation queue');
 select rls_test.denied($$select * from public.admin_comment_directory()$$,
   'a player cannot read the comment moderation list');
+select rls_test.denied($$select * from public.admin_feedback_directory()$$,
+  'a player cannot read the feedback list');
 select rls_test.denied($$select * from public.admin_score_directory()$$,
   'a player cannot read every verified score');
 select rls_test.denied($$select * from public.admin_moderation_log()$$,
@@ -979,6 +981,23 @@ select rls_test.ok(
     select 1 from public.admin_comment_directory()
     where is_hidden$$) >= 1,
   'the comment list carries hidden comments, which staff alone may see'
+);
+select rls_test.ok(
+  rls_test.count_rows($$
+    select 1 from public.admin_feedback_directory()
+    where sender_username <> 'deleted account'$$) >= 1,
+  'staff read all feedback through the admin list, with the sender''s username'
+);
+select rls_test.ok(
+  rls_test.count_rows($$
+    select 1 from public.admin_feedback_directory('idea')
+    where category <> 'idea'$$) = 0
+    and rls_test.count_rows($$select 1 from public.admin_feedback_directory('idea', 'dark mode')$$) >= 1,
+  'the feedback list filters by kind and by text'
+);
+select rls_test.raises(
+  $$select * from public.admin_feedback_directory('spam')$$,
+  '22023', 'an unknown feedback kind is a request error'
 );
 
 -- Moderation writes: the decision and its audit land together, and the audit
@@ -1210,6 +1229,21 @@ select rls_test.ok(
        'public.admin_moderation_log_svc(uuid, integer, integer)'
      ]) as f),
   'no privileged wrapper is executable by anon');
+select rls_test.ok(
+  (select bool_and(not has_function_privilege(r, f, 'execute'))
+     from unnest(array['anon', 'authenticated']) as r,
+          unnest(array[
+            'public.feedback_pending_email(integer)',
+            'public.mark_feedback_emailed(uuid)'
+          ]) as f)
+    and has_function_privilege('service_role', 'public.feedback_pending_email(integer)', 'execute')
+    and has_function_privilege('service_role', 'public.mark_feedback_emailed(uuid)', 'execute'),
+  'the feedback email outbox is the notifications service''s alone, never a browser''s'
+);
+select rls_test.ok(
+  not has_function_privilege('anon', 'public.admin_feedback_directory(text, text, integer, integer)', 'execute'),
+  'an anonymous caller cannot execute the feedback list'
+);
 select rls_test.ok(
   (select bool_and(not has_function_privilege('authenticated', f, 'execute'))
      from unnest(array[

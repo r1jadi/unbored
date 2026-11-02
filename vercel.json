@@ -50,6 +50,10 @@
     {
       "path": "/api/v1/cron/game-digests",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/v1/cron/feedback-emails",
+      "schedule": "0 10 * * *"
     }
   ],
   "redirects": [

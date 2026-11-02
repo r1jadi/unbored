@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Lock,
   MessageSquare,
+  MessageSquareHeart,
   Send,
   SlidersHorizontal,
   Star,
@@ -28,6 +29,7 @@ type AdminRoute =
   | "/admin/reports"
   | "/admin/review"
   | "/admin/comments"
+  | "/admin/feedback"
   | "/admin/games"
   | "/admin/categories"
   | "/admin/featured"
@@ -50,6 +52,7 @@ const nav: { label: string; items: AdminNavItem[] }[] = [
       { to: "/admin/reports", label: "Reports", icon: Flag, exact: false },
       { to: "/admin/review", label: "Review queue", icon: ClipboardCheck, exact: false },
       { to: "/admin/comments", label: "Comments", icon: MessageSquare, exact: false },
+      { to: "/admin/feedback", label: "Feedback", icon: MessageSquareHeart, exact: false },
     ],
   },
   {

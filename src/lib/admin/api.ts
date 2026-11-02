@@ -24,6 +24,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiError, apiFetch, type ApiRequestOptions } from "@/lib/api/client";
 import { getAccessToken } from "@/lib/auth/session";
+import { restMutate } from "@/lib/supabase/rest";
 
 /** Routes implemented by `services/admin`. Kept together so they cannot drift. */
 const Routes = {
@@ -326,6 +327,85 @@ export function fetchAdminComments(
   return get<Page<AdminComment>>(Routes.comments, { ...filters }, signal);
 }
 
+export type FeedbackCategory = "idea" | "bug" | "praise" | "other";
+
+/** One piece of player feedback, as `admin_feedback_directory` returns it. */
+export type AdminFeedback = {
+  id: string;
+  /** 1 (rough) to 5 (love it). */
+  mood: number;
+  category: FeedbackCategory;
+  message: string;
+  /** The optional device note the sender chose to include. */
+  context: string | null;
+  senderUsername: string;
+  /** When the notifications service mailed it to the team inbox; null until then. */
+  emailedAt: string | null;
+  createdAt: string;
+};
+
+export type FeedbackFilters = {
+  category?: FeedbackCategory;
+  q?: string;
+  limit?: number;
+  offset?: number;
+};
+
+type FeedbackRow = {
+  id: string;
+  mood: number;
+  category: FeedbackCategory;
+  message: string;
+  context: string | null;
+  sender_username: string;
+  emailed_at: string | null;
+  created_at: string;
+};
+
+/**
+ * Feedback is read through a database function that checks the caller's staff role
+ * itself (ADR 0013), so this goes straight to the Data API with the caller's own
+ * token. It asks for one row more than a page to know whether another follows.
+ */
+export async function fetchAdminFeedback(
+  filters: FeedbackFilters = {},
+): Promise<Page<AdminFeedback>> {
+  const token = requireToken();
+  const limit = filters.limit ?? ADMIN_LIMIT;
+  let rows: FeedbackRow[];
+  try {
+    const response = await restMutate("rpc/admin_feedback_directory", "POST", token, {
+      p_category: filters.category ?? null,
+      p_search: filters.q ?? null,
+      p_limit: limit + 1,
+      p_offset: filters.offset ?? 0,
+    });
+    rows = (await response.json()) as FeedbackRow[];
+  } catch (error) {
+    const status = (error as { status?: number }).status;
+    if (status === 401 || status === 403) {
+      throw new ApiError("Moderator or administrator access is required.", {
+        code: "forbidden",
+        status: 403,
+      });
+    }
+    throw new ApiError("Couldn't load feedback. Try again.", { code: "feedback_failed" });
+  }
+  return {
+    items: rows.slice(0, limit).map((row) => ({
+      id: row.id,
+      mood: row.mood,
+      category: row.category,
+      message: row.message,
+      context: row.context,
+      senderUsername: row.sender_username,
+      emailedAt: row.emailed_at,
+      createdAt: row.created_at,
+    })),
+    hasMore: rows.length > limit,
+  };
+}
+
 export type ScoreFilters = { game?: string; q?: string; limit?: number; offset?: number };
 
 export function fetchAdminScores(
@@ -492,6 +572,14 @@ export function useAdminComments(filters: CommentFilters = {}) {
   return useResource<Page<AdminComment>>(
     (signal) => fetchAdminComments({ state, q, limit, offset }, signal),
     [state, q, limit, offset],
+  );
+}
+
+export function useAdminFeedback(filters: FeedbackFilters = {}) {
+  const { category, q, limit = ADMIN_LIMIT, offset = 0 } = filters;
+  return useResource<Page<AdminFeedback>>(
+    () => fetchAdminFeedback({ category, q, limit, offset }),
+    [category, q, limit, offset],
   );
 }
 

@@ -6,9 +6,14 @@
  * id comes from the session, never from a form field. The device note is
  * optional and short: viewport and browser string, nothing that identifies the
  * person beyond the account they are already signed in with.
+ *
+ * The team reads feedback in two places: the admin console (Feedback), which
+ * reads the table, and the team inbox. The inbox copy is mailed by the
+ * notifications service, which the browser nudges right after a send; if that
+ * nudge is lost, a daily cron mails the row anyway.
  */
 
-import { ApiError } from "@/lib/api/client";
+import { apiFetch, ApiError } from "@/lib/api/client";
 import { getAccessToken, getAuthState } from "@/lib/auth/session";
 import { restMutate, SupabaseRestError } from "@/lib/supabase/rest";
 
@@ -54,6 +59,9 @@ export async function sendFeedback(input: FeedbackInput): Promise<void> {
       message,
       context: input.includeDevice ? deviceNote() : null,
     });
+    // Ask the service to mail it to the team now. Best effort: the feedback is
+    // already stored, and the daily cron covers a nudge that never arrives.
+    void apiFetch("/cron/feedback-notify", { method: "POST", token }).catch(() => undefined);
   } catch (error) {
     if (error instanceof SupabaseRestError) {
       if (error.status === 401) {

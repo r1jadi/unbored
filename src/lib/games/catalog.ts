@@ -63,6 +63,25 @@ export function mostPlayed(games: readonly Game[]): Game[] {
 
 export const MAX_PAGE_SIZE = 100;
 
+/**
+ * Every game ordered by completed runs, most played first and least played last —
+ * unplayed games included, unlike {@link mostPlayed}. `plays` is counted by the
+ * database; ties keep the catalogue's own (newest-first) order, so a new game
+ * with no runs yet still sits ahead of an older one with none.
+ */
+export function byPlays(games: readonly Game[]): Game[] {
+  return games
+    .map((game, index) => ({ game, index }))
+    .sort((a, b) => b.game.plays - a.game.plays || a.index - b.index)
+    .map(({ game }) => game);
+}
+
+/**
+ * The For You feed's query: the whole catalogue in one read, so that ordering it
+ * by plays ranks every game rather than only the newest page.
+ */
+export const FEED_QUERY = { limit: MAX_PAGE_SIZE } as const;
+
 /** The only order the catalogue can compute from real data. */
 export type GameSort = "latest";
 

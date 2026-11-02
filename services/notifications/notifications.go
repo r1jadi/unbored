@@ -1,4 +1,4 @@
-// Package notifications owns the game-release digest.
+// Package notifications owns the game-release digest and the feedback email.
 //
 // Once five games have been published since the last digest, the database
 // returns those games and the accounts that explicitly opted in to "occasional
@@ -340,6 +340,7 @@ func Options() servicekit.Options {
 		Name: Name,
 		RegisterWith: func(router *httpx.Router, cfg *config.Config, logger *slog.Logger, _ *authn.Verifier) {
 			var backend Backend
+			var feedbackBackend FeedbackBackend
 			client, err := supabasedigest.New(cfg)
 			if err != nil {
 				// Booting anyway is deliberate: the service still serves its
@@ -348,8 +349,12 @@ func Options() servicekit.Options {
 				logger.Warn("the digest database is not configured", slog.Any("error", err))
 			} else {
 				backend = client
+				feedbackBackend = client
 			}
-			newService(backend, email.NewFromEnv(), logger, os.Getenv("CRON_SECRET"), siteURL()).register(router)
+			mailer := email.NewFromEnv()
+			secret := os.Getenv("CRON_SECRET")
+			newService(backend, mailer, logger, secret, siteURL()).register(router)
+			newFeedbackService(feedbackBackend, mailer, logger, secret, os.Getenv("FEEDBACK_EMAIL_TO")).register(router)
 		},
 	}
 }

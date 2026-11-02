@@ -16,7 +16,7 @@ insert into public.games (
 select
   'mini-sudoku',
   'Mini Sudoku',
-  'Sudoku on a 6×6 grid. Quick to start, hard to put down.',
+  'Sudoku on a 6×6 grid.',
   'The small Sudoku: a 6×6 grid in boxes two rows tall and three wide, with the digits 1 to 6. Every board has exactly one solution, and every solved board winds the clock back.',
   'Fill the grid so every row, every column and every 2×3 box holds the digits 1 to 6 once each. Tap a cell, then a digit. Solve a board for 60 points and time for the next one: the clock starts at two minutes, and each board adds time, generous early on and tighter as the run goes. A wrong digit never ends a run; the clock does.',
   (select c.id from public.categories c where c.slug = 'puzzle'),

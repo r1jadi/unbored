@@ -75,5 +75,17 @@ Two paths, one API key:
    and a Resend idempotency key per digest/recipient prevent duplicates. See
    [services/notifications/README.md](../../services/notifications/README.md).
 
+4. **Feedback to the team** (`services/notifications/feedback.go`). Players send
+   feedback from Settings → Send feedback; it is stored in `public.feedback` and
+   read in the admin console (Feedback). The same service mails each row to
+   `contactunbored@gmail.com` (override with `FEEDBACK_EMAIL_TO`) with the
+   sender as `Reply-To`, so replying answers the player. The browser nudges
+   `POST /api/v1/cron/feedback-notify` right after a send (signed-in callers
+   only, bounded to ten unsent rows); a daily Vercel Cron on
+   `GET /api/v1/cron/feedback-emails` (`CRON_SECRET`) mails anything a lost nudge
+   left behind. A row is stamped `emailed_at` only after Resend accepted it, and
+   a per-row idempotency key stops a retry sending twice. Needs `RESEND_API_KEY`,
+   `EMAIL_FROM` and `SUPABASE_SECRET_KEY` on the games deployment.
+
 Before any of these works, verify `unbored.lol` in Resend → Domains (SPF/DKIM DNS
 records), otherwise Resend only delivers to the account owner's address.

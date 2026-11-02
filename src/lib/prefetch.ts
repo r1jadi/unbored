@@ -1,6 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-import { categoriesQuery, gameQuery, gamesQuery, MAX_PAGE_SIZE } from "@/lib/games/catalog";
+import {
+  categoriesQuery,
+  gameQuery,
+  FEED_QUERY,
+  gamesQuery,
+  MAX_PAGE_SIZE,
+} from "@/lib/games/catalog";
 import { leaderboardQuery } from "@/lib/games/sessions";
 import { isBrowser } from "@/lib/query";
 
@@ -25,7 +31,7 @@ function warm(run: () => Promise<unknown>): void {
 }
 
 export function prefetchFeed(client: QueryClient): void {
-  warm(() => client.prefetchInfiniteQuery(gamesQuery()));
+  warm(() => client.prefetchInfiniteQuery(gamesQuery(FEED_QUERY)));
 }
 
 export function prefetchExplore(client: QueryClient): void {

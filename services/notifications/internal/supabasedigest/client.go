@@ -162,3 +162,31 @@ func (c *Client) call(ctx context.Context, function string, payload, out any) er
 	}
 	return nil
 }
+
+// Feedback is one piece of player feedback waiting to be mailed to the team.
+type Feedback struct {
+	ID             string `json:"id"`
+	Mood           int    `json:"mood"`
+	Category       string `json:"category"`
+	Message        string `json:"message"`
+	Context        string `json:"context"`
+	SenderUsername string `json:"sender_username"`
+	SenderEmail    string `json:"sender_email"`
+	CreatedAt      string `json:"created_at"`
+}
+
+// PendingFeedback returns at most limit pieces of feedback not yet emailed,
+// oldest first.
+func (c *Client) PendingFeedback(ctx context.Context, limit int) ([]Feedback, error) {
+	var rows []Feedback
+	if err := c.call(ctx, "feedback_pending_email", map[string]any{"p_limit": limit}, &rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// MarkFeedbackEmailed stamps one piece of feedback as emailed. Repeating the
+// call is a no-op.
+func (c *Client) MarkFeedbackEmailed(ctx context.Context, id string) error {
+	return c.call(ctx, "mark_feedback_emailed", map[string]any{"p_id": id}, nil)
+}

@@ -21,9 +21,13 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+/** The calls to the service that mails feedback to the team. */
+const notifies: string[] = [];
+
 /** Gateway sign-in plus a Data API stub that records feedback inserts. */
 function stubBackend(feedbackStatus = 201) {
   const inserts: Array<Record<string, unknown>> = [];
+  notifies.length = 0;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -37,6 +41,10 @@ function stubBackend(feedbackStatus = 201) {
             expiresIn: 3600,
           },
         });
+      }
+      if (url.includes("/cron/feedback-notify")) {
+        notifies.push(String(init?.method));
+        return json({ sent: 1, failed: 0 });
       }
       if (url.includes("/rest/v1/feedback")) {
         if (feedbackStatus >= 400) {
@@ -120,6 +128,8 @@ describe("sendFeedback", () => {
     expect(inserts).toEqual([
       { user_id: ME, mood: 5, category: "praise", message: "Love it", context: null },
     ]);
+    // The team's inbox copy is requested once the row is stored.
+    await waitFor(() => expect(notifies).toEqual(["POST"]));
   });
 });
 
