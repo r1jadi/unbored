@@ -1,4 +1,4 @@
-# Unbored
+# Unbored!
 
 Unbored is short games you can play instantly, with scores that mean something and
 people you follow to beat.
