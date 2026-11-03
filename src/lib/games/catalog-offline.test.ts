@@ -50,7 +50,10 @@ afterEach(() => {
 
 describe("the catalogue offline", () => {
   it("answers the feed, a category and a game from the last list read online", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => json(LIST)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json(LIST)),
+    );
     await fetchGames({ limit: 100 });
 
     goOffline();
@@ -67,7 +70,10 @@ describe("the catalogue offline", () => {
 
   it("answers the categories from the last read", async () => {
     const categories = { items: [{ slug: "puzzle", name: "Puzzle", gameCount: 3 }] };
-    vi.stubGlobal("fetch", vi.fn(async () => json(categories)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json(categories)),
+    );
     await fetchCategories();
 
     goOffline();
@@ -78,7 +84,10 @@ describe("the catalogue offline", () => {
     goOffline();
     await expect(fetchGames({ limit: 100 })).rejects.toMatchObject({ code: "network_error" });
 
-    vi.stubGlobal("fetch", vi.fn(async () => json(LIST)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json(LIST)),
+    );
     await fetchGames({ limit: 100 });
     vi.stubGlobal(
       "fetch",
@@ -88,7 +97,10 @@ describe("the catalogue offline", () => {
   });
 
   it("does not answer a search offline", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => json(LIST)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json(LIST)),
+    );
     await fetchGames({ limit: 100 });
 
     goOffline();
