@@ -37,6 +37,7 @@ import {
 } from "@/lib/auth/session";
 import { getQueryClient } from "@/lib/query";
 import { localizeGame, type Game } from "@/lib/games/catalog";
+import type { ForYouSignals } from "@/lib/games/for-you-personal";
 import { fetchProfilesByIds, type PublicProfile } from "@/lib/social/follows";
 import { restCount, restGet, restMutate, SupabaseRestError } from "@/lib/supabase/rest";
 
@@ -1009,6 +1010,71 @@ function useOwnGameIds(kind: "likes" | "saves"): GameListState {
   // A sign-out mid-list must not leave another player's games on screen: the
   // auth subscription above resets through `anonymous`.
   return { games, status, error, retry: useCallback(() => setTick((n) => n + 1), []) };
+}
+
+export type ForYouSignalsState = {
+  /** `anonymous` and `error` both mean the feed orders as it would for a guest. */
+  status: "anonymous" | "loading" | "ready" | "error";
+  signals: ForYouSignals | null;
+};
+
+/**
+ * What the personal For You order knows about the signed-in caller: the games
+ * they finished lately, with when, and the games they liked and saved, as slugs.
+ *
+ * Three small reads, then one lookup of every id they name. A guest needs none;
+ * a failed read is a guest's feed, never an empty one.
+ */
+export function useForYouSignals(): ForYouSignalsState {
+  const [state, setState] = useState<ForYouSignalsState>(() =>
+    getAuthState().status === "authenticated"
+      ? { status: "loading", signals: null }
+      : { status: "anonymous", signals: null },
+  );
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const auth = getAuthState();
+    if (auth.status !== "authenticated") {
+      setState({ status: "anonymous", signals: null });
+      return subscribeToAuth(() => setTick((n) => n + 1));
+    }
+    let cancelled = false;
+    setState({ status: "loading", signals: null });
+    Promise.all([listMyRecentScores(50), listLikedGameIds(), listSavedGameIds()])
+      .then(async ([scores, liked, saved]) => {
+        const records = await fetchGameRecords([
+          ...scores.map((row) => row.gameId),
+          ...liked,
+          ...saved,
+        ]);
+        const slugOf = new Map(records.map((record) => [record.id, record.game.slug]));
+        const slugs = (ids: string[]) =>
+          ids.map((id) => slugOf.get(id)).filter((slug): slug is string => Boolean(slug));
+        if (cancelled) return;
+        setState({
+          status: "ready",
+          signals: {
+            viewer: auth.session.userId,
+            played: scores
+              .filter((row) => slugOf.has(row.gameId))
+              .map((row) => ({ slug: slugOf.get(row.gameId)!, at: row.createdAt })),
+            liked: slugs(liked),
+            saved: slugs(saved),
+          },
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ status: "error", signals: null });
+      });
+    const unsubscribe = subscribeToAuth(() => setTick((n) => n + 1));
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [tick]);
+
+  return state;
 }
 
 /** Games the signed-in caller liked, newest first. */
