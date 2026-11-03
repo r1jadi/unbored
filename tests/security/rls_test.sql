@@ -2466,11 +2466,11 @@ select rls_test.visible(
 );
 -- `fixture-%` are this suite's own playable games (the ones the refusal paths
 -- need), so the claim is about the catalogue: of the games this repository
--- ships, only the twenty with runtimes are playable.
+-- ships, only the twenty-one with runtimes are playable.
 select rls_test.visible(
   $$select 1 from public.games
-     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku', 'scatter', 'huedini', 'cascade') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
-  0, 'no shipped game besides the twenty runtimes is marked playable'
+     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku', 'scatter', 'huedini', 'cascade', 'checkmate') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
+  0, 'no shipped game besides the twenty-one runtimes is marked playable'
 );
 select rls_test.says_field(
   $$public.start_game_session('stack-10', 'stack-10@1', 'test/1.0')$$,
@@ -2713,21 +2713,40 @@ select rls_test.says(
 );
 -- The shipped Cascade game: playable, its bound and its rules.
 select rls_test.visible(
-  $select 1 from public.games where slug = 'cascade' and title = 'Cascade' and playable
-       and runtime = 'cascade' and status = 'published' and is_official$,
+  $$select 1 from public.games where slug = 'cascade' and title = 'Cascade' and playable
+       and runtime = 'cascade' and status = 'published' and is_official$$,
   1, 'the shipped Cascade game is published, playable and names its runtime'
 );
 select rls_test.says_field(
-  $public.start_game_session('cascade', 'cascade@1', 'test/1.0')$,
+  $$public.start_game_session('cascade', 'cascade@1', 'test/1.0')$$,
   'tile_count', '4096', 'a Cascade session reports its submission bound'
 );
 select rls_test.says(
-  $public.start_game_session('cascade', 'decant@2', 'test/1.0')$,
+  $$public.start_game_session('cascade', 'decant@2', 'test/1.0')$$,
   'unsupported_runtime', 'Cascade does not accept the Decant rules'
 );
 -- The deal is internal: a client cannot draw boards ahead of a session.
-select rls_test.denied($select public.cascade_first_board(1)$,
+select rls_test.denied($$select public.cascade_first_board(1)$$,
   'a client cannot call the Cascade deal');
+-- The shipped Checkmate game: playable, its bound and its rules.
+select rls_test.visible(
+  $$select 1 from public.games where slug = 'checkmate' and title = 'Checkmate' and playable
+       and runtime = 'checkmate' and status = 'published' and is_official$$,
+  1, 'the shipped Checkmate game is published, playable and names its runtime'
+);
+select rls_test.says_field(
+  $$public.start_game_session('checkmate', 'checkmate@1', 'test/1.0')$$,
+  'tile_count', '2048', 'a Checkmate session reports its submission bound'
+);
+select rls_test.says(
+  $$public.start_game_session('checkmate', 'cascade@1', 'test/1.0')$$,
+  'unsupported_runtime', 'Checkmate does not accept the Cascade rules'
+);
+-- The answers are internal: a client cannot read a puzzle's solution.
+select rls_test.denied($$select public.checkmate_answers(1, 1)$$,
+  'a client cannot read the Checkmate answers');
+select rls_test.denied($$select public.checkmate_bank()$$,
+  'a client cannot read the Checkmate bank');
 select rls_test.says(
   $$public.start_game_session('sudoku', 'mini-sudoku@1', 'test/1.0')$$,
   'unsupported_runtime', 'Sudoku does not accept the Mini Sudoku rules'

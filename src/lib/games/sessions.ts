@@ -202,6 +202,16 @@ import {
   type CascadeRun,
 } from "@/lib/games/cascade";
 import {
+  budgetMs as checkmateBudgetMs,
+  CHECKMATE_RULES_VERSION,
+  createRun as createCheckmateRun,
+  finish as finishCheckmateRun,
+  move as moveCheckmate,
+  skip as skipCheckmate,
+  submission as checkmateSubmission,
+  type CheckmateRun,
+} from "@/lib/games/checkmate";
+import {
   budgetMs as tangoBudgetMs,
   createRun as createTangoRun,
   finish as finishTangoRun,
@@ -2790,6 +2800,220 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
   }, [state]);
 
   return { ...state, signedIn, begin, swap, finish, restart, retry };
+}
+
+// ── A run of Checkmate, from Start to score ───────────────────────────────────────
+
+export type CheckmateRunState =
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | {
+      status: "playing";
+      session: PlaySession;
+      run: CheckmateRun;
+      /** When the clock runs out, as a `Date.now()` timestamp. */
+      deadline: number;
+    }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: CheckmateRun; deadline: number }
+  | { status: "finished"; session: PlaySession; run: CheckmateRun; result: RunResult }
+  | {
+      status: "error";
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: CheckmateRun;
+    };
+
+export type CheckmateRunControls = CheckmateRunState & {
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
+  begin: () => void;
+  /** Moves a piece. Ignored unless the run is live and the move is legal; a wrong move costs time. */
+  move: (from: number, to: number) => void;
+  /** Gives up on this puzzle for the next, at twenty seconds of clock. */
+  skip: () => void;
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
+  /** Back to the rules, for a fresh run. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of Checkmate against the session API.
+ *
+ * The same lifecycle as Zip, 8 Puzzle and Mini Sudoku, for the same reason: the run is against
+ * a clock the verifier times from the session's start (`out_of_time`), so the
+ * session is issued when the player presses Start, the clock starts when it
+ * arrives, and the run ends by itself when the clock reaches zero. Every action
+ * moves the deadline: solved puzzles add time, and mistakes and skips take it.
+ */
+export function useCheckmateRun(gameSlug: string, autoStart = false): CheckmateRunControls {
+  // Tap to play skips the rules: the first render is already "starting", so the
+  // rules never paint for a frame before an effect could press Start for them.
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<CheckmateRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
+  const startedAt = useRef(0);
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  const signedIn = !!getAccessToken();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // A session is requested only once Start has been pressed (`attempt` > 0).
+  useEffect(() => {
+    if (attempt === 0) return;
+    const controller = new AbortController();
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    startSession(gameSlug, { signal: controller.signal, rulesVersion: CHECKMATE_RULES_VERSION })
+      .then((session) => {
+        if (controller.signal.aborted) return;
+        const run = createCheckmateRun(session.seed);
+        startedAt.current = Date.now();
+        setState({
+          status: "playing",
+          session,
+          run,
+          deadline: startedAt.current + checkmateBudgetMs(run),
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // The clock. When it reaches zero the run is over, and verification follows.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome !== "playing") return;
+    const remaining = state.deadline - Date.now();
+    const timer = setTimeout(
+      () => {
+        setState((current) => {
+          if (current.status !== "playing" || current.run.outcome !== "playing") return current;
+          if (Date.now() < current.deadline) return { ...current };
+          endedAt.current = current.deadline;
+          return { ...current, run: finishCheckmateRun(current.run, "time") };
+        });
+      },
+      Math.max(0, remaining),
+    );
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  // Verification: once, when a run has ended.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run, deadline } = state;
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run, deadline });
+
+    completeRun(
+      session.id,
+      { ...checkmateSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const act = useCallback((step: (run: CheckmateRun) => CheckmateRun) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      // A move after the deadline — a backgrounded tab can hold its timer back —
+      // ends the run instead of moving: the clock has already run out.
+      if (Date.now() >= current.deadline) {
+        if (current.run.outcome !== "playing") return current;
+        endedAt.current = current.deadline;
+        return { ...current, run: finishCheckmateRun(current.run, "time") };
+      }
+      const next = step(current.run);
+      if (next === current.run) return current;
+      // The deadline follows the clock the run has earned.
+      return {
+        ...current,
+        run: next,
+        deadline: startedAt.current + checkmateBudgetMs(next),
+      };
+    });
+  }, []);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishCheckmateRun(current.run, "stopped");
+      if (next === current.run) return current;
+      endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    // Tap to play skips the rules on Play again too: straight to a new session.
+    if (autoStart) {
+      setState({ status: "starting" });
+      setAttempt((n) => n + 1);
+    } else {
+      setState({ status: "intro" });
+    }
+  }, [autoStart]);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again. The clock is already over, so the
+      // deadline only has to exist; it no longer moves.
+      submitting.current = false;
+      setState({ status: "playing", session: state.session, run: state.run, deadline: 0 });
+      return;
+    }
+
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  const move = useCallback(
+    (from: number, to: number) => act((run) => moveCheckmate(run, from, to)),
+    [act],
+  );
+  const skip = useCallback(() => act(skipCheckmate), [act]);
+
+  return { ...state, signedIn, begin, move, skip, finish, restart, retry };
 }
 
 // ── A run of the daily crossword, from Start to score ────────────────────────

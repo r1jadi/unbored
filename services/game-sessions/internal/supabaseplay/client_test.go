@@ -385,6 +385,24 @@ func TestCompleteRunRoutesDecantRulesToDecantVerifier(t *testing.T) {
 	}
 }
 
+func TestCompleteRunRoutesCheckmateRulesToCheckmateVerifier(t *testing.T) {
+	rec := newRecorder(t, http.StatusOK, resultRow)
+
+	if _, err := rec.client(t).CompleteRun(context.Background(), CompleteRequest{
+		SessionID:    "ffffffff-1111-4111-8111-ffffffffffff",
+		RulesVersion: "checkmate@1",
+		Actions:      []int32{3108, 4096},
+		Score:        10,
+		DurationMS:   20000,
+	}); err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+
+	if rec.path != "/rest/v1/rpc/complete_checkmate_run" {
+		t.Fatalf("path = %s, want the Checkmate verifier function", rec.path)
+	}
+}
+
 func TestCompleteRunRoutesCascadeRulesToCascadeVerifier(t *testing.T) {
 	rec := newRecorder(t, http.StatusOK, resultRow)
 

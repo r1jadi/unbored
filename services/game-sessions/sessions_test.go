@@ -1210,6 +1210,39 @@ func TestCompleteSessionRejectsAMiniSudokuMovePastTheBoard(t *testing.T) {
 	}
 }
 
+func TestCompleteSessionAcceptsCheckmateMovesAndASkip(t *testing.T) {
+	// 4095 is the highest move code (square 63 to square 63); 4096 is a skip.
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("checkmate@1", "10", "20000", "[3108,4095,4096]"), "")
+
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (%#v)", status, body)
+	}
+	if len(backend.lastRun.Actions) != 3 || backend.lastRun.Actions[2] != 4096 {
+		t.Fatalf("actions = %v, want the submitted actions", backend.lastRun.Actions)
+	}
+}
+
+func TestCompleteSessionRejectsACheckmateActionPastTheCodes(t *testing.T) {
+	backend := testBackend()
+	server := testServer(t, backend)
+
+	status, body := post(t, server,
+		"/api/v1/sessions/"+sessionID+"/complete",
+		completeBodyRules("checkmate@1", "0", "20000", "[4097]"), "")
+
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (%#v)", status, body)
+	}
+	if backend.runCalls != 0 {
+		t.Fatal("an action past the Checkmate codes reached the verifier")
+	}
+}
+
 func TestCompleteSessionAcceptsCascadeSwapsOnTheBoard(t *testing.T) {
 	// 127 is cell 63 swapped down: off the board, but in range, so it is the
 	// verifier that refuses it, not the service.

@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Twenty games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Twenty-one games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini**, **Cascade** and the **Daily Crossword**. Eighteen of them — all but 7 Second and the crossword, the two daily
+**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate** and the **Daily Crossword**. Nineteen of them — all but 7 Second and the crossword, the two daily
 games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -2735,3 +2735,92 @@ in the live database, and reproduce both exactly.
    `0,6,16,21,25,44,49,4,52,75,40,24,5,21,4,5,0,8,41,38,4,9,41,53,36,2,12,20,28,38,0,5,3,6,17,34,19,3,43,48`:
    score 177 (1 770 on screen), level 4, 150 tiles cleared.
 3. **The clock** — 60 s with no level cleared, 84 s after one, 106 s after two.
+
+
+## Checkmate
+
+Chess puzzles against the clock. Every position has exactly one way to
+checkmate: the first six puzzles of a run are mates in one, every later one a
+mate in two, where the board plays the defender's reply after the key move.
+The positions are the bank's own, found by a script in games it plays itself,
+so no puzzle comes from an outside collection.
+
+| Thing   | Value                                                                      |
+| ------- | -------------------------------------------------------------------------- |
+| Puzzles | 240 mates in one, 160 mates in two, each with exactly one solution         |
+| Order   | Puzzles 1–6 mates in one, then mates in two                                |
+| Score   | 10 a mate in one, 30 a mate in two (shown ×10: 100 and 300)                |
+| Clock   | 90 s to start; +15 s a mate in one, +40 s a mate in two, tapered           |
+| Costs   | −10 s a wrong move (the puzzle stays), −20 s a skip (no points)            |
+| Slack   | 20 s: how late after its clock a run may still reach the server            |
+| Actions | 2048 at most: a move as `from × 64 + to` (0 to 4095), 4096 a skip          |
+| Rules   | `checkmate@1`                                                              |
+| Runtime | `checkmate` (the catalogue's `games.runtime` value)                        |
+
+### The rules of chess, and the bank
+
+`src/lib/games/chess.ts` is the whole of chess the game needs: positions in FEN,
+legal moves (castling, en passant, pins and checks included), mate, and move
+notation. Promotion is always to a queen, so a move is just its two squares. Its
+move generator matches the standard perft counts for the starting position,
+Kiwipete and the rook endgame (`chess.test.ts`).
+
+`scripts/generate-checkmate-bank.mjs` plays a thousand-odd games with a fixed
+seed — each side takes the most valuable piece it can half the time, and plays
+a random legal move otherwise — and keeps a position when:
+
+- **mate in one**: the side to move has exactly one mating move;
+- **mate in two**: there is no mate in one, and exactly one first move (the key)
+  after which every reply allows a mate. The bank also names the reply it plays,
+  the first in move order after which the mate is unique, and that mate.
+
+A game gives the bank at most one puzzle of each kind. An entry is `FEN;moves`
+in UCI. The bank is a fixed asset: `--write` rewrites both copies, and changing
+it needs a new rules version. `checkmate.test.ts` re-proves every entry.
+
+### The draw, and the run
+
+A level's puzzle is one LCG draw from its half of the bank: the seed's state,
+advanced once per level (`× 1664525 + 1013904223 mod 2³²`), then
+`(state >> 16) mod size`. The side to move is at the bottom of the board.
+
+A move is the puzzle's next answer or a mistake. The answer solves a mate in
+one, or plays a mate in two's key and brings the bank's reply; the mate after
+it solves the puzzle, scores, adds `bonus × clock_taper_pct(puzzles solved)` to
+the clock, and deals the next. Any other legal move costs ten seconds and leaves
+the position as it was. A skip deals the next puzzle for twenty seconds.
+
+### How a run ends, and the server's clock
+
+As in Decant: the session is issued when the player presses Start, the run ends
+when the clock reaches zero or the player ends it, and the verifier refuses a run
+that reaches it more than `90 s + bonuses − 10 s × mistakes − 20 s × skips +
+checkmate_slack_ms()` after the session started (`out_of_time`, a `422`). Any
+prefix of a legal line is a valid submission: the score never goes down.
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261203120000_checkmate_sessions.sql`. It never plays
+chess: each puzzle's answer is fixed, so it only asks whether each submitted move
+is the bank's next one.
+
+- `public.checkmate_bank()` is the bank and `public.checkmate_answers(seed, level)`
+  the draw, as the player's moves; internals, not granted to a client, so the
+  answers cannot be read ahead of a run.
+- `public.complete_checkmate_run(session, actions, score, duration)` replays every
+  action as above, derives the score, compares it with the claim, checks the clock,
+  and only then records it. The Go service routes `checkmate@` runs to it and
+  accepts up to 2048 actions on 0 to 4096.
+- `20261203120100_checkmate_playable.sql` inserts the catalogue record (Puzzle).
+
+### Test vectors
+
+Asserted in [`src/lib/games/checkmate.test.ts`](../../src/lib/games/checkmate.test.ts).
+
+1. **Seed 1's first eight puzzles** — bank entries 136, 200, 166, 115, 192, 216,
+   294, 370: six mates in one, then two mates in two.
+2. **Seed 1's line** — one wrong move, seven puzzles solved, one skip: actions
+   `2397,3222,334,4093,1726,578,2637,3828,3332,4096`, score 90 (900 on screen).
+3. **The clock** — 108 s after one mate in one, 80 s after one wrong move and
+   none solved, 70 s after one skip.

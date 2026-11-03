@@ -406,6 +406,28 @@ export const GAME_RULES = {
       },
     ],
   },
+  checkmate: {
+    heading: "Find the mate",
+    summary: "Every position has exactly one way to checkmate. Find it before the clock runs out.",
+    rules: [
+      {
+        lead: "Tap a piece,",
+        text: "then the square to move it to. Its legal moves are marked. You play the side at the bottom of the board.",
+      },
+      {
+        lead: "Mate in one, then in two.",
+        text: "The first six puzzles are mates in one. After that they are mates in two: the other side replies to your first move, and your second move mates.",
+      },
+      {
+        lead: "Wrong move?",
+        text: "It costs 10 seconds and the puzzle stays. Skip moves on to the next one for 20.",
+      },
+      {
+        lead: "The clock",
+        text: "starts at 1:30. A mate in one scores 100 and adds 15 seconds, a mate in two 300 and 40 seconds: a little more early on, less as the run goes. The run ends when the clock does.",
+      },
+    ],
+  },
   cascade: {
     heading: "Line them up",
     summary: "Swap two tiles to line up three of a kind. Let it cascade.",

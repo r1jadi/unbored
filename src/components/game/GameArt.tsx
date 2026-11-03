@@ -1,4 +1,5 @@
 import { CascadeTile } from "@/components/game/CascadeTile";
+import { ChessPiece } from "@/components/game/ChessPiece";
 import { cn } from "@/lib/utils";
 
 import { t } from "@/lib/settings/language";
@@ -67,6 +68,7 @@ export function GameArt({
         {id === "sudoku" && <Sudoku />}
         {id === "mini-sudoku" && <MiniSudoku />}
         {id === "cascade" && <Cascade />}
+        {id === "checkmate" && <Checkmate />}
         {id === "crossword" && <Crossword />}
         {id === "gridburst" && <Gridburst />}
         {id === "updraft" && <Updraft />}
@@ -95,6 +97,7 @@ const KNOWN = new Set([
   "sudoku",
   "mini-sudoku",
   "cascade",
+  "checkmate",
   "crossword",
   "gridburst",
   "updraft",
@@ -322,6 +325,39 @@ function SunAndMoon() {
           />
         </div>
       ))}
+    </div>
+  );
+}
+
+function Checkmate() {
+  // A 5×5 corner of a board: the black king boxed in on the back rank, and the
+  // white queen's mating square marked.
+  const pieces: Record<number, string> = {
+    1: "k",
+    5: "p",
+    6: "p",
+    7: "p",
+    13: "R",
+    18: "K",
+    22: "Q",
+  };
+  return (
+    <div className="grid w-full grid-cols-5 overflow-hidden rounded-xl">
+      {Array.from({ length: 25 }, (_, square) => {
+        const dark = (Math.floor(square / 5) + (square % 5)) % 2 === 1;
+        return (
+          <div
+            key={square}
+            className={cn(
+              "relative aspect-square p-[10%]",
+              dark ? "bg-[oklch(0.58_0.06_250)]" : "bg-[oklch(0.86_0.015_250)]",
+            )}
+          >
+            {square === 3 && <div className="absolute inset-[30%] rounded-full bg-primary/80" />}
+            {pieces[square] && <ChessPiece piece={pieces[square]} />}
+          </div>
+        );
+      })}
     </div>
   );
 }

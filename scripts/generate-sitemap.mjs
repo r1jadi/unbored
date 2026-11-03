@@ -44,6 +44,7 @@ const DYNAMIC_PATHS = [
     "scatter",
     "huedini",
     "cascade",
+    "checkmate",
     "mini-sudoku",
   ].map((id) => `/games/${id}`),
 ];

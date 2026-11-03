@@ -1,0 +1,985 @@
+-- Checkmate (`checkmate@1`): chess puzzles against the clock, verified by the database.
+--
+-- Every position has exactly one way to checkmate: the first six puzzles of a run
+-- are mates in one, every later one a mate in two, where the bank plays the
+-- defender's reply after the key. Solve a puzzle for points and time; a wrong
+-- move costs time and the puzzle stays; a skip costs more and scores nothing.
+--
+-- The database never plays chess. Each puzzle's answer is fixed in the bank, so
+-- the verifier only has to ask whether a submitted move is the bank's next move:
+-- if it is, the puzzle moves on, and if not, it is a mistake.
+--
+-- This migration adds the rules, the puzzle bank, the puzzle draw, the verifier
+-- (`complete_checkmate_run`) and teaches the start gate the (`checkmate`,
+-- `checkmate@1`) pair. It is only half the feature, so nothing a user can see
+-- changes: `20261203120100_checkmate_playable.sql` flips the catalogue and lands
+-- last, once the service that routes `checkmate@` runs to the new verifier and
+-- the client that plays it are deployed. See docs/games/README.md.
+--
+-- Mirrored by src/lib/games/checkmate.ts; the bank is
+-- src/lib/games/checkmate-bank.ts, both written by
+-- scripts/generate-checkmate-bank.mjs.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- The rules, as constants the database owns
+-- ─────────────────────────────────────────────────────────────────────────────
+
+create or replace function public.checkmate_rules_version()
+returns text language sql immutable set search_path = '' as $$ select 'checkmate@1'::text $$;
+
+create or replace function public.checkmate_max_actions()
+returns integer language sql immutable set search_path = '' as $$ select 2048 $$;
+
+create or replace function public.checkmate_slack_ms()
+returns integer language sql immutable set search_path = '' as $$ select 20000 $$;
+
+comment on function public.checkmate_rules_version() is
+  'The Checkmate rules version new runs pin: checkmate@1.';
+comment on function public.checkmate_max_actions() is
+  'The most actions one Checkmate submission may carry: a request ceiling, not a last puzzle.';
+comment on function public.checkmate_slack_ms() is
+  'How late after its clock ran out a Checkmate run is still accepted.';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- The puzzle bank: mates in one, then mates in two
+-- ─────────────────────────────────────────────────────────────────────────────
+--
+-- An entry is `FEN;moves`, the moves in UCI: the mate, or the key, the reply the
+-- bank plays and the mate. Only the player's moves matter here. Do not edit by
+-- hand: scripts/generate-checkmate-bank.mjs --write rewrites it.
+
+create or replace function public.checkmate_bank()
+returns text[]
+language sql
+immutable
+set search_path = ''
+as $$
+  select array[
+    -- bank:begin
+    -- mate in one
+    '3r3r/p3pk2/1p3n1b/3p4/1q1P4/2P2P1P/4P1b1/3K3R b - - 0 21;b4b1',
+    '4b3/1pp2k2/4p3/4P3/3b1K2/1r6/8/7q b - - 7 32;h1h4',
+    '3k4/7P/6p1/2R1Pb2/3P1p2/5K2/4r3/4b3 b - - 1 35;e2f2',
+    '1B4k1/R1P5/8/8/1P3P2/8/8/3K4 w - - 1 52;c7c8q',
+    '8/8/8/1n1pk1p1/2b5/2p1r2n/3p4/1K6 b - - 9 73;d2d1q',
+    '8/1p1b4/2p1p1p1/4k3/PpP3n1/4P3/5r2/R1B3RK b - - 1 26;f2h2',
+    '8/8/1ppk4/p3n1p1/P2p1pp1/3r4/5K2/7r b - - 23 73;d3d2',
+    '7R/8/3pp3/k7/2PP2B1/p7/P7/1R2K1N1 w - - 0 37;h8a8',
+    'rn2kbn1/1ppbppp1/3q4/p7/8/1P4Pr/P1PPP3/R1BQKBN1 b Qq - 0 10;d6g3',
+    'rnbq2k1/pppppr2/7R/5p2/8/5N2/PBPPPPP1/RN1QKB2 w Q - 1 10;h6h8',
+    '5k1r/4p3/6P1/P3p3/8/P1PK2p1/4NB2/7Q w - - 0 30;h1h8',
+    'rn2kb2/p1p1pppr/1p5n/8/P1b3P1/2q4P/4PP2/1N1K1BNR b q - 0 14;c4b3',
+    '5k2/7R/B2R2P1/8/P6P/8/7K/8 w - - 7 54;d6d8',
+    '8/5pk1/1p1p3p/4p2P/4n3/r2p4/7n/4K1N1 b - - 1 35;a3a1',
+    '6R1/8/R1P5/1P5k/1N2P3/3K4/8/1Q6 w - - 3 34;b1h1',
+    '3k4/2r2p2/7p/1r6/8/3P4/5P2/K7 b - - 5 37;c7a7',
+    'N1b4n/p4k2/2n1pp1p/qP1p4/6P1/3P3B/2PQPP2/R1K3NR b - - 6 20;a5a1',
+    '7k/8/2P1NR2/8/5B2/3P3P/4K2P/4N1R1 w - - 15 44;f6h6',
+    'r1b1k2r/1pp2p2/p1n1p3/2P5/P1p5/5P2/1bnPBPP1/5K2 b kq - 1 16;h8h1',
+    'k6N/3R4/8/8/1P6/8/5KRP/8 w - - 3 32;g2g8',
+    '1nbr4/5k2/7n/2pp1p2/1p2q2p/7K/8/8 b - - 9 47;e4h1',
+    '2k5/6P1/2K5/6Q1/6P1/5P2/2P1P3/5B2 w - - 11 55;g7g8q',
+    '2k3n1/7r/4p3/6p1/4P3/1P6/2q5/4K3 b - - 1 39;h7h1',
+    '6n1/p1p1pk1r/7b/1r2P3/1pP3b1/5q2/PP6/1R4K1 b - c3 0 21;h6e3',
+    '5k2/4pB2/6P1/8/8/b7/8/2B1K3 w - - 2 36;c1h6',
+    '4k3/4np2/p1p5/6p1/4rP2/P2P3q/8/b2R2K1 b - f3 0 26;a1d4',
+    '3r4/8/1pp3p1/7p/5k1P/8/r7/6K1 b - - 1 35;d8d1',
+    'r7/p6n/p5kp/4pb2/1P4nP/3pP3/2r3P1/1NB3K1 b - - 1 29;c2c1',
+    'rnb1qbnr/2pkppp1/7p/pp5Q/4p2P/BPPP2P1/P4P2/RN2KBNR w KQ - 0 9;h5d5',
+    '5b1r/r1p1nk1p/n1p1b1p1/8/4PN1P/P5p1/1PPq1PP1/R4K1R b - - 1 17;d2f2',
+    '1K2R3/5kP1/8/p5P1/2p5/8/8/8 w - - 4 45;g7g8q',
+    '5knr/5p1p/8/2pQP3/8/6RP/1R2P3/2B1KB2 w - - 1 25;d5d8',
+    '3k1bnr/1pp2pp1/2n5/3qp3/4P1bp/1P2K3/R2P1PPP/2BQ2NR b - - 1 12;d5d4',
+    '1nbqkb1r/3pp3/1p4p1/4N2p/1PB5/8/2PP2PP/2Q1KR2 w k - 0 15;c4f7',
+    '1r4n1/7R/p3p3/P2p4/8/4k2P/7P/4K3 b - - 2 33;b8b1',
+    '3k4/8/4p3/1p3ppp/1b6/8/6qn/3K4 b - - 1 36;g2d2',
+    '5n2/8/3k3p/4pK2/8/1pq5/8/8 b - - 11 58;c3f3',
+    '1K6/8/1k6/4p3/3q1p1p/7P/8/5n2 b - - 15 56;d4d8',
+    '8/4P3/8/2P5/2P2B2/1R6/8/1R2K2k w - - 9 51;e1f2',
+    'rn4n1/p2p3r/b4kpb/4pP2/P7/5P1P/1PP1P2q/R2QKB2 b Q - 0 18;h2g3',
+    '8/8/2p4p/1P5k/3P4/4PKPN/BPP5/1NB5 w - - 0 34;a2f7',
+    '4k1n1/2p5/1p3pp1/8/2P4r/Q3Pp1q/3P4/6K1 b - - 1 24;h3g2',
+    '2Q5/p2n4/1Rp4p/2k1p3/3pr3/5P2/2K5/8 w - - 2 37;c8c6',
+    '8/8/3N1k2/8/1P1P3P/6Q1/2B2N1P/3K1R2 w - - 3 43;g3e5',
+    '5k2/p5p1/5p2/8/r7/8/4r3/6K1 b - - 7 34;a4a1',
+    'rn3k2/p4p2/1p1p1P1R/8/P1pP4/2N4b/RPPKP3/2Q2B2 w - - 1 18;h6h8',
+    'rnb3r1/pp1p3p/6k1/8/P2Pqp2/2Pp3N/5KPP/R4B1R b - - 1 16;e4e3',
+    '1r5r/1b1n2pp/1p2p1k1/2pp1R2/PP1P3P/3KP3/5PP1/R2Q1B2 w - - 1 19;d1h5',
+    '8/8/2p2pk1/7p/5p2/p3r3/7r/2K5 b - - 3 55;e3e1',
+    '4kb1r/rp2pppp/5n2/5Q2/1p6/8/P1P2PPP/RN2KBNR w KQk - 1 12;f5c8',
+    'rn3rk1/3pp3/b1p2p2/1p6/3P1KpP/1P2P3/2P2P2/7q b - - 1 20;h1f3',
+    '1b6/8/8/7p/2k5/prn5/8/K7 b - - 15 59;b3b1',
+    '2b3n1/2pn1k2/5B2/8/5b2/3q4/3P3P/7K b - - 0 32;d3f1',
+    '2Q5/1p2k2r/5p2/4P3/6p1/pP6/P3PPB1/2R1K1N1 w - - 1 21;c1c7',
+    '2n5/8/7p/p4r1P/8/2k5/8/2K5 b - - 3 53;f5f1',
+    '2q5/3p3p/5k2/n2K1p2/8/r7/8/8 b - - 14 43;a3d3',
+    '6n1/p5b1/p2k1P2/4r3/P7/6r1/n7/7K b - - 0 38;e5h5',
+    '3k4/5P2/2K5/8/PP1P1B2/8/B7/8 w - - 7 67;f7f8q',
+    '3k4/8/P2P4/2NK1P2/7P/8/3R4/1R6 w - - 7 54;b1b8',
+    '4k3/2P2p2/4p3/7p/3P4/B5K1/8/8 w - - 1 38;c7c8q',
+    'rn2k1nQ/pp1b4/2p1p3/5p1p/5P2/BP6/P1PPP1PR/3K1B2 w q - 1 13;h8g8',
+    '4k3/8/4K3/6N1/7p/p7/P6P/2R5 w - - 20 56;c1c8',
+    'r1bq1k2/p1p1pp1Q/8/1p1p4/8/PPB2N2/3PP2P/RNK2B1R w - - 1 15;h7h8',
+    'rnbqkbn1/pppp1p2/4p2N/6pQ/4P1P1/1P6/P1PP1P1P/R1B1KBNR w KQ - 1 10;h5f7',
+    '5k2/7Q/2p5/8/P7/5pR1/5K2/8 w - - 0 33;g3g8',
+    '1Qb1kbnr/3pppp1/1p6/2p4p/2P5/8/PP1PPPPR/RNB1KBN1 w Qk - 0 9;b8c8',
+    '1n3b1B/1pkB3p/2pp4/8/r1P5/3Pq1P1/PP2PP1N/RN2K2R b KQ - 3 16;e3c1',
+    '8/2R2p2/3p1k2/1p2p1p1/1P6/2P1PP2/Q2P1KP1/RNB3N1 w - - 0 21;a2f7',
+    '5k1B/4p3/8/8/2p1NP2/1r1q3B/3P4/3K2N1 b - - 1 27;b3b1',
+    '4r2b/5p2/5k1p/3b4/5rP1/1p5p/7P/6K1 b - - 1 33;e8e1',
+    '2b2knr/5ppp/n3p3/1ppQ4/3P2P1/2P1KP2/4P3/1N3BNq w - - 0 19;d5d8',
+    '1n2q1nr/2p2kpp/Bp6/3p4/3p1Pb1/1P4P1/R1PK4/1NB3R1 b - - 4 15;e8e3',
+    'rn2kb2/p3ppp1/1p6/2pp4/8/2N1PP2/PPPP4/R1BK1Bq1 b q - 1 12;g1f1',
+    'r3kbnr/ppp2p2/1n1p3p/4pP2/PPPq4/N4P2/3PP3/R1BQKBN1 b kq - 0 11;d4h4',
+    'rnbk2nr/p1pp1pp1/7p/1p2p3/3P4/Q1P5/PP2PPPP/R3KBNR w KQ - 0 9;a3f8',
+    'rnbk2n1/pppp3p/3bp3/8/1P6/N2P2P1/P1P1PP1P/q1Q1KBNR b K - 0 9;a1c1',
+    '1n1k1br1/2ppp3/7p/8/P4p2/2P5/3P1KpP/1RB2B1R w - - 0 18;b1b8',
+    '1n1k2nr/3p2pp/3Bp3/5pP1/7P/8/b1PPPP2/1R1QKBN1 w - - 0 16;b1b8',
+    '7k/5p2/8/7p/1Pr2Pp1/8/r7/5K1n b - - 1 30;c4c1',
+    '8/1k6/2p5/3p1pp1/rb6/6K1/2q5/8 b - - 0 42;a4a3',
+    '4k1N1/2p4Q/np6/1P6/3P1p2/B1P1P2P/r7/3K4 w - - 1 26;h7e7',
+    '8/6r1/1r3p2/8/4p1nk/2p4p/8/6K1 b - - 9 46;b6b1',
+    '5k1r/5pbp/1pP2p2/8/p5Pp/6P1/PPPQ4/RN2K3 w Q - 0 21;d2d8',
+    '6Q1/p1p2pp1/3ppk2/7p/2PP4/P2BP2P/P4P2/2B1K1Nb w - - 1 16;g8d8',
+    '4knb1/4p3/8/6N1/5q1r/4P3/6B1/2Q1K1R1 w - - 0 26;c1c8',
+    '1n5r/1p3kp1/2p5/3p1bB1/3P4/1rb1P3/8/2K2B2 b - - 1 24;b3b1',
+    '6k1/2N2R2/1RP1P3/8/8/8/8/2K5 w - - 13 58;b6b8',
+    '5b2/p5p1/6k1/2p1r3/2n1P1Kp/2P2N1P/3p3P/7R b - - 2 28;e5e4',
+    '6k1/R6r/2p5/5pPp/3pp3/6Q1/1PPP1N1P/1NB1K2R w K - 1 23;g3b8',
+    '3k1bnr/2p1pp1p/n7/p2B2p1/8/2r3P1/PP1PPP2/RNB1K1R1 b Q - 1 13;c3c1',
+    '6n1/8/Q7/P5p1/3k4/1P3K2/3P2B1/2B5 w - - 1 33;a6d6',
+    '6n1/3k2p1/3Pp1pr/nP1p4/3P1PK1/4P3/q7/8 b - - 2 26;a2g2',
+    '1r1qkbnr/p1ppp1p1/2n2p1p/1p6/P3BP1P/8/1PPPPK2/RNBQ2NR w k - 0 9;e4g6',
+    '8/7Q/8/p6P/5kP1/K3R3/8/5N2 w - - 7 34;h7f5',
+    'b7/8/p1p5/4pk1K/8/1q6/8/8 b - - 1 48;b3h3',
+    '8/8/8/3P1k2/1RB4B/1P3N2/6K1/8 w - - 27 66;c4d3',
+    'rn2kb1r/p4p2/1p6/2p1p1B1/4n3/1P3P2/P1P1P3/RN1QKBN1 w Qkq - 0 14;d1d8',
+    '5n1k/6R1/7K/p7/2B1p1P1/2p5/8/6N1 w - - 0 43;g7g8',
+    '2k5/3b4/8/N2N2p1/PQ2p3/3p4/5PP1/1R2K3 w - - 1 28;b4b8',
+    '7R/8/7P/4BNk1/3P2P1/2PP4/5K2/8 w - - 14 50;h8g8',
+    '1r2k2r/7p/pp1pp3/4P3/2PK2p1/1PP5/4q3/8 b k - 0 28;d6e5',
+    '8/3p3Q/4p1p1/3p2kP/p7/P1P1P1K1/3r4/2R3N1 w - - 1 35;h7g6',
+    '6nr/rp4p1/n1p1Qp1p/2b4k/P4P2/7P/3P1P2/2BK3R w - - 1 19;e6g4',
+    '3k4/5r1p/6p1/p1P5/P2P3P/8/1r6/3K4 b - - 0 38;f7f1',
+    '5k2/2R5/8/P7/1PP1KP2/7P/8/3R4 w - - 1 71;d1d8',
+    'k7/p5P1/P7/2p3n1/3b4/8/8/4K3 w - - 1 48;g7g8q',
+    'r1b3nr/pppp1ppp/n3k3/8/3PpQ2/6PR/PPPP1P2/RNB1K1N1 w Q - 1 10;f4e5',
+    '2Q5/8/1R6/2P3k1/8/P4P2/8/3K4 w - - 5 43;c8g4',
+    '3rkbnr/Q4p1p/8/2p1p3/4P1p1/P5Pb/1PPN3P/1RB1KR2 w k e6 0 14;a7f7',
+    '1Rb1k3/p2p3R/2p1ppp1/8/2B2PP1/4P3/P1NP4/2B1K1N1 w - - 0 19;b8c8',
+    'R7/6k1/2P4p/7P/1Q6/8/2P2K1R/3N4 w - - 14 46;b4e7',
+    '1R3br1/1pk1pppp/2pp4/5P2/2PP4/3K1N2/3N1PPP/1QB2B1R w - - 1 18;b1b7',
+    '6nr/1pp5/2k5/5ppp/P2Q4/5N2/1PP1PP2/R1B1K2R w KQ f6 0 18;f3e5',
+    'B1bqkb1r/p2pp3/n6p/2p3p1/P3p3/2P3P1/1P1P1N1P/RNBQK2R w KQ - 0 12;d1h5',
+    'rn2k1nr/p2p1p2/6pp/4p3/7q/bPKPPP1P/P1P1N3/R1BQ1B1R b kq - 4 13;h4b4',
+    '1n4n1/4pp2/6k1/1Pq1p3/6P1/2P2P2/r7/2K5 b - - 0 24;c5g1',
+    'r2q1b1r/p1p1n1pp/n2p2k1/4p3/4K2P/1P2PP2/1PPP4/RNB1Q1NR b - - 4 14;a6c5',
+    '6Q1/8/8/5R2/1k2P3/4P3/2P5/1N1KN3 w - - 29 60;g8b3',
+    'rn1qk1n1/1bpppp1P/8/pp6/8/2NP4/PPPQPPP1/R3KBNR w KQq - 1 9;h7g8q',
+    '2b1k2r/3n2p1/3b3p/5P2/2P2p2/7P/4r1q1/1R1K4 b k - 1 23;g2f1',
+    '4k3/6Q1/8/5P2/P5KP/3P4/2R5/1N6 w - - 5 63;c2c8',
+    '4k3/R7/r7/p7/P2K3p/3P3P/2R5/8 w - - 3 42;c2c8',
+    '8/3R4/6k1/4P3/P5K1/1RPP2P1/6B1/8 w - - 3 52;b3b6',
+    '6Q1/8/k7/P2P4/P1p5/8/6K1/8 w - - 5 44;g8a8',
+    'rnb1k3/p1qpp3/5p2/7n/1p5P/N2PK3/2P1P3/b2Q1B1R b q - 0 19;c7f4',
+    '6k1/8/6K1/2P5/p2N4/6NP/P5P1/4R3 w - - 2 40;e1e8',
+    '1n2kbn1/4ppp1/p2p4/5K2/P3P2r/2r5/2b2P2/R7 b - - 0 24;c3c5',
+    'r3k3/pp1bp3/n7/P2Q1p2/5b2/N5P1/P2PP3/R1B1KB2 w Q - 0 17;d5g8',
+    'Q6R/4p1kp/3p2pn/2p2pP1/2P5/8/4PP2/1N1K1BNR w - - 2 19;a8f8',
+    '8/1q6/n1ppkppR/p7/1pKPPPP1/1P6/P7/RNB1N3 b - - 2 24;b7b5',
+    '8/5Q2/8/8/P2Pk1P1/8/P7/3RK1N1 w - - 1 46;f7f3',
+    '1nb2bnr/1p2p1pp/r2p4/2p3kP/2P5/1P2P3/P2q1PPR/1RB2KN1 b - - 1 12;d2d1',
+    'rn2k1n1/2pp1pp1/8/6q1/1PPP2N1/8/4PP2/1N2K2b b - d3 0 15;g5c1',
+    '1k6/4R3/4P3/8/2R5/4Q3/2PP4/1NB1K3 w - - 9 41;e3a7',
+    '4Q1R1/1rk5/p1p2p2/1p6/8/P1PP1PP1/P7/RN2KB2 w Q - 3 23;e8d8',
+    '1r3k2/1pp1ppp1/8/p7/q3P1P1/8/3P1PPR/R1B1KBN1 w Q - 0 15;h2h8',
+    'r1bqkbnr/1p1pp1p1/6pp/p1p5/5P2/P5PB/2QPP2P/1NB1K2R w Kkq - 0 10;c2g6',
+    'Q1q1knnr/1p2ppbp/3p2p1/8/1p5P/5P1P/P2PP3/R1B1KBN1 w Qk - 1 15;a8c8',
+    'Q1b1kbn1/p1p2pp1/4p3/6B1/8/3P4/PPP2PPq/RN1QKB2 w Q - 1 11;a8c8',
+    '7k/5Q2/8/8/P1P1PP2/3PB3/N3K3/6N1 w - - 9 40;e3d4',
+    'rnbk1bn1/ppp2ppr/3p3P/P3p3/RP3P2/8/2PPP3/1NBQKBq1 b - - 0 9;g1g3',
+    'rn1qkbnr/p1ppp3/5p1p/6p1/R2P4/2P4P/1P3PP1/1NBQKBNR w Kkq - 0 9;d1h5',
+    '8/8/k6P/P1Q5/4P3/4N3/8/2K5 w - - 3 61;c5b6',
+    '5R2/3k4/1pp1p3/7p/8/3P1p1P/5P2/r2N1K2 b - - 3 26;a1d1',
+    '4kb1r/1pp1p2p/6pn/R1PQ4/7p/5P2/1PK5/1N5R w k - 0 19;a5a8',
+    '8/4k3/3p4/4p3/2K3b1/2P5/8/1q6 b - - 4 43;g4e6',
+    '1n2k1n1/1p1r4/4p3/6p1/3p2P1/P7/2q1PP2/2R1KbN1 b - - 0 26;c2c1',
+    '5kr1/2P2p2/5P2/7p/3pNP2/6P1/P6P/R4K2 w - - 1 27;c7c8q',
+    '6nr/2q1k2p/3ppp2/6R1/1P6/7P/3PPP1N/1N2K3 b - - 0 20;c7c1',
+    '6nr/p4k1n/1r1p4/1P4pp/4P3/2p4P/q5N1/3K1BNR b - - 0 32;a2d2',
+    '5b2/3p4/2p5/p1P2k1P/5P1R/P7/4K3/RN4Q1 w - - 1 24;g1g6',
+    'q3k2r/2p1b2p/1p1pQP1n/p5p1/1n2P1P1/8/PBP2P1P/RN2K1NR w KQk - 0 13;e6e7',
+    'q4r2/5p2/4k3/b6p/7p/7K/1n6/8 b - - 15 56;a8h1',
+    '8/4Q3/1R6/5kp1/1P1K4/8/P3P3/6N1 w - - 0 26;e7e4',
+    'r1b2b1r/p1p2ppp/3p4/Qpk5/7R/4P3/1PP2KP1/1RB2BN1 w - b6 0 15;a5b5',
+    '2b5/3p1rbk/1P6/7n/1n4KP/6p1/8/5q2 b - - 2 32;f1f5',
+    '4kb1B/4pp2/n5pp/1P6/3p1P2/1P2P2N/2Q4P/5K1R w - - 0 20;c2c8',
+    '7k/p6p/8/3P2p1/P7/8/2P4K/1N3Q2 w - - 3 29;f1f8',
+    '5kn1/4pp2/1p6/1Pp5/6P1/4P3/rPq2P2/4K3 b - - 0 23;a2a1',
+    '7k/2Q5/7P/8/2RP4/3P4/4KP2/1N6 w - - 1 54;c7g7',
+    '1n2kb1r/r1Q1ppp1/5n2/7p/5P2/8/PPPP2PP/R1B1KBNR w KQk - 1 12;c7c8',
+    '6r1/4b2p/p6n/1p4P1/3p2kP/1P1PPNP1/P4K2/R2Q3R w - - 1 28;f3d4',
+    '5r2/8/8/B2P4/3Pp1k1/4P2p/7P/7K b - - 2 43;f8f1',
+    '4r3/2p1b2p/4k2p/Q3p3/2P1P1P1/1P6/7P/1N3RK1 w - - 1 23;a5d5',
+    '8/8/8/8/2k3p1/P1P5/4KQPP/1R2BB1R w - - 5 34;f2d4',
+    '7K/3r4/1k6/p1p5/1b6/8/8/5q2 b - - 5 70;f1f8',
+    '4kbnr/p3pppp/np1p4/2p5/5P2/1P2P2P/P1PP3P/RNBK1B1q b k - 1 9;h1f1',
+    'r5nr/1p5p/5pp1/7k/1Q6/2PPP1P1/6K1/2R3N1 w - - 2 32;b4h4',
+    '1K1k3r/2rN4/7n/5p1p/P7/3P2PP/4P3/5R1R b - - 0 35;d8d7',
+    'rnb3nB/pp1pp3/4k3/7Q/2p1P3/3P4/P4PPP/RN2KB1R w KQ - 0 13;h5d5',
+    '1q2k1n1/3rpp2/2Kp4/3p3p/4Q2P/P7/4N3/R1b5 b - - 2 26;b8b7',
+    '4kb1r/r3p1pp/7n/8/1P3p2/3q2PN/2P2P1P/4K2R b k b3 0 20;a7a1',
+    '3k4/2p3r1/3P2p1/1B4p1/4K3/8/R4PPP/1N5R w - - 1 26;a2a8',
+    '8/3kb2P/3p4/3K1p2/8/n4r2/8/8 b - - 3 45;f3d3',
+    'r4rk1/4b2p/p1n1p3/8/3P1pp1/3q1P2/7P/2K3NR b - - 1 23;e7a3',
+    'r1bqkbnr/2ppp3/5ppp/pP1P4/8/3Q3P/2P1PPP1/nNB1KBNR w Kkq - 0 10;d3g6',
+    '8/3Q4/6P1/k7/P7/8/4N3/K3N3 w - - 34 51;d7b5',
+    'r3kr2/6pp/1p1Q3n/p1p5/8/P3P1PB/2P1K2P/RNB3NR w q - 1 15;d6d7',
+    '6k1/P2R4/7p/7P/P7/K7/8/8 w - - 1 55;a7a8q',
+    '2Q5/1p1n4/4k3/3p3p/8/6p1/4Pp2/1N5K b - - 1 26;f2f1q',
+    '5Q2/7p/6k1/pp1P4/P3pPn1/1PP5/3K2P1/2RQ1BN1 w - - 0 27;d1g4',
+    '4kb1r/8/3p2Pp/4p2P/3pp1KP/3q4/8/8 b - - 2 28;d3f3',
+    '4kbn1/1r2pb2/1p4p1/2p5/P2nP3/6P1/3P1P2/2BKR3 b - - 4 26;f7b3',
+    'r1b1k1nr/4p3/2q4b/Pp1p1pp1/6P1/P2P1N2/R3PP1P/1N2KB1R b Kkq - 0 13;c6c1',
+    '5k2/pp5p/n6p/3Pp3/P4P1P/6r1/1bq4R/4K3 b - f3 0 22;g3g1',
+    '3r1b1r/pbnpp1p1/5p2/3P3P/4k3/1Pp1nNP1/P3PP1R/3RKBN1 b - - 2 17;e3c2',
+    'rn1qkb2/pb1pn2r/5p2/2p3pp/P1P1N3/4P2P/1P1P1PP1/R1BK1BNR w q - 1 10;e4d6',
+    'r1b1k1nr/ppp2p1p/5q2/P2pP3/3P1bPR/B7/P1P1P3/RN1QKBN1 b Qkq - 0 10;f6h4',
+    '8/Q7/P7/4kP1N/P7/2K2P2/3P4/8 w - - 1 48;a7c5',
+    '6r1/4p3/4k1p1/1p5p/3bq2P/8/8/5K2 b - - 1 43;g8f8',
+    '1r3k1r/5ppp/8/3b2q1/8/2P5/P3PP2/RN2K3 b - - 1 21;g5c1',
+    '2k5/8/8/2P5/P3p3/p3P3/R4qp1/2K5 b - - 3 45;g2g1q',
+    'rnq1k2r/pQ2pp1p/3p4/2p4b/8/P1P1b3/1P2P1K1/RN3B1R w kq - 1 16;b7c8',
+    '2b1k3/2pn1p1p/7q/1p1q4/8/2K5/4P1r1/8 b - - 1 28;h6d2',
+    '8/5k1p/2p4p/8/K7/5r2/8/2q5 b - - 13 44;c1a3',
+    '5b2/4p1pn/8/2p4k/7q/P2K4/1r6/8 b - - 7 37;h4d4',
+    '3k2n1/1p1b2pr/8/2P3P1/p1P1P1P1/8/1r6/5K1R b - - 0 28;h7h1',
+    '5k2/1p5Q/n4p2/2p3R1/1P6/r1P2P2/P1P2K1P/8 w - c6 0 22;g5g8',
+    '2b5/1r2k3/1p6/p1P3P1/P4P1r/P3P3/6q1/1N2K3 b - - 1 31;h4h1',
+    '1n5b/3k4/3p2p1/1p1K4/1pp5/8/7p/8 b - - 2 45;h2h1q',
+    '5Q2/7k/8/4B2p/2p4P/R7/3P1K2/1N6 w - - 2 42;f8g7',
+    '8/4R3/3Q1P2/p1p5/4p1k1/P1P5/2P5/2B1KB1R w - - 3 36;d6f4',
+    '8/8/8/8/k2P4/5K2/4P2P/1Q2B3 w - - 8 43;b1b4',
+    'r1bqkb2/pppnp1p1/3p4/6p1/1P6/N2BP3/P1PPKP2/R1r5 w q - 0 13;d3g6',
+    '1n1k4/3p1p2/4P3/7p/3p4/5N2/rP4r1/2K5 b - - 1 27;a2a1',
+    '8/8/p4k1K/2P1p3/p1p1P3/2P5/8/6r1 b - - 7 40;g1h1',
+    '2k5/5R1r/2P5/1N5p/8/6Pp/5K1R/2b2B2 w - - 3 26;f7f8',
+    '5b2/rpp5/4Q2p/p7/5PR1/2P1Pk2/3P3P/2B1K3 w - - 1 30;g4g3',
+    '1r4kr/p1p5/5n2/3p2NQ/8/7N/2P3PR/1RB2K2 w - - 1 22;h5f7',
+    '2n5/5r2/2p3pk/K7/7p/8/8/1r6 b - - 15 63;f7a7',
+    'B1bqkb2/p1p3pn/1p2p3/6p1/R1P5/6PN/1n3P1R/1N2K3 b - - 1 15;d8d1',
+    '8/k5p1/8/8/1R2P1P1/p6Q/P3KP1B/8 w - - 2 32;h3a3',
+    'rnb1kbnr/4pp1p/1pp5/p2p2p1/P2PP1Q1/1P6/2PK1PPP/R1B2BNR w kq g6 0 9;g4c8',
+    '1k6/6R1/8/8/2P3K1/3RP3/3P4/8 w - - 23 45;d3d8',
+    '8/2pk4/4pq1r/1p6/rP1P4/P7/2PQP3/RN2K3 b Q - 1 22;h6h1',
+    '3rkbnr/N1pbqppp/1p6/3p4/Pn4P1/8/1PPPP2P/1RBQKBNR b Kk g3 0 10;e7h4',
+    '1nbqk1Br/3p4/1p6/2p3pp/4pbP1/PQP1P3/1B1P3P/RN2K2R w KQk - 1 15;b3f7',
+    '1n6/5k2/1p5r/7p/4P3/b6q/8/6K1 b - - 9 42;a3c5',
+    '1rbqk1Bb/ppppp3/n7/6p1/8/4PQP1/PP1P1P2/RNB1K1N1 w Q - 2 13;f3f7',
+    'r5nr/ppkn3p/5p2/3p2p1/P2K4/5PP1/6qP/8 b - - 1 24;g2d2',
+    '4kbnr/4pp1p/n1p3p1/8/4PNQ1/8/2PP1PPP/2B1K2R w Kk - 0 13;g4c8',
+    '6nr/r1B1kp1p/4p3/6p1/8/1P3P1P/2P1P1B1/3QK1R1 w - - 0 19;d1d8',
+    'rnb1k3/p7/4pP2/1p4p1/8/Q3B3/PP2PPPr/RN2KB1R w KQ - 0 15;a3e7',
+    '5b2/2pp4/4kp1p/2q5/K5P1/8/5r2/8 b - - 1 38;c5b4',
+    '2k2b2/Q3ppp1/8/7p/P2r4/1R6/4P2P/4K2R w K - 1 21;b3b8',
+    '6kr/4Q3/5p2/2p4p/B4p2/3K4/1PP4P/2B4R w - - 2 32;h1g1',
+    '4kb1r/1pp1pp1p/2np2pn/8/4P1qP/2P4R/RP1P1PP1/2B2KN1 b k - 2 11;g4d1',
+    'rn1qkbn1/ppp1pp2/3p4/6P1/PP1P4/5p2/2NBP2r/R2QKB2 b Qq - 1 13;f3f2',
+    '2r1k2r/4pp2/6p1/4P2p/R5b1/4q3/1P2P2P/4KB2 b k - 1 22;c8c1',
+    'r1b1k3/pp1p2b1/6p1/2P1p3/2P3nq/2NPP3/8/R1Q2K2 b q - 2 20;h4f2',
+    '6k1/2Q5/8/2p2P2/p1P1K3/P3P3/1B5P/6NR w - - 11 29;c7g7',
+    '4k3/R7/8/7P/P2P4/2R3KP/7N/8 w - - 13 69;c3c8',
+    '1nbqk1nr/1ppp1ppp/4p3/5P2/6P1/2P5/3PP2P/rN1QKBNR b Kk - 0 10;d8h4',
+    '8/B7/3K4/5PN1/8/1P1Q4/8/7k w - - 14 58;d3h3',
+    '2r5/8/5k2/p2p3p/P6N/4pN1P/4P2R/4KB2 b - - 1 30;c8c1',
+    'rnbqk3/1ppp1ppr/8/p2np2p/1bPP1PP1/7P/1P1NP3/R1BQKBNR b KQq g3 0 9;d8h4',
+    '6n1/4b1r1/3ppppp/8/7P/1n2kb1K/q7/8 b - - 13 47;a2g2',
+    '5k2/r2n4/5nK1/p7/2pp4/8/5b2/3q4 b - - 1 60;d1h5',
+    '5Q2/2r1p1p1/1pn4p/p7/P1P1k2P/3p3R/1P3P2/R1B1K1N1 w Q - 1 20;f8f4',
+    '7Q/3Q4/8/5P2/8/k6P/p5K1/8 w - - 5 58;h8c3',
+    -- mate in two
+    '2r3nr/4p3/1p2k3/P2p4/3P1b2/7P/4P3/5K1b b - - 0 27;f4e3 a5a6 c8c1',
+    '4b3/1p6/2p1pk2/8/r2q4/8/7K/8 b - - 7 42;d4f2 h2h3 a4h4',
+    '1B6/8/1P5k/8/R4P2/8/Q3K3/8 w - - 5 62;a2g8 h6h5 g8g5',
+    '5k2/3p2p1/b1n5/2p3n1/K2p4/8/5r2/8 b - - 10 39;a6c4 a4a3 f2a2',
+    '6nr/p1p4p/2r2Pk1/6P1/8/4QN1b/P2N3P/b1B1K2R w K - 1 22;e3e8 g6f5 e8e4',
+    '1R6/7p/8/4pN1k/2p1P3/8/8/3K1B2 w - - 1 33;b8g8 h7h6 f1e2',
+    '8/2b2r2/8/6p1/2p4p/1p6/8/4k1K1 b - - 13 68;h4h3 g1h1 f7f1',
+    '3k4/8/8/7p/2pp3b/1p4p1/7p/K7 b - - 1 65;c4c3 a1b1 h2h1q',
+    '7r/2pk4/1p6/p3n1p1/P2p1pp1/3r4/8/2K5 b - - 7 57;h8h2 c1b1 d3d1',
+    '8/4p3/3p4/k7/2PP2BR/p7/P7/1R2K1N1 w - - 0 36;h4h8 e7e6 h8a8',
+    '3r4/K4k2/3b1p1p/7P/p7/8/8/6r1 b - - 1 56;g1b1 a7a6 d8a8',
+    '5R1B/1pp1p3/4k3/7p/2p4P/6P1/1Q1N2P1/4KB1R w K - 1 19;b2e5 e6d7 e5d5',
+    '1n4Q1/5r2/5p2/p1pk1P2/P1N5/1R3K2/5N2/8 w - - 1 39;g8f7 d5d4 b3d3',
+    'rnb2r2/1pppq3/6k1/8/p4P2/B7/P1PPP1P1/RN1QKB2 b Q - 1 16;e7h4 g2g3 h4g3',
+    '2k5/4R3/5P2/1p4K1/1P5P/1P6/2N5/8 w - - 3 51;f6f7 c8b8 f7f8q',
+    '4k3/2R5/8/6P1/P7/6KP/7R/5B2 w - - 3 38;h2d2 e8f8 d2d8',
+    '3R4/7k/2P5/1P1N4/4P3/R2K4/8/1Q6 w - - 9 37;b1g1 h7h6 d8h8',
+    'r3k1r1/pb2bp2/7p/3Pp3/P4q2/2PP4/5P1P/3K4 b q - 1 22;f4f2 d5d6 g8g1',
+    '6k1/8/2P4B/5R2/8/3P1N1P/2N1K2P/7R w - - 1 37;f3g5 g8h8 f5f8',
+    '3k3N/8/7R/8/1P6/3p4/5KRP/8 w - - 6 29;h6h7 d8c8 g2g8',
+    '1n1qk1n1/1bpp4/6pr/1p3p1p/1P1K1P2/3PP1P1/8/7r b - - 0 20;d8f6 d4c5 f6b6',
+    '2k5/5n2/6p1/8/3p1n2/8/7K/4q3 b - - 1 57;e1f2 h2h1 f2g2',
+    'rn2kbnr/1pp1ppp1/p6p/8/8/PP3PPB/2PPP3/1RBQK1Nq b kq - 0 9;h1g1 h3f1 g1g3',
+    '8/6P1/k7/3K4/6P1/1Qp2P2/2P1P3/5B2 w - - 1 49;d5c6 a6a7 b3b7',
+    '1r3bn1/p1p1pk1r/7p/1p2P3/6b1/N7/PPPq4/R1B2K2 b - - 1 16;g4h3 f1g1 d2g2',
+    '4k3/4npb1/p1p5/6p1/1r2P3/P6q/3P1P2/R2R2K1 b - - 0 24;b4e4 a3a4 e4g4',
+    '8/8/1p4p1/7p/2p5/r7/4k1K1/5r2 b - - 1 57;f1f2 g2g1 a3a1',
+    '2k5/p6R/2p2p2/5p2/2pB2p1/2K3P1/P4P2/1R4N1 w - - 0 23;d4a7 c8d8 b1b8',
+    'r7/p6n/p5kp/4pb2/1P4nP/3pP3/1r1B2P1/1N4K1 b - - 3 30;b2b1 d2c1 b1c1',
+    '6Br/Bp2k2p/6p1/p3p3/2Q4N/1P3p1P/P1PK1P2/b5R1 w - - 0 22;c4e6 e7d8 a7b6',
+    '8/6P1/2R5/6k1/1P6/8/3P1K2/5R2 w - - 0 51;f2g3 g5h5 f1f5',
+    '6nr/4kp1p/8/2pQP3/8/6rP/1R2P3/2B1KBR1 w - - 0 24;d5d6 e7e8 b2b8',
+    '4B2B/8/8/N6P/4K3/P5PR/1P2N3/k7 w - - 10 56;h3h1 a1a2 e8f7',
+    '5n2/8/3k3p/4p3/4K3/1p6/8/2q5 b - - 9 57;c1c3 e4f5 c3f3',
+    '3qkbn1/p1ppppp1/8/1b1PP3/5K2/r4P2/6r1/8 b - - 0 21;a3a4 f4e3 g2e2',
+    '8/4P3/8/2P5/2P2B2/7R/6k1/1R2K3 w - - 11 52;b1b3 g2g1 b3g3',
+    '5n2/P5k1/1r6/4pp2/P7/4r2n/6K1/8 b - - 4 39;b6b2 g2f1 b2f2',
+    '8/6K1/4B3/3P4/1P6/k1P1P3/4Q3/8 w - - 0 59;d5d6 a3a4 e2a6',
+    '8/4k3/7R/1p1p4/8/RP3P2/1K2p1B1/1N6 w - - 1 29;a3a7 e7d8 h6h8',
+    '4k1n1/2p5/1p3pp1/8/2P1p2r/4PP1q/3P4/2Q3K1 b - - 1 23;h3f3 c4c5 h4h1',
+    '6k1/3p4/8/Q1p4K/4p2P/RP5N/2pN3P/2B5 w - c6 0 29;h5g6 g8f8 a5d8',
+    '8/4k3/8/8/B2P3P/2N2Q2/1P3N1P/3K1R2 w - - 3 36;f3f5 e7d8 f5d7',
+    '1n4k1/5p2/R2p1P2/8/2pP4/2N4R/1PPKP3/2Q2B2 w - - 1 22;a6a8 d6d5 a8b8',
+    '6k1/2P5/6p1/4P1Pp/7P/8/5K2/3R4 w - - 3 55;d1d7 g8f8 c7c8q',
+    '8/5p2/p6p/2r3p1/8/1p6/5k2/3K4 b - - 2 53;f2e3 d1e1 c5c1',
+    '5bn1/8/4p3/1q4k1/1p1K4/8/8/8 b - - 5 46;f8c5 d4e5 b5e2',
+    '4r3/8/2p2pk1/7p/p4p1r/8/8/3K4 b - - 0 52;h4h2 d1c1 e8e1',
+    '4kbnr/rp2pppp/8/8/1p4Q1/3q4/P1P2PPP/RN2KBNR w KQk - 0 10;g4c8 d3d8 f1b5',
+    '6k1/r6p/1p4p1/5b2/p1pppp2/P7/3K4/6r1 b - - 7 38;e4e3 d2e2 f5g4',
+    '1n3rk1/4p3/3p1p2/3p4/1P6/1P1bP3/r7/6K1 b - - 2 28;f8c8 b4b5 c8c1',
+    '6n1/3k4/2p5/5p2/2br4/b7/4PPP1/1K3BN1 b - - 1 28;c4b3 e2e3 d4d1',
+    '8/4p1k1/3B1pq1/8/4P3/2P5/3K2P1/r4bN1 b - - 0 24;g6e4 d6c7 e4d3',
+    '1b6/8/8/7p/n1k5/pr6/K7/8 b - - 13 58;a4c3 a2a1 b3b1',
+    '2b3n1/2pn1k2/8/6B1/4q3/6b1/3P3P/6K1 b - - 4 34;c8b7 h2g3 e4g2',
+    '7k/5R2/8/1p6/p2P4/P1P5/4pPP1/R1BQKB2 w Q - 0 25;d1e2 h8g8 e2e8',
+    '1r6/pk2p3/7N/7r/3p4/5q2/P2KP1P1/R7 b - - 3 28;f3c3 d2d1 h5h1',
+    'Q1b5/1p1k3r/5p2/4P3/6p1/pP6/P3PPB1/2R1K1N1 w - - 0 20;a8c8 d7e7 c1c7',
+    '1n4nr/2qpkppp/4p3/6N1/3P4/P5P1/PrP1PP1P/4KB1b b - - 1 12;c7c3 e1d1 b2b1',
+    '6n1/p5P1/p1k5/P3r3/8/4r3/n6K/8 b - - 0 41;e5g5 h2h1 e3h3',
+    '1n3b2/1pp5/4bpk1/8/6N1/1pq1PK2/8/6r1 b - - 1 26;e6g4 f3e4 c3c4',
+    '4k3/8/2P5/5P2/PPBB4/8/3P1K2/6R1 w - - 15 42;d4f6 e8f8 g1g8',
+    '7r/8/4k2p/1r6/4n3/4p3/7P/1bK3N1 b - - 1 36;b1d3 h2h3 b5b1',
+    '4k3/8/P2P4/2N1KP2/7P/8/3R4/1R6 w - - 5 53;e5f6 e8d8 b1b8',
+    '6n1/8/1P6/P2k4/2p2q2/8/7n/4K3 b - - 0 35;c4c3 e1e2 f4d2',
+    '1N5R/8/5P2/k6P/7P/2KB4/8/8 w - - 17 62;b8d7 a5a4 h8a8',
+    '3k4/7N/4K3/8/7p/p7/P6P/2R5 w - - 18 55;h2h3 d8e8 c1c8',
+    '4kb1r/3bpn2/2Q4p/3p1p2/2pP1p2/4PN1P/2PBK1P1/R7 w - - 1 22;a1a8 f7d8 c6g6',
+    '2r2k2/p1p5/n7/8/P1p2p2/3Q4/5K2/6R1 w - - 2 28;d3h7 c8b8 g1g8',
+    '1k6/4B3/1P6/2PR4/4P3/P3P1P1/4NK2/5B2 w - - 1 51;c5c6 b8a8 d5d8',
+    '8/3R2N1/8/8/PN4K1/2P5/8/4k3 w - - 34 71;g4f3 e1f1 d7d1',
+    '8/5R2/3p2k1/1p2p1p1/1P6/2P1PP2/Q2P1KP1/RNB3N1 w - - 1 22;a2e6 g6h5 f7h7',
+    '4kr2/4b1pp/4Pp2/p1pp4/6P1/B3P1q1/P2PK3/RQ4NR w - - 0 19;b1b5 e8d8 b5d7',
+    'rnb1k1nr/1p1pB2p/p3p3/Q6P/P2p2P1/8/1bP1KP2/1N6 w kq - 2 18;a5d8 e8f7 d8f8',
+    '4r2b/5p2/5k1p/3b4/1r3PP1/1p5p/7P/5K2 b - - 2 32;b4f4 f1g1 e8e1',
+    '8/2R3pp/4q1kn/3p4/3p1rb1/1P1K2P1/2P3R1/1NB5 b - - 1 21;e6e4 d3d2 e4e3',
+    'r2k1bnr/ppp2p2/1n1p3p/4pP2/PPPq4/N4P1B/3PP3/R1BQK1N1 b - - 2 12;d4g1 h3f1 g1g3',
+    '4k3/1P6/4P3/7P/5B2/1N6/8/1K6 w - - 3 65;f4d6 e8d8 b7b8q',
+    'Q7/3R4/8/2p1k3/2P5/3K1p2/7P/8 w - - 0 42;d7f7 e5d6 a8d5',
+    'rn3Qn1/3k1p1r/6pp/pN5P/2p5/P6P/1PPPN3/1RB1KB2 w - - 0 20;f8d6 d7c8 d6c7',
+    '1Q6/5P2/5k2/3p4/3P3N/7K/8/8 w - - 11 77;f7f8q f6g5 b8e5',
+    '7k/8/5p2/7p/5rp1/8/6K1/r7 b - - 3 34;h5h4 g2h2 f4f2',
+    '5b2/4kp2/2pp2p1/8/r5p1/8/6K1/1q6 b - - 1 30;b1e1 g2h2 a4a2',
+    '1k6/4R3/4PK2/B7/P5N1/6P1/8/5B2 w - - 1 61;f1g2 b8c8 e7e8',
+    '2r5/4r3/8/5pn1/6k1/2p4p/8/5K2 b - - 13 57;g4g3 f1g1 e7e1',
+    'N1Q5/3P4/5k2/5p2/3K1P1p/8/8/8 w - - 1 56;c8g8 f6e7 d7d8q',
+    'rn2kbn1/p3ppp1/3p4/5P1r/4q2p/2P5/PP1P1KPP/RNB4R b q - 1 14;h5f5 f2g1 e4e1',
+    '2r5/8/p7/P2b3p/7P/4k3/8/6K1 b - - 52 71;c8c2 g1f1 c2c1',
+    '4k3/2P2prp/6p1/3K4/5P2/1P5B/7P/6R1 w - - 3 29;g1e1 e8f8 c7c8q',
+    '1n1r4/bp3kp1/2p5/3p4/8/1r1b4/8/4K3 b - - 1 29;a7e3 e1d1 b3b1',
+    '4rk2/p5r1/6p1/3p3p/1n5P/8/7K/2q5 b - - 7 42;e8e2 h2g3 c1e3',
+    '5R2/8/2P1p3/p6k/3PN3/4R3/8/4K3 w - - 2 38;e3g3 e6e5 f8h8',
+    '5k2/4p3/1q4pr/3P4/8/P1P2P2/8/1N3K2 b - - 0 27;h6h2 b1d2 b6f2',
+    '8/5k2/rpn2n2/3P4/1P2P3/2p2P2/P4p2/RK6 b - - 0 27;c6b4 d5d6 f2f1q',
+    '1r6/5kbr/4pp1p/p1pp4/7P/2P1P3/P3q3/1NK5 b - - 1 23;b8b2 b1a3 e2d2',
+    'r1bqk1r1/2p1ppbp/6pn/p1n1P3/5P2/3PK1P1/PPP1N2P/RNBQR3 b q - 4 11;h6g4 e3f3 d8d5',
+    '8/8/1P6/3p1p2/3r2k1/8/4p3/K7 b - - 1 45;d4d2 b6b7 e2e1q',
+    '2bk2n1/1p3ppr/r3p1P1/n1Pp4/P2P1P2/4P3/q1PK4/8 b - - 0 17;h7h2 d2c3 a2a3',
+    'r2qkbnr/2p3p1/3pp3/p6p/b2K4/3PP2P/1P4P1/2B3NR b k - 0 16;d8f6 d4c4 d6d5',
+    '8/8/8/7P/p5k1/K1RQ4/8/5N2 w - - 0 36;c3c5 g4f4 d3f5',
+    'b7/8/p1p1q3/4pk2/7K/8/8/8 b - - 3 49;e6b3 h4h5 b3h3',
+    '3Q4/8/2N5/5k2/1R1P4/1PB1P3/5K2/5B2 w - - 1 40;c6e5 f5e6 f1h3',
+    'rn6/1pb3p1/2k5/p2pn3/P1P3b1/8/1P1PP3/1RBQKB2 b - - 0 20;e5d3 e2d3 c7g3',
+    'rnbQ4/p4kpp/1p6/5P2/4P3/2P5/PP3b2/RNBK1BN1 w - - 0 15;f1c4 c8e6 c4e6',
+    '5k2/1P6/P6P/1P1pp3/6Rp/8/2NK4/8 w - - 0 40;g4g7 f8e8 b7b8q',
+    '2b5/2k1N3/8/N2p2p1/1Q2p3/3p4/P4PP1/1R2K3 w - d6 0 26;e7d5 c7d8 b4e7',
+    '1r2k2r/7p/pp1pp3/8/2PKP1p1/1PP5/8/5q2 b k - 1 27;f1e2 c4c5 b6c5',
+    '2b1k1nr/r1pp1p1p/6p1/1P6/3Pn1Pq/4Pp2/5P1P/2BK1BR1 b k d3 0 16;h4f2 b5b6 e4c3',
+    '2k5/8/3R4/4p3/4p3/1P2P3/5PR1/4K3 w - - 5 33;g2g7 c8b8 d6d8',
+    '4kb1r/1R6/1p1p4/2p2P1p/2PP1P1n/8/1P1NN1PP/3Q1K1R w - - 3 23;d1a4 b6b5 a4a8',
+    '1n2k2r/8/p2K2np/4r3/6P1/P3P3/1P6/R7 b k - 2 29;h8h7 g4g5 h7d7',
+    '5K2/7r/4b3/p1k5/8/p4p2/4p3/8 b - - 9 70;c5d6 f8e8 h7h8',
+    '6k1/2R5/8/P7/1PP1KP2/7P/8/1R6 w - - 3 72;b1d1 g8f8 d1d8',
+    'Q7/8/7k/2P5/8/P4P2/1R6/3K4 w - - 1 41;a8g8 h6h5 b2h2',
+    '4k3/3n3p/1R3p2/8/2p1p2P/r7/2P3r1/3K1BR1 b - - 2 24;a3a1 b6b1 a1b1',
+    '2b1k3/8/4p3/1p2Pr2/8/r7/8/6K1 b - - 1 35;a3a2 g1h1 f5f1',
+    '2Q3nB/4k3/2P4p/p6P/p3p3/6pp/2P1KP1R/R2N4 w - - 1 30;c8d7 e7f8 h8g7',
+    '1R6/7k/8/8/4R3/6P1/2PN4/5K2 w - - 13 49;e4g4 h7h6 b8h8',
+    '8/8/7p/p1p5/8/4r2k/6p1/1K6 b - - 1 52;e3e2 b1a1 g2g1q',
+    'rn2k1nr/p2p1p2/7p/4p1p1/3PK2P/1P2PP2/P1P1q3/1Rb2B1R b kq - 0 18;e2e3 e4d5 e3d4',
+    '4k3/6P1/1R6/8/5N2/4p3/2P1PP2/1NK5 w - - 0 31;b6b7 e8d8 g7g8q',
+    '4k2r/3n4/b2b3p/5P2/2q2pR1/8/3K4/8 b k - 1 30;c4d3 d2c1 d6a3',
+    '8/3k4/8/5K2/1Q3P1P/P2P4/2R5/1N6 w - - 3 56;f5f6 d7d8 b4e7',
+    'N1R5/1P2N3/k7/4K3/p6P/p7/P1P5/2R5 w - - 7 50;b7b8q a6a5 b8b6',
+    'kr6/8/8/p5pp/P1p5/3p4/8/2K5 b - - 5 78;c4c3 c1d1 b8b1',
+    '3r3r/1b3pkN/pp6/3N3p/1P6/3PQ3/P1P1PKPP/R4B1R w - - 1 16;e3g5 g7h7 d5f6',
+    '8/3k4/2r3b1/P6p/n1p4P/6K1/4q3/8 b - - 3 40;c6f6 a5a6 f6f3',
+    'rnBqkb2/3pp1p1/1pp2P2/p4p2/2r5/1P6/P1PP1PPP/RNBQK2R w KQq - 1 10;d1h5 g7g6 h5g6',
+    '6Q1/8/1k6/p2P4/PPp5/8/8/7K w - - 1 41;g8b8 b6a6 b4b5',
+    '8/8/8/R7/P2P3k/2P5/6K1/B7 w - - 1 42;g2f3 h4h3 a5h5',
+    '2k5/8/8/R7/2PpP3/3P4/4KP2/1RB5 w - - 1 36;a5a7 c8d8 b1b8',
+    '8/6r1/3kp3/4n2p/K1pb4/8/8/8 b - - 3 55;d6c5 a4a5 g7a7',
+    '1r1qkb1r/ppp1p3/7p/6p1/n4p2/N1P2b1P/PP1P1P1R/R1B1K3 b k - 1 14;d8d3 a3b5 d3e2',
+    '6k1/1Q6/8/7P/8/2KP1B2/8/7R w - - 5 41;h1a1 g8f8 a1a8',
+    '7k/8/8/2P2K2/p2N4/6NP/P5P1/4R3 w - - 4 41;f5g6 h8g8 e1e8',
+    '1n2kbn1/4ppp1/p1rp4/4PK2/P6r/1b3P2/8/8 b - - 0 27;e7e6 f5g5 f8e7',
+    '8/k1rp4/1p3ppp/8/5P2/5B2/3K4/4R3 w - - 3 33;e1a1 a7b8 a1a8',
+    '4b3/1r4p1/5k2/1p6/2n5/p2p4/8/3K4 b - - 1 70;b7e7 d1c1 e7e1',
+    '1Q5R/4p2p/5kpP/2pp1p2/2P5/5N2/4PP2/1N1K1B1R w - - 0 22;b8e5 f6f7 f3g5',
+    '2k5/8/3K4/8/1p3PP1/1R6/P7/RNB5 w - - 1 39;b3b4 c8d8 b4b8',
+    '7n/7R/B7/3k1p2/8/P2PQ1P1/P7/R2K2N1 w - - 1 26;a6b7 d5d6 e3e7',
+    'r1b1kb1r/p1ppqp1p/1p6/8/P1nP4/N7/4PPPP/R3KBNR b kq - 1 12;e7b4 e1d1 b4d2',
+    '1k6/4p3/4P2p/8/8/3R4/2PP1K2/1NBQ2R1 w - - 2 32;d3d7 b8a8 g1g8',
+    '2R5/5k2/1R6/5P2/p1P5/N2P1P2/P7/4K3 w - - 2 39;c8c7 f7e8 b6b8',
+    '2b2b2/8/2p5/4kn2/2K5/1P6/8/7r b - - 3 40;h1h3 b3b4 c8e6',
+    '4kb2/p2r1pp1/1pp2n2/3p4/3P4/PP2P3/2PKNP2/r7 b - - 0 21;f6e4 d2d3 a1d1',
+    '5b2/3np1r1/5p1p/8/k7/7P/8/K7 b - - 7 38;a4b3 h3h4 g7g1',
+    '2bnk2r/5pb1/7p/p1pp1q1P/p7/P1PP1P2/3KP3/6r1 b k - 1 27;f5f4 d2c2 f4c1',
+    '2Q5/8/6P1/8/5B1P/8/k6P/4K3 w - - 15 52;c8c2 a2a3 f4d6',
+    '6k1/8/8/2R1p1p1/6P1/2BP1P2/4p1P1/4K1NR w - - 0 26;c5c7 g8f8 h1h8',
+    '1k6/7P/4P3/3B4/3N1PP1/5K2/3R4/8 w - - 7 67;d4b5 b8c8 h7h8q',
+    '7R/1p1k1p1p/2p1p2b/6p1/Q3P3/2P2PK1/1P1n2PP/5BNR w - - 0 17;a4d4 d7c7 d4d8',
+    '8/8/p7/P5p1/2P1k3/8/1p4p1/4K3 b - - 0 52;e4e3 e1d1 b2b1q',
+    '5k2/7Q/8/p7/P1P1PP2/3P4/N7/2B2KN1 w - - 1 33;c1a3 f8e8 h7e7',
+    'rn1k4/pp3pBr/3b4/P1p2b2/6n1/N7/2PPP1K1/3Q4 b - - 2 17;f5e4 g2f1 h7h1',
+    '6nr/2p3p1/3pBpk1/8/7p/5PP1/2P2N1P/2BQK2R w - - 0 21;d1d3 f6f5 d3f5',
+    '8/8/4rp2/3n2p1/1p6/7k/8/5K2 b - - 33 52;h3g3 f1g1 e6e1',
+    '7Q/8/k6P/4p3/P3P3/4K3/8/5N2 w - - 1 53;h8b8 a6a5 b8b5',
+    '1n2k1nr/1p4qp/r1p1p3/8/8/5p1P/3P1P2/1N3KR1 b k - 1 19;a6a1 h3h4 a1b1',
+    '8/8/7R/4B3/4P1PP/3K1P2/8/1k5N w - - 17 58;h6a6 b1c1 a6a1',
+    '4k3/7p/1p1p3n/8/r3p3/2r5/6K1/8 b - - 15 73;a4a2 g2f1 c3c1'
+    -- bank:end
+  ]::text[]
+$$;
+
+-- How many entries at the start of the bank are mates in one.
+create or replace function public.checkmate_mate_in_one()
+returns integer
+language sql
+immutable
+set search_path = ''
+as $$
+  select count(*)::integer from unnest(public.checkmate_bank()) e where split_part(e, ';', 2) !~ ' '
+$$;
+
+comment on function public.checkmate_bank() is
+  'The checkmate@1 puzzle bank: mates in one, then mates in two, each with exactly one solution. Mirrored by src/lib/games/checkmate-bank.ts.';
+comment on function public.checkmate_mate_in_one() is
+  'How many checkmate@1 bank entries, at its start, are mates in one.';
+
+-- A square's index from its name: row 0 is the eighth rank, column 0 the a-file.
+create or replace function public.checkmate_square(p_name text)
+returns integer
+language sql
+immutable
+set search_path = ''
+as $$
+  select (8 - (substr(p_name, 2, 1))::integer) * 8 + (ascii(substr(p_name, 1, 1)) - ascii('a'))
+$$;
+
+-- The player's answers for a level's puzzle, as moves `from × 64 + to`: the mate,
+-- or the key and the mate. The puzzle is the level's LCG draw from its half of
+-- the bank: the seed's state, advanced once per level; `(state >> 16) mod size`.
+-- Levels 1 to 6 draw mates in one, every later level a mate in two.
+create or replace function public.checkmate_answers(p_seed bigint, p_level integer)
+returns integer[]
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  v_bank   text[] := public.checkmate_bank();
+  v_one    integer := public.checkmate_mate_in_one();
+  v_state  bigint;
+  v_level  integer;
+  v_index  integer;
+  v_moves  text[];
+  v_out    integer[] := array[]::integer[];
+  v_i      integer;
+begin
+  if p_seed is null then
+    raise exception 'a seed is required' using errcode = '22023';
+  end if;
+  if p_level is null or p_level < 1 or p_level > 4096 then
+    raise exception 'checkmate level is outside the reachable run' using errcode = '22023';
+  end if;
+  v_state := (p_seed % 4294967296 + 4294967296) % 4294967296;
+  if v_state = 0 then
+    v_state := 2654435769; -- 0x9E3779B9: a zero state would make the sequence degenerate
+  end if;
+  for v_level in 1..p_level loop
+    v_state := (v_state * 1664525 + 1013904223) % 4294967296;
+  end loop;
+  if p_level <= 6 then
+    v_index := ((v_state >> 16) % v_one)::integer;
+  else
+    v_index := v_one + ((v_state >> 16) % (array_length(v_bank, 1) - v_one))::integer;
+  end if;
+
+  v_moves := string_to_array(split_part(v_bank[v_index + 1], ';', 2), ' ');
+  -- A mate in one is its move; a mate in two the key and the mate (the reply between is the bank's).
+  for v_i in 1..array_length(v_moves, 1) loop
+    continue when array_length(v_moves, 1) = 3 and v_i = 2;
+    v_out := v_out || (public.checkmate_square(substr(v_moves[v_i], 1, 2)) * 64
+                       + public.checkmate_square(substr(v_moves[v_i], 3, 2)));
+  end loop;
+  return v_out;
+end;
+$$;
+
+comment on function public.checkmate_answers(bigint, integer) is
+  'The moves a Checkmate level''s puzzle expects from the player, as from × 64 + to. Mirrored by puzzleFor in src/lib/games/checkmate.ts.';
+
+revoke all on function public.checkmate_bank() from public;
+revoke all on function public.checkmate_mate_in_one() from public;
+revoke all on function public.checkmate_square(text) from public;
+revoke all on function public.checkmate_answers(bigint, integer) from public;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Complete a run: replay, verify, then record
+-- ─────────────────────────────────────────────────────────────────────────────
+
+create or replace function public.complete_checkmate_run(
+  p_session_id  uuid,
+  p_actions     integer[],
+  p_score       bigint,
+  p_duration_ms integer
+)
+returns public.play_result
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_result   public.play_result;
+  v_session  public.game_sessions;
+  v_game     public.games;
+  v_user     uuid := auth.uid();
+  v_action   integer;
+  v_level    integer := 1;
+  v_step     integer := 0;
+  v_answers  integer[];
+  v_depth    integer;
+  v_solved   integer := 0;
+  v_mistakes integer := 0;
+  v_skips    integer := 0;
+  v_bonus    bigint := 0;
+  v_score    bigint := 0;
+  v_budget   bigint;
+  v_digest   text;
+  v_elapsed  bigint;
+  v_best     bigint;
+  v_rank     bigint;
+begin
+  if p_session_id is null then
+    raise exception 'a session id is required' using errcode = '22023';
+  end if;
+  if p_actions is null or array_position(p_actions, null) is not null then
+    raise exception 'actions must be a dense array of moves' using errcode = '22023';
+  end if;
+  if p_duration_ms is null or p_duration_ms < 1 then
+    raise exception 'duration must be a positive number of milliseconds' using errcode = '22023';
+  end if;
+
+  select * into v_session from public.game_sessions s where s.id = p_session_id for update;
+
+  if not found
+     or (v_session.user_id is not null and v_session.user_id is distinct from v_user)
+     or (v_session.user_id is null and v_user is not null) then
+    v_result.outcome := 'not_found';
+    v_result.session_id := p_session_id;
+    return v_result;
+  end if;
+
+  select * into v_game from public.games g where g.id = v_session.game_id;
+
+  v_digest := md5(concat_ws('|',
+    v_session.rules_version,
+    v_session.seed::text,
+    array_to_string(p_actions, ','),
+    p_score::text
+  ));
+
+  if v_session.completed_at is not null then
+    if v_session.verified_digest = v_digest then
+      v_result.outcome       := 'duplicate';
+      v_result.session_id    := v_session.id;
+      v_result.game_slug     := v_game.slug;
+      v_result.score         := v_session.verified_score;
+      v_result.duration_ms   := p_duration_ms;
+      v_result.ranked        := v_session.user_id is not null;
+      v_result.recorded_at   := v_session.completed_at;
+      if v_session.user_id is not null then
+        select max(s.score) into v_best from public.scores s
+         where s.game_id = v_session.game_id and s.user_id = v_session.user_id;
+        select count(*) + 1 into v_rank from (
+          select s.user_id, max(s.score) as best
+            from public.scores s
+           where s.game_id = v_session.game_id and s.user_id is not null
+           group by s.user_id
+        ) t where t.best > coalesce(v_best, 0) and t.user_id <> v_session.user_id;
+        v_result.personal_best := v_best;
+        v_result.board_rank    := v_rank;
+      end if;
+      return v_result;
+    end if;
+
+    v_result.outcome := 'closed';
+    v_result.session_id := v_session.id;
+    v_result.game_slug := v_game.slug;
+    v_result.score := v_session.verified_score;
+    return v_result;
+  end if;
+
+  if v_session.abandoned_at is not null then
+    v_result.outcome := 'abandoned';
+    v_result.session_id := v_session.id;
+    v_result.game_slug := v_game.slug;
+    return v_result;
+  end if;
+
+  if now() >= v_session.expires_at then
+    v_result.outcome := 'expired';
+    v_result.session_id := v_session.id;
+    v_result.game_slug := v_game.slug;
+    return v_result;
+  end if;
+
+  if v_session.rules_version is distinct from public.checkmate_rules_version() then
+    v_result.outcome := 'wrong_rules';
+    v_result.session_id := v_session.id;
+    v_result.game_slug := v_game.slug;
+    return v_result;
+  end if;
+
+  if coalesce(array_length(p_actions, 1), 0) > public.checkmate_max_actions() then
+    v_result.outcome := 'invalid_actions';
+    v_result.session_id := v_session.id;
+    v_result.game_slug := v_game.slug;
+    return v_result;
+  end if;
+
+  v_elapsed := (extract(epoch from (now() - v_session.started_at)) * 1000)::bigint;
+  if p_duration_ms > v_elapsed + 2000 then
+    v_result.outcome := 'invalid_duration';
+    v_result.session_id := v_session.id;
+    v_result.game_slug := v_game.slug;
+    return v_result;
+  end if;
+
+  -- ── The replay ───────────────────────────────────────────────────────────
+  -- A move is the puzzle's next answer or a mistake; 4096 skips the puzzle.
+  v_answers := public.checkmate_answers(v_session.seed, v_level);
+  foreach v_action in array coalesce(p_actions, array[]::integer[]) loop
+    if v_action < 0 or v_action > 4096 then
+      v_result.outcome := 'invalid_actions';
+      v_result.session_id := v_session.id;
+      v_result.game_slug := v_game.slug;
+      return v_result;
+    end if;
+
+    if v_action = 4096 then
+      v_skips := v_skips + 1;
+      v_level := v_level + 1;
+      v_step := 0;
+      v_answers := public.checkmate_answers(v_session.seed, v_level);
+    elsif v_action = v_answers[v_step + 1] then
+      v_step := v_step + 1;
+      if v_step = array_length(v_answers, 1) then
+        -- Solved: a mate in one scores 10 and 15 s, a mate in two 30 and 40 s,
+        -- the time tapered by the puzzles solved so far.
+        v_depth := array_length(v_answers, 1);
+        v_solved := v_solved + 1;
+        v_score := v_score + case when v_depth = 1 then 10 else 30 end;
+        v_bonus := v_bonus
+                 + (case when v_depth = 1 then 15000 else 40000 end)::bigint
+                   * public.clock_taper_pct(v_solved) / 100;
+        v_level := v_level + 1;
+        v_step := 0;
+        v_answers := public.checkmate_answers(v_session.seed, v_level);
+      end if;
+    else
+      v_mistakes := v_mistakes + 1;
+    end if;
+  end loop;
+
+  -- A run that stops mid-puzzle is the clock running out or the player ending it,
+  -- and it is scored as it stands: the score only ever grows. It must still reach
+  -- the server within the clock its puzzles earned, less its mistakes and skips.
+  v_budget := 90000 + v_bonus - 10000::bigint * v_mistakes - 20000::bigint * v_skips;
+  if v_elapsed > v_budget + public.checkmate_slack_ms() then
+    v_result.outcome := 'out_of_time';
+    v_result.session_id := v_session.id;
+    v_result.game_slug := v_game.slug;
+    return v_result;
+  end if;
+
+  if p_score is distinct from v_score then
+    v_result.outcome := 'score_mismatch';
+    v_result.session_id := v_session.id;
+    v_result.game_slug := v_game.slug;
+    v_result.score := v_score;
+    return v_result;
+  end if;
+
+  update public.game_sessions s
+     set completed_at    = now(),
+         verified_score  = v_score,
+         verified_digest = v_digest
+   where s.id = v_session.id
+  returning * into v_session;
+
+  if v_session.user_id is not null then
+    insert into public.scores (session_id, game_id, user_id, score, duration_ms)
+    values (v_session.id, v_session.game_id, v_session.user_id, v_score, p_duration_ms);
+  end if;
+
+  v_result.outcome         := 'recorded';
+  v_result.session_id      := v_session.id;
+  v_result.game_slug       := v_game.slug;
+  v_result.score           := v_score;
+  v_result.cleared_columns := v_solved;
+  v_result.tiles_placed    := v_mistakes;
+  v_result.duration_ms     := p_duration_ms;
+  v_result.ranked          := v_session.user_id is not null;
+  v_result.recorded_at     := v_session.completed_at;
+
+  if v_session.user_id is not null then
+    select max(s.score) into v_best from public.scores s
+     where s.game_id = v_session.game_id and s.user_id = v_session.user_id;
+    select count(*) + 1 into v_rank from (
+      select s.user_id, max(s.score) as best
+        from public.scores s
+       where s.game_id = v_session.game_id and s.user_id is not null
+       group by s.user_id
+    ) t where t.best > coalesce(v_best, 0) and t.user_id <> v_session.user_id;
+    v_result.personal_best := v_best;
+    v_result.board_rank    := v_rank;
+  end if;
+
+  return v_result;
+end;
+$$;
+
+comment on function public.complete_checkmate_run(uuid, integer[], bigint, integer) is
+  'Replays a submitted Checkmate run from its session seed against the puzzle bank — each move the puzzle''s next answer or a mistake, 4096 a skip — derives the score, and records it. Any prefix of a legal line is valid. A run that arrives later than its clock allowed is out_of_time. The claim is compared, never trusted.';
+
+revoke all on function public.complete_checkmate_run(uuid, integer[], bigint, integer) from public;
+grant execute on function public.complete_checkmate_run(uuid, integer[], bigint, integer) to anon, authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- The start gate: the same function as the migration that last defined it
+-- (`20261202120000_cascade_sessions.sql`), plus the (`checkmate`, `checkmate@1`)
+-- pair, its action ceiling and its twelve-hour session.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+create or replace function public.start_game_session(
+  p_game_slug     text,
+  p_rules_version text,
+  p_client        text
+)
+returns public.session_start
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_empty   public.session_start;
+  v_game    public.games;
+  v_user    uuid := auth.uid();
+  v_client  text := nullif(btrim(coalesce(p_client, '')), '');
+  v_session public.game_sessions;
+begin
+  if p_game_slug is null or p_game_slug !~ '^[a-z0-9-]{2,48}$' then
+    raise exception 'invalid game slug' using errcode = '22023';
+  end if;
+  if p_rules_version is null or p_rules_version !~ '^[a-z0-9-]{2,32}@[0-9]{1,4}$' then
+    raise exception 'invalid rules version' using errcode = '22023';
+  end if;
+  if v_client is not null and char_length(v_client) > 40 then
+    raise exception 'client is longer than 40 characters' using errcode = '22023';
+  end if;
+
+  select * into v_game
+    from public.games g
+   where g.slug = p_game_slug
+     and g.status = 'published'
+     and g.playable
+     and g.runtime is not null;
+
+  if not found then
+    v_empty.outcome := 'not_playable';
+    return v_empty;
+  end if;
+
+  -- The gate is a pair: each runtime plays the rules versions its verifier
+  -- implements. Stack 10, Chain, Memory Flash, One Move, Color Merge and Don't
+  -- Touch the Black have two each — the endless version new runs pin, and the
+  -- legacy finite version a session opened before the endless migrations still
+  -- holds. Zip, 8 Puzzle, Tango, Sudoku and Decant keep the versions from before
+  -- the tapered clock too, for the same reason. 7 Second, Queens, Gridburst,
+  -- Updraft and the crossword have one. Anything else is a version no verifier owns.
+  if (v_game.runtime = 'stack-10'
+      and p_rules_version in ('stack-10@1', public.stack10_rules_version()))
+     or (v_game.runtime = 'chain'
+         and p_rules_version in ('chain@1', public.chain_rules_version()))
+     or (v_game.runtime = 'memory-flash'
+         and p_rules_version in ('memory-flash@1', public.memory_flash_rules_version()))
+     or (v_game.runtime = 'one-move'
+         and p_rules_version in ('one-move@1', public.one_move_rules_version()))
+     or (v_game.runtime = 'color-merge'
+         and p_rules_version in ('color-merge@1', public.color_merge_rules_version()))
+     or (v_game.runtime = 'dont-touch'
+         and p_rules_version in ('dont-touch@1', public.dont_touch_rules_version()))
+     or (v_game.runtime = 'seven-second' and p_rules_version = public.seven_second_rules_version())
+     or (v_game.runtime = 'queens' and p_rules_version = public.queens_rules_version())
+     or (v_game.runtime = 'zip' and p_rules_version in ('zip@1', public.zip_rules_version()))
+     or (v_game.runtime = 'eight-puzzle'
+         and p_rules_version in ('eight-puzzle@1', public.eight_puzzle_rules_version()))
+     or (v_game.runtime = 'tango' and p_rules_version in ('tango@1', public.tango_rules_version()))
+     or (v_game.runtime = 'sudoku'
+         and p_rules_version in ('sudoku@1', 'sudoku@2', public.sudoku_rules_version()))
+     or (v_game.runtime = 'crossword'
+         and p_rules_version in (public.crossword_rules_version(),
+                                 public.fjalekryqi_rules_version()))
+     or (v_game.runtime = 'gridburst' and p_rules_version = public.gridburst_rules_version())
+     or (v_game.runtime = 'updraft' and p_rules_version = public.updraft_rules_version())
+     or (v_game.runtime = 'decant'
+         and p_rules_version in ('decant@1', public.decant_rules_version()))
+     or (v_game.runtime = 'mini-sudoku' and p_rules_version = public.mini_sudoku_rules_version())
+     or (v_game.runtime = 'scatter' and p_rules_version = public.scatter_rules_version())
+     or (v_game.runtime = 'huedini' and p_rules_version = public.huedini_rules_version())
+     or (v_game.runtime = 'cascade' and p_rules_version = public.cascade_rules_version())
+     or (v_game.runtime = 'checkmate' and p_rules_version = public.checkmate_rules_version()) then
+    -- Allowed: issued below.
+    null;
+  else
+    v_empty.outcome := 'unsupported_runtime';
+    return v_empty;
+  end if;
+
+  if v_game.runtime in ('seven-second', 'crossword') and v_user is not null then
+    perform pg_advisory_xact_lock(
+      hashtextextended(v_game.id::text || ':' || v_user::text, 0)
+    );
+
+    if exists (
+      select 1
+        from public.game_sessions s
+       where s.game_id = v_game.id
+         and s.user_id = v_user
+         and s.completed_at is not null
+         and s.seed = case v_game.runtime when 'crossword' then public.crossword_day()
+                                           else public.seven_second_seed() end
+    ) then
+      v_empty.outcome := 'already_played';
+      return v_empty;
+    end if;
+  end if;
+
+  if v_user is not null then
+    update public.game_sessions s
+       set abandoned_at = now()
+     where s.game_id = v_game.id
+       and s.user_id = v_user
+       and s.completed_at is null
+       and s.abandoned_at is null;
+  end if;
+
+  if v_game.runtime = 'seven-second' then
+    insert into public.game_sessions (game_id, user_id, client, rules_version, seed)
+    values (v_game.id, v_user, v_client, p_rules_version, public.seven_second_seed())
+    returning * into v_session;
+  elsif v_game.runtime = 'crossword' then
+    insert into public.game_sessions (game_id, user_id, client, rules_version, seed)
+    values (v_game.id, v_user, v_client, p_rules_version, public.crossword_day())
+    returning * into v_session;
+  else
+    -- An endless run is a marathon, so its session lives for twelve hours instead
+    -- of the table's two. Every finite game keeps two hours.
+    insert into public.game_sessions (game_id, user_id, client, rules_version, expires_at)
+    values (v_game.id, v_user, v_client, p_rules_version,
+            case when p_rules_version in ('chain@2', 'color-merge@2', 'stack-10@2',
+                                          'memory-flash@2', 'one-move@2', 'queens@1', 'zip@1',
+                                          'eight-puzzle@1', 'tango@1', 'sudoku@1',
+                                          'sudoku@2', 'gridburst@1', 'decant@1', 'zip@2',
+                                          'eight-puzzle@2', 'tango@2', 'sudoku@3', 'decant@2',
+                                          'mini-sudoku@1', 'scatter@1',
+                                          'huedini@1', 'cascade@1', 'checkmate@1')
+                 then now() + interval '12 hours'
+                 else now() + interval '2 hours' end)
+    returning * into v_session;
+  end if;
+
+  v_empty.outcome       := 'started';
+  v_empty.id            := v_session.id;
+  v_empty.game_slug     := v_game.slug;
+  v_empty.rules_version := v_session.rules_version;
+  v_empty.seed          := v_session.seed;
+  v_empty.tile_count    := case v_game.runtime
+                             when 'stack-10' then
+                               case when p_rules_version = 'stack-10@1'
+                                    then public.stack10_tiles()
+                                    else public.stack10_max_tiles()
+                               end
+                             when 'chain' then
+                               case when p_rules_version = 'chain@1'
+                                    then public.chain_taps()
+                                    else public.chain_max_actions()
+                               end
+                             when 'memory-flash' then
+                               case when p_rules_version = 'memory-flash@1'
+                                    then public.memory_flash_taps()
+                                    else public.memory_flash_max_taps()
+                               end
+                             when 'one-move' then
+                               case when p_rules_version = 'one-move@1'
+                                    then public.one_move_taps()
+                                    else public.one_move_max_taps()
+                               end
+                             when 'color-merge' then
+                               case when p_rules_version = 'color-merge@1'
+                                    then public.color_merge_slides()
+                                    else public.color_merge_max_slides()
+                               end
+                             when 'dont-touch' then
+                               case when p_rules_version = 'dont-touch@1'
+                                    then public.dont_touch_cells()
+                                    else public.dont_touch_max_cells()
+                               end
+                             when 'seven-second' then public.seven_second_answers()
+                             when 'queens' then public.queens_max_actions()
+                             when 'zip' then public.zip_max_actions()
+                             when 'eight-puzzle' then public.eight_puzzle_max_actions()
+                             when 'tango' then public.tango_max_actions()
+                             when 'sudoku' then public.sudoku_max_actions()
+                             when 'crossword' then public.crossword_max_actions()
+                             when 'gridburst' then public.gridburst_max_moves()
+                             when 'updraft' then public.updraft_max_actions()
+                             when 'decant' then public.decant_max_actions()
+                             when 'mini-sudoku' then public.mini_sudoku_max_actions()
+                             when 'scatter' then public.scatter_max_actions()
+                             when 'huedini' then public.huedini_max_actions()
+                             when 'cascade' then public.cascade_max_actions()
+                             when 'checkmate' then public.checkmate_max_actions()
+                             else public.stack10_tiles()
+                           end;
+  v_empty.started_at    := v_session.started_at;
+  v_empty.expires_at    := v_session.expires_at;
+  v_empty.ranked        := v_session.user_id is not null;
+  return v_empty;
+end;
+$$;
+
+comment on function public.start_game_session(text, text, text) is
+  'Issues a play session with a server-chosen seed. The caller identity is the verified token, never an argument. Stack 10 accepts stack-10@1 (legacy) and stack-10@2 (endless); Chain accepts chain@1 and chain@2; Memory Flash accepts memory-flash@1 (legacy) and memory-flash@2 (endless); One Move accepts one-move@1 (legacy) and one-move@2 (endless); Color Merge accepts color-merge@1 and color-merge@2; Don''t Touch the Black accepts dont-touch@1 and dont-touch@2; Queens accepts queens@1; Zip accepts zip@2 (and zip@1), 8 Puzzle accepts eight-puzzle@2 (and eight-puzzle@1), Tango accepts tango@2 (and tango@1), Sudoku accepts sudoku@3 (and sudoku@2 and sudoku@1), Gridburst accepts gridburst@1, Updraft accepts updraft@1 and Decant accepts decant@2 (and decant@1) — the @1 versions and sudoku@2 are the clocks before the taper; Mini Sudoku accepts mini-sudoku@1; Scatter accepts scatter@1; Huedini accepts huedini@1; Cascade accepts cascade@1; Checkmate accepts checkmate@1; 7 Second and the daily crossword (crossword@1, or fjalekryqi@1 in Albanian) also answer already_played once the signed-in player has finished today''s, in either language.';
