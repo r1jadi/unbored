@@ -49,12 +49,12 @@ begin
        'stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move',
        'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle',
        'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku',
-       'scatter'
+       'scatter', 'huedini'
      )
        and is_official
        and (playable or runtime is not null)
   ) then
-    raise exception 'an official game other than the eighteen shipped runtimes is playable: runtimes ship one game at a time';
+    raise exception 'an official game other than the nineteen shipped runtimes is playable: runtimes ship one game at a time';
   end if;
 end
 $$;
