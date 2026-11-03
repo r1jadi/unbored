@@ -406,6 +406,28 @@ export const GAME_RULES = {
       },
     ],
   },
+  cascade: {
+    heading: "Line them up",
+    summary: "Swap two tiles to line up three of a kind. Let it cascade.",
+    rules: [
+      {
+        lead: "Swap two neighbours",
+        text: "by dragging a tile onto the one beside it, or tapping one and then the other. A swap only counts if it lines up three or more of the same shape in a row or a column.",
+      },
+      {
+        lead: "Cascades score more.",
+        text: "Cleared tiles are 10 points each. The tiles above fall, new ones drop in, and every new line they make clears too: the second wave is worth double, the third triple, and so on.",
+      },
+      {
+        lead: "Four or five in a line",
+        text: "leave a special tile behind. Four makes a line tile that clears its whole row or column when it goes; five, or an L or T, makes a burst that clears the 3×3 around it.",
+      },
+      {
+        lead: "The clock",
+        text: "starts at one minute. Each level asks for more tiles cleared (30, then 40, 50, …) and adds time: 24 seconds for the first, less with each level after. The run ends when the clock does.",
+      },
+    ],
+  },
   decant: {
     heading: msg("Pour until it's sorted"),
     summary: msg("Pour the colours between the tubes until each tube holds just one."),

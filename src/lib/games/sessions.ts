@@ -193,6 +193,15 @@ import {
   type MiniSudokuRun,
 } from "@/lib/games/mini-sudoku";
 import {
+  budgetMs as cascadeBudgetMs,
+  CASCADE_RULES_VERSION,
+  createRun as createCascadeRun,
+  finish as finishCascadeRun,
+  submission as cascadeSubmission,
+  swap as swapCascade,
+  type CascadeRun,
+} from "@/lib/games/cascade";
+import {
   budgetMs as tangoBudgetMs,
   createRun as createTangoRun,
   finish as finishTangoRun,
@@ -2575,6 +2584,212 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
   }, [state]);
 
   return { ...state, signedIn, begin, place, finish, restart, retry };
+}
+
+// ── A run of Cascade, from Start to score ─────────────────────────────────────────
+
+export type CascadeRunState =
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | {
+      status: "playing";
+      session: PlaySession;
+      run: CascadeRun;
+      /** When the clock runs out, as a `Date.now()` timestamp. */
+      deadline: number;
+    }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: CascadeRun; deadline: number }
+  | { status: "finished"; session: PlaySession; run: CascadeRun; result: RunResult }
+  | {
+      status: "error";
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: CascadeRun;
+    };
+
+export type CascadeRunControls = CascadeRunState & {
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
+  begin: () => void;
+  /** Swaps two neighbours, as `cell × 2 + direction`. Ignored unless the run is live and the swap lines up three. */
+  swap: (action: number) => void;
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
+  /** Back to the rules, for a fresh run. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of Cascade against the session API.
+ *
+ * The same lifecycle as Zip, 8 Puzzle and Mini Sudoku, for the same reason: the run is against
+ * a clock the verifier times from the session's start (`out_of_time`), so the
+ * session is issued when the player presses Start, the clock starts when it
+ * arrives, and the run ends by itself when the clock reaches zero. A cleared level
+ * moves the deadline: the clock follows the levels cleared.
+ */
+export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunControls {
+  // Tap to play skips the rules: the first render is already "starting", so the
+  // rules never paint for a frame before an effect could press Start for them.
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<CascadeRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
+  const startedAt = useRef(0);
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  const signedIn = !!getAccessToken();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // A session is requested only once Start has been pressed (`attempt` > 0).
+  useEffect(() => {
+    if (attempt === 0) return;
+    const controller = new AbortController();
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    startSession(gameSlug, { signal: controller.signal, rulesVersion: CASCADE_RULES_VERSION })
+      .then((session) => {
+        if (controller.signal.aborted) return;
+        const run = createCascadeRun(session.seed);
+        startedAt.current = Date.now();
+        setState({
+          status: "playing",
+          session,
+          run,
+          deadline: startedAt.current + cascadeBudgetMs(0),
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // The clock. When it reaches zero the run is over, and verification follows.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome !== "playing") return;
+    const remaining = state.deadline - Date.now();
+    const timer = setTimeout(
+      () => {
+        setState((current) => {
+          if (current.status !== "playing" || current.run.outcome !== "playing") return current;
+          if (Date.now() < current.deadline) return { ...current };
+          endedAt.current = current.deadline;
+          return { ...current, run: finishCascadeRun(current.run, "time") };
+        });
+      },
+      Math.max(0, remaining),
+    );
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  // Verification: once, when a run has ended.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run, deadline } = state;
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run, deadline });
+
+    completeRun(
+      session.id,
+      { ...cascadeSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const swap = useCallback((action: number) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      // A move after the deadline — a backgrounded tab can hold its timer back —
+      // ends the run instead of moving: the clock has already run out.
+      if (Date.now() >= current.deadline) {
+        if (current.run.outcome !== "playing") return current;
+        endedAt.current = current.deadline;
+        return { ...current, run: finishCascadeRun(current.run, "time") };
+      }
+      const next = swapCascade(current.run, action);
+      if (next === current.run) return current;
+      // A cleared level buys time: the deadline follows the levels cleared.
+      return {
+        ...current,
+        run: next,
+        deadline: startedAt.current + cascadeBudgetMs(next.levelsCleared),
+      };
+    });
+  }, []);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishCascadeRun(current.run, "stopped");
+      if (next === current.run) return current;
+      endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    // Tap to play skips the rules on Play again too: straight to a new session.
+    if (autoStart) {
+      setState({ status: "starting" });
+      setAttempt((n) => n + 1);
+    } else {
+      setState({ status: "intro" });
+    }
+  }, [autoStart]);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again. The clock is already over, so the
+      // deadline only has to exist; it no longer moves.
+      submitting.current = false;
+      setState({ status: "playing", session: state.session, run: state.run, deadline: 0 });
+      return;
+    }
+
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, signedIn, begin, swap, finish, restart, retry };
 }
 
 // ── A run of the daily crossword, from Start to score ────────────────────────

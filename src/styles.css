@@ -699,6 +699,99 @@
   }
 }
 
+/* Cascade (components/game/CascadeRuntime): a swap slides two tiles past each
+   other, a clear pops, and every tile falls its own number of rows. One cell
+   step is the tile plus the board's gap, `--cascade-step`. */
+.cascade-swap {
+  animation: cascade-swap 150ms var(--ease-out) both;
+}
+
+@keyframes cascade-swap {
+  from {
+    transform: translate(
+      calc(var(--dx, 0) * var(--cascade-step)),
+      calc(var(--dy, 0) * var(--cascade-step))
+    );
+  }
+  to {
+    transform: none;
+  }
+}
+
+.cascade-clear {
+  animation: cascade-clear 200ms ease-in both;
+}
+
+@keyframes cascade-clear {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+}
+
+.cascade-fall {
+  animation: cascade-fall calc(140ms + var(--fall, 0) * 45ms) cubic-bezier(0.4, 0, 0.9, 1) both;
+}
+
+@keyframes cascade-fall {
+  from {
+    transform: translateY(calc(var(--fall, 0) * -1 * var(--cascade-step)));
+  }
+  to {
+    transform: none;
+  }
+}
+
+.cascade-made {
+  animation: cascade-made 260ms var(--ease-out) both;
+}
+
+@keyframes cascade-made {
+  from {
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.cascade-nope {
+  animation: cascade-nope 260ms ease-in-out both;
+}
+
+@keyframes cascade-nope {
+  25% {
+    transform: translate(
+      calc(var(--dx, 0) * 0.3 * var(--cascade-step)),
+      calc(var(--dy, 0) * 0.3 * var(--cascade-step))
+    );
+  }
+  to {
+    transform: none;
+  }
+}
+
+.cascade-hint {
+  animation: cascade-hint 900ms ease-in-out infinite alternate;
+}
+
+@keyframes cascade-hint {
+  to {
+    transform: scale(1.12);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

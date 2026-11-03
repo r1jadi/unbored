@@ -13,6 +13,7 @@ import { DecantRuntime } from "@/components/game/DecantRuntime";
 import { MiniSudokuRuntime } from "@/components/game/MiniSudokuRuntime";
 import { ScatterRuntime } from "@/components/game/ScatterRuntime";
 import { HuediniRuntime } from "@/components/game/HuediniRuntime";
+import { CascadeRuntime } from "@/components/game/CascadeRuntime";
 import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
 import { GameExits } from "@/components/game/GameExits";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
@@ -42,6 +43,7 @@ import { DECANT_RUNTIME } from "@/lib/games/decant";
 import { MINI_SUDOKU_RUNTIME } from "@/lib/games/mini-sudoku";
 import { SCATTER_RUNTIME } from "@/lib/games/scatter";
 import { HUEDINI_RUNTIME } from "@/lib/games/huedini";
+import { CASCADE_RUNTIME } from "@/lib/games/cascade";
 import { DONT_TOUCH_RUNTIME } from "@/lib/games/dont-touch";
 import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
 import { ONE_MOVE_RUNTIME } from "@/lib/games/one-move";
@@ -102,6 +104,7 @@ export const Route = createFileRoute("/play/$id")({
  * `eight-puzzle` plays 8 Puzzle, `tango` plays Sun & Moon, `sudoku` plays Sudoku,
  * `crossword` plays the daily crossword, `gridburst` plays Gridburst,
  * `updraft` plays Flutter, `decant` plays Decant, `mini-sudoku` plays Mini Sudoku, `scatter` plays Scatter, `huedini` plays Huedini,
+ * `cascade` plays Cascade,
  * and anything else gets the honest "no runtime
  * yet" screen rather than a board that does not follow that game's rules. Every
  * catalogue game now has a runtime, but the branch stays a feature rather than a
@@ -204,7 +207,8 @@ export function PlaySurface({
       state.game.runtime === DECANT_RUNTIME ||
       state.game.runtime === MINI_SUDOKU_RUNTIME ||
       state.game.runtime === SCATTER_RUNTIME ||
-      state.game.runtime === HUEDINI_RUNTIME);
+      state.game.runtime === HUEDINI_RUNTIME ||
+      state.game.runtime === CASCADE_RUNTIME);
 
   const nav = useNavigate();
   const online = useOnline();
@@ -399,6 +403,15 @@ export function PlaySurface({
 
         {state.status === "ready" && state.game.runtime === HUEDINI_RUNTIME && playable && (
           <HuediniRuntime
+            key={state.game.slug}
+            slug={state.game.slug}
+            title={state.game.title}
+            autoStart={autoStart}
+          />
+        )}
+
+        {state.status === "ready" && state.game.runtime === CASCADE_RUNTIME && playable && (
+          <CascadeRuntime
             key={state.game.slug}
             slug={state.game.slug}
             title={state.game.title}

@@ -1,3 +1,4 @@
+import { CascadeTile } from "@/components/game/CascadeTile";
 import { cn } from "@/lib/utils";
 
 import { t } from "@/lib/settings/language";
@@ -65,6 +66,7 @@ export function GameArt({
         {id === "sun-and-moon" && <SunAndMoon />}
         {id === "sudoku" && <Sudoku />}
         {id === "mini-sudoku" && <MiniSudoku />}
+        {id === "cascade" && <Cascade />}
         {id === "crossword" && <Crossword />}
         {id === "gridburst" && <Gridburst />}
         {id === "updraft" && <Updraft />}
@@ -92,6 +94,7 @@ const KNOWN = new Set([
   "sun-and-moon",
   "sudoku",
   "mini-sudoku",
+  "cascade",
   "crossword",
   "gridburst",
   "updraft",
@@ -319,6 +322,38 @@ function SunAndMoon() {
           />
         </div>
       ))}
+    </div>
+  );
+}
+
+function Cascade() {
+  // A 6×6 corner of a board mid-swap: three blue diamonds lined up down the
+  // middle, about to clear, and a line tile and a burst waiting.
+  const tiles = [
+    [1, 2, 4, 3, 6, 5],
+    [3, 5, 4, 1, 2, 6],
+    [6, 1, 4, 5, 3, 2],
+    [2, 9, 5, 2, 27, 1],
+    [5, 3, 6, 1, 2, 4],
+    [4, 6, 2, 3, 5, 1],
+  ];
+  return (
+    <div className="grid w-full grid-cols-6 gap-[min(1cqw,1cqh,0.25rem)] rounded-xl bg-surface-2 p-[min(1.5cqw,1.5cqh,0.375rem)]">
+      {tiles.flatMap((row, r) =>
+        row.map((tile, c) => (
+          <div
+            key={r * 6 + c}
+            className={cn(
+              "aspect-square rounded-[min(1cqw,1cqh,0.25rem)] p-[12%]",
+              c === 2 && r < 3
+                ? "bg-foreground/15 ring-1 ring-inset ring-foreground/25"
+                : "bg-surface",
+            )}
+          >
+            <CascadeTile colour={tile % 8} special={Math.floor(tile / 8)} />
+          </div>
+        )),
+      )}
     </div>
   );
 }

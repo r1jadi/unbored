@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Nineteen games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Twenty games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini** and the **Daily Crossword**. Seventeen of them — all but 7 Second and the crossword, the two daily
+**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini**, **Cascade** and the **Daily Crossword**. Eighteen of them — all but 7 Second and the crossword, the two daily
 games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -2634,3 +2634,104 @@ the claimed score with its own (`score_mismatch`), and refuses a run that arrive
 later than its cleared boards' clock plus the slack (`out_of_time`). It reports
 boards cleared as `cleared_columns` and moves as `tiles_placed`. The session is
 issued on Start and lives twelve hours; the run does not resume.
+
+
+## Cascade
+
+The swap-and-match puzzle — the genre sold as Bejeweled and Candy Crush — as an
+endless run against a clock. An 8×8 board of six kinds of tile: swap two
+neighbours to line up three or more of a kind in a row or a column. They clear,
+the tiles above fall, new ones drop in from the top, and every line the fall makes
+clears in turn. Cascade keeps only the genre's mechanics; its tiles, rules, levels
+and look are its own.
+
+| Thing   | Value                                                                      |
+| ------- | -------------------------------------------------------------------------- |
+| Board   | 8×8, six kinds (each a shape and a hue), no line of three as dealt         |
+| Goal    | `20 + 10 × level` tiles cleared per level: 30, 40, 50, …                   |
+| Clock   | 60 s to start, +20 s per level cleared, tapered                            |
+| Score   | 1 point per cleared tile × its wave (shown ×10)                            |
+| Slack   | 20 s: how late after its clock a run may still reach the server            |
+| Actions | 4096 at most: `cell × 2 + direction`, 0 right and 1 down (0 to 127)        |
+| Rules   | `cascade@1`                                                                |
+| Runtime | `cascade` (the catalogue's `games.runtime` value)                          |
+
+### One stream of tiles
+
+Every tile a run sees is the next draw from one generator, seeded by the session:
+
+```
+state₀ = ((seed mod 2³²) + 2³²) mod 2³²              // 2654435769 if that is 0
+draw   = state ← (state × 22695477 + 1) mod 2³²;  kind = 1 + (state >> 16) mod 6
+```
+
+A board is dealt cell by cell, row by row, each tile drawn again until it does not
+complete a line of three with the two to its left or the two above. A board with
+no legal swap is dealt again (at most 1000 times; the last one stands). Refills are
+drawn column by column, left to right, each column from its lowest gap up. When a
+cascade settles on a board with no legal swap, a fresh board is dealt the same way,
+and any special tiles on the old board are lost.
+
+### A swap, and its cascade
+
+A swap is legal when, after it, either swapped tile sits in a line of three or more
+of its kind. An illegal swap is not an action: the screen nudges the tiles back and
+records nothing, and the verifier refuses one (`invalid_actions`).
+
+Each wave, every line of three or more clears, and some leave a special tile in one
+of their cells: the swapped cell, if the line runs through it on the first wave,
+otherwise the line's first cell (leftmost, or topmost).
+
+1. Where a row line crosses a column line (an L, a T or a +), a **burst**, unless
+   one of the two lines already made one. Crossings are taken in cell order, and
+   those two lines make nothing else.
+2. Every other line of five or more makes a **burst**, and of four a **line tile**
+   along it: a row line from a line across, a column line from one down. Lines
+   across first, top to bottom, then lines down, left to right. A line whose cell
+   already holds a new tile makes nothing.
+
+A special among the cleared tiles clears its blast too (a row line its row, a
+column line its column, a burst the 3×3 around it), and so does any special a blast
+catches. Every cleared cell scores the wave's number in points (`SCORE_SCALE` shows
+ten times that); then the new specials take their cells, the tiles fall and the
+board refills, and the next wave begins. A swap resolves at most 64 waves.
+
+Cleared tiles count towards the level's goal. Meeting it moves to the next level
+(more than one, if a cascade is big enough), carrying the rest over, and winds the
+clock back by `20 s × clock_taper_pct(level)`.
+
+### How a run ends, and the server's clock
+
+As in Decant: the session is issued when the player presses Start, the run ends
+when the clock reaches zero or the player ends it, and the verifier refuses a run
+that reaches it more than `cascade_budget_ms(levels cleared) + cascade_slack_ms()`
+after the session started (`out_of_time`, a `422`). Any prefix of a legal line is
+a valid submission: the score never goes down.
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261202120000_cascade_sessions.sql`.
+
+- `public.cascade_first_board(seed)`, `public.cascade_deal(state)` and
+  `public.cascade_resolve(board, state, from, to)` are the deal and the cascade;
+  internals, not granted to a client.
+- `public.complete_cascade_run(session, actions, score, duration)` replays every
+  swap as above, derives the score, compares it with the claim, checks the clock,
+  and only then records it. The Go service routes `cascade@` runs to it and
+  accepts up to 4096 actions on 0 to 127.
+- `20261202120100_cascade_playable.sql` inserts the catalogue record (Puzzle).
+
+### Test vectors
+
+Asserted in [`src/lib/games/cascade.test.ts`](../../src/lib/games/cascade.test.ts);
+the verifier's deal and cascade were checked against the engine on vectors 1 and 2
+in the live database, and reproduce both exactly.
+
+1. **Seed 1, the first board** — `51551442 51552235 36242232 52345624 45322634
+   53145366 12113251 26434112` (rows top to bottom), the generator then at
+   3036490364.
+2. **Seed 1, forty first-legal swaps** — actions
+   `0,6,16,21,25,44,49,4,52,75,40,24,5,21,4,5,0,8,41,38,4,9,41,53,36,2,12,20,28,38,0,5,3,6,17,34,19,3,43,48`:
+   score 177 (1 770 on screen), level 4, 150 tiles cleared.
+3. **The clock** — 60 s with no level cleared, 84 s after one, 106 s after two.

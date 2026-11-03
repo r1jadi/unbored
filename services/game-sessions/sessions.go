@@ -12,7 +12,8 @@
 //     `complete_eight_puzzle_run`, `complete_tango_run`,
 //     `complete_sudoku_run`, `complete_crossword_run`,
 //     `complete_gridburst_run`, `complete_updraft_run`,
-//     `complete_decant_run`, `complete_mini_sudoku_run`) replays the submitted
+//     `complete_decant_run`, `complete_mini_sudoku_run`,
+//     `complete_cascade_run`) replays the submitted
 //     actions, derives the
 //     score and writes the ledger. This service validates
 //     the request shape, maps the verifier's outcome onto an HTTP answer, and
@@ -105,6 +106,8 @@ const (
 	scatterMaxActions = 4096
 	// huedini@1 carries at most 8192 actions: slides, undos and restarts.
 	huediniMaxActions = 8192
+	// cascade@1 carries at most 4096 swaps.
+	cascadeMaxActions = 4096
 	// The bounds a move has to fit. Stack 10 addresses a column and Chain a pad,
 	// both 0 to 3; Color Merge addresses one of its four directions, also 0 to 3;
 	// Memory Flash addresses a cell of its board — sixteen for the retired 4×4
@@ -163,6 +166,9 @@ const (
 	// huediniActions is every Huedini action: a slide as top-left cell × 4 +
 	// direction (up to 195 on the 7×7 board), then 254 undo and 255 restart.
 	huediniActions = 256
+	// cascadeSwaps is every Cascade swap on the 8×8 board: cell × 2 + direction,
+	// 0 right and 1 down, from 0 to 127. The verifier refuses a swap off the edge.
+	cascadeSwaps = 128
 )
 
 // Patterns mirror the database constraints, so a bad request is a 400 that names
@@ -428,6 +434,8 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 		limit = scatterMaxActions
 	case strings.HasPrefix(rules, "huedini@"):
 		limit = huediniMaxActions
+	case strings.HasPrefix(rules, "cascade@"):
+		limit = cascadeMaxActions
 	}
 	if len(actions) > limit {
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
@@ -564,6 +572,8 @@ func boardSize(rulesVersion string) int {
 		return scatterCells
 	case strings.HasPrefix(rulesVersion, "huedini@"):
 		return huediniActions
+	case strings.HasPrefix(rulesVersion, "cascade@"):
+		return cascadeSwaps
 	default:
 		return stackChainPositions
 	}

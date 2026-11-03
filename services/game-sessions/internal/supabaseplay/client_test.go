@@ -385,6 +385,24 @@ func TestCompleteRunRoutesDecantRulesToDecantVerifier(t *testing.T) {
 	}
 }
 
+func TestCompleteRunRoutesCascadeRulesToCascadeVerifier(t *testing.T) {
+	rec := newRecorder(t, http.StatusOK, resultRow)
+
+	if _, err := rec.client(t).CompleteRun(context.Background(), CompleteRequest{
+		SessionID:    "ffffffff-1111-4111-8111-ffffffffffff",
+		RulesVersion: "cascade@1",
+		Actions:      []int32{0, 17, 126},
+		Score:        0,
+		DurationMS:   20000,
+	}); err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+
+	if rec.path != "/rest/v1/rpc/complete_cascade_run" {
+		t.Fatalf("path = %s, want the Cascade verifier function", rec.path)
+	}
+}
+
 func TestCompleteRunRoutesMiniSudokuRulesToMiniSudokuVerifier(t *testing.T) {
 	rec := newRecorder(t, http.StatusOK, resultRow)
 
