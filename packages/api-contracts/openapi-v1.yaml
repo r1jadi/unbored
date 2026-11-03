@@ -1802,6 +1802,36 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "503": { $ref: "#/components/responses/Unavailable" }
+  /admin/feedback:
+    get:
+      operationId: listAdminFeedback
+      tags: [admin]
+      summary: Player feedback
+      description: |
+        Feedback submitted from Settings, with its sender and whether the team
+        inbox has received it. Requires the moderator or administrator role.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: category
+          in: query
+          schema: { type: string, enum: [idea, bug, praise, other] }
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - $ref: "#/components/parameters/AdminLimit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: A page of feedback, newest first.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminFeedbackPage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /admin/moderation-log:
     get:
       operationId: listModerationLog
@@ -2762,6 +2792,27 @@ components:
       required: [items, hasMore]
       properties:
         items: { type: array, items: { $ref: "#/components/schemas/AdminScore" } }
+        hasMore: { type: boolean }
+
+    AdminFeedback:
+      type: object
+      required: [id, mood, category, message, senderUsername, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        mood: { type: integer, minimum: 1, maximum: 5 }
+        category: { type: string, enum: [idea, bug, praise, other] }
+        message: { type: string }
+        context: { type: [string, "null"] }
+        senderUsername: { type: string }
+        emailedAt:
+          { type: [string, "null"], format: date-time, description: "Null until the team inbox receives it." }
+        createdAt: { type: string, format: date-time }
+
+    AdminFeedbackPage:
+      type: object
+      required: [items, hasMore]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/AdminFeedback" } }
         hasMore: { type: boolean }
 
     AdminCategory:

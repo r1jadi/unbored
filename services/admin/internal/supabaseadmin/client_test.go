@@ -187,6 +187,33 @@ func TestDirectoryArgsAreNamedAndNullable(t *testing.T) {
 	}
 }
 
+func TestFeedbackUsesTheDirectoryBridge(t *testing.T) {
+	var (
+		path string
+		body map[string]any
+	)
+	client, _ := newPrivilegedClient(t, func(w http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[]`))
+	})
+
+	if _, err := client.Feedback(context.Background(), "caller-token", "actor-uuid", "idea", "search", Page{Limit: 50, Offset: 20}); err != nil {
+		t.Fatalf("feedback: %v", err)
+	}
+	if path != "/rest/v1/rpc/admin_feedback_directory_svc" {
+		t.Errorf("path = %q, want the privileged feedback wrapper", path)
+	}
+	if body["p_actor"] != "actor-uuid" || body["p_category"] != "idea" || body["p_search"] != "search" {
+		t.Errorf("body = %v, want actor and filters", body)
+	}
+	if body["p_limit"] != float64(51) || body["p_offset"] != float64(20) {
+		t.Errorf("body = %v, want a one-row lookahead at offset 20", body)
+	}
+}
+
 // TestParsePageValidates: the paging the API documents is enforced here, so a
 // malformed page is a 400 rather than a database error.
 func TestParsePageValidates(t *testing.T) {

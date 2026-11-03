@@ -392,6 +392,7 @@ export function AdminListStates({
   onRetry,
   emptyTitle,
   emptyBody,
+  errorBody,
   rows = 6,
   action,
 }: {
@@ -399,11 +400,12 @@ export function AdminListStates({
   onRetry?: () => void;
   emptyTitle: string;
   emptyBody?: string;
+  errorBody?: string;
   rows?: number;
   action?: ReactNode;
 }) {
   if (state === "loading") return <ListSkeleton rows={rows} />;
-  if (state === "error") return <ErrorState onRetry={onRetry} />;
+  if (state === "error") return <ErrorState onRetry={onRetry} body={errorBody} />;
   return <EmptyState title={emptyTitle} body={emptyBody} action={action} />;
 }
 

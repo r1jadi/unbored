@@ -155,6 +155,17 @@ func (g *guardBackend) Scores(_ context.Context, token, actor, slug, username st
 	return g.scores, nil
 }
 
+func (g *guardBackend) Feedback(_ context.Context, token, actor, category, search string, page supabaseadmin.Page) ([]supabaseadmin.Feedback, error) {
+	g.record("Feedback", category, search)
+	g.lastPage = page
+	g.lastToken = token
+	g.lastActor = actor
+	if err := g.staffAllowed("feedback"); err != nil {
+		return nil, err
+	}
+	return g.feedback, nil
+}
+
 func (g *guardBackend) Categories(_ context.Context, token, actor string) ([]supabaseadmin.Category, error) {
 	g.record("Categories")
 	g.lastToken = token

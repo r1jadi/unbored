@@ -19,15 +19,15 @@ function row(n: number) {
     category: "idea",
     message: `Idea number ${n}`,
     context: null,
-    sender_username: "nora",
-    emailed_at: n % 2 === 0 ? "2026-11-27T10:00:00Z" : null,
-    created_at: "2026-11-27T09:00:00Z",
+    senderUsername: "nora",
+    emailedAt: n % 2 === 0 ? "2026-11-27T10:00:00Z" : null,
+    createdAt: "2026-11-27T09:00:00Z",
   };
 }
 
-/** Gateway sign-in plus a Data API stub for the staff-only feedback list. */
-function stubBackend(rpc: (body: Record<string, unknown>) => Response) {
-  const calls: Array<{ url: string; body: Record<string, unknown>; auth: string | null }> = [];
+/** Gateway sign-in plus an admin API stub for the staff-only feedback list. */
+function stubBackend(list: (url: string) => Response) {
+  const calls: Array<{ url: string; auth: string | null }> = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -42,10 +42,9 @@ function stubBackend(rpc: (body: Record<string, unknown>) => Response) {
           },
         });
       }
-      if (url.includes("/rest/v1/rpc/admin_feedback_directory")) {
-        const body = JSON.parse(String(init?.body ?? "{}"));
-        calls.push({ url, body, auth: new Headers(init?.headers).get("Authorization") });
-        return rpc(body);
+      if (url.includes("/api/v1/admin/feedback")) {
+        calls.push({ url, auth: new Headers(init?.headers).get("Authorization") });
+        return list(url);
       }
       throw new Error(`unexpected fetch ${url}`);
     }),
@@ -60,21 +59,18 @@ afterEach(() => {
 });
 
 describe("the admin feedback list", () => {
-  it("reads through the staff function with the caller's own token and maps the rows", async () => {
-    const calls = stubBackend(() => json([row(1), row(2)]));
+  it("reads through the staff API with the caller's own token and maps the rows", async () => {
+    const calls = stubBackend(() => json({ items: [row(1), row(2)], hasMore: false }));
     await signIn("admin@example.com", "correct-horse");
 
     const page = await fetchAdminFeedback({ category: "idea", q: "idea", limit: 50, offset: 100 });
 
     expect(calls).toHaveLength(1);
     expect(calls[0].auth).toBe("Bearer access-token-1");
-    // One more row than a page is asked for, to know whether another follows.
-    expect(calls[0].body).toEqual({
-      p_category: "idea",
-      p_search: "idea",
-      p_limit: 51,
-      p_offset: 100,
-    });
+    expect(calls[0].url).toContain("category=idea");
+    expect(calls[0].url).toContain("q=idea");
+    expect(calls[0].url).toContain("limit=50");
+    expect(calls[0].url).toContain("offset=100");
     expect(page.hasMore).toBe(false);
     expect(page.items[0]).toMatchObject({
       message: "Idea number 1",
@@ -85,7 +81,7 @@ describe("the admin feedback list", () => {
   });
 
   it("reports a further page when the database returns the extra row", async () => {
-    stubBackend(() => json([row(1), row(2), row(3)]));
+    stubBackend(() => json({ items: [row(1), row(2)], hasMore: true }));
     await signIn("admin@example.com", "correct-horse");
 
     const page = await fetchAdminFeedback({ limit: 2 });
@@ -95,7 +91,7 @@ describe("the admin feedback list", () => {
   });
 
   it("answers a player's refusal as a forbidden error, not an empty list", async () => {
-    stubBackend(() => json({ code: "42501", message: "staff only" }, 403));
+    stubBackend(() => json({ error: { code: "forbidden", message: "staff only" } }, 403));
     await signIn("admin@example.com", "correct-horse");
 
     await expect(fetchAdminFeedback()).rejects.toMatchObject({ status: 403, code: "forbidden" });

@@ -399,6 +399,34 @@ func (c *Client) Scores(ctx context.Context, token, actor, gameSlug, username st
 	return rows, nil
 }
 
+// Feedback is one piece of player feedback with the sender's public username.
+type Feedback struct {
+	ID             string     `json:"id"`
+	Mood           int        `json:"mood"`
+	Category       string     `json:"category"`
+	Message        string     `json:"message"`
+	Context        *string    `json:"context"`
+	SenderUsername string     `json:"sender_username"`
+	EmailedAt      *time.Time `json:"emailed_at"`
+	CreatedAt      time.Time  `json:"created_at"`
+}
+
+// Feedback reads one page of player feedback. An empty category or search
+// leaves that filter unset.
+func (c *Client) Feedback(ctx context.Context, token, actor, category, search string, page Page) ([]Feedback, error) {
+	payload := map[string]any{
+		"p_category": nullable(category),
+		"p_search":   nullable(search),
+		"p_limit":    page.Limit + 1,
+		"p_offset":   page.Offset,
+	}
+	var rows []Feedback
+	if err := c.invoke(ctx, "feedback", "admin_feedback_directory", "admin_feedback_directory_svc", payload, token, actor, &rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 // Category is one category with both of its real counts.
 type Category struct {
 	Slug           string  `json:"slug"`

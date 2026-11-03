@@ -24,7 +24,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiError, apiFetch, type ApiRequestOptions } from "@/lib/api/client";
 import { getAccessToken } from "@/lib/auth/session";
-import { restMutate } from "@/lib/supabase/rest";
 
 /** Routes implemented by `services/admin`. Kept together so they cannot drift. */
 const Routes = {
@@ -38,6 +37,7 @@ const Routes = {
   users: "/admin/users",
   leaderboards: "/admin/leaderboards",
   moderationLog: "/admin/moderation-log",
+  feedback: "/admin/feedback",
   systemServices: "/admin/system/services",
   game: (id: string) => `/admin/games/${id}`,
   report: (id: string) => `/admin/reports/${id}`,
@@ -351,59 +351,12 @@ export type FeedbackFilters = {
   offset?: number;
 };
 
-type FeedbackRow = {
-  id: string;
-  mood: number;
-  category: FeedbackCategory;
-  message: string;
-  context: string | null;
-  sender_username: string;
-  emailed_at: string | null;
-  created_at: string;
-};
-
-/**
- * Feedback is read through a database function that checks the caller's staff role
- * itself (ADR 0013), so this goes straight to the Data API with the caller's own
- * token. It asks for one row more than a page to know whether another follows.
- */
+/** Feedback uses the staff API, including its allowlisted-administrator bridge. */
 export async function fetchAdminFeedback(
   filters: FeedbackFilters = {},
+  signal?: AbortSignal,
 ): Promise<Page<AdminFeedback>> {
-  const token = requireToken();
-  const limit = filters.limit ?? ADMIN_LIMIT;
-  let rows: FeedbackRow[];
-  try {
-    const response = await restMutate("rpc/admin_feedback_directory", "POST", token, {
-      p_category: filters.category ?? null,
-      p_search: filters.q ?? null,
-      p_limit: limit + 1,
-      p_offset: filters.offset ?? 0,
-    });
-    rows = (await response.json()) as FeedbackRow[];
-  } catch (error) {
-    const status = (error as { status?: number }).status;
-    if (status === 401 || status === 403) {
-      throw new ApiError("Moderator or administrator access is required.", {
-        code: "forbidden",
-        status: 403,
-      });
-    }
-    throw new ApiError("Couldn't load feedback. Try again.", { code: "feedback_failed" });
-  }
-  return {
-    items: rows.slice(0, limit).map((row) => ({
-      id: row.id,
-      mood: row.mood,
-      category: row.category,
-      message: row.message,
-      context: row.context,
-      senderUsername: row.sender_username,
-      emailedAt: row.emailed_at,
-      createdAt: row.created_at,
-    })),
-    hasMore: rows.length > limit,
-  };
+  return get<Page<AdminFeedback>>(Routes.feedback, { ...filters }, signal);
 }
 
 export type ScoreFilters = { game?: string; q?: string; limit?: number; offset?: number };
@@ -578,7 +531,7 @@ export function useAdminComments(filters: CommentFilters = {}) {
 export function useAdminFeedback(filters: FeedbackFilters = {}) {
   const { category, q, limit = ADMIN_LIMIT, offset = 0 } = filters;
   return useResource<Page<AdminFeedback>>(
-    () => fetchAdminFeedback({ category, q, limit, offset }),
+    (signal) => fetchAdminFeedback({ category, q, limit, offset }, signal),
     [category, q, limit, offset],
   );
 }

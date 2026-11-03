@@ -94,6 +94,8 @@ const (
 	LeaderboardsPath = "/api/v1/admin/leaderboards"
 	// ModerationLogPath is the audit trail of staff decisions.
 	ModerationLogPath = "/api/v1/admin/moderation-log"
+	// FeedbackPath lists messages submitted from Settings → Send feedback.
+	FeedbackPath = "/api/v1/admin/feedback"
 	// SystemServicesPath reports the platform's service list. It answers what
 	// exists, not what is healthy: this deployment collects no metrics.
 	SystemServicesPath = "/api/v1/admin/system/services"
@@ -147,6 +149,7 @@ type Backend interface {
 	Reports(ctx context.Context, token, actor, status string, page supabaseadmin.Page) ([]supabaseadmin.Report, error)
 	Comments(ctx context.Context, token, actor, state, search string, page supabaseadmin.Page) ([]supabaseadmin.Comment, error)
 	Scores(ctx context.Context, token, actor, gameSlug, username string, page supabaseadmin.Page) ([]supabaseadmin.Score, error)
+	Feedback(ctx context.Context, token, actor, category, search string, page supabaseadmin.Page) ([]supabaseadmin.Feedback, error)
 	Categories(ctx context.Context, token, actor string) ([]supabaseadmin.Category, error)
 	ModerationLog(ctx context.Context, token, actor string, page supabaseadmin.Page) ([]supabaseadmin.ModerationAction, error)
 	SetGameStatus(ctx context.Context, token, actor, gameID, status, reason string) (supabaseadmin.ActionResult, error)
@@ -348,6 +351,17 @@ type scoreView struct {
 	CreatedAt      time.Time  `json:"createdAt"`
 }
 
+type feedbackView struct {
+	ID             string     `json:"id"`
+	Mood           int        `json:"mood"`
+	Category       string     `json:"category"`
+	Message        string     `json:"message"`
+	Context        *string    `json:"context"`
+	SenderUsername string     `json:"senderUsername"`
+	EmailedAt      *time.Time `json:"emailedAt"`
+	CreatedAt      time.Time  `json:"createdAt"`
+}
+
 type categoryView struct {
 	Slug           string  `json:"slug"`
 	Name           string  `json:"name"`
@@ -428,6 +442,7 @@ func (s *service) register(router *httpx.Router) {
 	router.AuthenticatedFunc("PATCH "+CommentPath, s.staff(s.moderateComment))
 	router.AuthenticatedFunc("GET "+UsersPath, s.staff(s.listUsers))
 	router.AuthenticatedFunc("GET "+LeaderboardsPath, s.staff(s.listScores))
+	router.AuthenticatedFunc("GET "+FeedbackPath, s.staff(s.listFeedback))
 	router.AuthenticatedFunc("GET "+ModerationLogPath, s.staff(s.listModeration))
 	router.AuthenticatedFunc("GET "+SystemServicesPath, s.staff(s.systemServices))
 
@@ -889,6 +904,47 @@ func (s *service) listScores(w http.ResponseWriter, r *http.Request) {
 			Username:       row.Username,
 			Score:          row.Score,
 			SessionStarted: row.SessionStarted,
+			CreatedAt:      row.CreatedAt,
+		})
+	}
+
+	s.writePage(w, r, items, len(rows) > page.Limit)
+}
+
+func (s *service) listFeedback(w http.ResponseWriter, r *http.Request) {
+	page, ok := s.page(w, r)
+	if !ok {
+		return
+	}
+
+	category := strings.TrimSpace(r.URL.Query().Get("category"))
+	if category != "" && !contains([]string{"idea", "bug", "praise", "other"}, category) {
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
+			"That is not a feedback category.",
+			apierr.Detail{Field: "category", Rule: "unsupported"}))
+		return
+	}
+	search, ok := s.search(w, r)
+	if !ok {
+		return
+	}
+
+	rows, err := s.backend.Feedback(r.Context(), s.token(r), s.actor(r), category, search, page)
+	if err != nil {
+		s.dataFailure(w, r, "list feedback", err)
+		return
+	}
+
+	items := make([]feedbackView, 0, min(len(rows), page.Limit))
+	for _, row := range rows[:min(len(rows), page.Limit)] {
+		items = append(items, feedbackView{
+			ID:             row.ID,
+			Mood:           row.Mood,
+			Category:       row.Category,
+			Message:        row.Message,
+			Context:        row.Context,
+			SenderUsername: row.SenderUsername,
+			EmailedAt:      row.EmailedAt,
 			CreatedAt:      row.CreatedAt,
 		})
 	}

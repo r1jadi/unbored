@@ -50,6 +50,7 @@ type fakeBackend struct {
 	reports    []supabaseadmin.Report
 	comments   []supabaseadmin.Comment
 	scores     []supabaseadmin.Score
+	feedback   []supabaseadmin.Feedback
 	categories []supabaseadmin.Category
 	log        []supabaseadmin.ModerationAction
 
@@ -143,6 +144,14 @@ func (f *fakeBackend) Scores(_ context.Context, token, actor, slug, username str
 	f.lastToken = token
 	f.lastActor = actor
 	return f.scores, f.readErr
+}
+
+func (f *fakeBackend) Feedback(_ context.Context, token, actor, category, search string, page supabaseadmin.Page) ([]supabaseadmin.Feedback, error) {
+	f.record("Feedback", category, search)
+	f.lastPage = page
+	f.lastToken = token
+	f.lastActor = actor
+	return f.feedback, f.readErr
 }
 
 func (f *fakeBackend) Categories(_ context.Context, token, actor string) ([]supabaseadmin.Category, error) {
@@ -333,6 +342,7 @@ func TestAnonymousIsRefused(t *testing.T) {
 		{http.MethodGet, CommentsPath},
 		{http.MethodGet, UsersPath},
 		{http.MethodGet, LeaderboardsPath},
+		{http.MethodGet, FeedbackPath},
 		{http.MethodGet, ModerationLogPath},
 		{http.MethodGet, SystemServicesPath},
 		{http.MethodPatch, "/api/v1/admin/games/" + testGameID},
@@ -510,7 +520,7 @@ func TestAllowlistedReachesEveryRoute(t *testing.T) {
 
 	for _, path := range []string{
 		OverviewPath, AnalyticsPath, GamesPath, CategoriesPath, ReportsPath,
-		CommentsPath, UsersPath, LeaderboardsPath, ModerationLogPath, SystemServicesPath, SessionPath,
+		CommentsPath, UsersPath, LeaderboardsPath, FeedbackPath, ModerationLogPath, SystemServicesPath, SessionPath,
 	} {
 		if status, payload := call(t, server, http.MethodGet, path, token, nil); status != http.StatusOK {
 			t.Errorf("GET %s = %d, want 200 (%v)", path, status, payload)
@@ -633,6 +643,41 @@ func TestDirectoryPagingAsksForOneExtraRow(t *testing.T) {
 	}
 }
 
+func TestFeedbackDirectoryUsesTheStaffBridge(t *testing.T) {
+	t.Setenv("ADMIN_EMAILS", "staff@example.com")
+	backend := &fakeBackend{
+		identity: staffIdentity("user"),
+		feedback: []supabaseadmin.Feedback{
+			{ID: testGameID, Mood: 4, Category: "idea", Message: "More puzzles", SenderUsername: "nora"},
+			{ID: testPlayer, Mood: 3, Category: "bug", Message: "A tiny issue", SenderUsername: "liam"},
+		},
+	}
+	server, sign := newTestServer(t, backend)
+
+	status, payload := call(t, server, http.MethodGet,
+		FeedbackPath+"?category=idea&q=puzzles&limit=1", sign(testAdmin, "user"), nil)
+	if status != http.StatusOK {
+		t.Fatalf("feedback = %d, want 200 (%v)", status, payload)
+	}
+	if !backend.called("Feedback") || backend.lastActor != testAdmin {
+		t.Fatalf("feedback did not use the staff bridge: calls=%v actor=%q", backend.calls, backend.lastActor)
+	}
+	if got := backend.lastArgs; len(got) != 2 || got[0] != "idea" || got[1] != "puzzles" {
+		t.Errorf("feedback filters = %v, want [idea puzzles]", got)
+	}
+	if backend.lastPage.Limit != 1 || payload["hasMore"] != true {
+		t.Errorf("page = %+v response = %v, want one item and hasMore", backend.lastPage, payload)
+	}
+	items, _ := payload["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("items = %v, want one row", payload["items"])
+	}
+	item, _ := items[0].(map[string]any)
+	if item["senderUsername"] != "nora" || item["message"] != "More puzzles" {
+		t.Errorf("feedback item = %v, want the mapped API fields", item)
+	}
+}
+
 // TestDirectoryFiltersAreValidated: an unknown enum is a 400 that names the
 // field, and the database is never asked an unanswerable question.
 func TestDirectoryFiltersAreValidated(t *testing.T) {
@@ -651,6 +696,7 @@ func TestDirectoryFiltersAreValidated(t *testing.T) {
 		{ReportsPath + "?status=urgent", "status"},
 		{CommentsPath + "?state=reported", "state"},
 		{LeaderboardsPath + "?game=Not_A_Slug", "game"},
+		{FeedbackPath + "?category=spam", "category"},
 		{GamesPath + "?limit=0", "limit"},
 		{GamesPath + "?offset=-5", "offset"},
 		{GamesPath + "?q=" + strings.Repeat("x", 101), "q"},

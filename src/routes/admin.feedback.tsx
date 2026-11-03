@@ -169,7 +169,7 @@ export function FeedbackAdmin() {
             state="error"
             onRetry={feedback.retry}
             emptyTitle=""
-            emptyBody={feedback.error.message}
+            errorBody={feedback.error.message}
           />
         </SectionCard>
       ) : feedback.status === "loading" ? (
