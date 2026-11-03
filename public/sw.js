@@ -184,8 +184,49 @@ async function catalog(request) {
   } catch (error) {
     const cached = await caches.match(request.url, { cacheName: CATALOG_CACHE, ignoreVary: true });
     if (cached) return cached;
+    const list = await listFromCache(new URL(request.url));
+    if (list) return list;
     throw error;
   }
+}
+
+/**
+ * A game list nobody asked for while online, answered from the lists that were.
+ *
+ * The feed, Explore and a category page each ask for a different address
+ * (`limit`, `sort`, `category`), and only an address that was read online has a
+ * copy. Every list holds the same games in the same order, so the longest one
+ * kept can answer any first page: filtered to the category asked for, cut to the
+ * limit, with no next page. A search (`q`) or a later page (`cursor`) cannot be
+ * answered that way, and stays an error.
+ */
+async function listFromCache(url) {
+  if (!url.pathname.endsWith("/games")) return null;
+  if (url.searchParams.get("q") || url.searchParams.get("cursor")) return null;
+  const cache = await caches.open(CATALOG_CACHE);
+  let items = null;
+  for (const key of await cache.keys()) {
+    const kept = new URL(key.url);
+    if (kept.pathname !== url.pathname || kept.searchParams.get("q")) continue;
+    if (kept.searchParams.get("cursor") || kept.searchParams.get("category")) continue;
+    try {
+      const body = await (await cache.match(key)).json();
+      if (Array.isArray(body.items) && (!items || body.items.length > items.length)) {
+        items = body.items;
+      }
+    } catch {
+      // An unreadable copy: try the next.
+    }
+  }
+  if (!items) return null;
+  const category = url.searchParams.get("category");
+  const limit = Number(url.searchParams.get("limit")) || items.length;
+  const chosen = items
+    .filter((game) => !category || game.category?.slug === category)
+    .slice(0, limit);
+  return new Response(JSON.stringify({ items: chosen, nextCursor: null }), {
+    headers: { "content-type": "application/json" },
+  });
 }
 
 /**

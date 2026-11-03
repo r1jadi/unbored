@@ -12,7 +12,7 @@
 
 import { useSyncExternalStore } from "react";
 
-import { fetchGame, fetchGames, MAX_PAGE_SIZE } from "@/lib/games/catalog";
+import { fetchCategories, fetchGame, fetchGames, MAX_PAGE_SIZE } from "@/lib/games/catalog";
 
 const WARMED_AT_KEY = "unbored:offline-warmed-at";
 const WARM_EVERY_MS = 24 * 60 * 60 * 1000;
@@ -40,7 +40,10 @@ async function warm(registration: ServiceWorkerRegistration): Promise<void> {
     const list = await fetchGames({ limit: MAX_PAGE_SIZE });
     const games = list.items.filter((game) => game.playable && game.runtime);
     // Read through the worker, which keeps each answer for offline use.
-    await Promise.all(games.map((game) => fetchGame(game.slug).catch(() => undefined)));
+    await Promise.all([
+      fetchCategories().catch(() => undefined),
+      ...games.map((game) => fetchGame(game.slug).catch(() => undefined)),
+    ]);
     registration.active.postMessage({
       type: "warm",
       games: games.map((game) => ({ slug: game.slug, title: game.title })),
