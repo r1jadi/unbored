@@ -42,8 +42,12 @@ const STATIC_FILES = [
 const UNCACHED_PAGES =
   /^\/(admin|auth|login|signup|forgot-password|reset-password|verify-email)(\/|$)/;
 
-/** The catalogue's public reads, relative to wherever the API is mounted. */
-const CATALOG_PATH = /\/(games(\/[^/]+)?|categories)$/;
+/**
+ * The catalogue's public reads, relative to wherever the API is mounted. The
+ * Supabase Data API also has a `games` table at `/rest/v1/games`; those are not
+ * catalogue reads and are left alone.
+ */
+const CATALOG_PATH = /^(?!.*\/rest\/v1\/).*\/(games(\/[^/]+)?|categories)$/;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

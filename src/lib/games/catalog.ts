@@ -19,8 +19,9 @@
  *
  * Storage rule: the app caches the catalogue in memory, in its query cache
  * (`lib/query.ts`), for as long as the tab is open. The service worker
- * (`public/sw.js`) also keeps the last answer to each public read on disk, but
- * only as an offline fallback: online, every read goes to the network, so a new
+ * (`public/sw.js`) also keeps the last answer to each public read on disk, and
+ * so does `catalog-offline.ts`, in `localStorage`, for a page the worker does not
+ * control. Both are only an offline fallback: online, every read goes to the network, so a new
  * deployment is never served from a stale copy. The catalogue is public and the
  * same for every visitor, so nothing personal can leak between accounts through
  * it. A cached screen opens instantly and refreshes in the background.
@@ -37,6 +38,15 @@ import { useCallback, useMemo } from "react";
 import { ApiError, apiFetch, type ApiRequestOptions } from "@/lib/api/client";
 import { publicConfig } from "@/lib/config";
 import { getQueryClient } from "@/lib/query";
+import {
+  rememberCategories,
+  rememberedCategories,
+  rememberedGame,
+  rememberedGames,
+  rememberGame,
+  rememberGames,
+} from "@/lib/games/catalog-offline";
+import { isUnreachable } from "@/lib/games/offline";
 
 import { t, translateContent } from "@/lib/settings/language";
 /** Routes implemented by `services/games`. Kept together so they cannot drift. */
@@ -250,7 +260,30 @@ export function fetchGames(query: GameQuery = {}, options: RequestOptions = {}):
       sort: query.sort,
     },
     signal: options.signal,
-  }).then((list) => ({ ...list, items: list.items.map(localizeGame) }));
+  })
+    .then(
+      (list) => {
+        rememberGames(query, list);
+        return list;
+      },
+      offlineFallback(() => rememberedGames(query)),
+    )
+    .then((list) => ({ ...list, items: list.items.map(localizeGame) }));
+}
+
+/**
+ * Answers a read the API could not serve from the device's copy of the
+ * catalogue (`catalog-offline.ts`). Only for a network failure: a refusal is
+ * an answer, and a read the copy cannot answer stays the error it was.
+ */
+function offlineFallback<T>(remembered: () => T | undefined): (error: unknown) => T {
+  return (error) => {
+    if (isUnreachable(error)) {
+      const answer = remembered();
+      if (answer !== undefined) return answer;
+    }
+    throw error;
+  };
 }
 
 /**
@@ -262,19 +295,32 @@ export function fetchGames(query: GameQuery = {}, options: RequestOptions = {}):
 export function fetchGame(slug: string, options: RequestOptions = {}): Promise<Game> {
   return apiFetch<Game>(`${Routes.games}/${encodeURIComponent(slug)}`, {
     signal: options.signal,
-  }).then(localizeGame);
+  })
+    .then(
+      (game) => {
+        rememberGame(game);
+        return game;
+      },
+      offlineFallback(() => rememberedGame(slug)),
+    )
+    .then(localizeGame);
 }
 
 /** Reads every category with its real published-game count. Public. */
 export function fetchCategories(options: RequestOptions = {}): Promise<CategoryList> {
-  return apiFetch<CategoryList>(Routes.categories, { signal: options.signal }).then((list) => ({
-    ...list,
-    items: list.items.map((category) => ({
-      ...category,
-      name: translateContent(category.name),
-      description: translateContent(category.description),
-    })),
-  }));
+  return apiFetch<CategoryList>(Routes.categories, { signal: options.signal })
+    .then((list) => {
+      rememberCategories(list);
+      return list;
+    }, offlineFallback(rememberedCategories))
+    .then((list) => ({
+      ...list,
+      items: list.items.map((category) => ({
+        ...category,
+        name: translateContent(category.name),
+        description: translateContent(category.description),
+      })),
+    }));
 }
 
 // ── Presentation helpers ────────────────────────────────────────────────────

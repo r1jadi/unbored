@@ -10,11 +10,16 @@
  * (`defaults` turns on `capture_pageview: "history_change"`). Identity follows
  * the auth session: a signed-in user is identified by their account id only —
  * never by email — and signing out resets the anonymous id.
+ *
+ * Consent comes first (`lib/consent.ts`): PostHog sets cookies, so it starts
+ * only once the visitor accepts analytics in the cookie pop-up, and stops
+ * capturing the moment they withdraw it.
  */
 
 import posthog from "posthog-js";
 
 import { publicConfig } from "./config";
+import { getConsent } from "./consent";
 
 const { key, host } = publicConfig.posthog;
 
@@ -25,7 +30,7 @@ export function isAnalyticsEnabled(): boolean {
 }
 
 export function initAnalytics(): void {
-  if (initialized || !isAnalyticsEnabled()) return;
+  if (initialized || !isAnalyticsEnabled() || !getConsent()?.analytics) return;
   initialized = true;
   posthog.init(key, {
     api_host: host,
@@ -34,6 +39,18 @@ export function initAnalytics(): void {
     // Inputs can hold passwords, emails and usernames; recordings never see them.
     session_recording: { maskAllInputs: true },
   });
+}
+
+/** Follows a change of mind: starts analytics on consent, stops it on withdrawal. */
+export function applyAnalyticsConsent(allowed: boolean): void {
+  if (allowed) {
+    if (initialized) posthog.opt_in_capturing();
+    else initAnalytics();
+    return;
+  }
+  if (!initialized) return;
+  posthog.opt_out_capturing();
+  posthog.reset();
 }
 
 /** Ties subsequent events to an account. Call with the user id, never an email. */

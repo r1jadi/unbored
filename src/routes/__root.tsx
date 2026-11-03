@@ -22,7 +22,9 @@ import { AppShell } from "@/components/layout/AppShell";
 import { SafeAreaDiagnostics } from "@/components/dev/SafeAreaDiagnostics";
 import { Toaster } from "@/components/ui/sonner";
 import { initializeSession, useAuth } from "@/lib/auth/session";
-import { identifyUser, initAnalytics, resetAnalytics } from "@/lib/analytics";
+import { applyAnalyticsConsent, identifyUser, resetAnalytics } from "@/lib/analytics";
+import { useConsent } from "@/lib/consent";
+import { CookieConsent } from "@/components/layout/CookieConsent";
 import { currentLanguage, LanguageProvider, t } from "@/lib/settings/language";
 import { ThemeProvider } from "@/lib/settings/theme";
 import { registerServiceWorker } from "@/lib/service-worker";
@@ -217,13 +219,14 @@ function RootComponent() {
   const navigate = useNavigate();
   const bare = BARE.some((p) => path.startsWith(p));
   const auth = useAuth();
+  const consent = useConsent();
+  const analyticsAllowed = consent?.analytics === true;
 
   // Restore a persisted session after hydration, never during SSR: the server
   // render and the first client render must agree (both anonymous), and the
   // restored token is re-validated against the API before it is trusted.
   useEffect(() => {
     if (forwardStrayAuthRedirect()) return;
-    initAnalytics();
     void initializeSession();
     registerServiceWorker();
   }, []);
@@ -232,11 +235,17 @@ function RootComponent() {
   // fresh anonymous id after signing out ("restoring" changes nothing yet).
   const analyticsUserId = auth.status === "authenticated" ? auth.session.userId : undefined;
   const analyticsRole = auth.status === "authenticated" ? auth.session.role : undefined;
+  // Analytics runs only with the visitor's consent (the cookie pop-up), and
+  // follows it when they change their mind in Settings.
   useEffect(() => {
-    if (auth.status === "restoring") return;
+    if (consent === undefined) return;
+    applyAnalyticsConsent(analyticsAllowed);
+  }, [consent, analyticsAllowed]);
+  useEffect(() => {
+    if (auth.status === "restoring" || !analyticsAllowed) return;
     if (analyticsUserId) identifyUser(analyticsUserId, { role: analyticsRole });
     else resetAnalytics();
-  }, [auth.status, analyticsUserId, analyticsRole]);
+  }, [auth.status, analyticsUserId, analyticsRole, analyticsAllowed]);
 
   // A session without a finished registration (see `lib/users/registration`)
   // means the account is not fully created yet, so the app routes to the screen
@@ -292,7 +301,9 @@ function RootComponent() {
         offset={{ top: "calc(env(safe-area-inset-top) + 24px)" }}
         mobileOffset={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
       />
-      <Analytics />
+      {analyticsAllowed && <Analytics />}
+      {/* Asked once per browser, never over a game or the admin dashboard. */}
+      {!path.startsWith("/play") && !path.startsWith("/admin") && <CookieConsent />}
     </QueryClientProvider>
   );
 }

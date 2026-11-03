@@ -680,6 +680,36 @@ export const sqApp: Record<string, string> = {
     "Provo një drejtshkrim tjetër ose emrin e një kategorie.",
   "Try a different spelling.": "Provo një drejtshkrim tjetër.",
 
+  // The cookie jar
+  "Accept all": "Prano të gjitha",
+  "Always on": "Gjithmonë aktive",
+  "Analytics cookies": "Cookies për analitikë",
+  "Bring back the cookie jar": "Rikthe kavanozin e biskotave",
+  "Change your mind any time in Settings → Privacy.":
+    "Ndrysho mendje kur të duash te Cilësimet → Privatësia.",
+  Cookies: "Cookies",
+  "Count visits and how games are played, to make Unbored better":
+    "Numërojnë vizitat dhe si luhen lojërat, për ta bërë Unbored më të mirë",
+  "Crunchy, right?": "Krokante, apo jo?",
+  "Essential storage": "Ruajtja e domosdoshme",
+  Essentials: "Të domosdoshmet",
+  "Essentials only": "Vetëm të domosdoshmet",
+  "Go on, have a bite.": "Hajde, kafshoje një herë.",
+  "Okay, you clearly like cookies.": "Në rregull, dukesh se i do biskotat.",
+  "PostHog and Vercel Analytics count visits and how games are played. They set cookies, so they only start if you accept. No ads, ever.":
+    "PostHog dhe Vercel Analytics numërojnë vizitat dhe si luhen lojërat. Vendosin cookies, ndaj nisin vetëm nëse pranon. Asnjë reklamë, kurrë.",
+  "Psst — want a cookie?": "Pss — do një biskotë?",
+  Show: "Shfaq",
+  "Take a bite of the cookie": "Kafsho biskotën",
+  "That was the whole cookie. Decide already!": "Ishte gjithë biskota. Vendos tani!",
+  "There goes the last chocolate chip.": "Iku edhe copëza e fundit e çokollatës.",
+  "We keep a few essentials so you stay signed in, your language sticks and games work offline. With your OK we also count how people play, to make Unbored better.":
+    "Ruajmë disa gjëra të domosdoshme që të mbetesh i identifikuar, gjuha të mbahet mend dhe lojërat të punojnë pa internet. Me lejen tënde numërojmë edhe si luajnë njerëzit, për ta bërë Unbored më të mirë.",
+  "What's in the jar?": "Çfarë ka në kavanoz?",
+  "Your choice": "Zgjedhja jote",
+  "Your sign-in, your language, your settings and the copies that let games run offline. Unbored can't work without them.":
+    "Identifikimi, gjuha, cilësimet dhe kopjet që i lejojnë lojërat të punojnë pa internet. Unbored nuk funksionon pa to.",
+
   // Settings
   "Connected accounts": "Llogaritë e lidhura",
   "Dark, light, system": "E errët, e çelët, sistemi",

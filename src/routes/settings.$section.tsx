@@ -24,6 +24,7 @@ import {
 import { listBlocked, unblockUser } from "@/lib/settings/blocked";
 import { avatarUrl, clearProfile, useProfile } from "@/lib/users/profile";
 import { cn } from "@/lib/utils";
+import { resetConsent, setConsent, useConsent } from "@/lib/consent";
 
 export const Route = createFileRoute("/settings/$section")({
   head: ({ params }) => {
@@ -88,6 +89,35 @@ function Toggle({
       </Label>
       <Switch id={id} checked={checked} onCheckedChange={onChange} disabled={disabled} />
     </div>
+  );
+}
+
+/**
+ * This browser's cookie choice (`lib/consent.ts`): analytics on or off, or
+ * the cookie jar back to choose again. It is the browser's, not the account's,
+ * so guests have it too.
+ */
+function CookieChoices() {
+  const consent = useConsent();
+  return (
+    <Group title={t("Cookies")}>
+      <Toggle
+        id="cookies-analytics"
+        label={t("Analytics cookies")}
+        desc={t("Count visits and how games are played, to make Unbored better")}
+        checked={consent?.analytics === true}
+        onChange={(v) => setConsent(v)}
+      />
+      <Row label={t("Essential storage")} value={t("Always on")} />
+      <Row
+        label={t("Bring back the cookie jar")}
+        action={
+          <Button variant="secondary" size="sm" onClick={resetConsent}>
+            {t("Show")}
+          </Button>
+        }
+      />
+    </Group>
   );
 }
 
@@ -208,10 +238,20 @@ function Body({ section }: { section: string }) {
       // The real editor: reads and writes the account's own profile row.
       return <ProfileForm />;
     case "privacy":
-      if (!signedIn) return <RequireSignIn body={t("Privacy choices belong to your account.")} />;
+      if (!signedIn) {
+        return (
+          <>
+            <CookieChoices />
+            <div className="mt-6">
+              <RequireSignIn body={t("Privacy choices belong to your account.")} />
+            </div>
+          </>
+        );
+      }
       if (loading) return <p className="px-4 text-sm text-muted-foreground">{t("Loading…")}</p>;
       return (
         <>
+          <CookieChoices />
           <Group title={t("Visibility")}>
             <Toggle
               id="p1"

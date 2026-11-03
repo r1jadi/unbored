@@ -110,7 +110,17 @@ const STORAGE_VERSION = 1;
 const EXPIRY_SKEW_MS = 60_000;
 
 /** How long to wait before retrying a refresh that failed for a transient reason. */
-const REFRESH_RETRY_MS = 60_000;
+const REFRESH_RETRY_MS = 30_000;
+
+/**
+ * Quick retries of a refresh whose answer never arrived. Supabase rotates the
+ * refresh token when it answers, and a phone that sleeps or loses signal
+ * mid-request can lose that answer; sending the same token again *within the
+ * reuse interval* (10 seconds) returns the rotated pair instead of tripping
+ * reuse detection, which would revoke the whole session. So the retries are
+ * immediate and short, and all of them land inside that window.
+ */
+const REFRESH_LOST_ANSWER_RETRIES_MS = [1_000, 3_000];
 
 /** `setTimeout` delays above this fire immediately instead of after the wait. */
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
@@ -435,11 +445,24 @@ export function clearSession(): void {
  * policy belongs to the caller: a boot restore and a pre-emptive rotation want
  * different things from the same refused or failed answer.
  */
-function requestRefresh(refreshToken: string): Promise<AuthSession> {
-  return apiFetch<AuthSession>(Routes.refresh, {
-    method: "POST",
-    body: { refreshToken },
-  });
+async function requestRefresh(refreshToken: string): Promise<AuthSession> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await apiFetch<AuthSession>(Routes.refresh, {
+        method: "POST",
+        body: { refreshToken },
+      });
+    } catch (error) {
+      const delay = REFRESH_LOST_ANSWER_RETRIES_MS[attempt];
+      if (delay === undefined || !answerMayHaveBeenLost(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
+/** A failure after which the server may have rotated the token without us hearing. */
+function answerMayHaveBeenLost(error: unknown): boolean {
+  return error instanceof ApiError && (error.status === 0 || error.status >= 500);
 }
 
 /**
@@ -519,7 +542,11 @@ async function refreshAheadOfExpiry(): Promise<void> {
  * There is no verified session to keep yet, so a transient failure reports
  * anonymous while keeping the stored copy for a later attempt.
  */
-async function rotateRestoredSession(stored: Tokens, startedAt: number): Promise<void> {
+async function rotateRestoredSession(
+  stored: Tokens,
+  view: Session,
+  startedAt: number,
+): Promise<void> {
   try {
     const payload = await rotate(stored.refreshToken);
     if (generation !== startedAt) return;
@@ -535,10 +562,45 @@ async function rotateRestoredSession(stored: Tokens, startedAt: number): Promise
       clearSession();
       return;
     }
-    tokens = undefined;
-    cancelRefresh();
-    publish(ANONYMOUS);
+    keepSignedIn(stored, view);
   }
+}
+
+/**
+ * The server could not be reached (no signal, a cold start, an outage), so the
+ * stored session is neither confirmed nor refused. Like any app, the visitor
+ * stays signed in on it: only the server refusing the refresh token signs them
+ * out. The rotation is tried again shortly, and again whenever the app comes
+ * back to the foreground or the network returns (`watchForResume`); a call made
+ * meanwhile with the expired access token is refused and rotates it the usual
+ * way (`rotateRefusedSession`).
+ */
+function keepSignedIn(pair: Tokens, view: Session): void {
+  tokens = pair;
+  publish({ status: "authenticated", session: view });
+  scheduleRefresh(REFRESH_RETRY_MS);
+}
+
+let watchingResume = false;
+
+/**
+ * Rotates a due token when the app returns. Timers do not run while a phone has
+ * the app in the background, so a refresh scheduled for an hour later may never
+ * have fired; the moment the app is visible again, or back online, is when to
+ * catch up.
+ */
+function watchForResume(): void {
+  if (watchingResume || typeof window === "undefined") return;
+  watchingResume = true;
+  const catchUp = () => {
+    if (document.visibilityState !== "visible" || !tokens) return;
+    const wait = refreshDelay(tokens);
+    if (wait === undefined || wait <= 0) void refreshAheadOfExpiry();
+    else scheduleRefresh();
+  };
+  document.addEventListener("visibilitychange", catchUp);
+  window.addEventListener("online", catchUp);
+  window.addEventListener("pageshow", catchUp);
 }
 
 let restoreTask: { generation: number; promise: Promise<void> } | undefined;
@@ -558,6 +620,7 @@ let restoreTask: { generation: number; promise: Promise<void> } | undefined;
  */
 export function initializeSession(): Promise<void> {
   if (restoreTask && restoreTask.generation === generation) return restoreTask.promise;
+  watchForResume();
   const stored = readStoredSession();
   if (!stored) return Promise.resolve();
   const startedAt = generation;
@@ -571,13 +634,13 @@ export function initializeSession(): Promise<void> {
 async function restoreSession(stored: StoredSession, startedAt: number): Promise<void> {
   if (isExpired(stored.tokens)) {
     publish({ status: "restoring" });
-    await rotateRestoredSession(stored.tokens, startedAt);
+    await rotateRestoredSession(stored.tokens, stored.session, startedAt);
     return;
   }
   tokens = stored.tokens;
   publish({ status: "authenticated", session: stored.session });
   scheduleRefresh();
-  await validateStoredSession(stored.tokens.accessToken, startedAt);
+  await validateStoredSession(stored.tokens.accessToken, stored.session, startedAt);
 }
 
 /**
@@ -585,7 +648,11 @@ async function restoreSession(stored: StoredSession, startedAt: number): Promise
  * route comes from the verified token, so this is the authoritative answer to
  * "is this session still valid".
  */
-async function validateStoredSession(accessToken: string, startedAt: number): Promise<void> {
+async function validateStoredSession(
+  accessToken: string,
+  storedView: Session,
+  startedAt: number,
+): Promise<void> {
   try {
     const view = await apiFetch<Session>(Routes.session, { token: accessToken });
     if (generation !== startedAt) return;
@@ -596,18 +663,15 @@ async function validateStoredSession(accessToken: string, startedAt: number): Pr
     if (error instanceof ApiError && error.isUnauthorized) {
       // The access token lapsed between boot and the check: the refresh token
       // is the one that can still restore the session.
-      if (tokens) await rotateRestoredSession(tokens, startedAt);
+      if (tokens) await rotateRestoredSession(tokens, storedView, startedAt);
       return;
     }
     if (isDefinitiveAuthFailure(error)) {
       clearSession();
       return;
     }
-    // The server could not answer. Keep the stored pair for a later attempt,
-    // but do not claim a session that was not just verified.
-    tokens = undefined;
-    cancelRefresh();
-    publish(ANONYMOUS);
+    // The server could not answer: stay signed in on the stored session.
+    if (tokens) keepSignedIn(tokens, storedView);
   }
 }
 

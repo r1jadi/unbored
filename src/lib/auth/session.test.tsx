@@ -631,7 +631,7 @@ describe("session restoration", () => {
     expect(window.localStorage.getItem(SESSION_STORAGE_KEY)).toBeNull();
   });
 
-  it("keeps the stored pair but stays anonymous when the server cannot answer", async () => {
+  it("stays signed in on the stored session when the server cannot answer", async () => {
     storeSession(storedPayload());
     mockFetch(() =>
       errorResponse(503, "service_unavailable", "Authentication is not available right now."),
@@ -639,12 +639,56 @@ describe("session restoration", () => {
 
     await initializeSession();
 
-    // The server could not confirm; claiming a session would be a lie, but the
-    // pair may still be valid, so a later boot can try again.
-    expect(getAuthState()).toEqual({ status: "anonymous" });
-    expect(getAccessToken()).toBeUndefined();
+    // Neither confirmed nor refused: like any app, the visitor stays signed in
+    // (no signal on a phone must not sign anyone out), and the pair is kept for
+    // the refresh that is retried later.
+    expect(getAuthState()).toMatchObject({ status: "authenticated" });
+    expect(getAccessToken()).toBe("access-token-1");
     expect(window.localStorage.getItem(SESSION_STORAGE_KEY)).not.toBeNull();
   });
+
+  it("stays signed in when an expired pair cannot be rotated for lack of a network", async () => {
+    storeSession(storedPayload({ expiresAt: new Date(Date.now() - 60_000).toISOString() }));
+    const spy = mockFetch(() => {
+      throw new TypeError("Failed to fetch");
+    });
+
+    await initializeSession();
+
+    expect(getAuthState()).toMatchObject({ status: "authenticated" });
+    expect(window.localStorage.getItem(SESSION_STORAGE_KEY)).not.toBeNull();
+    // The lost-answer retries all sent the same refresh token.
+    const tokens = spy.mock.calls.map(([, init]) => JSON.parse(String(init?.body)).refreshToken);
+    expect(tokens.length).toBeGreaterThan(1);
+    expect(new Set(tokens)).toEqual(new Set(["refresh-token-1"]));
+  }, 10_000);
+
+  it("recovers a refresh whose answer was lost by sending the same token again", async () => {
+    storeSession(storedPayload({ expiresAt: new Date(Date.now() - 60_000).toISOString() }));
+    let calls = 0;
+    const spy = mockFetch(() => {
+      calls += 1;
+      // The first answer never arrives; Supabase hands back the rotated pair to
+      // a repeat of the same token inside its reuse interval.
+      if (calls === 1) throw new TypeError("Failed to fetch");
+      return jsonResponse(
+        sessionPayload({
+          tokens: {
+            accessToken: "access-token-2",
+            refreshToken: "refresh-token-2",
+            tokenType: "bearer",
+            expiresIn: 3600,
+          },
+        }),
+      );
+    });
+
+    await initializeSession();
+
+    expect(getAccessToken()).toBe("access-token-2");
+    expect(requestOf(spy, 0).body).toEqual({ refreshToken: "refresh-token-1" });
+    expect(requestOf(spy, 1).body).toEqual({ refreshToken: "refresh-token-1" });
+  }, 10_000);
 
   it("drops a malformed entry without asking the server", async () => {
     const spy = mockFetch(() => jsonResponse({}));
