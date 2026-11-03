@@ -29,7 +29,9 @@ import {
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
 import { useGameSounds } from "@/lib/sound";
+import { offlineResultNote } from "@/lib/games/offline";
 
+import { t } from "@/lib/settings/language";
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["dont-touch"];
 
@@ -94,7 +96,7 @@ export function DontTouchRuntime({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Starting a run…</p>
+        <p className="text-sm text-muted-foreground">{t("Starting a run…")}</p>
       </div>
     );
   }
@@ -103,7 +105,7 @@ export function DontTouchRuntime({
     return (
       <div className="flex flex-1 flex-col justify-center px-6">
         <ErrorState
-          title="Couldn't start a run"
+          title={t("Couldn't start a run")}
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
@@ -120,18 +122,20 @@ export function DontTouchRuntime({
         <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-2">
           <TriangleAlert className="size-5 text-muted-foreground" />
         </div>
-        <h2 className="text-xl font-semibold">Your run was not verified</h2>
+        <h2 className="text-xl font-semibold">{t("Your run was not verified")}</h2>
         <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-          {playErrorMessage(state.error)} Nothing was saved, and nothing needs to be — sending the
-          same run again is safe.
+          {t(
+            "{error} Nothing was saved, and nothing needs to be — sending the same run again is safe.",
+            { error: playErrorMessage(state.error) },
+          )}
         </p>
         <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
           <Button variant="play" size="lg" onClick={state.retry}>
-            Try submitting again
+            {t("Try submitting again")}
           </Button>
           <Button variant="secondary" size="lg" onClick={state.restart}>
             <RotateCcw />
-            Start a new run
+            {t("Start a new run")}
           </Button>
           <GameExits slug={slug} title={title} />
         </div>
@@ -280,8 +284,8 @@ function Conveyor({
             <Hand className="size-5 text-muted-foreground" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">{RULES.heading}</h1>
-            <p className="text-sm text-muted-foreground">{RULES.summary}</p>
+            <h1 className="text-2xl font-semibold">{t(RULES.heading)}</h1>
+            <p className="text-sm text-muted-foreground">{t(RULES.summary)}</p>
           </div>
 
           <RulesList rules={RULES.rules} />
@@ -296,10 +300,10 @@ function Conveyor({
               }}
               autoFocus
             >
-              Start run
+              {t("Start run")}
             </Button>
             <Button asChild variant="ghost" size="lg">
-              <ExitGameLink slug={slug}>Back to {title}</ExitGameLink>
+              <ExitGameLink slug={slug}>{t("Back to {title}", { title })}</ExitGameLink>
             </Button>
           </div>
 
@@ -307,12 +311,12 @@ function Conveyor({
             {session.ranked ? (
               <>
                 <ShieldCheck className="size-3.5" />
-                Signed in: this run can be ranked
+                {t("Signed in: this run can be ranked")}
               </>
             ) : (
               <>
                 <ShieldCheck className="size-3.5" />
-                Guest run: verified, but not ranked
+                {t("Guest run: verified, but not ranked")}
               </>
             )}
           </p>
@@ -332,37 +336,41 @@ function Conveyor({
       tabIndex={0}
       onKeyDown={onKeyDown}
       className="flex flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      aria-label="Don't Touch the Black conveyor. Tap the white tiles in the row at the line."
+      aria-label={t("Don't Touch the Black conveyor. Tap the white tiles in the row at the line.")}
     >
       <div className="flex items-center justify-between gap-3 py-2">
         <dl className="flex items-baseline gap-1">
-          <dt className="text-xs text-muted-foreground">Score</dt>
+          <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
           <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="tabular">Row {activeRow + 1}</span>
+          <span className="tabular">
+            {t("Row")} {activeRow + 1}
+          </span>
           <span className="tabular">{readout.cleared} cleared</span>
           {session.ranked ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-1">
               <ShieldCheck className="size-3.5" />
-              Ranked
+              {t("Ranked")}
             </span>
           ) : (
-            <span className="rounded-full bg-surface-2 px-2 py-1">Guest run</span>
+            <span className="rounded-full bg-surface-2 px-2 py-1">
+              {session.offline ? t("Offline practice") : t("Guest run")}
+            </span>
           )}
         </div>
       </div>
 
       <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
         {verifying
-          ? "Verifying your run with the server…"
+          ? t("Verifying your run with the server…")
           : run.outcome === "over"
             ? run.endReason === "black"
-              ? "You touched the black."
+              ? t("You touched the black.")
               : run.endReason === "miss"
-                ? "A white tile got past the line."
-                : "Run ended."
-            : "Tap the white tiles in the row at the line."}
+                ? t("A white tile got past the line.")
+                : t("Run ended.")
+            : t("Tap the white tiles in the row at the line.")}
       </p>
 
       {/* The conveyor. Three rows are visible at a time, as in Piano Tiles, so
@@ -408,9 +416,16 @@ function Conveyor({
                       key={cell}
                       type="button"
                       disabled={!atLine || !accepting || alreadyCleared}
-                      aria-label={`Row ${row + 1}, lane ${lane + 1}, ${
-                        hidden ? "hidden in the dark" : black ? "black — do not touch" : "white"
-                      }${alreadyCleared ? ", cleared" : ""}`}
+                      aria-label={t("Row {n}, lane {n2}, {n3}{n4}", {
+                        n: row + 1,
+                        n2: lane + 1,
+                        n3: hidden
+                          ? "hidden in the dark"
+                          : black
+                            ? "black — do not touch"
+                            : "white",
+                        n4: alreadyCleared ? ", cleared" : "",
+                      })}
                       onClick={atLine && accepting && !alreadyCleared ? () => tap(cell) : undefined}
                       className={cn(
                         "h-full rounded-md transition-colors duration-150 motion-reduce:transition-none",
@@ -424,7 +439,7 @@ function Conveyor({
                         !atLine && "opacity-50",
                       )}
                     >
-                      <span className="sr-only">{black ? "Black" : "White"}</span>
+                      <span className="sr-only">{black ? t("Black") : t("White")}</span>
                     </button>
                   );
                 })}
@@ -448,7 +463,7 @@ function Conveyor({
             type="button"
             variant="secondary"
             size="lg"
-            aria-label={`Tap lane ${lane + 1}`}
+            aria-label={t("Tap lane {n}", { n: lane + 1 })}
             disabled={!accepting}
             onClick={() => tap(cellAt(activeRow, lane))}
             className="tabular"
@@ -460,16 +475,18 @@ function Conveyor({
 
       <div className="mx-auto flex w-full max-w-md justify-center pt-1">
         <Button type="button" variant="ghost" size="sm" onClick={onFinish} disabled={!accepting}>
-          End run
+          {t("End run")}
         </Button>
       </div>
 
       <p className="pt-1 text-center text-xs text-muted-foreground" aria-live="polite">
         {verifying
-          ? "The taps you made are your score if the server agrees."
+          ? t("The taps you made are your score if the server agrees.")
           : run.outcome === "over"
-            ? "The run is over. Your result is on its way."
-            : `Black tiles: ${blackShare}% of this row. Clear every white; never touch black.`}
+            ? t("The run is over. Your result is on its way.")
+            : t("Black tiles: {blackShare}% of this row. Clear every white; never touch black.", {
+                blackShare,
+              })}
       </p>
     </div>
   );
@@ -519,40 +536,40 @@ function Finished({
         </div>
         <p className="text-sm text-muted-foreground">
           {run.endReason === "black"
-            ? "You touched the black"
+            ? t("You touched the black")
             : run.endReason === "miss"
-              ? "A white tile got past"
-              : "Run ended"}
+              ? t("A white tile got past")
+              : t("Run ended")}
         </p>
         <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
-          {run.cleared} {run.cleared === 1 ? "white tile" : "white tiles"} cleared
+          {run.cleared} {run.cleared === 1 ? t("white tile") : t("white tiles")} cleared
           {run.endReason === "black"
-            ? " before the black one."
+            ? t(" before the black one.")
             : run.endReason === "miss"
-              ? " before one slipped past."
+              ? t(" before one slipped past.")
               : "."}
         </p>
       </div>
 
       <dl className="mx-auto grid w-full max-w-xs grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-surface p-3">
-          <dt className="text-xs text-muted-foreground">Duration</dt>
+          <dt className="text-xs text-muted-foreground">{t("Duration")}</dt>
           <dd className="font-semibold tabular">{formatDuration(result.durationMs)}</dd>
         </div>
         <div className="rounded-xl bg-surface p-3">
-          <dt className="text-xs text-muted-foreground">Taps</dt>
+          <dt className="text-xs text-muted-foreground">{t("Taps")}</dt>
           <dd className="font-semibold tabular">{result.tilesPlaced}</dd>
         </div>
         {result.personalBest !== null && (
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Your best</dt>
+            <dt className="text-xs text-muted-foreground">{t("Your best")}</dt>
             <dd className="font-semibold tabular">{points(result.personalBest)}</dd>
           </div>
         )}
         {result.rank !== null && (
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Rank</dt>
+            <dt className="text-xs text-muted-foreground">{t("Rank")}</dt>
             <dd className="font-semibold tabular">#{result.rank}</dd>
           </div>
         )}
@@ -560,9 +577,13 @@ function Finished({
 
       <p className="mx-auto max-w-sm text-xs text-muted-foreground">
         {result.ranked
-          ? "Verified by replaying your taps on the server, then saved to the leaderboard."
-          : "Verified by replaying your taps on the server. This was a guest run, so it is not on the leaderboard."}
-        {result.duplicate && " This run was already recorded, so nothing was counted twice."}
+          ? t("Verified by replaying your taps on the server, then saved to the leaderboard.")
+          : result.offline
+            ? offlineResultNote()
+            : t(
+                "Verified by replaying your taps on the server. This was a guest run, so it is not on the leaderboard.",
+              )}
+        {result.duplicate && t(" This run was already recorded, so nothing was counted twice.")}
       </p>
 
       <RunEndActions slug={slug} ranked={result.ranked} onRestart={onRestart} autoFocus />

@@ -11,9 +11,10 @@ import {
 } from "@/components/admin/ui";
 import { useAdminSession, useAdminSystemServices } from "@/lib/admin/api";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/admin/settings")({
   head: () => ({
-    meta: [{ title: "System — Unbored admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: t("System — Unbored admin") }, { name: "robots", content: "noindex" }],
   }),
   component: SystemSettings,
 });
@@ -38,28 +39,30 @@ export function SystemSettings() {
 
   return (
     <AdminPage
-      title="System"
-      subtitle="What this deployment runs, and how its configuration is actually applied."
+      title={t("System")}
+      subtitle={t("What this deployment runs, and how its configuration is actually applied.")}
     >
       <div className="space-y-4 md:space-y-5">
         <div className="grid gap-3 sm:grid-cols-3">
           <StatCard
-            label="Services routed"
+            label={t("Services routed")}
             value={services.status === "ready" ? String(services.data.items.length) : "—"}
             icon={Server}
           />
           <StatCard
-            label="Health measured"
-            value={services.status === "ready" ? (services.data.measured ? "yes" : "no") : "—"}
+            label={t("Health measured")}
+            value={
+              services.status === "ready" ? (services.data.measured ? t("yes") : t("no")) : "—"
+            }
             tone="warning"
             delta={
               services.status === "ready" && !services.data.measured
-                ? "no metrics are collected in this deployment"
+                ? t("no metrics are collected in this deployment")
                 : undefined
             }
           />
           <StatCard
-            label="Your role"
+            label={t("Your role")}
             value={session.status === "ready" ? session.data.role : "—"}
             tone={session.status === "ready" && session.data.isAdmin ? "success" : "muted"}
             delta={
@@ -73,10 +76,12 @@ export function SystemSettings() {
         </div>
 
         <SectionCard
-          title="Platform services"
+          title={t("Platform services")}
           bodyClassName="p-0"
           action={
-            <span className="text-xs text-muted-foreground">From the gateway's routing table</span>
+            <span className="text-xs text-muted-foreground">
+              {t("From the gateway's routing table")}
+            </span>
           }
         >
           {services.status === "error" ? (
@@ -111,22 +116,22 @@ export function SystemSettings() {
           )}
         </SectionCard>
 
-        <SectionCard title="Your session as the server sees it" bodyClassName="p-4">
+        <SectionCard title={t("Your session as the server sees it")} bodyClassName="p-4">
           {session.status === "ready" ? (
             <dl className="divide-y divide-border">
-              <MetaRow label="Account">@{session.data.username}</MetaRow>
-              <MetaRow label="Display name">{session.data.displayName}</MetaRow>
-              <MetaRow label="Role">
+              <MetaRow label={t("Account")}>@{session.data.username}</MetaRow>
+              <MetaRow label={t("Display name")}>{session.data.displayName}</MetaRow>
+              <MetaRow label={t("Role")}>
                 <StatusBadge tone={session.data.isAdmin ? "primary" : "warning"}>
                   {session.data.role}
                 </StatusBadge>
               </MetaRow>
-              <MetaRow label="Account state">
+              <MetaRow label={t("Account state")}>
                 <StatusBadge tone={session.data.isSuspended ? "destructive" : "success"}>
-                  {session.data.isSuspended ? "suspended" : "active"}
+                  {session.data.isSuspended ? t("suspended") : t("active")}
                 </StatusBadge>
               </MetaRow>
-              <MetaRow label="User id">
+              <MetaRow label={t("User id")}>
                 <span className="font-mono text-xs">{session.data.userId}</span>
               </MetaRow>
             </dl>
@@ -143,8 +148,10 @@ export function SystemSettings() {
         <SectionCard bodyClassName="p-0">
           <UnavailablePanel
             icon={SlidersHorizontal}
-            title="Platform settings are not editable here"
-            body="This deployment holds no runtime settings: there is no settings row, no maintenance flag, no feature-flag table and no notification policy. A switch on this page could only change the browser it was flipped in, so the switches are gone."
+            title={t("Platform settings are not editable here")}
+            body={t(
+              "This deployment holds no runtime settings: there is no settings row, no maintenance flag, no feature-flag table and no notification policy. A switch on this page could only change the browser it was flipped in, so the switches are gone.",
+            )}
             points={[
               "What each service does is decided by the environment variables it validates at boot, and by the database migrations — both are deployed with the code, not edited from a dashboard.",
               "Changing those means a configuration change or a migration, reviewed like any other change, which is also why there is no Save button.",

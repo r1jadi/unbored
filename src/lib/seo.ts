@@ -10,10 +10,14 @@
  * domain is an environment change, not a code change.
  */
 
+import { currentLanguage, msg, t } from "@/lib/settings/language";
+
 const DEFAULT_SITE_URL = "https://unbored.lol";
 
 export const SITE_NAME = "Unbored";
-export const SITE_DESCRIPTION = "Swipe through short, playable games. Play, score, and swipe on.";
+export const SITE_DESCRIPTION = msg(
+  "Swipe through short, playable games. Play, score, and swipe on.",
+);
 
 function resolveSiteUrl(): string {
   const raw = (import.meta.env?.["VITE_PUBLIC_SITE_URL"] as string | undefined)?.trim() ?? "";
@@ -171,9 +175,9 @@ export function websiteJsonLd() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: SITE_NAME,
-    description: SITE_DESCRIPTION,
+    description: t(SITE_DESCRIPTION),
     url: absoluteUrl("/"),
-    inLanguage: "en",
+    inLanguage: currentLanguage(),
     potentialAction: {
       "@type": "SearchAction",
       target: {
@@ -218,7 +222,7 @@ export function videoGameJsonLd(game: {
     applicationCategory: "Game",
     gamePlatform: "Web browser",
     operatingSystem: "Any",
-    inLanguage: "en",
+    inLanguage: currentLanguage(),
     ...(game.category ? { genre: game.category } : {}),
   };
 }

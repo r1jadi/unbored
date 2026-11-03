@@ -18,6 +18,7 @@ import { clearSession, getAccessToken, getSessionUserId } from "@/lib/auth/sessi
 import { restMutate, supabaseBase, supabaseHeaders } from "@/lib/supabase/rest";
 import { clearProfile } from "@/lib/users/profile";
 
+import { t } from "@/lib/settings/language";
 const AVATAR_BUCKET = "avatars";
 
 /** Removes every object in the caller's avatar folder. Never throws. */
@@ -53,7 +54,7 @@ export async function deleteAccount(): Promise<void> {
   const token = getAccessToken();
   const userId = getSessionUserId();
   if (!token || !userId) {
-    throw new ApiError("Log in again to delete your account.", {
+    throw new ApiError(t("Log in again to delete your account."), {
       code: "unauthorized",
       status: 401,
     });
@@ -66,27 +67,32 @@ export async function deleteAccount(): Promise<void> {
     const response = await restMutate("rpc/delete_my_account", "POST", token, {});
     outcome = (await response.json()) as string;
   } catch {
-    throw new ApiError("Couldn't delete your account. Check your connection and try again.", {
+    throw new ApiError(t("Couldn't delete your account. Check your connection and try again."), {
       code: "delete_failed",
     });
   }
 
   if (outcome === "has_moderation_history") {
     throw new ApiError(
-      "This account has moderation actions on record, so it can't delete itself. Ask an administrator to remove it.",
+      t(
+        "This account has moderation actions on record, so it can't delete itself. Ask an administrator to remove it.",
+      ),
       { code: "forbidden", status: 403 },
     );
   }
   if (outcome === "not_signed_in") {
-    throw new ApiError("Log in again to delete your account.", {
+    throw new ApiError(t("Log in again to delete your account."), {
       code: "unauthorized",
       status: 401,
     });
   }
   if (outcome !== "deleted") {
-    throw new ApiError("Your account couldn't be deleted. Nothing was removed — try again later.", {
-      code: "delete_failed",
-    });
+    throw new ApiError(
+      t("Your account couldn't be deleted. Nothing was removed — try again later."),
+      {
+        code: "delete_failed",
+      },
+    );
   }
 
   // The account is gone, so its tokens are too: forget them here rather than

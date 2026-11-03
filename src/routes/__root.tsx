@@ -23,8 +23,9 @@ import { SafeAreaDiagnostics } from "@/components/dev/SafeAreaDiagnostics";
 import { Toaster } from "@/components/ui/sonner";
 import { initializeSession, useAuth } from "@/lib/auth/session";
 import { identifyUser, initAnalytics, resetAnalytics } from "@/lib/analytics";
-import { LanguageProvider } from "@/lib/settings/language";
+import { currentLanguage, LanguageProvider, t } from "@/lib/settings/language";
 import { ThemeProvider } from "@/lib/settings/theme";
+import { registerServiceWorker } from "@/lib/service-worker";
 
 // Full-screen flows rendered without the main navigation.
 const BARE = [
@@ -92,21 +93,21 @@ const UNFINISHED_SIGNUP_PATHS = [
 ];
 
 function NotFoundComponent() {
-  useDocumentTitle("Page not found");
+  useDocumentTitle(t("Page not found"));
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">{t("Page not found")}</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          {t("The page you're looking for doesn't exist or has been moved.")}
         </p>
         <div className="mt-6">
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Go home
+            {t("Go home")}
           </Link>
         </div>
       </div>
@@ -125,10 +126,10 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          {t("This page didn't load")}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          {t("Something went wrong on our end. You can try refreshing or head back home.")}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -138,13 +139,13 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Try again
+            {t("Try again")}
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Go home
+            {t("Go home")}
           </a>
         </div>
       </div>
@@ -164,7 +165,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     return {
       meta: [
         { charSet: "utf-8" },
-        { title: notFound ? `Page not found — ${SITE_NAME}` : SITE_NAME },
+        { title: notFound ? t("Page not found — {SITE_NAME}", { SITE_NAME }) : SITE_NAME },
         { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
         { name: "theme-color", content: "#16171b" },
         { name: "apple-mobile-web-app-capable", content: "yes" },
@@ -196,7 +197,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang={currentLanguage()} className="dark">
       <head>
         <HeadContent />
       </head>
@@ -224,6 +225,7 @@ function RootComponent() {
     if (forwardStrayAuthRedirect()) return;
     initAnalytics();
     void initializeSession();
+    registerServiceWorker();
   }, []);
 
   // PostHog identity follows the session: the account id once signed in, a
@@ -258,7 +260,7 @@ function RootComponent() {
         <div
           className="flex min-h-dvh items-center justify-center bg-background"
           role="status"
-          aria-label="Restoring your session"
+          aria-label={t("Restoring your session")}
         >
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
@@ -269,7 +271,7 @@ function RootComponent() {
         <div
           className="flex min-h-dvh items-center justify-center bg-background"
           role="status"
-          aria-label="Finishing your sign-up"
+          aria-label={t("Finishing your sign-up")}
         >
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>

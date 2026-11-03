@@ -186,6 +186,8 @@ describe("a run", () => {
       rulesVersion: "scatter@1",
       actions: run.actions,
       score: 1,
+      tapsPlaced: run.exits,
+      levelsCleared: run.levelsCleared,
     });
   });
 });

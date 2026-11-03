@@ -50,7 +50,9 @@ import {
 } from "@/lib/games/sessions";
 import { cn } from "@/lib/utils";
 import { useGameSounds } from "@/lib/sound";
+import { offlineResultNote } from "@/lib/games/offline";
 
+import { t } from "@/lib/settings/language";
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES.decant;
 
@@ -106,7 +108,7 @@ export function DecantRuntime({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Starting a run…</p>
+        <p className="text-sm text-muted-foreground">{t("Starting a run…")}</p>
       </div>
     );
   }
@@ -115,7 +117,7 @@ export function DecantRuntime({
     return (
       <div className="flex flex-1 flex-col justify-center px-6">
         <ErrorState
-          title="Couldn't start a run"
+          title={t("Couldn't start a run")}
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
@@ -130,18 +132,20 @@ export function DecantRuntime({
         <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-2">
           <TriangleAlert className="size-5 text-muted-foreground" />
         </div>
-        <h2 className="text-xl font-semibold">Your run was not verified</h2>
+        <h2 className="text-xl font-semibold">{t("Your run was not verified")}</h2>
         <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-          {playErrorMessage(state.error)} Nothing was saved. Sending the same run again is safe, but
-          a timed run has to reach the server soon after its clock runs out.
+          {t(
+            "{error} Nothing was saved. Sending the same run again is safe, but a timed run has to reach the server soon after its clock runs out.",
+            { error: playErrorMessage(state.error) },
+          )}
         </p>
         <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
           <Button variant="play" size="lg" onClick={state.retry}>
-            Try submitting again
+            {t("Try submitting again")}
           </Button>
           <Button variant="secondary" size="lg" onClick={state.restart}>
             <RotateCcw />
-            Start a new run
+            {t("Start a new run")}
           </Button>
           <GameExits slug={slug} title={title} />
         </div>
@@ -203,24 +207,26 @@ function Intro({
           <TestTubes className="size-5 text-muted-foreground" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold">{RULES.heading}</h1>
-          <p className="text-sm text-muted-foreground">{RULES.summary}</p>
+          <h1 className="text-2xl font-semibold">{t(RULES.heading)}</h1>
+          <p className="text-sm text-muted-foreground">{t(RULES.summary)}</p>
         </div>
 
         <RulesList rules={RULES.rules} />
 
         <div className="flex w-full flex-col gap-2">
           <Button variant="play" size="lg" onClick={onBegin} autoFocus>
-            Start run
+            {t("Start run")}
           </Button>
           <Button asChild variant="ghost" size="lg">
-            <ExitGameLink slug={slug}>Back to {title}</ExitGameLink>
+            <ExitGameLink slug={slug}>{t("Back to {title}", { title })}</ExitGameLink>
           </Button>
         </div>
 
         <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
           <ShieldCheck className="size-3.5" />
-          {signedIn ? "Signed in: this run can be ranked" : "Guest run: verified, but not ranked"}
+          {signedIn
+            ? t("Signed in: this run can be ranked")
+            : t("Guest run: verified, but not ranked")}
         </p>
       </div>
     </div>
@@ -331,18 +337,20 @@ function Board({
     <div className="flex flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="flex items-center justify-between gap-3 py-2">
         <dl className="flex items-baseline gap-1">
-          <dt className="text-xs text-muted-foreground">Score</dt>
+          <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
           <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="tabular">Board {run.level}</span>
+          <span className="tabular">{t("Board {level}", { level: run.level })}</span>
           {session.ranked ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-1">
               <ShieldCheck className="size-3.5" />
-              Ranked
+              {t("Ranked")}
             </span>
           ) : (
-            <span className="rounded-full bg-surface-2 px-2 py-1">Guest run</span>
+            <span className="rounded-full bg-surface-2 px-2 py-1">
+              {session.offline ? t("Offline practice") : t("Guest run")}
+            </span>
           )}
         </div>
       </div>
@@ -353,12 +361,12 @@ function Board({
 
       <div className="mx-auto flex w-full max-w-md items-center gap-3 pb-1 text-xs text-muted-foreground">
         <span className="tabular">
-          {colours} colours · {run.pours} {run.pours === 1 ? "pour" : "pours"}
+          {colours} {t("colours ·")} {run.pours} {run.pours === 1 ? t("pour") : t("pours")}
         </span>
         <div
           className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2"
           role="progressbar"
-          aria-label="Time left"
+          aria-label={t("Time left")}
           aria-valuemin={0}
           aria-valuemax={Math.round(earned / 1000)}
           aria-valuenow={Math.ceil(remaining / 1000)}
@@ -383,7 +391,10 @@ function Board({
           onKeyDown={onKeyDown}
           className="relative flex w-full max-w-md flex-col items-center justify-center gap-6 rounded-2xl bg-surface px-3 py-6 outline-none focus-visible:ring-2 focus-visible:ring-ring"
           role="group"
-          aria-label={`Board ${run.level}, ${run.tubes.length} tubes. Number keys pick a tube; U undoes, R restarts the board.`}
+          aria-label={t(
+            "Board {level}, {length} tubes. Number keys pick a tube; U undoes, R restarts the board.",
+            { level: run.level, length: run.tubes.length },
+          )}
         >
           {rows.map((row, r) => (
             <div key={r} className="flex items-end justify-center gap-2.5 sm:gap-3.5">
@@ -406,11 +417,13 @@ function Board({
           {levelUp && (
             <LevelUpOverlay
               levelUp={levelUp}
-              unit="Board"
+              unit={t("Board")}
               next={`Board ${run.level} · ${colours} colours · clock +${formatClockGain(
                 budgetMs(run.levelsCleared) - budgetMs(run.levelsCleared - 1),
               )}`}
-              note={colours > coloursFor(run.level - 1) ? "One more colour from here." : undefined}
+              note={
+                colours > coloursFor(run.level - 1) ? t("One more colour from here.") : undefined
+              }
             />
           )}
         </div>
@@ -424,7 +437,7 @@ function Board({
           aria-keyshortcuts="U"
         >
           <Undo2 />
-          Undo
+          {t("Undo")}
         </Button>
         <Button
           variant="secondary"
@@ -433,16 +446,18 @@ function Board({
           aria-keyshortcuts="R"
         >
           <RotateCcw />
-          Restart
+          {t("Restart")}
         </Button>
         <Button
           variant="secondary"
           disabled={!accepting || run.extraTube}
           onClick={onAddTube}
-          aria-label={`Add an empty tube to this board, for ${DECANT_EXTRA_TUBE_MS / 1000} seconds of clock`}
+          aria-label={t("Add an empty tube to this board, for {n} seconds of clock", {
+            n: DECANT_EXTRA_TUBE_MS / 1000,
+          })}
         >
           <Plus />
-          Tube
+          {t("Tube")}
           <span className="text-xs text-muted-foreground tabular">
             −{DECANT_EXTRA_TUBE_MS / 1000}s
           </span>
@@ -452,27 +467,37 @@ function Board({
       <div className="flex flex-col items-center gap-1 pt-2">
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
-            ? "The pours you made are your score if the server agrees."
-            : `Solving this board adds ${formatClockGain(
-                budgetMs(run.levelsCleared + 1) - budgetMs(run.levelsCleared),
-              )}.`}
+            ? t("The pours you made are your score if the server agrees.")
+            : t("Solving this board adds {formatClockGain}.", {
+                formatClockGain: formatClockGain(
+                  budgetMs(run.levelsCleared + 1) - budgetMs(run.levelsCleared),
+                ),
+              })}
         </p>
         <Button variant="ghost" size="sm" disabled={!accepting} onClick={() => setConfirming(true)}>
-          End run
+          {t("End run")}
         </Button>
       </div>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>End this run?</AlertDialogTitle>
+            <AlertDialogTitle>{t("End this run?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {`Your score of ${points(run.score)} is kept and sent for verification. The board you are on is not scored.`}
+              {session.offline
+                ? t(
+                    "Your score of {score} is kept as practice: offline runs are not verified or saved.",
+                    { score: points(run.score) },
+                  )
+                : t(
+                    "Your score of {score} is kept and sent for verification. The board you are on is not scored.",
+                    { score: points(run.score) },
+                  )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep playing</AlertDialogCancel>
-            <AlertDialogAction onClick={onFinish}>End run</AlertDialogAction>
+            <AlertDialogCancel>{t("Keep playing")}</AlertDialogCancel>
+            <AlertDialogAction onClick={onFinish}>{t("End run")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -498,9 +523,14 @@ function TubeButton({
 }) {
   const complete = isComplete(tube);
   const names = tube.map((colour) => LIQUIDS[colour - 1]?.name ?? "unknown");
-  const label = `Tube ${index + 1}${TUBE_KEYS[index] ? ` (key ${TUBE_KEYS[index]})` : ""}: ${
-    tube.length === 0 ? "empty" : `${names.join(", ")}, bottom to top`
-  }${complete ? ", sorted" : ""}${held ? ", picked up" : ""}${target ? ", can take the pour" : ""}`;
+  const label = t("Tube {n}{n2}: {n3}{n4}{n5}{n6}", {
+    n: index + 1,
+    n2: TUBE_KEYS[index] ? ` (key ${TUBE_KEYS[index]})` : "",
+    n3: tube.length === 0 ? "empty" : `${names.join(", ")}, bottom to top`,
+    n4: complete ? ", sorted" : "",
+    n5: held ? ", picked up" : "",
+    n6: target ? ", can take the pour" : "",
+  });
   return (
     <button
       type="button"
@@ -545,13 +575,16 @@ function TubeButton({
 
 /** The line above the board: what just happened, or what to do. */
 function statusLine(run: DecantRun, verifying: boolean, held: number | null): string {
-  if (verifying) return "Verifying your run with the server…";
-  if (run.outcome === "over") return run.ending === "time" ? "Time's up." : "Run ended.";
-  if (held !== null) return `Tube ${held + 1} picked up — tap a tube to pour into it.`;
+  if (verifying) return t("Verifying your run with the server…");
+  if (run.outcome === "over") return run.ending === "time" ? t("Time's up.") : t("Run ended.");
+  if (held !== null) return t("Tube {n} picked up — tap a tube to pour into it.", { n: held + 1 });
   if (run.levelsCleared > 0 && run.pours === 0 && !run.extraTube) {
-    return `Board ${run.level - 1} sorted, +${points(coloursFor(run.level - 1))}.`;
+    return t("Board {n} sorted, +{points}.", {
+      n: run.level - 1,
+      points: points(coloursFor(run.level - 1)),
+    });
   }
-  return "Tap a tube, then the tube to pour it into.";
+  return t("Tap a tube, then the tube to pour it into.");
 }
 
 /** The end of a run: the score the server verified, or a guest's unranked result. */
@@ -576,33 +609,38 @@ function Finished({
             <ShieldCheck className="size-5 text-muted-foreground" />
           )}
         </div>
-        <p className="text-sm text-muted-foreground">{outOfTime ? "Time's up" : "Run ended"}</p>
+        <p className="text-sm text-muted-foreground">
+          {outOfTime ? t("Time's up") : t("Run ended")}
+        </p>
         <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
-          {`${result.clearedColumns} ${result.clearedColumns === 1 ? "board" : "boards"} sorted, ${
-            result.tilesPlaced
-          } ${result.tilesPlaced === 1 ? "pour" : "pours"}.`}
+          {t("{clearedColumns} {n} sorted, {tilesPlaced} {n2}.", {
+            clearedColumns: result.clearedColumns,
+            n: result.clearedColumns === 1 ? t("board") : t("boards"),
+            tilesPlaced: result.tilesPlaced,
+            n2: result.tilesPlaced === 1 ? t("pour") : t("pours"),
+          })}
         </p>
       </div>
 
       <dl className="mx-auto grid w-full max-w-xs grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-surface p-3">
-          <dt className="text-xs text-muted-foreground">Duration</dt>
+          <dt className="text-xs text-muted-foreground">{t("Duration")}</dt>
           <dd className="font-semibold tabular">{formatSeconds(result.durationMs)}</dd>
         </div>
         <div className="rounded-xl bg-surface p-3">
-          <dt className="text-xs text-muted-foreground">Boards sorted</dt>
+          <dt className="text-xs text-muted-foreground">{t("Boards sorted")}</dt>
           <dd className="font-semibold tabular">{result.clearedColumns}</dd>
         </div>
         {result.personalBest !== null && (
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Your best</dt>
+            <dt className="text-xs text-muted-foreground">{t("Your best")}</dt>
             <dd className="font-semibold tabular">{points(result.personalBest)}</dd>
           </div>
         )}
         {result.rank !== null && (
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Rank</dt>
+            <dt className="text-xs text-muted-foreground">{t("Rank")}</dt>
             <dd className="font-semibold tabular">#{result.rank}</dd>
           </div>
         )}
@@ -610,9 +648,13 @@ function Finished({
 
       <p className="mx-auto max-w-sm text-xs text-muted-foreground">
         {result.ranked
-          ? "Verified by replaying your pours on the server, then saved to the leaderboard."
-          : "Verified by replaying your pours on the server. This was a guest run, so it is not on the leaderboard."}
-        {result.duplicate && " This run was already recorded, so nothing was counted twice."}
+          ? t("Verified by replaying your pours on the server, then saved to the leaderboard.")
+          : result.offline
+            ? offlineResultNote()
+            : t(
+                "Verified by replaying your pours on the server. This was a guest run, so it is not on the leaderboard.",
+              )}
+        {result.duplicate && t(" This run was already recorded, so nothing was counted twice.")}
       </p>
 
       <RunEndActions slug={slug} ranked={result.ranked} onRestart={onRestart} autoFocus />

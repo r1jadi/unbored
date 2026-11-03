@@ -4,8 +4,9 @@ import { ErrorState, GridSkeleton, Page, PageHeader } from "@/components/common"
 import { catalogErrorMessage, useCategories } from "@/lib/games/catalog";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/categories/")({
-  head: () => seo("Categories", "Browse every game category on Unbored."),
+  head: () => seo(t("Categories"), t("Browse every game category on Unbored.")),
   component: Categories,
 });
 
@@ -32,7 +33,7 @@ function Categories() {
 
   return (
     <Page>
-      <PageHeader back title="Categories" subtitle="Every kind of quick game." />
+      <PageHeader back title={t("Categories")} subtitle={t("Every kind of quick game.")} />
       {state.status === "loading" && (
         <div className="px-4 md:px-0">
           <GridSkeleton count={8} />
@@ -40,7 +41,7 @@ function Categories() {
       )}
       {state.status === "error" && (
         <ErrorState
-          title="Couldn't load categories"
+          title={t("Couldn't load categories")}
           body={catalogErrorMessage(state.error)}
           onRetry={state.retry}
         />
@@ -63,7 +64,7 @@ function Categories() {
                   <div>
                     <p className="font-medium">{c.name}</p>
                     <p className="text-xs text-muted-foreground tabular">
-                      {c.gameCount} {c.gameCount === 1 ? "game" : "games"}
+                      {c.gameCount} {c.gameCount === 1 ? t("game") : t("games")}
                     </p>
                   </div>
                 </Link>

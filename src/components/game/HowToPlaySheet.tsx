@@ -13,6 +13,7 @@ import {
 import type { Game } from "@/lib/games/catalog";
 import { rulesFor } from "@/lib/games/rules";
 
+import { t } from "@/lib/settings/language";
 /**
  * A game's full rules, from the feed, without leaving it.
  *
@@ -39,21 +40,23 @@ export function HowToPlaySheet({
         className="mx-auto max-h-[85dvh] max-w-xl overflow-y-auto rounded-t-2xl border-glass-border pb-[max(2rem,env(safe-area-inset-bottom))]"
       >
         <SheetHeader>
-          <SheetTitle>How to play {game.title}</SheetTitle>
-          <SheetDescription>{rules?.summary ?? "The rules, before you start."}</SheetDescription>
+          <SheetTitle>{t("How to play {title}", { title: game.title })}</SheetTitle>
+          <SheetDescription>
+            {rules ? t(rules.summary) : t("The rules, before you start.")}
+          </SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-4 px-4 pt-2">
           {rules ? (
             <RulesList rules={rules.rules} />
           ) : (
             <p className="rounded-2xl bg-surface p-4 text-sm">
-              {game.instructions ?? "The rules for this game are not written yet."}
+              {game.instructions ?? t("The rules for this game are not written yet.")}
             </p>
           )}
           {game.playable && (
             <Button asChild variant="play" size="lg">
               <Link to="/play/$id" params={{ id: game.slug }} search={{ start: true }}>
-                <Play className="fill-current" /> Tap to play
+                <Play className="fill-current" /> {t("Tap to play")}
               </Link>
             </Button>
           )}

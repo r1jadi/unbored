@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { titleFromSlug, useGame } from "@/lib/games/catalog";
 import { GameExits } from "@/components/game/GameExits";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/results/$id")({
   head: ({ params }) => {
     const title = titleFromSlug(params.id);
     return {
       meta: [
-        { title: `${title} results — Unbored` },
+        { title: t("{title} results — Unbored", { title }) },
         { name: "description", content: `${title} on Unbored.` },
         { property: "og:title", content: `${title} results — Unbored` },
       ],
@@ -44,17 +45,20 @@ function Results() {
           <div className="flex size-12 items-center justify-center rounded-full bg-surface-2">
             <Clock className="size-5 text-muted-foreground" />
           </div>
-          <h1 className="text-xl font-semibold">No run to show</h1>
+          <h1 className="text-xl font-semibold">{t("No run to show")}</h1>
           <p className="max-w-sm text-sm text-muted-foreground">
             {playable
-              ? `Your score for ${title} appears when a run ends: it is verified on the server, and the panel at the end of the game shows the number it accepted.`
-              : `${title} is not playable yet, so no score was recorded.`}
+              ? t(
+                  "Your score for {title} appears when a run ends: it is verified on the server, and the panel at the end of the game shows the number it accepted.",
+                  { title },
+                )
+              : t("{title} is not playable yet, so no score was recorded.", { title })}
           </p>
           {playable && (
             <Button asChild variant="play" size="lg" className="mt-2">
               <Link to="/play/$id" params={{ id }}>
                 <Play className="fill-current" />
-                Play {title}
+                {t("Play")} {title}
               </Link>
             </Button>
           )}

@@ -89,7 +89,8 @@ const (
 	tangoMaxActions = 8192
 	// sudoku@1 carries at most 8192 moves.
 	sudokuMaxActions = 8192
-	// crossword@1 carries at most 2048 moves: a day's solve, letters and help.
+	// crossword@1 and fjalekryqi@1 (the Albanian crossword) carry at most 2048
+	// moves: a day's solve, letters and help.
 	crosswordMaxActions = 2048
 	// gridburst@1 carries at most 4096 placements.
 	gridburstMaxActions = 4096
@@ -143,8 +144,9 @@ const (
 	// (cell 0 cleared) to 356 (a 6 in cell 35).
 	miniSudokuMoves = 360
 	// crosswordMoves is every crossword move: a letter as cell × 32 + code (up to
-	// 48 × 32 + 26 on the 7×7 midi), a check (1600) and a reveal (1700 + cell, up
-	// to 1748). The verifier refuses the codes in between.
+	// 48 × 32 + 26 on the 7×7 midi, or + 28 for Fjalekryqi's Ç and Ë), a check
+	// (1600) and a reveal (1700 + cell, up to 1748). The verifiers refuse the codes
+	// in between.
 	crosswordMoves = 1749
 	// gridburstMoves is every Gridburst placement: tray slot × 64 + the cell the
 	// piece's corner lands on, from 0 to 191.
@@ -414,7 +416,7 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 		limit = sudokuMaxActions
 	case strings.HasPrefix(rules, "mini-sudoku@"):
 		limit = miniSudokuMaxActions
-	case strings.HasPrefix(rules, "crossword@"):
+	case strings.HasPrefix(rules, "crossword@"), strings.HasPrefix(rules, "fjalekryqi@"):
 		limit = crosswordMaxActions
 	case strings.HasPrefix(rules, "gridburst@"):
 		limit = gridburstMaxActions
@@ -550,7 +552,7 @@ func boardSize(rulesVersion string) int {
 		return sudokuMoves
 	case strings.HasPrefix(rulesVersion, "mini-sudoku@"):
 		return miniSudokuMoves
-	case strings.HasPrefix(rulesVersion, "crossword@"):
+	case strings.HasPrefix(rulesVersion, "crossword@"), strings.HasPrefix(rulesVersion, "fjalekryqi@"):
 		return crosswordMoves
 	case strings.HasPrefix(rulesVersion, "gridburst@"):
 		return gridburstMoves

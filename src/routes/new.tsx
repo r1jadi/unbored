@@ -3,8 +3,9 @@ import { GameListPage } from "@/components/game/GameListPage";
 import { DEFAULT_PAGE_SIZE } from "@/lib/games/catalog";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/new")({
-  head: () => seo("New games", "The newest additions to the catalogue."),
+  head: () => seo(t("New games"), t("The newest additions to the catalogue.")),
   component: NewGames,
 });
 
@@ -19,12 +20,12 @@ export const Route = createFileRoute("/new")({
 function NewGames() {
   return (
     <GameListPage
-      title="New games"
-      subtitle="The newest additions to the catalogue."
+      title={t("New games")}
+      subtitle={t("The newest additions to the catalogue.")}
       query={{ limit: DEFAULT_PAGE_SIZE }}
       empty={{
-        title: "No games published yet",
-        body: "New games appear here as they are published.",
+        title: t("No games published yet"),
+        body: t("New games appear here as they are published."),
       }}
     />
   );

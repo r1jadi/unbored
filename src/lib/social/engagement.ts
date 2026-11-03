@@ -36,10 +36,11 @@ import {
   useAuth,
 } from "@/lib/auth/session";
 import { getQueryClient } from "@/lib/query";
-import type { Game } from "@/lib/games/catalog";
+import { localizeGame, type Game } from "@/lib/games/catalog";
 import { fetchProfilesByIds, type PublicProfile } from "@/lib/social/follows";
 import { restCount, restGet, restMutate, SupabaseRestError } from "@/lib/supabase/rest";
 
+import { t } from "@/lib/settings/language";
 export const MAX_COMMENT_LENGTH = 2000;
 const COMMENT_PAGE_SIZE = 100;
 const LIST_PAGE_SIZE = 200;
@@ -92,10 +93,10 @@ export type GameComment = {
 
 function toApiError(error: unknown, area: "like" | "comment" | "save" | "score"): ApiError {
   const nouns = {
-    like: "Couldn't update the like. Try again.",
-    comment: "Couldn't load comments. Try again.",
-    save: "Couldn't update the saved games. Try again.",
-    score: "Couldn't load your scores. Try again.",
+    like: t("Couldn't update the like. Try again."),
+    comment: t("Couldn't load comments. Try again."),
+    save: t("Couldn't update the saved games. Try again."),
+    score: t("Couldn't load your scores. Try again."),
   } as const;
   const codes = {
     like: "like_failed",
@@ -106,7 +107,7 @@ function toApiError(error: unknown, area: "like" | "comment" | "save" | "score")
   if (error instanceof ApiError) return error;
   if (error instanceof SupabaseRestError) {
     if (error.status === 401) {
-      return new ApiError("Sign in to join the conversation.", {
+      return new ApiError(t("Sign in to join the conversation."), {
         code: "unauthorized",
         status: 401,
       });
@@ -120,7 +121,7 @@ function requireCaller(): { token: string; userId: string } {
   const token = getAccessToken();
   const auth = getAuthState();
   if (!token || auth.status !== "authenticated") {
-    throw new ApiError("Sign in to join the conversation.", {
+    throw new ApiError(t("Sign in to join the conversation."), {
       code: "unauthorized",
       status: 401,
     });
@@ -339,13 +340,16 @@ export async function postComment(
   const { token, userId } = requireCaller();
   const text = body.trim();
   if (text === "") {
-    throw new ApiError("Write a comment first.", { code: "bad_request", status: 400 });
+    throw new ApiError(t("Write a comment first."), { code: "bad_request", status: 400 });
   }
   if (text.length > MAX_COMMENT_LENGTH) {
-    throw new ApiError(`Keep comments to ${MAX_COMMENT_LENGTH} characters or fewer.`, {
-      code: "bad_request",
-      status: 400,
-    });
+    throw new ApiError(
+      t("Keep comments to {MAX_COMMENT_LENGTH} characters or fewer.", { MAX_COMMENT_LENGTH }),
+      {
+        code: "bad_request",
+        status: 400,
+      },
+    );
   }
   let rows: CommentRow[];
   try {
@@ -367,7 +371,7 @@ export async function postComment(
   }
   const row = rows[0];
   if (!row) {
-    throw new ApiError("Couldn't post the comment. Try again.", { code: "comment_failed" });
+    throw new ApiError(t("Couldn't post the comment. Try again."), { code: "comment_failed" });
   }
   const authors = await fetchProfilesByIds([userId]).catch(() => []);
   return toComment(row, new Map(authors.map((profile) => [profile.id, profile])));
@@ -489,7 +493,9 @@ export function useBestScores(): ScoreListState {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof ApiError ? err.message : "Couldn't load your scores. Try again.");
+        setError(
+          err instanceof ApiError ? err.message : t("Couldn't load your scores. Try again."),
+        );
         setStatus("error");
       });
     const unsubscribe = subscribeToAuth(() => setTick((n) => n + 1));
@@ -540,7 +546,9 @@ export function useRecentlyPlayed(limit = 20): GameListState {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof ApiError ? err.message : "Couldn't load recent games. Try again.");
+        setError(
+          err instanceof ApiError ? err.message : t("Couldn't load recent games. Try again."),
+        );
         setStatus("error");
       });
     const unsubscribe = subscribeToAuth(() => setTick((n) => n + 1));
@@ -581,7 +589,7 @@ export async function fetchGameRecords(ids: string[]): Promise<Array<{ id: strin
       row.id,
       {
         id: row.id,
-        game: {
+        game: localizeGame({
           slug: row.slug,
           title: row.title,
           tagline: row.tagline,
@@ -595,7 +603,7 @@ export async function fetchGameRecords(ids: string[]): Promise<Array<{ id: strin
           coverPath: row.cover_path,
           publishedAt: row.published_at,
           updatedAt: row.updated_at,
-        } satisfies Game,
+        } satisfies Game),
       },
     ]),
   );
@@ -824,7 +832,7 @@ export function useGameEngagement(slug: string | undefined): EngagementState {
         }));
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't update the like. Try again.");
+      setError(err instanceof ApiError ? err.message : t("Couldn't update the like. Try again."));
       throw err;
     } finally {
       setBusy(false);
@@ -846,7 +854,7 @@ export function useGameEngagement(slug: string | undefined): EngagementState {
       }
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Couldn't update the saved games. Try again.",
+        err instanceof ApiError ? err.message : t("Couldn't update the saved games. Try again."),
       );
       throw err;
     } finally {
@@ -909,7 +917,7 @@ export function useComments(gameId: string | undefined): CommentsState {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof ApiError ? err.message : "Couldn't load comments. Try again.");
+        setError(err instanceof ApiError ? err.message : t("Couldn't load comments. Try again."));
         setLoading(false);
       });
     return () => {
@@ -930,7 +938,9 @@ export function useComments(gameId: string | undefined): CommentsState {
         setItems(rows);
         setCount(total ?? rows.length);
       } catch (err) {
-        throw err instanceof ApiError ? err : new ApiError("Couldn't post the comment. Try again.");
+        throw err instanceof ApiError
+          ? err
+          : new ApiError(t("Couldn't post the comment. Try again."));
       } finally {
         setPosting(false);
       }
@@ -986,7 +996,7 @@ function useOwnGameIds(kind: "likes" | "saves"): GameListState {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof ApiError ? err.message : "Couldn't load games. Try again.");
+        setError(err instanceof ApiError ? err.message : t("Couldn't load games. Try again."));
         setStatus("error");
       });
     const unsubscribe = subscribeToAuth(() => setTick((n) => n + 1));
@@ -1069,7 +1079,7 @@ export function useActivity(): {
             return {
               ...comment,
               gameSlug: game?.slug ?? "",
-              gameTitle: game?.title ?? "A game",
+              gameTitle: game?.title ?? t("A game"),
             };
           }),
           scores: scores.map((entry) => ({
@@ -1082,7 +1092,7 @@ export function useActivity(): {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof ApiError ? err.message : "Couldn't load activity. Try again.");
+        setError(err instanceof ApiError ? err.message : t("Couldn't load activity. Try again."));
         setStatus("error");
       });
     const unsubscribe = subscribeToAuth(() => setTick((n) => n + 1));

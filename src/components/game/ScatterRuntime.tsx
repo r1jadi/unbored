@@ -51,7 +51,9 @@ import {
 } from "@/lib/games/sessions";
 import { useGameSounds } from "@/lib/sound";
 import { cn } from "@/lib/utils";
+import { offlineResultNote } from "@/lib/games/offline";
 
+import { t } from "@/lib/settings/language";
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES.scatter;
 
@@ -86,7 +88,7 @@ export function ScatterRuntime({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Starting a run…</p>
+        <p className="text-sm text-muted-foreground">{t("Starting a run…")}</p>
       </div>
     );
   }
@@ -95,7 +97,7 @@ export function ScatterRuntime({
     return (
       <div className="flex flex-1 flex-col justify-center px-6">
         <ErrorState
-          title="Couldn't start a run"
+          title={t("Couldn't start a run")}
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
@@ -110,18 +112,20 @@ export function ScatterRuntime({
         <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-2">
           <TriangleAlert className="size-5 text-muted-foreground" />
         </div>
-        <h2 className="text-xl font-semibold">Your run was not verified</h2>
+        <h2 className="text-xl font-semibold">{t("Your run was not verified")}</h2>
         <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-          {playErrorMessage(state.error)} Nothing was saved, and nothing needs to be — sending the
-          same run again is safe.
+          {t(
+            "{error} Nothing was saved, and nothing needs to be — sending the same run again is safe.",
+            { error: playErrorMessage(state.error) },
+          )}
         </p>
         <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
           <Button variant="play" size="lg" onClick={state.retry}>
-            Try submitting again
+            {t("Try submitting again")}
           </Button>
           <Button variant="secondary" size="lg" onClick={state.restart}>
             <RotateCcw />
-            Start a new run
+            {t("Start a new run")}
           </Button>
           <GameExits slug={slug} title={title} />
         </div>
@@ -172,24 +176,26 @@ function Intro({
           <Move className="size-5 text-muted-foreground" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold">{RULES.heading}</h1>
-          <p className="text-sm text-muted-foreground">{RULES.summary}</p>
+          <h1 className="text-2xl font-semibold">{t(RULES.heading)}</h1>
+          <p className="text-sm text-muted-foreground">{t(RULES.summary)}</p>
         </div>
 
         <RulesList rules={RULES.rules} />
 
         <div className="flex w-full flex-col gap-2">
           <Button variant="play" size="lg" onClick={onBegin} autoFocus>
-            Start run
+            {t("Start run")}
           </Button>
           <Button asChild variant="ghost" size="lg">
-            <ExitGameLink slug={slug}>Back to {title}</ExitGameLink>
+            <ExitGameLink slug={slug}>{t("Back to {title}", { title })}</ExitGameLink>
           </Button>
         </div>
 
         <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
           <ShieldCheck className="size-3.5" />
-          {signedIn ? "Signed in: this run can be ranked" : "Guest run: verified, but not ranked"}
+          {signedIn
+            ? t("Signed in: this run can be ranked")
+            : t("Guest run: verified, but not ranked")}
         </p>
       </div>
     </div>
@@ -234,18 +240,20 @@ function Board({
     <div className="flex flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="flex items-center justify-between gap-3 py-2">
         <dl className="flex items-baseline gap-1">
-          <dt className="text-xs text-muted-foreground">Score</dt>
+          <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
           <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="tabular">Board {run.level}</span>
+          <span className="tabular">{t("Board {level}", { level: run.level })}</span>
           {session.ranked ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-1">
               <ShieldCheck className="size-3.5" />
-              Ranked
+              {t("Ranked")}
             </span>
           ) : (
-            <span className="rounded-full bg-surface-2 px-2 py-1">Guest run</span>
+            <span className="rounded-full bg-surface-2 px-2 py-1">
+              {session.offline ? t("Offline practice") : t("Guest run")}
+            </span>
           )}
         </div>
       </div>
@@ -256,12 +264,12 @@ function Board({
 
       <div className="mx-auto flex w-full max-w-md items-center justify-between pb-1 text-xs text-muted-foreground">
         <span className="tabular">
-          {tiles} {tiles === 1 ? "tile" : "tiles"} left
+          {tiles} {tiles === 1 ? t("tile") : t("tiles")} left
           {turnstiles > 0 && ` · ${turnstiles} ⟳`}
         </span>
         <span
           className="flex items-center gap-1"
-          aria-label={`${run.jams} of ${SCATTER_MAX_JAMS} jams`}
+          aria-label={t("{jams} of {SCATTER_MAX_JAMS} jams", { jams: run.jams, SCATTER_MAX_JAMS })}
           role="img"
         >
           {Array.from({ length: SCATTER_MAX_JAMS }, (_, index) => (
@@ -284,7 +292,12 @@ function Board({
             gridTemplateRows: `repeat(${run.side}, minmax(0, 1fr))`,
           }}
           role="group"
-          aria-label={`Board ${run.level}, ${run.side} by ${run.side}, ${tiles} tiles.`}
+          aria-label={t("Board {level}, {side} by {side2}, {tiles} tiles.", {
+            level: run.level,
+            side: run.side,
+            side2: run.side,
+            tiles,
+          })}
         >
           {run.cells.map((tile, cell) => (
             <Cell
@@ -302,9 +315,13 @@ function Board({
           {levelUp && run.last?.event === "clear" && (
             <LevelUpOverlay
               levelUp={levelUp}
-              unit="Board"
+              unit={t("Board")}
               next={`Board ${run.level} · ${run.side}×${run.side} · ${tilesFor(run.level)} tiles`}
-              note={grew ? `Boards are ${run.side}×${run.side} from here.` : undefined}
+              note={
+                grew
+                  ? t("Boards are {side}×{side2} from here.", { side: run.side, side2: run.side })
+                  : undefined
+              }
             />
           )}
         </div>
@@ -313,25 +330,34 @@ function Board({
       <div className="flex flex-col items-center gap-1 pt-2">
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
-            ? "The taps you made are your score if the server agrees."
-            : `Clearing the board adds ${points(SCATTER_CLEAR_BONUS)}.`}
+            ? t("The taps you made are your score if the server agrees.")
+            : t("Clearing the board adds {SCATTER_CLEAR_BONUS}.", {
+                SCATTER_CLEAR_BONUS: points(SCATTER_CLEAR_BONUS),
+              })}
         </p>
         <Button variant="ghost" size="sm" disabled={!accepting} onClick={() => setConfirming(true)}>
-          End run
+          {t("End run")}
         </Button>
       </div>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>End this run?</AlertDialogTitle>
+            <AlertDialogTitle>{t("End this run?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {`Your score of ${points(run.score)} is kept and sent for verification.`}
+              {session.offline
+                ? t(
+                    "Your score of {score} is kept as practice: offline runs are not verified or saved.",
+                    { score: points(run.score) },
+                  )
+                : t("Your score of {score} is kept and sent for verification.", {
+                    score: points(run.score),
+                  })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep playing</AlertDialogCancel>
-            <AlertDialogAction onClick={onFinish}>End run</AlertDialogAction>
+            <AlertDialogCancel>{t("Keep playing")}</AlertDialogCancel>
+            <AlertDialogAction onClick={onFinish}>{t("End run")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -359,9 +385,13 @@ function Cell({
 }) {
   if (!tile) return <span aria-hidden className="rounded-lg bg-surface-2/40" />;
   const Arrow = ARROWS[tile.dir];
-  const label = `Row ${Math.floor(cell / side) + 1}, column ${(cell % side) + 1}: ${
-    tile.turnstile ? "turnstile " : ""
-  }tile pointing ${DIRECTION_NAMES[tile.dir]}${free ? ", lane clear" : ", blocked"}.`;
+  const label = t("Row {n}, column {n2}: {n3}tile pointing {n4}{n5}.", {
+    n: Math.floor(cell / side) + 1,
+    n2: (cell % side) + 1,
+    n3: tile.turnstile ? "turnstile " : "",
+    n4: DIRECTION_NAMES[tile.dir],
+    n5: free ? ", lane clear" : ", blocked",
+  });
   return (
     <button
       type="button"
@@ -391,18 +421,23 @@ function Cell({
 
 /** The line above the board: what just happened, or what to do. */
 function statusLine(run: ScatterRun, verifying: boolean): string {
-  if (verifying) return "Verifying your run with the server…";
+  if (verifying) return t("Verifying your run with the server…");
   if (run.outcome === "over")
-    return run.ending === "jams" ? "Three jams. The run is over." : "Run ended.";
+    return run.ending === "jams" ? t("Three jams. The run is over.") : t("Run ended.");
   switch (run.last?.event) {
     case "jam":
-      return `Jammed — something is in the way. ${SCATTER_MAX_JAMS - run.jams} left.`;
+      return t("Jammed — something is in the way. {n} left.", { n: SCATTER_MAX_JAMS - run.jams });
     case "stuck":
-      return `No tile could leave, so that board is lost. ${SCATTER_MAX_JAMS - run.jams} jams left.`;
+      return t("No tile could leave, so that board is lost. {n} jams left.", {
+        n: SCATTER_MAX_JAMS - run.jams,
+      });
     case "clear":
-      return `Board ${run.level - 1} cleared, +${points(SCATTER_CLEAR_BONUS)}.`;
+      return t("Board {n} cleared, +{SCATTER_CLEAR_BONUS}.", {
+        n: run.level - 1,
+        SCATTER_CLEAR_BONUS: points(SCATTER_CLEAR_BONUS),
+      });
     default:
-      return "Tap a tile with a clear lane to send it off the board.";
+      return t("Tap a tile with a clear lane to send it off the board.");
   }
 }
 
@@ -429,34 +464,37 @@ function Finished({
           )}
         </div>
         <p className="text-sm text-muted-foreground">
-          {run.ending === "jams" ? "Out of jams" : "Run ended"}
+          {run.ending === "jams" ? t("Out of jams") : t("Run ended")}
         </p>
         <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
-          {`${result.tilesPlaced} ${result.tilesPlaced === 1 ? "tile" : "tiles"} sent off, ${
-            result.clearedColumns
-          } ${result.clearedColumns === 1 ? "board" : "boards"} cleared.`}
+          {t("{tilesPlaced} {n} sent off, {clearedColumns} {n2} cleared.", {
+            tilesPlaced: result.tilesPlaced,
+            n: result.tilesPlaced === 1 ? t("tile") : t("tiles"),
+            clearedColumns: result.clearedColumns,
+            n2: result.clearedColumns === 1 ? t("board") : t("boards"),
+          })}
         </p>
       </div>
 
       <dl className="mx-auto grid w-full max-w-xs grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-surface p-3">
-          <dt className="text-xs text-muted-foreground">Duration</dt>
+          <dt className="text-xs text-muted-foreground">{t("Duration")}</dt>
           <dd className="font-semibold tabular">{formatDuration(result.durationMs)}</dd>
         </div>
         <div className="rounded-xl bg-surface p-3">
-          <dt className="text-xs text-muted-foreground">Boards cleared</dt>
+          <dt className="text-xs text-muted-foreground">{t("Boards cleared")}</dt>
           <dd className="font-semibold tabular">{result.clearedColumns}</dd>
         </div>
         {result.personalBest !== null && (
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Your best</dt>
+            <dt className="text-xs text-muted-foreground">{t("Your best")}</dt>
             <dd className="font-semibold tabular">{points(result.personalBest)}</dd>
           </div>
         )}
         {result.rank !== null && (
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Rank</dt>
+            <dt className="text-xs text-muted-foreground">{t("Rank")}</dt>
             <dd className="font-semibold tabular">#{result.rank}</dd>
           </div>
         )}
@@ -464,9 +502,13 @@ function Finished({
 
       <p className="mx-auto max-w-sm text-xs text-muted-foreground">
         {result.ranked
-          ? "Verified by replaying your taps on the server, then saved to the leaderboard."
-          : "Verified by replaying your taps on the server. This was a guest run, so it is not on the leaderboard."}
-        {result.duplicate && " This run was already recorded, so nothing was counted twice."}
+          ? t("Verified by replaying your taps on the server, then saved to the leaderboard.")
+          : result.offline
+            ? offlineResultNote()
+            : t(
+                "Verified by replaying your taps on the server. This was a guest run, so it is not on the leaderboard.",
+              )}
+        {result.duplicate && t(" This run was already recorded, so nothing was counted twice.")}
       </p>
 
       <RunEndActions slug={slug} ranked={result.ranked} onRestart={onRestart} autoFocus />

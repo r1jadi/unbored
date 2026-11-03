@@ -15,12 +15,13 @@ import {
 } from "@/lib/feedback";
 import { cn } from "@/lib/utils";
 
+import { t, msg } from "@/lib/settings/language";
 const MOODS = [
-  { value: 1, emoji: "😣", label: "Rough" },
-  { value: 2, emoji: "😕", label: "Meh" },
-  { value: 3, emoji: "😐", label: "Okay" },
-  { value: 4, emoji: "🙂", label: "Good" },
-  { value: 5, emoji: "🤩", label: "Love it" },
+  { value: 1, emoji: "😣", label: msg("Rough") },
+  { value: 2, emoji: "😕", label: msg("Meh") },
+  { value: 3, emoji: "😐", label: msg("Okay") },
+  { value: 4, emoji: "🙂", label: msg("Good") },
+  { value: 5, emoji: "🤩", label: msg("Love it") },
 ] as const;
 
 const CATEGORIES: {
@@ -31,27 +32,27 @@ const CATEGORIES: {
 }[] = [
   {
     value: "idea",
-    label: "Idea",
+    label: msg("Idea"),
     icon: Lightbulb,
-    prompt: "What should we build or change? Dream big, we read everything.",
+    prompt: msg("What should we build or change? Dream big, we read everything."),
   },
   {
     value: "bug",
-    label: "Something broke",
+    label: msg("Something broke"),
     icon: Bug,
-    prompt: "What happened, and what did you expect instead? Which game or page?",
+    prompt: msg("What happened, and what did you expect instead? Which game or page?"),
   },
   {
     value: "praise",
-    label: "Kind words",
+    label: msg("Kind words"),
     icon: Heart,
-    prompt: "What made you smile? Tell us what's working so we keep it.",
+    prompt: msg("What made you smile? Tell us what's working so we keep it."),
   },
   {
     value: "other",
-    label: "Something else",
+    label: msg("Something else"),
     icon: MessageCircle,
-    prompt: "Anything on your mind about Unbored.",
+    prompt: msg("Anything on your mind about Unbored."),
   },
 ];
 
@@ -75,12 +76,12 @@ export function FeedbackForm() {
     return (
       <div className="px-4 md:px-0">
         <EmptyState
-          title="Sign in to send feedback"
-          body="Unbored is new and changing fast. Log in and tell us what to fix, add or keep."
+          title={t("Sign in to send feedback")}
+          body={t("Unbored is new and changing fast. Log in and tell us what to fix, add or keep.")}
           action={
             <Button asChild>
               <Link to="/login" search={{ redirect: "/settings/feedback" }}>
-                Log in
+                {t("Log in")}
               </Link>
             </Button>
           }
@@ -96,10 +97,11 @@ export function FeedbackForm() {
         <div className="text-6xl motion-safe:animate-bounce" aria-hidden>
           {reaction?.emoji ?? "💌"}
         </div>
-        <h2 className="mt-4 text-lg font-semibold">Thank you!</h2>
+        <h2 className="mt-4 text-lg font-semibold">{t("Thank you!")}</h2>
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-          Your note landed with the team. We read every one, and the next update might just have
-          your fingerprints on it.
+          {t(
+            "Your note landed with the team. We read every one, and the next update might just have your fingerprints on it.",
+          )}
         </p>
         <Button
           variant="secondary"
@@ -110,7 +112,7 @@ export function FeedbackForm() {
             setMessage("");
           }}
         >
-          Send another
+          {t("Send another")}
         </Button>
       </div>
     );
@@ -128,7 +130,9 @@ export function FeedbackForm() {
       await sendFeedback({ mood, category, message, includeDevice });
       setSent(mood);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't send your feedback. Try again.");
+      setError(
+        err instanceof ApiError ? err.message : t("Couldn't send your feedback. Try again."),
+      );
     } finally {
       setSending(false);
     }
@@ -137,23 +141,24 @@ export function FeedbackForm() {
   return (
     <form className="space-y-6 px-4 md:px-0" onSubmit={(e) => void submit(e)}>
       <div className="rounded-xl bg-gradient-to-br from-primary/15 via-surface to-surface p-4">
-        <p className="text-sm font-medium">Help shape Unbored</p>
+        <p className="text-sm font-medium">{t("Help shape Unbored")}</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          We&apos;re new and we ship changes almost every day. What you tell us here decides what
-          comes next.
+          {t(
+            "We're new and we ship changes almost every day. What you tell us here decides what comes next.",
+          )}
         </p>
       </div>
 
       <fieldset>
-        <legend className="text-sm font-medium">How is Unbored feeling?</legend>
-        <div className="mt-3 grid grid-cols-5 gap-2" role="radiogroup" aria-label="Your mood">
+        <legend className="text-sm font-medium">{t("How is Unbored feeling?")}</legend>
+        <div className="mt-3 grid grid-cols-5 gap-2" role="radiogroup" aria-label={t("Your mood")}>
           {MOODS.map((m) => (
             <button
               key={m.value}
               type="button"
               role="radio"
               aria-checked={mood === m.value}
-              aria-label={m.label}
+              aria-label={t(m.label)}
               onClick={() => setMood(m.value)}
               className={cn(
                 "press flex flex-col items-center gap-1 rounded-xl bg-surface py-3 text-2xl transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -163,15 +168,19 @@ export function FeedbackForm() {
               )}
             >
               <span aria-hidden>{m.emoji}</span>
-              <span className="text-[11px] text-muted-foreground">{m.label}</span>
+              <span className="text-[11px] text-muted-foreground">{t(m.label)}</span>
             </button>
           ))}
         </div>
       </fieldset>
 
       <fieldset>
-        <legend className="text-sm font-medium">What kind of note is it?</legend>
-        <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Kind of feedback">
+        <legend className="text-sm font-medium">{t("What kind of note is it?")}</legend>
+        <div
+          className="mt-3 flex flex-wrap gap-2"
+          role="radiogroup"
+          aria-label={t("Kind of feedback")}
+        >
           {CATEGORIES.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
@@ -195,13 +204,13 @@ export function FeedbackForm() {
 
       <div>
         <Label htmlFor="feedback-message" className="text-sm font-medium">
-          Your note
+          {t("Your note")}
         </Label>
         <textarea
           id="feedback-message"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder={active.prompt}
+          placeholder={t(active.prompt)}
           rows={6}
           maxLength={MAX_FEEDBACK_LENGTH}
           aria-describedby={error ? "feedback-error" : undefined}
@@ -215,10 +224,10 @@ export function FeedbackForm() {
       <div className="flex items-center justify-between gap-4 rounded-xl bg-surface p-3">
         <div>
           <Label htmlFor="feedback-device" className="text-sm">
-            Include my device details
+            {t("Include my device details")}
           </Label>
           <p className="text-xs text-muted-foreground">
-            Screen size and browser, to help us reproduce bugs.
+            {t("Screen size and browser, to help us reproduce bugs.")}
           </p>
         </div>
         <Switch id="feedback-device" checked={includeDevice} onCheckedChange={setIncludeDevice} />
@@ -232,9 +241,11 @@ export function FeedbackForm() {
 
       <Button type="submit" size="lg" className="w-full md:w-auto" disabled={!canSend}>
         <Send />
-        {sending ? "Sending…" : "Send feedback"}
+        {sending ? t("Sending…") : t("Send feedback")}
       </Button>
-      {mood === null && <p className="-mt-3 text-xs text-muted-foreground">Pick a mood to send.</p>}
+      {mood === null && (
+        <p className="-mt-3 text-xs text-muted-foreground">{t("Pick a mood to send.")}</p>
+      )}
     </form>
   );
 }

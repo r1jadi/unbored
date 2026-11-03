@@ -9,6 +9,7 @@ import { avatarUrlFromPath } from "@/lib/users/profile";
 import { cn } from "@/lib/utils";
 import { fmt } from "@/lib/format";
 
+import { t } from "@/lib/settings/language";
 export function PageHeader({
   title,
   back,
@@ -28,7 +29,7 @@ export function PageHeader({
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Go back"
+            aria-label={t("Go back")}
             onClick={() => router.history.back()}
             className="-ml-2"
           >
@@ -146,7 +147,7 @@ export function UserName({ username, verified }: { username: string; verified?: 
   return (
     <span className="inline-flex items-center gap-1 font-medium">
       @{username}
-      {verified && <BadgeCheck className="size-4 text-info" aria-label="Verified" />}
+      {verified && <BadgeCheck className="size-4 text-info" aria-label={t("Verified")} />}
     </span>
   );
 }
@@ -205,14 +206,14 @@ export function FollowButton({
     try {
       const id = await resolveUserId(username);
       if (!id) {
-        setResolveError("That account could not be found.");
+        setResolveError(t("That account could not be found."));
         return;
       }
       await followUser(id);
       // The hook reads the confirmed state once this target becomes its own.
       setResolvedId(id);
     } catch (err) {
-      setResolveError(err instanceof Error ? err.message : "Couldn't update the follow.");
+      setResolveError(err instanceof Error ? err.message : t("Couldn't update the follow."));
     } finally {
       setResolving(false);
     }
@@ -229,7 +230,7 @@ export function FollowButton({
         disabled={busy}
         className="min-w-24"
       >
-        {follow.following ? "Following" : "Follow"}
+        {follow.following ? t("Following") : t("Follow")}
       </Button>
       {error && (
         <span className="text-xs text-destructive" role="alert">
@@ -301,7 +302,7 @@ export function EmptyState({
  */
 export function ErrorState({
   onRetry,
-  title = "Couldn't load this",
+  title = t("Couldn't load this"),
   body,
 }: {
   onRetry?: () => void;
@@ -315,10 +316,10 @@ export function ErrorState({
       </div>
       <p className="font-medium">{title}</p>
       <p className="mt-1 text-sm text-muted-foreground">
-        {body ?? "Check your connection and try again."}
+        {body ?? t("Check your connection and try again.")}
       </p>
       <Button variant="secondary" className="mt-5" onClick={onRetry}>
-        <RotateCw /> Retry
+        <RotateCw /> {t("Retry")}
       </Button>
     </div>
   );
@@ -326,7 +327,7 @@ export function ErrorState({
 
 export function ListSkeleton({ rows = 6, avatar = true }: { rows?: number; avatar?: boolean }) {
   return (
-    <div className="divide-y divide-border" aria-busy="true" aria-label="Loading">
+    <div className="divide-y divide-border" aria-busy="true" aria-label={t("Loading")}>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex items-center gap-3 px-4 py-3 md:px-0">
           {avatar && <Skeleton className="size-10 rounded-full" />}
@@ -346,7 +347,7 @@ export function GridSkeleton({ count = 6 }: { count?: number }) {
     <div
       className="grid grid-cols-2 gap-3 px-4 md:px-0 lg:grid-cols-3"
       aria-busy="true"
-      aria-label="Loading"
+      aria-label={t("Loading")}
     >
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="space-y-2">
@@ -402,7 +403,7 @@ export function StateSwitcher({
     <div
       className="flex gap-1 rounded-lg bg-surface p-1 text-xs"
       role="group"
-      aria-label="Preview state"
+      aria-label={t("Preview state")}
     >
       {["ready", "loading", "empty", "error"].map((s) => (
         <button

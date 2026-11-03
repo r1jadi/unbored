@@ -17,6 +17,7 @@ import {
   type MiniSudokuRun,
 } from "@/lib/games/mini-sudoku";
 
+import { t } from "@/lib/settings/language";
 export type MiniSudokuHint = {
   readonly cell: number;
   /** `place`: put `digit` here. `clear`: the digit here has to go. */
@@ -54,10 +55,10 @@ export function miniSudokuHint(run: MiniSudokuRun): MiniSudokuHint | null {
     const same = (unit: readonly number[]) =>
       unit.some((other) => other !== repeat && cells[other] === digit);
     const where = same(around.row)
-      ? `row ${Math.floor(repeat / 6) + 1}`
+      ? t("row {n}", { n: Math.floor(repeat / 6) + 1 })
       : same(around.column)
-        ? `column ${(repeat % 6) + 1}`
-        : "its box";
+        ? t("column {n}", { n: (repeat % 6) + 1 })
+        : t("its box");
     return {
       cell: repeat,
       action: "clear",
@@ -80,7 +81,9 @@ export function miniSudokuHint(run: MiniSudokuRun): MiniSudokuHint | null {
         cell: chosen,
         action: "clear",
         digit: cells[chosen],
-        reason: `With a ${cells[chosen]} here, the rest of the board can't be finished. Clear it.`,
+        reason: t("With a {n} here, the rest of the board can't be finished. Clear it.", {
+          n: cells[chosen],
+        }),
       };
     }
   }
@@ -97,12 +100,16 @@ export function miniSudokuHint(run: MiniSudokuRun): MiniSudokuHint | null {
         const spots = unit.filter((cell) => options[cell].includes(digit));
         if (spots.length !== 1) continue;
         const name =
-          kind === "box" ? "its box" : kind === "row" ? `row ${index + 1}` : `column ${index + 1}`;
+          kind === "box"
+            ? t("its box")
+            : kind === "row"
+              ? t("row {n}", { n: index + 1 })
+              : t("column {n}", { n: index + 1 });
         return {
           cell: spots[0],
           action: "place",
           digit,
-          reason: `This is the only place in ${name} where a ${digit} fits.`,
+          reason: t("This is the only place in {name} where a {digit} fits.", { name, digit }),
         };
       }
     }
@@ -116,7 +123,10 @@ export function miniSudokuHint(run: MiniSudokuRun): MiniSudokuHint | null {
       cell: single,
       action: "place",
       digit,
-      reason: `Only a ${digit} fits here: its row, column and box already hold the other digits.`,
+      reason: t(
+        "Only a {digit} fits here: its row, column and box already hold the other digits.",
+        { digit },
+      ),
     };
   }
 
@@ -140,8 +150,8 @@ export function miniSudokuHint(run: MiniSudokuRun): MiniSudokuHint | null {
     digit,
     reason:
       working.length === 1
-        ? `Of ${fits.join(", ")}, only a ${digit} lets the board be finished.`
-        : `${fits.join(", ")} all fit here; a ${digit} works.`,
+        ? t("Of {n}, only a {digit} lets the board be finished.", { n: fits.join(", "), digit })
+        : t("{n} all fit here; a {digit} works.", { n: fits.join(", "), digit }),
   };
 }
 

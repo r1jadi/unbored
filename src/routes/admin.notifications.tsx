@@ -3,9 +3,10 @@ import { Bell, Inbox } from "lucide-react";
 import { AdminPage, SectionCard, UnavailablePanel } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/admin/notifications")({
   head: () => ({
-    meta: [{ title: "Notifications — Unbored admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: t("Notifications — Unbored admin") }, { name: "robots", content: "noindex" }],
   }),
   component: NotificationsAdmin,
 });
@@ -23,14 +24,16 @@ export const Route = createFileRoute("/admin/notifications")({
 export function NotificationsAdmin() {
   return (
     <AdminPage
-      title="Notifications"
-      subtitle="Messages sent to players, and the campaigns that produce them."
+      title={t("Notifications")}
+      subtitle={t("Messages sent to players, and the campaigns that produce them.")}
     >
       <SectionCard bodyClassName="p-0">
         <UnavailablePanel
           icon={Bell}
-          title="Broadcast campaigns are not implemented"
-          body="Players do have a real inbox: the platform writes a row for each player when something happens to them. An operator-composed campaign — an audience, a schedule, a delivery count — has no schema behind it."
+          title={t("Broadcast campaigns are not implemented")}
+          body={t(
+            "Players do have a real inbox: the platform writes a row for each player when something happens to them. An operator-composed campaign — an audience, a schedule, a delivery count — has no schema behind it.",
+          )}
           points={[
             "The notifications table is per-player: kind, payload, read time. It records what a player was told, not what was sent to an audience.",
             "There is no campaign, audience, draft or schedule row, and no delivery or open metric in the database, so those counters would be invented.",
@@ -40,7 +43,7 @@ export function NotificationsAdmin() {
             <Button asChild variant="secondary" size="sm">
               <Link to="/notifications">
                 <Inbox />
-                Open your own inbox
+                {t("Open your own inbox")}
               </Link>
             </Button>
           }

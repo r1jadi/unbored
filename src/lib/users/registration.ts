@@ -25,6 +25,7 @@ import { getAccessToken, getAuthState } from "@/lib/auth/session";
 import { restGet, restMutate, SupabaseRestError } from "@/lib/supabase/rest";
 import { updateProfile } from "@/lib/users/profile";
 
+import { t } from "@/lib/settings/language";
 /** The only column this module reads back; the rest of the row is not its business. */
 type OnboardedRow = { onboarded_at: string | null };
 
@@ -36,7 +37,7 @@ export async function completeRegistration(displayName?: string, username?: stri
   const auth = getAuthState();
   const token = getAccessToken();
   if (auth.status !== "authenticated" || !token) {
-    throw new ApiError("Sign in to finish creating your account.", {
+    throw new ApiError(t("Sign in to finish creating your account."), {
       code: "unauthorized",
       status: 401,
     });
@@ -85,10 +86,10 @@ export async function completeRegistration(displayName?: string, username?: stri
   }
   if (existing?.onboarded_at) return;
   throw existing
-    ? new ApiError("We couldn't finish setting up your account. Try again.", {
+    ? new ApiError(t("We couldn't finish setting up your account. Try again."), {
         code: "registration_failed",
       })
-    : new ApiError("Your account has no profile yet. Sign out and back in, then try again.", {
+    : new ApiError(t("Your account has no profile yet. Sign out and back in, then try again."), {
         code: "profile_missing",
       });
 }
@@ -96,12 +97,12 @@ export async function completeRegistration(displayName?: string, username?: stri
 function toRegistrationError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
   if (error instanceof SupabaseRestError && error.status === 401) {
-    return new ApiError("Your session expired. Sign in again to finish your account.", {
+    return new ApiError(t("Your session expired. Sign in again to finish your account."), {
       code: "unauthorized",
       status: 401,
     });
   }
-  return new ApiError("We couldn't save your registration. Try again.", {
+  return new ApiError(t("We couldn't save your registration. Try again."), {
     code: "registration_failed",
   });
 }

@@ -3,6 +3,7 @@ import {
   Bell,
   HelpCircle,
   Info,
+  Languages,
   Link2,
   MessageSquareHeart,
   Lock,
@@ -15,6 +16,7 @@ import {
   ScrollText,
 } from "lucide-react";
 
+import { msg } from "@/lib/settings/language";
 /**
  * One settings page. `pageTitle` is the browser tab's name when "<title> settings"
  * would read badly ("Help settings", "Blocked users settings").
@@ -29,83 +31,116 @@ export type SettingsItem = {
 
 export const settingsGroups: { label: string; items: SettingsItem[] }[] = [
   {
-    label: "Account",
+    label: msg("Account"),
     items: [
       {
         slug: "account",
-        title: "Email & password",
-        desc: "How you sign in",
+        title: msg("Email & password"),
+        desc: msg("How you sign in"),
         icon: User,
-        pageTitle: "Email & password",
+        pageTitle: msg("Email & password"),
       },
-      { slug: "profile", title: "Profile", desc: "Photo, name, username, bio", icon: UserCircle },
+      {
+        slug: "profile",
+        title: msg("Profile"),
+        desc: msg("Photo, name, username, bio"),
+        icon: UserCircle,
+      },
       {
         slug: "security",
-        title: "Security",
-        desc: "Two-step verification, sessions",
+        title: msg("Security"),
+        desc: msg("Two-step verification, sessions"),
         icon: Shield,
       },
       {
         slug: "connected",
-        title: "Connected accounts",
-        desc: "Google",
+        title: msg("Connected accounts"),
+        desc: msg("Google"),
         icon: Link2,
-        pageTitle: "Connected accounts",
+        pageTitle: msg("Connected accounts"),
       },
     ],
   },
   {
-    label: "Preferences",
+    label: msg("Preferences"),
     items: [
-      { slug: "privacy", title: "Privacy", desc: "Who can see your activity", icon: Lock },
-      { slug: "notifications", title: "Notifications", desc: "Push and email", icon: Bell },
-      { slug: "appearance", title: "Appearance", desc: "Dark, light, system", icon: Palette },
+      {
+        slug: "privacy",
+        title: msg("Privacy"),
+        desc: msg("Who can see your activity"),
+        icon: Lock,
+      },
+      {
+        slug: "notifications",
+        title: msg("Notifications"),
+        desc: msg("Push and email"),
+        icon: Bell,
+      },
+      {
+        slug: "appearance",
+        title: msg("Appearance"),
+        desc: msg("Dark, light, system"),
+        icon: Palette,
+      },
+      {
+        slug: "language",
+        title: msg("Language"),
+        desc: msg("English, Shqip"),
+        icon: Languages,
+        pageTitle: msg("Language"),
+      },
       {
         slug: "accessibility",
-        title: "Accessibility",
-        desc: "Motion, contrast, text size",
+        title: msg("Accessibility"),
+        desc: msg("Motion, contrast, text size"),
         icon: Accessibility,
       },
       {
         slug: "blocked",
-        title: "Blocked users",
-        desc: "People you've blocked",
+        title: msg("Blocked users"),
+        desc: msg("People you've blocked"),
         icon: ShieldOff,
-        pageTitle: "Blocked users",
+        pageTitle: msg("Blocked users"),
       },
     ],
   },
   {
-    label: "Support",
+    label: msg("Support"),
     items: [
       {
         slug: "feedback",
-        title: "Send feedback",
-        desc: "Ideas, bugs, kind words",
+        title: msg("Send feedback"),
+        desc: msg("Ideas, bugs, kind words"),
         icon: MessageSquareHeart,
-        pageTitle: "Send feedback",
+        pageTitle: msg("Send feedback"),
       },
-      { slug: "help", title: "Help", desc: "FAQ and contact", icon: HelpCircle, pageTitle: "Help" },
+      {
+        slug: "help",
+        title: msg("Help"),
+        desc: msg("FAQ and contact"),
+        icon: HelpCircle,
+        pageTitle: msg("Help"),
+      },
       {
         slug: "terms",
-        title: "Terms & Conditions",
+        title: msg("Terms & Conditions"),
         desc: "",
         icon: ScrollText,
-        pageTitle: "Terms & Conditions",
+        pageTitle: msg("Terms & Conditions"),
       },
       {
         slug: "privacy-policy",
-        title: "Privacy Policy",
+        title: msg("Privacy Policy"),
         desc: "",
         icon: FileText,
-        pageTitle: "Privacy Policy",
+        pageTitle: msg("Privacy Policy"),
       },
       {
         slug: "about",
-        title: "About",
-        desc: "Version and source",
+        title: msg("About"),
+        desc: msg("Version and source"),
         icon: Info,
-        pageTitle: "About",
+        pageTitle: msg("About"),
       },
     ],
   },

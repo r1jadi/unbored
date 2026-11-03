@@ -4,6 +4,7 @@ import { GameCard } from "./GameCard";
 import { Button } from "@/components/ui/button";
 import { catalogErrorMessage, useGames, type Game, type GameQuery } from "@/lib/games/catalog";
 
+import { t } from "@/lib/settings/language";
 /**
  * A grid of catalogue games.
  *
@@ -22,7 +23,10 @@ export function GameListPage({
   query,
   ranked,
   arrange,
-  empty = { title: "Nothing here yet", body: "Check back soon — new games are added every week." },
+  empty = {
+    title: t("Nothing here yet"),
+    body: t("Check back soon — new games are added every week."),
+  },
   children,
   action,
 }: {
@@ -73,7 +77,11 @@ function CatalogueList({
 
   if (status === "error") {
     return (
-      <ErrorState title="Couldn't load games" body={catalogErrorMessage(error)} onRetry={retry} />
+      <ErrorState
+        title={t("Couldn't load games")}
+        body={catalogErrorMessage(error)}
+        onRetry={retry}
+      />
     );
   }
 
@@ -98,7 +106,7 @@ function CatalogueList({
       {nextCursor && !arrange && (
         <div className="mt-6 flex justify-center">
           <Button variant="secondary" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? "Loading…" : "Load more"}
+            {loadingMore ? t("Loading…") : t("Load more")}
           </Button>
         </div>
       )}

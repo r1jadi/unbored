@@ -41,15 +41,16 @@ import {
 } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
+import { t, msg } from "@/lib/settings/language";
 export const Route = createFileRoute("/signup")({
-  head: () => seo("Create account", "Create your Unbored account in under a minute."),
+  head: () => seo(t("Create account"), t("Create your Unbored account in under a minute.")),
   component: Signup,
 });
 
 const titles = [
-  ["Create your account", "Step 1 of 3"],
-  ["Choose your name", "Step 2 of 3 · This is how others see you."],
-  ["Before you start", "Step 3 of 3 · Please review and accept."],
+  [msg("Create your account"), msg("Step 1 of 3")],
+  [msg("Choose your name"), msg("Step 2 of 3 · This is how others see you.")],
+  [msg("Before you start"), msg("Step 3 of 3 · Please review and accept.")],
 ];
 
 function isValidEmail(value: string): boolean {
@@ -160,7 +161,7 @@ function Signup() {
     (usernameStatus.state === "available" && usernameStatus.username === chosenUsername);
   const usernameMessage =
     usernameError ??
-    (keepingStored ? "This is your current username." : usernameStatusMessage(usernameStatus));
+    (keepingStored ? t("This is your current username.") : usernameStatusMessage(usernameStatus));
   const usernameTone =
     usernameError !== undefined ||
     (!keepingStored &&
@@ -212,7 +213,7 @@ function Signup() {
       await finishRegistration();
       return;
     }
-    if (!creds) return setErr("Enter your email and password to start again.");
+    if (!creds) return setErr(t("Enter your email and password to start again."));
     if (!usernameUsable) {
       // The button is disabled in this state, so this is a safety net for a
       // stale render: never create an account with a name that was not cleared.
@@ -266,7 +267,7 @@ function Signup() {
         error instanceof ApiError && (error.status === 409 || error.code === "conflict");
       setErr(
         duplicate
-          ? "An account with this email already exists. Please sign in instead."
+          ? t("An account with this email already exists. Please sign in instead.")
           : authErrorMessage(error),
       );
       setErrCode(duplicate ? "conflict" : error instanceof ApiError ? error.code : "unknown_error");
@@ -320,17 +321,18 @@ function Signup() {
   if (alreadyRegistered) {
     return (
       <AuthLayout
-        title="You're already signed in"
+        title={t("You're already signed in")}
         subtitle={
           auth.status === "authenticated" && auth.session.email
-            ? `Signed in as ${auth.session.email}.`
-            : "This browser already has a session."
+            ? t("Signed in as {email}.", { email: auth.session.email })
+            : t("This browser already has a session.")
         }
       >
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            This account already exists, so there is nothing to register again. Continue to your
-            profile, or log out first if you meant to create a different account.
+            {t(
+              "This account already exists, so there is nothing to register again. Continue to your profile, or log out first if you meant to create a different account.",
+            )}
           </p>
           {err && (
             <p className="text-sm text-destructive" role="alert">
@@ -339,7 +341,7 @@ function Signup() {
           )}
           <div className="grid gap-2">
             <Button asChild variant="play" size="xl" className="w-full">
-              <Link to="/profile">Go to your profile</Link>
+              <Link to="/profile">{t("Go to your profile")}</Link>
             </Button>
             {auth.status === "authenticated" && auth.session.onboarded === undefined && (
               <Button
@@ -349,7 +351,7 @@ function Signup() {
                 disabled={busy}
                 onClick={() => void finishRegistration()}
               >
-                Finish setting up my account
+                {t("Finish setting up my account")}
               </Button>
             )}
             <Button
@@ -362,7 +364,7 @@ function Signup() {
                 void signOut().catch(() => undefined);
               }}
             >
-              Log out and create a different account
+              {t("Log out and create a different account")}
             </Button>
           </div>
         </div>
@@ -372,14 +374,14 @@ function Signup() {
 
   return (
     <AuthLayout
-      title={titles[step][0]}
-      subtitle={titles[step][1]}
+      title={t(titles[step][0])}
+      subtitle={t(titles[step][1])}
       footer={
         step === 0 && (
           <>
-            Already have an account?{" "}
+            {t("Already have an account?")}{" "}
             <Link to="/login" className="font-medium text-foreground">
-              Log in
+              {t("Log in")}
             </Link>
           </>
         )
@@ -403,11 +405,11 @@ function Signup() {
             const email = String(f.get("email") ?? "").trim();
             const password = String(f.get("password") ?? "");
             if (!isValidEmail(email)) {
-              setCredError("Enter a valid email address.");
+              setCredError(t("Enter a valid email address."));
               return;
             }
             if (password.length < 8) {
-              setCredError("Use at least 8 characters for your password.");
+              setCredError(t("Use at least 8 characters for your password."));
               return;
             }
             setCredError(undefined);
@@ -421,7 +423,7 @@ function Signup() {
               id="email"
               name="email"
               type="email"
-              label="Email"
+              label={t("Email")}
               required
               autoComplete="email"
               defaultValue={creds?.email ?? ""}
@@ -430,12 +432,14 @@ function Signup() {
               id="password"
               name="password"
               type="password"
-              label="Password"
+              label={t("Password")}
               required
               minLength={8}
               autoComplete="new-password"
             />
-            <p className="text-xs text-muted-foreground">At least 8 characters, with a number.</p>
+            <p className="text-xs text-muted-foreground">
+              {t("At least 8 characters, with a number.")}
+            </p>
             {credError && (
               <p className="text-sm text-destructive" role="alert">
                 {credError}
@@ -443,7 +447,7 @@ function Signup() {
             )}
           </div>
           <Button type="submit" variant="play" size="xl" className="mt-auto w-full lg:mt-6">
-            Continue
+            {t("Continue")}
           </Button>
         </form>
       )}
@@ -455,11 +459,11 @@ function Signup() {
             e.preventDefault();
             const value = displayName.trim();
             if (value === "") {
-              setNameError("Add a display name — this is how others see you.");
+              setNameError(t("Add a display name — this is how others see you."));
               return;
             }
             if (value.length > 60) {
-              setNameError("Keep the display name to 60 characters or fewer.");
+              setNameError(t("Keep the display name to 60 characters or fewer."));
               return;
             }
             setNameError(undefined);
@@ -487,7 +491,7 @@ function Signup() {
           <div className="space-y-4">
             <Field
               id="display"
-              label="Display name"
+              label={t("Display name")}
               required
               autoComplete="name"
               maxLength={60}
@@ -497,7 +501,7 @@ function Signup() {
             />
 
             <div className="space-y-1.5">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">{t("Username")}</Label>
               <Input
                 id="username"
                 name="username"
@@ -535,8 +539,9 @@ function Signup() {
               </p>
             </div>
             <p className="text-xs text-muted-foreground">
-              Three to 24 letters, numbers or underscores. This is how others find you; it is
-              unique, so capitals are stored in lowercase.
+              {t(
+                "Three to 24 letters, numbers or underscores. This is how others find you; it is unique, so capitals are stored in lowercase.",
+              )}
             </p>
           </div>
           <Button
@@ -546,7 +551,7 @@ function Signup() {
             className="mt-auto w-full lg:mt-6"
             disabled={!usernameUsable}
           >
-            Continue
+            {t("Continue")}
           </Button>
         </form>
       )}
@@ -558,16 +563,22 @@ function Signup() {
               [
                 [
                   "terms",
-                  "Terms & Conditions",
-                  "Required · Rules for using Unbored",
+                  t("Terms & Conditions"),
+                  t("Required · Rules for using Unbored"),
                   FileText,
                   true,
                 ],
-                ["privacy", "Privacy Policy", "Required · How we handle your data", Shield, true],
+                [
+                  "privacy",
+                  t("Privacy Policy"),
+                  t("Required · How we handle your data"),
+                  Shield,
+                  true,
+                ],
                 [
                   "marketing",
-                  "Product updates",
-                  "Optional · Occasional emails about new games",
+                  t("Product updates"),
+                  t("Optional · Occasional emails about new games"),
                   Mail,
                   false,
                 ],
@@ -588,8 +599,8 @@ function Signup() {
                       strokeWidth={1.75}
                     />
                     <span className="flex-1">
-                      <span className="block text-sm font-medium">{label}</span>
-                      <span className="text-xs text-muted-foreground">{desc}</span>
+                      <span className="block text-sm font-medium">{t(label)}</span>
+                      <span className="text-xs text-muted-foreground">{t(desc)}</span>
                     </span>
                     <input
                       type="checkbox"
@@ -612,7 +623,7 @@ function Signup() {
                       onClick={() => setDoc(key as "terms" | "privacy")}
                       className="mt-2 ml-8 text-xs font-medium underline underline-offset-4"
                     >
-                      Read {label}
+                      {t("Read {label}", { label: t(label) })}
                     </button>
                   )}
                 </div>
@@ -628,7 +639,7 @@ function Signup() {
                   search={{ email: creds.email }}
                   className="mt-1 inline-block font-medium underline underline-offset-4"
                 >
-                  Sign in instead
+                  {t("Sign in instead")}
                 </Link>
               )}
               {errCode === "email_not_confirmed" && creds && (
@@ -637,13 +648,13 @@ function Signup() {
                   search={{ email: creds.email }}
                   className="mt-1 inline-block font-medium underline underline-offset-4"
                 >
-                  Resend the confirmation email
+                  {t("Resend the confirmation email")}
                 </Link>
               )}
             </div>
           )}
           <p className="mt-4 text-xs text-muted-foreground">
-            You must be 13 or older to use Unbored.
+            {t("You must be 13 or older to use Unbored.")}
           </p>
           <Button
             variant="play"
@@ -652,7 +663,7 @@ function Signup() {
             disabled={!accept.terms || !accept.privacy || busy}
             onClick={createAccount}
           >
-            Agree and create account
+            {t("Agree and create account")}
           </Button>
         </div>
       )}
@@ -663,8 +674,10 @@ function Signup() {
           className="mx-auto flex h-[85dvh] max-w-xl flex-col rounded-t-2xl"
         >
           <SheetHeader>
-            <SheetTitle>{doc === "terms" ? "Terms & Conditions" : "Privacy Policy"}</SheetTitle>
-            <SheetDescription className="sr-only">Legal document</SheetDescription>
+            <SheetTitle>
+              {doc === "terms" ? t("Terms & Conditions") : t("Privacy Policy")}
+            </SheetTitle>
+            <SheetDescription className="sr-only">{t("Legal document")}</SheetDescription>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-4">
             <LegalBody sections={doc === "terms" ? terms : privacy} />
@@ -678,7 +691,7 @@ function Signup() {
                 setDoc(null);
               }}
             >
-              I accept
+              {t("I accept")}
             </Button>
           </div>
         </SheetContent>

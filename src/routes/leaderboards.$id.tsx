@@ -3,16 +3,17 @@ import { LeaderboardPage } from "@/components/game/LeaderboardPage";
 import { titleFromSlug } from "@/lib/games/catalog";
 import { prefetchLeaderboard } from "@/lib/prefetch";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/leaderboards/$id")({
   loader: ({ context, params }) => prefetchLeaderboard(context.queryClient, params.id),
   head: ({ params }) => {
     const title = titleFromSlug(params.id);
     return {
       meta: [
-        { title: `${title} leaderboard — Unbored` },
-        { name: "description", content: `Top scores on ${title}.` },
+        { title: t("{title} leaderboard — Unbored", { title }) },
+        { name: "description", content: t("Top scores on {title}.", { title }) },
         { property: "og:title", content: `${title} leaderboard — Unbored` },
-        { property: "og:description", content: `Top scores on ${title}.` },
+        { property: "og:description", content: t("Top scores on {title}.", { title }) },
       ],
     };
   },

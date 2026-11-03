@@ -8,6 +8,7 @@ import { DEFAULT_PAGE_SIZE, useGames } from "@/lib/games/catalog";
 import type { BoardPeriod, BoardScope } from "@/lib/games/sessions";
 import { cn } from "@/lib/utils";
 
+import { t } from "@/lib/settings/language";
 /**
  * The leaderboard screen.
  *
@@ -30,7 +31,11 @@ export function LeaderboardPage({ gameId }: { gameId?: string }) {
   const { status, items } = useGames({ limit: DEFAULT_PAGE_SIZE });
   const game = items.find((g) => g.slug === gameId);
   useDocumentTitle(
-    game ? `${game.title} leaderboard` : gameId ? undefined : "All games leaderboard",
+    game
+      ? t("{title} leaderboard", { title: game.title })
+      : gameId
+        ? undefined
+        : t("All games leaderboard"),
   );
 
   return (
@@ -39,8 +44,14 @@ export function LeaderboardPage({ gameId }: { gameId?: string }) {
         // No back arrow: Leaderboards is a top-level tab, and every board is one
         // tap away in the strip below, so there is no list page to go back to.
         back={false}
-        title={game ? `${game.title} leaderboard` : gameId ? "Leaderboards" : "All games"}
-        subtitle="Verified scores only."
+        title={
+          game
+            ? t("{title} leaderboard", { title: game.title })
+            : gameId
+              ? t("Leaderboards")
+              : t("All games")
+        }
+        subtitle={t("Verified scores only.")}
       />
       <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-4 md:px-0">
         <Link
@@ -52,7 +63,7 @@ export function LeaderboardPage({ gameId }: { gameId?: string }) {
               : "bg-surface text-muted-foreground",
           )}
         >
-          All games
+          {t("All games")}
         </Link>
         {items.map((g) => (
           <Link
@@ -71,26 +82,26 @@ export function LeaderboardPage({ gameId }: { gameId?: string }) {
         ))}
         {status === "error" && (
           <span className="self-center text-sm text-muted-foreground">
-            The catalogue is unavailable, so the game list is empty.
+            {t("The catalogue is unavailable, so the game list is empty.")}
           </span>
         )}
       </div>
       <div className="flex items-center justify-between gap-3 px-4 pb-4 md:px-0">
         <Tabs value={scope} onValueChange={(value) => setScope(value as BoardScope)}>
           <TabsList>
-            <TabsTrigger value="global">Global</TabsTrigger>
-            <TabsTrigger value="friends">Following</TabsTrigger>
+            <TabsTrigger value="global">{t("Global")}</TabsTrigger>
+            <TabsTrigger value="friends">{t("Following")}</TabsTrigger>
           </TabsList>
         </Tabs>
         <select
-          aria-label="Time period"
+          aria-label={t("Time period")}
           value={period}
           onChange={(e) => setPeriod(e.target.value as BoardPeriod)}
           className="h-9 rounded-lg bg-surface px-3 text-sm"
         >
-          <option value="day">Today</option>
-          <option value="week">This week</option>
-          <option value="all">All time</option>
+          <option value="day">{t("Today")}</option>
+          <option value="week">{t("This week")}</option>
+          <option value="all">{t("All time")}</option>
         </select>
       </div>
       {gameId ? (

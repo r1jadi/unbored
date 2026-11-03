@@ -19,26 +19,26 @@ import { requestFeedRefresh } from "@/lib/feed-refresh";
 import { useAuth } from "@/lib/auth/session";
 import { useUnreadCount } from "@/lib/notifications/store";
 import { useAdminVisibility } from "@/lib/admin/visibility";
-import { useLanguage, type TranslationKey } from "@/lib/settings/language";
+import { msg, t } from "@/lib/settings/language";
 
-const mobile: Array<{ to: string; key: TranslationKey; icon: typeof Home }> = [
-  { to: "/", key: "nav.home", icon: Home },
-  { to: "/explore", key: "nav.explore", icon: Compass },
-  { to: "/leaderboards", key: "nav.ranks", icon: Trophy },
-  { to: "/notifications", key: "nav.inbox", icon: Bell },
-  { to: "/profile", key: "nav.profile", icon: User },
+const mobile: Array<{ to: string; key: string; icon: typeof Home }> = [
+  { to: "/", key: msg("Home"), icon: Home },
+  { to: "/explore", key: msg("Explore"), icon: Compass },
+  { to: "/leaderboards", key: msg("Ranks"), icon: Trophy },
+  { to: "/notifications", key: msg("Inbox"), icon: Bell },
+  { to: "/profile", key: msg("Profile"), icon: User },
 ];
 
-const desktop: Array<{ to: string; key: TranslationKey; icon: typeof Home }> = [
-  { to: "/", key: "nav.forYou", icon: Home },
-  { to: "/following", key: "nav.following", icon: Users },
-  { to: "/explore", key: "nav.explore", icon: Compass },
-  { to: "/search", key: "nav.search", icon: Search },
-  { to: "/leaderboards", key: "nav.leaderboards", icon: Trophy },
-  { to: "/notifications", key: "nav.notifications", icon: Bell },
-  { to: "/saved", key: "nav.saved", icon: Bookmark },
-  { to: "/recent", key: "nav.recent", icon: Clock },
-  { to: "/profile", key: "nav.profile", icon: User },
+const desktop: Array<{ to: string; key: string; icon: typeof Home }> = [
+  { to: "/", key: msg("For You"), icon: Home },
+  { to: "/following", key: msg("Following"), icon: Users },
+  { to: "/explore", key: msg("Explore"), icon: Compass },
+  { to: "/search", key: msg("Search"), icon: Search },
+  { to: "/leaderboards", key: msg("Leaderboards"), icon: Trophy },
+  { to: "/notifications", key: msg("Notifications"), icon: Bell },
+  { to: "/saved", key: msg("Saved"), icon: Bookmark },
+  { to: "/recent", key: msg("Recently played"), icon: Clock },
+  { to: "/profile", key: msg("Profile"), icon: User },
 ];
 
 /**
@@ -57,7 +57,6 @@ const desktop: Array<{ to: string; key: TranslationKey; icon: typeof Home }> = [
 export function AppShell({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const auth = useAuth();
-  const { t } = useLanguage();
   const unread = useUnreadCount();
   const showAdmin = useAdminVisibility();
   const isAnonymous = auth.status === "anonymous";
@@ -77,10 +76,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh md:flex">
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-5 md:flex lg:w-64">
-        <Link to="/" className="mb-6 px-3" aria-label="Unbored home">
+        <Link to="/" className="mb-6 px-3" aria-label={t("Unbored home")}>
           <Logo />
         </Link>
-        <nav className="flex flex-1 flex-col gap-0.5" aria-label="Main">
+        <nav className="flex flex-1 flex-col gap-0.5" aria-label={t("Main")}>
           {desktop.map(({ to, key, icon: Icon }) => (
             <Link
               key={to}
@@ -110,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           >
             <Settings className="size-[18px]" strokeWidth={1.75} />
-            {t("nav.settings")}
+            {t("Settings")}
           </Link>
           {showAdmin && (
             <Link
@@ -121,7 +120,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               )}
             >
               <Shield className="size-[18px]" strokeWidth={1.75} />
-              {t("nav.admin")}
+              {t("Admin")}
             </Link>
           )}
           {isAnonymous && (
@@ -130,14 +129,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 to="/welcome"
                 className="flex h-10 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               >
-                Get started
+                {t("Get started")}
               </Link>
               <Link
                 to="/login"
                 search={{ redirect: path }}
                 className="flex h-10 items-center justify-center rounded-lg text-sm font-medium text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground"
               >
-                Log in
+                {t("Log in")}
               </Link>
             </div>
           )}
@@ -156,7 +155,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="fixed inset-x-0 bottom-0 z-30 h-[env(safe-area-inset-bottom)] bg-background md:hidden"
       />
       <nav
-        aria-label="Main"
+        aria-label={t("Main")}
         className={cn(
           "fixed inset-x-0 bottom-0 z-40 safe-bottom md:hidden",
           // Solid outside the feed: a translucent bar over a page of text lets the
@@ -180,7 +179,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {to === "/notifications" && showBadge && (
                   <span
                     className="absolute top-2.5 left-1/2 ml-2 size-2 rounded-full bg-primary"
-                    aria-label={`${unread.count} unread`}
+                    aria-label={t("{count} unread", { count: unread.count })}
                   />
                 )}
               </Link>

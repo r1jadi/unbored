@@ -11,9 +11,10 @@ import {
 } from "@/components/admin/ui";
 import { useAdminCategories, type AdminCategory } from "@/lib/admin/api";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/admin/categories")({
   head: () => ({
-    meta: [{ title: "Categories — Unbored admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: t("Categories — Unbored admin") }, { name: "robots", content: "noindex" }],
   }),
   component: CategoriesAdmin,
 });
@@ -34,7 +35,7 @@ export function CategoriesAdmin() {
   const columns: Column<AdminCategory>[] = [
     {
       key: "name",
-      head: "Category",
+      head: t("Category"),
       className: "min-w-52",
       cell: (c) => (
         <div className="min-w-0">
@@ -51,7 +52,7 @@ export function CategoriesAdmin() {
     },
     {
       key: "description",
-      head: "Description",
+      head: t("Description"),
       className: "min-w-64",
       cell: (c) => (
         <span className="line-clamp-2 text-sm text-muted-foreground">{c.description ?? "—"}</span>
@@ -59,13 +60,13 @@ export function CategoriesAdmin() {
     },
     {
       key: "published",
-      head: "Published games",
+      head: t("Published games"),
       className: "text-right",
       cell: (c) => <span className="font-mono text-sm tabular">{c.publishedGames}</span>,
     },
     {
       key: "total",
-      head: "All games",
+      head: t("All games"),
       className: "text-right",
       cell: (c) => (
         <span className="font-mono text-sm text-muted-foreground tabular">{c.totalGames}</span>
@@ -73,7 +74,7 @@ export function CategoriesAdmin() {
     },
     {
       key: "order",
-      head: "Order",
+      head: t("Order"),
       className: "text-right",
       cell: (c) => <span className="font-mono text-sm tabular">{c.sortOrder}</span>,
     },
@@ -85,7 +86,7 @@ export function CategoriesAdmin() {
         <Link
           to="/categories/$slug"
           params={{ slug: c.slug }}
-          aria-label={`Open ${c.name} in the catalogue`}
+          aria-label={t("Open {name} in the catalogue", { name: c.name })}
           className="inline-flex text-muted-foreground hover:text-foreground"
         >
           <ArrowUpRight className="size-4" />
@@ -96,8 +97,10 @@ export function CategoriesAdmin() {
 
   return (
     <AdminPage
-      title="Categories"
-      subtitle="The catalogue's categories and how many games each one holds. Read-only: categories are part of the catalogue schema."
+      title={t("Categories")}
+      subtitle={t(
+        "The catalogue's categories and how many games each one holds. Read-only: categories are part of the catalogue schema.",
+      )}
     >
       {categories.status === "error" ? (
         <SectionCard>
@@ -114,8 +117,8 @@ export function CategoriesAdmin() {
         <SectionCard>
           <AdminListStates
             state="ready"
-            emptyTitle="No categories"
-            emptyBody="The catalogue has no categories yet."
+            emptyTitle={t("No categories")}
+            emptyBody={t("The catalogue has no categories yet.")}
           />
         </SectionCard>
       ) : (
@@ -129,7 +132,10 @@ export function CategoriesAdmin() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{c.name}</span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    {c.publishedGames} published · {c.totalGames} total
+                    {t("{publishedGames} published · {totalGames} total", {
+                      publishedGames: c.publishedGames,
+                      totalGames: c.totalGames,
+                    })}
                   </span>
                 </span>
                 <StatusBadge tone="muted">{c.slug}</StatusBadge>
@@ -137,7 +143,9 @@ export function CategoriesAdmin() {
             )}
           />
           <p className="pt-3 text-xs text-muted-foreground">
-            {categories.data.items.length} categories, counted from the games table.
+            {t("{length} categories, counted from the games table.", {
+              length: categories.data.items.length,
+            })}
           </p>
         </>
       )}

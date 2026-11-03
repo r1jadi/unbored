@@ -32,18 +32,19 @@ import {
 } from "@/lib/admin/api";
 import { fmt } from "@/lib/format";
 
+import { t, msg } from "@/lib/settings/language";
 export const Route = createFileRoute("/admin/users")({
   head: () => ({
-    meta: [{ title: "Users — Unbored admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: t("Users — Unbored admin") }, { name: "robots", content: "noindex" }],
   }),
   component: UsersAdmin,
 });
 
 const roleOptions = [
-  { value: "", label: "All roles" },
-  { value: "user", label: "Players" },
-  { value: "moderator", label: "Moderators" },
-  { value: "admin", label: "Administrators" },
+  { value: "", label: msg("All roles") },
+  { value: "user", label: msg("Players") },
+  { value: "moderator", label: msg("Moderators") },
+  { value: "admin", label: msg("Administrators") },
 ];
 
 const roleTone: Record<AdminRole, "muted" | "warning" | "primary"> = {
@@ -96,8 +97,8 @@ export function UsersAdmin() {
       .then((result) => {
         toast.success(
           result.suspended
-            ? `@${user.username} is suspended.`
-            : `@${user.username} is active again.`,
+            ? t("@{username} is suspended.", { username: user.username })
+            : t("@{username} is active again.", { username: user.username }),
         );
         users.retry();
       })
@@ -108,7 +109,7 @@ export function UsersAdmin() {
   const columns: Column<AdminUser>[] = [
     {
       key: "account",
-      head: "Account",
+      head: t("Account"),
       className: "min-w-56",
       cell: (u) => (
         <div className="flex min-w-0 items-center gap-3">
@@ -125,28 +126,28 @@ export function UsersAdmin() {
     },
     {
       key: "role",
-      head: "Role",
+      head: t("Role"),
       cell: (u) => <StatusBadge tone={roleTone[u.role]}>{u.role}</StatusBadge>,
     },
     {
       key: "status",
-      head: "Status",
+      head: t("Status"),
       cell: (u) => (
         <StatusBadge tone={u.isSuspended ? "destructive" : "success"}>
-          {u.isSuspended ? "suspended" : "active"}
+          {u.isSuspended ? t("suspended") : t("active")}
         </StatusBadge>
       ),
     },
     {
       key: "joined",
-      head: "Joined",
+      head: t("Joined"),
       cell: (u) => (
         <span className="text-xs text-muted-foreground">{formatWhen(u.createdAt) ?? "—"}</span>
       ),
     },
     {
       key: "active",
-      head: "Last active",
+      head: t("Last active"),
       cell: (u) => (
         <span className="text-xs text-muted-foreground">
           {u.lastActiveAt ? (formatAgo(u.lastActiveAt) ?? "—") : "never"}
@@ -155,13 +156,13 @@ export function UsersAdmin() {
     },
     {
       key: "plays",
-      head: "Runs",
+      head: t("Runs"),
       className: "text-right",
       cell: (u) => <span className="font-mono text-sm tabular">{fmt(u.plays)}</span>,
     },
     {
       key: "best",
-      head: "Best score",
+      head: t("Best score"),
       className: "text-right",
       cell: (u) => (
         <span className="font-mono text-sm tabular">
@@ -171,7 +172,7 @@ export function UsersAdmin() {
     },
     {
       key: "reports",
-      head: "Reports against",
+      head: t("Reports against"),
       className: "text-right",
       cell: (u) => (
         <span
@@ -197,8 +198,10 @@ export function UsersAdmin() {
 
   return (
     <AdminPage
-      title="Users"
-      subtitle="Real accounts from the database. Sensitive fields are excluded server-side: no session tokens, no password material."
+      title={t("Users")}
+      subtitle={t(
+        "Real accounts from the database. Sensitive fields are excluded server-side: no session tokens, no password material.",
+      )}
     >
       <Toolbar>
         <SearchField
@@ -207,11 +210,11 @@ export function UsersAdmin() {
             setQ(value);
             setPage(0);
           }}
-          label="Search accounts"
-          placeholder="Search username, name or email"
+          label={t("Search accounts")}
+          placeholder={t("Search username, name or email")}
         />
         <FilterSelect
-          label="Account role"
+          label={t("Account role")}
           value={role}
           onChange={(value) => {
             setRole(value);
@@ -224,8 +227,9 @@ export function UsersAdmin() {
       {!isAdmin && session.status === "ready" && (
         <p className="mb-4 flex items-start gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-xs text-muted-foreground">
           <UserCog className="mt-0.5 size-4 shrink-0" />
-          You are signed in as a moderator. Suspending or restoring an account requires an
-          administrator; the server refuses it regardless of what this page shows.
+          {t(
+            "You are signed in as a moderator. Suspending or restoring an account requires an administrator; the server refuses it regardless of what this page shows.",
+          )}
         </p>
       )}
 
@@ -244,11 +248,11 @@ export function UsersAdmin() {
         <SectionCard>
           <AdminListStates
             state="ready"
-            emptyTitle={term || role ? "No account matches" : "No accounts"}
+            emptyTitle={term || role ? t("No account matches") : t("No accounts")}
             emptyBody={
               term || role
-                ? "Clear the search or choose another role."
-                : "No account has been created yet."
+                ? t("Clear the search or choose another role.")
+                : t("No account has been created yet.")
             }
           />
         </SectionCard>
@@ -265,7 +269,7 @@ export function UsersAdmin() {
                   <span className="block truncate text-sm font-medium">{u.displayName}</span>
                   <span className="block truncate text-xs text-muted-foreground">
                     @{u.username} · {u.role}
-                    {u.isSuspended ? " · suspended" : ""}
+                    {u.isSuspended ? t(" · suspended") : ""}
                   </span>
                 </span>
                 <SuspendButton
@@ -291,7 +295,7 @@ export function UsersAdmin() {
       <PromptDialog
         open={pending !== null}
         onOpenChange={(open) => !open && setPending(null)}
-        title={pending?.suspended ? "Suspend this account" : "Restore this account"}
+        title={pending?.suspended ? t("Suspend this account") : t("Restore this account")}
         description={
           pending ? (
             <>
@@ -300,14 +304,18 @@ export function UsersAdmin() {
               </span>
               <span className="mt-1 block">
                 {pending.suspended
-                  ? "The account keeps its data and history. Whoever holds the account is refused everywhere until it is restored, and the reason is recorded against your name."
-                  : "The account can sign in and play again. The reason is recorded against your name."}
+                  ? t(
+                      "The account keeps its data and history. Whoever holds the account is refused everywhere until it is restored, and the reason is recorded against your name.",
+                    )
+                  : t(
+                      "The account can sign in and play again. The reason is recorded against your name.",
+                    )}
               </span>
             </>
           ) : undefined
         }
-        label={pending?.suspended ? "Reason for suspension" : "Reason for restoring"}
-        confirmLabel={pending?.suspended ? "Suspend" : "Restore"}
+        label={pending?.suspended ? t("Reason for suspension") : t("Reason for restoring")}
+        confirmLabel={pending?.suspended ? t("Suspend") : t("Restore")}
         destructive={pending?.suspended}
         onConfirm={(reason) => {
           if (pending) decide(pending.user, pending.suspended, reason);
@@ -335,11 +343,11 @@ function SuspendButton({
         variant="ghost"
         size="sm"
         disabled
-        title="Suspending an account requires an administrator."
+        title={t("Suspending an account requires an administrator.")}
         className="text-muted-foreground"
       >
         <ShieldAlert />
-        Admin only
+        {t("Admin only")}
       </Button>
     );
   }
@@ -352,7 +360,7 @@ function SuspendButton({
       onClick={() => onDecide({ user, suspended: !user.isSuspended })}
     >
       {user.isSuspended ? <ShieldCheck /> : <ShieldAlert />}
-      {user.isSuspended ? "Restore" : "Suspend"}
+      {user.isSuspended ? t("Restore") : t("Suspend")}
     </Button>
   );
 }

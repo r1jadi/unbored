@@ -13,8 +13,9 @@ import { fmt, fmtDate, points } from "@/lib/format";
 import { useActivity } from "@/lib/social/engagement";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/activity")({
-  head: () => seo("Activity", "Your recent plays, scores, likes and comments."),
+  head: () => seo(t("Activity"), t("Your recent plays, scores, likes and comments.")),
   component: Activity,
 });
 
@@ -32,15 +33,19 @@ function Activity() {
   if (feed.status === "anonymous") {
     return (
       <Page>
-        <PageHeader back title="Your activity" subtitle="Plays, likes, comments and saves." />
+        <PageHeader
+          back
+          title={t("Your activity")}
+          subtitle={t("Plays, likes, comments and saves.")}
+        />
         <EmptyState
           icon={Inbox}
-          title="Sign in to see your activity"
-          body="Your plays, likes, comments and saves show up here once you sign in."
+          title={t("Sign in to see your activity")}
+          body={t("Your plays, likes, comments and saves show up here once you sign in.")}
           action={
             <Button asChild>
               <Link to="/login" search={{ redirect: "/activity" }}>
-                Log in
+                {t("Log in")}
               </Link>
             </Button>
           }
@@ -52,7 +57,11 @@ function Activity() {
   if (feed.status === "loading") {
     return (
       <Page>
-        <PageHeader back title="Your activity" subtitle="Plays, likes, comments and saves." />
+        <PageHeader
+          back
+          title={t("Your activity")}
+          subtitle={t("Plays, likes, comments and saves.")}
+        />
         <ListSkeleton rows={4} avatar={false} />
       </Page>
     );
@@ -61,8 +70,12 @@ function Activity() {
   if (feed.status === "error") {
     return (
       <Page>
-        <PageHeader back title="Your activity" subtitle="Plays, likes, comments and saves." />
-        <ErrorState title="Couldn't load activity" body={feed.error} onRetry={feed.retry} />
+        <PageHeader
+          back
+          title={t("Your activity")}
+          subtitle={t("Plays, likes, comments and saves.")}
+        />
+        <ErrorState title={t("Couldn't load activity")} body={feed.error} onRetry={feed.retry} />
       </Page>
     );
   }
@@ -74,11 +87,15 @@ function Activity() {
   if (empty) {
     return (
       <Page>
-        <PageHeader back title="Your activity" subtitle="Plays, likes, comments and saves." />
+        <PageHeader
+          back
+          title={t("Your activity")}
+          subtitle={t("Plays, likes, comments and saves.")}
+        />
         <EmptyState
           icon={Inbox}
-          title="No activity yet"
-          body="Finish a run, like or save a game, or write a comment — it shows up here."
+          title={t("No activity yet")}
+          body={t("Finish a run, like or save a game, or write a comment — it shows up here.")}
         />
       </Page>
     );
@@ -86,9 +103,13 @@ function Activity() {
 
   return (
     <Page>
-      <PageHeader back title="Your activity" subtitle="Plays, likes, comments and saves." />
+      <PageHeader
+        back
+        title={t("Your activity")}
+        subtitle={t("Plays, likes, comments and saves.")}
+      />
       {scores.length > 0 && (
-        <Section title="Recent scores">
+        <Section title={t("Recent scores")}>
           <ul className="mx-4 divide-y divide-border overflow-hidden rounded-xl bg-surface md:mx-0">
             {scores.map((entry, i) => (
               <li
@@ -106,7 +127,7 @@ function Activity() {
                       {entry.game.title}
                     </Link>
                   ) : (
-                    <span className="text-muted-foreground">A game</span>
+                    <span className="text-muted-foreground">{t("A game")}</span>
                   )}
                 </span>
                 {fmtDate(entry.createdAt) && (
@@ -121,10 +142,10 @@ function Activity() {
       )}
       {likes.length > 0 && (
         <Section
-          title="Liked games"
+          title={t("Liked games")}
           action={
             <Link to="/likes" className="text-sm text-muted-foreground hover:text-foreground">
-              View all
+              {t("View all")}
             </Link>
           }
         >
@@ -141,10 +162,10 @@ function Activity() {
       )}
       {saves.length > 0 && (
         <Section
-          title="Saved games"
+          title={t("Saved games")}
           action={
             <Link to="/saved" className="text-sm text-muted-foreground hover:text-foreground">
-              View all
+              {t("View all")}
             </Link>
           }
         >
@@ -160,7 +181,7 @@ function Activity() {
         </Section>
       )}
       {comments.length > 0 && (
-        <Section title="Recent comments">
+        <Section title={t("Recent comments")}>
           <ul className="mx-4 divide-y divide-border overflow-hidden rounded-xl bg-surface md:mx-0">
             {comments.map((comment) => (
               <li key={comment.id} className="px-4 py-3">

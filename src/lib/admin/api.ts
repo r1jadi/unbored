@@ -25,6 +25,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, apiFetch, type ApiRequestOptions } from "@/lib/api/client";
 import { getAccessToken } from "@/lib/auth/session";
 
+import { shortDate } from "@/lib/format";
+import { t } from "@/lib/settings/language";
 /** Routes implemented by `services/admin`. Kept together so they cannot drift. */
 const Routes = {
   session: "/admin/session",
@@ -256,7 +258,7 @@ type Page<T> = { items: T[]; hasMore: boolean };
 function requireToken(): string {
   const token = getAccessToken();
   if (!token) {
-    throw new ApiError("Sign in to continue.", { code: "unauthorized", status: 401 });
+    throw new ApiError(t("Sign in to continue."), { code: "unauthorized", status: 401 });
   }
   return token;
 }
@@ -582,7 +584,7 @@ export function formatWhen(value: string | null | undefined): string | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return shortDate(date, true);
 }
 
 /** A short relative time, for a list that is ordered by time. */
@@ -592,14 +594,14 @@ export function formatAgo(value: string | null | undefined): string | null {
   if (Number.isNaN(date.getTime())) return null;
 
   const seconds = Math.round((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
+  if (seconds < 60) return t("just now");
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return t("{minutes}m ago", { minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("{hours}h ago", { hours });
   const days = Math.round(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (days < 30) return t("{days}d ago", { days });
+  return shortDate(date, false);
 }
 
 /** A date and time, for an audit trail where the exact moment matters. */
@@ -607,15 +609,11 @@ export function formatStamp(value: string | null | undefined): string | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const time = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  return `${shortDate(date, false)}, ${time}`;
 }
 
 export function asApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
-  return new ApiError("Something went wrong. Try again.", { code: "unknown_error" });
+  return new ApiError(t("Something went wrong. Try again."), { code: "unknown_error" });
 }

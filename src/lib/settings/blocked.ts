@@ -9,6 +9,7 @@ import { ApiError } from "@/lib/api/client";
 import { fetchProfilesByIds, resolveUserId } from "@/lib/social/follows";
 import { restGet, restMutate } from "@/lib/supabase/rest";
 
+import { t } from "@/lib/settings/language";
 export type BlockedEntry = { id: string; username: string; displayName: string };
 
 type Row = { blocker_id: string; blocked_id: string; created_at: string };
@@ -17,7 +18,7 @@ export async function listBlocked(): Promise<BlockedEntry[]> {
   const token = getAccessToken();
   const auth = getAuthState();
   if (!token || auth.status !== "authenticated") {
-    throw new ApiError("Sign in to view blocked users.", { code: "unauthorized", status: 401 });
+    throw new ApiError(t("Sign in to view blocked users."), { code: "unauthorized", status: 401 });
   }
   const rows = await restGet<Row[]>(
     `blocked_users?blocker_id=eq.${auth.session.userId}&select=blocked_id&order=created_at.desc`,
@@ -32,7 +33,7 @@ export async function listBlocked(): Promise<BlockedEntry[]> {
     return {
       id,
       username: profile?.username ?? id.slice(0, 8),
-      displayName: profile?.display_name ?? "Unknown account",
+      displayName: profile?.display_name ?? t("Unknown account"),
     };
   });
 }
@@ -56,13 +57,13 @@ export async function blockUsername(username: string): Promise<void> {
   const token = getAccessToken();
   const auth = getAuthState();
   if (!token || auth.status !== "authenticated") {
-    throw new ApiError("Sign in to block users.", { code: "unauthorized", status: 401 });
+    throw new ApiError(t("Sign in to block users."), { code: "unauthorized", status: 401 });
   }
   const targetId = await resolveUserId(username);
   if (!targetId)
-    throw new ApiError("That account could not be found.", { code: "not_found", status: 404 });
+    throw new ApiError(t("That account could not be found."), { code: "not_found", status: 404 });
   if (targetId === auth.session.userId) {
-    throw new ApiError("You can't block yourself.", { code: "bad_request", status: 400 });
+    throw new ApiError(t("You can't block yourself."), { code: "bad_request", status: 400 });
   }
   await restMutate("blocked_users", "POST", token, {
     blocker_id: auth.session.userId,
@@ -74,7 +75,7 @@ export async function unblockUser(blockedId: string): Promise<void> {
   const token = getAccessToken();
   const auth = getAuthState();
   if (!token || auth.status !== "authenticated") {
-    throw new ApiError("Sign in to unblock users.", { code: "unauthorized", status: 401 });
+    throw new ApiError(t("Sign in to unblock users."), { code: "unauthorized", status: 401 });
   }
   await restMutate(
     `blocked_users?blocker_id=eq.${auth.session.userId}&blocked_id=eq.${blockedId}`,

@@ -8,6 +8,7 @@ import { requestFeedRefresh, useFeedRefresh } from "@/lib/feed-refresh";
 import { catalogErrorMessage, type Game } from "@/lib/games/catalog";
 import { cn } from "@/lib/utils";
 
+import { t } from "@/lib/settings/language";
 /**
  * The swipeable feed.
  *
@@ -25,8 +26,8 @@ export function Feed({
   onRetry,
   onRefresh,
   empty = {
-    title: "Nothing here yet",
-    body: "As soon as games are published they show up in this feed.",
+    title: t("Nothing here yet"),
+    body: t("As soon as games are published they show up in this feed."),
   },
 }: {
   tab: "for-you" | "following";
@@ -59,7 +60,7 @@ export function Feed({
         ) : error ? (
           <div className="flex h-dvh items-center justify-center">
             <ErrorState
-              title="Couldn't load the feed"
+              title={t("Couldn't load the feed")}
               body={catalogErrorMessage(error)}
               onRetry={onRetry}
             />
@@ -82,11 +83,11 @@ export function FeedTabs({ tab }: { tab: "for-you" | "following" }) {
     <div className="pointer-events-none fixed inset-x-0 top-0 z-20 md:left-60 lg:left-64">
       <div className="pointer-events-auto mx-auto flex max-w-[460px] items-center justify-between px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] md:pt-9">
         <LogoMark className="size-6 md:invisible" />
-        <nav className="flex gap-1 rounded-full glass p-1" aria-label="Feed">
+        <nav className="flex gap-1 rounded-full glass p-1" aria-label={t("Feed")}>
           {(
             [
-              ["/", "For You", "for-you"],
-              ["/following", "Following", "following"],
+              ["/", t("For You"), "for-you"],
+              ["/following", t("Following"), "following"],
             ] as const
           ).map(([to, label, key]) => (
             <Link
@@ -108,7 +109,7 @@ export function FeedTabs({ tab }: { tab: "for-you" | "following" }) {
         </nav>
         <Link
           to="/search"
-          aria-label="Search"
+          aria-label={t("Search")}
           className="press flex size-9 items-center justify-center rounded-full glass md:invisible"
         >
           <Search className="size-[18px]" />

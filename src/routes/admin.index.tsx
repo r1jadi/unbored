@@ -22,9 +22,10 @@ import {
 } from "@/lib/admin/api";
 import { fmt } from "@/lib/format";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/admin/")({
   head: () => ({
-    meta: [{ title: "Admin overview — Unbored" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: t("Admin overview — Unbored") }, { name: "robots", content: "noindex" }],
   }),
   component: Overview,
 });
@@ -50,7 +51,10 @@ export function Overview() {
 
   if (overview.status === "error") {
     return (
-      <AdminPage title="Overview" subtitle="Platform health, moderation queue and activity.">
+      <AdminPage
+        title={t("Overview")}
+        subtitle={t("Platform health, moderation queue and activity.")}
+      >
         <SectionCard>
           <ErrorState onRetry={overview.retry} body={overview.error.message} />
         </SectionCard>
@@ -63,35 +67,45 @@ export function Overview() {
   const avgSession = data ? formatSeconds(data.avgRunSeconds) : null;
 
   const stats = [
-    { label: "Accounts", value: data ? fmt(data.totalUsers) : "—", icon: Users },
+    { label: t("Accounts"), value: data ? fmt(data.totalUsers) : "—", icon: Users },
     {
-      label: "Active today",
+      label: t("Active today"),
       value: data ? fmt(data.activeUsers) : "—",
-      hint: data ? "started a run in 24h" : undefined,
+      hint: data ? t("started a run in 24h") : undefined,
       icon: Activity,
     },
     {
-      label: "Games",
+      label: t("Games"),
       value: data ? String(data.games) : "—",
-      hint: data ? `${data.publishedGames} published · ${data.playableGames} playable` : undefined,
+      hint: data
+        ? t("{publishedGames} published · {playableGames} playable", {
+            publishedGames: data.publishedGames,
+            playableGames: data.playableGames,
+          })
+        : undefined,
       icon: Gamepad2,
     },
     {
-      label: "Games played",
+      label: t("Games played"),
       value: data ? fmt(data.gamesPlayed) : "—",
-      hint: data ? `${fmt(data.runsOpen)} runs in progress` : undefined,
+      hint: data ? t("{runsOpen} runs in progress", { runsOpen: fmt(data.runsOpen) }) : undefined,
       icon: Play,
     },
     {
-      label: "Avg run",
-      value: avgSession ?? "not measured yet",
-      hint: data && data.runsMeasured > 0 ? `over ${fmt(data.runsMeasured)} runs` : undefined,
+      label: t("Avg run"),
+      value: avgSession ?? t("not measured yet"),
+      hint:
+        data && data.runsMeasured > 0
+          ? t("over {runsMeasured} runs", { runsMeasured: fmt(data.runsMeasured) })
+          : undefined,
       icon: Timer,
     },
     {
-      label: "Open reports",
+      label: t("Open reports"),
       value: data ? String(data.openReports) : "—",
-      hint: data ? `${data.reviewingReports} being reviewed` : undefined,
+      hint: data
+        ? t("{reviewingReports} being reviewed", { reviewingReports: data.reviewingReports })
+        : undefined,
       icon: Flag,
     },
   ];
@@ -99,25 +113,27 @@ export function Overview() {
   const queue = [
     {
       to: "/admin/reports",
-      label: "Open reports",
+      label: t("Open reports"),
       value: data?.openReports,
-      hint: data ? `${data.reviewingReports} in review` : "loading",
+      hint: data
+        ? t("{reviewingReports} in review", { reviewingReports: data.reviewingReports })
+        : "loading",
       icon: Flag,
       tone: "warning" as const,
     },
     {
       to: "/admin/review",
-      label: "Games in review",
+      label: t("Games in review"),
       value: data?.pendingReview,
-      hint: "waiting for a decision",
+      hint: t("waiting for a decision"),
       icon: ClipboardCheck,
       tone: "info" as const,
     },
     {
       to: "/admin/comments",
-      label: "Hidden comments",
+      label: t("Hidden comments"),
       value: data?.hiddenComments,
-      hint: data ? `${fmt(data.comments)} written in total` : "loading",
+      hint: data ? t("{comments} written in total", { comments: fmt(data.comments) }) : "loading",
       icon: AlertTriangle,
       tone: "destructive" as const,
     },
@@ -125,15 +141,15 @@ export function Overview() {
 
   return (
     <AdminPage
-      title="Overview"
-      subtitle="Platform health, moderation queue and real activity."
+      title={t("Overview")}
+      subtitle={t("Platform health, moderation queue and real activity.")}
       actions={
         <button
           type="button"
           onClick={overview.retry}
           className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
-          Refresh
+          {t("Refresh")}
         </button>
       }
     >
@@ -156,10 +172,12 @@ export function Overview() {
 
         <div className="grid gap-4 lg:grid-cols-3">
           <SectionCard
-            title="Activity over time"
+            title={t("Activity over time")}
             className="lg:col-span-2"
             action={
-              <span className="text-xs text-muted-foreground">Last 14 days · completed runs</span>
+              <span className="text-xs text-muted-foreground">
+                {t("Last 14 days · completed runs")}
+              </span>
             }
           >
             {loading ? (
@@ -167,16 +185,16 @@ export function Overview() {
             ) : data && data.series.some((point) => point.runs > 0) ? (
               <TrendArea
                 data={data.series.map((point) => ({ day: point.day, runs: point.runs }))}
-                series={[{ key: "runs", label: "Completed runs", color: "var(--chart-1)" }]}
+                series={[{ key: "runs", label: t("Completed runs"), color: "var(--chart-1)" }]}
               />
             ) : (
               <p className="py-16 text-center text-sm text-muted-foreground">
-                No run has been completed yet. This fills in from recorded runs.
+                {t("No run has been completed yet. This fills in from recorded runs.")}
               </p>
             )}
           </SectionCard>
 
-          <SectionCard title="Moderation queue" bodyClassName="p-0">
+          <SectionCard title={t("Moderation queue")} bodyClassName="p-0">
             <ul className="divide-y divide-border">
               {queue.map((q) => (
                 <li key={q.label}>
@@ -203,7 +221,7 @@ export function Overview() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <SectionCard title="Recent activity" className="lg:col-span-2" bodyClassName="p-0">
+          <SectionCard title={t("Recent activity")} className="lg:col-span-2" bodyClassName="p-0">
             {loading ? (
               <ListSkeleton rows={5} />
             ) : data && data.activity.length > 0 ? (
@@ -235,13 +253,14 @@ export function Overview() {
               </ul>
             ) : (
               <p className="px-4 py-12 text-center text-sm text-muted-foreground">
-                Nothing has happened yet: a decision, a published game or a verified score appears
-                here.
+                {t(
+                  "Nothing has happened yet: a decision, a published game or a verified score appears here.",
+                )}
               </p>
             )}
           </SectionCard>
 
-          <SectionCard title="Most played games" bodyClassName="p-4">
+          <SectionCard title={t("Most played games")} bodyClassName="p-4">
             {loading ? (
               <ListSkeleton rows={5} avatar={false} />
             ) : data && data.topGames.length > 0 ? (
@@ -269,19 +288,19 @@ export function Overview() {
                     to="/admin/analytics"
                     className="text-sm text-muted-foreground hover:text-foreground"
                   >
-                    Full analytics →
+                    {t("Full analytics →")}
                   </Link>
                 </li>
               </ul>
             ) : (
               <p className="py-12 text-center text-sm text-muted-foreground">
-                No game has been finished yet.
+                {t("No game has been finished yet.")}
               </p>
             )}
           </SectionCard>
         </div>
 
-        <SectionCard title="Platform services" bodyClassName="p-0">
+        <SectionCard title={t("Platform services")} bodyClassName="p-0">
           {services.status === "loading" ? (
             <ListSkeleton rows={6} avatar={false} />
           ) : services.status === "error" ? (
@@ -301,7 +320,7 @@ export function Overview() {
                     <span className="hidden min-w-0 flex-1 truncate text-xs text-muted-foreground lg:block">
                       {svc.note}
                     </span>
-                    <StatusBadge tone={statusTone("muted")}>not measured</StatusBadge>
+                    <StatusBadge tone={statusTone("muted")}>{t("not measured")}</StatusBadge>
                   </li>
                 ))}
               </ul>

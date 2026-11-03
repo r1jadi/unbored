@@ -6,6 +6,7 @@ import { fmtDate, points } from "@/lib/format";
 import { useMyGameStats } from "@/lib/games/saved-runs";
 import { StreakNote } from "@/components/game/StreakNote";
 
+import { t } from "@/lib/settings/language";
 /**
  * The signed-in player's own record for one game: runs played, best score,
  * total points, rank and when they last played, all from verified scores.
@@ -21,12 +22,12 @@ export function YourStats({ slug }: { slug: string }) {
   if (auth.status !== "authenticated") {
     return (
       <section className="mt-4 rounded-xl border border-border p-4">
-        <h2 className="text-sm font-semibold">Your stats</h2>
+        <h2 className="text-sm font-semibold">{t("Your stats")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           <Link to="/login" search={{ redirect: `/games/${slug}` }} className="underline">
-            Sign in
+            {t("Sign in")}
           </Link>{" "}
-          to keep your scores, your stats and any run you leave unfinished.
+          {t("to keep your scores, your stats and any run you leave unfinished.")}
         </p>
       </section>
     );
@@ -41,22 +42,23 @@ export function YourStats({ slug }: { slug: string }) {
   const { runs, bestScore, totalScore, rank, lastPlayedAt } = stats.data;
 
   return (
-    <section className="mt-4 rounded-xl border border-border p-4" aria-label="Your stats">
-      <h2 className="text-sm font-semibold">Your stats</h2>
+    <section className="mt-4 rounded-xl border border-border p-4" aria-label={t("Your stats")}>
+      <h2 className="text-sm font-semibold">{t("Your stats")}</h2>
       {runs === 0 ? (
         <p className="mt-1 text-sm text-muted-foreground">
-          No runs yet. Your scores and stats, and any run you leave unfinished, are kept on your
-          account.
+          {t(
+            "No runs yet. Your scores and stats, and any run you leave unfinished, are kept on your account.",
+          )}
         </p>
       ) : (
         <dl className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
           {(
             [
               // Exact numbers: this is the player's own record, not a feed count.
-              ["Best", bestScore === null ? "—" : points(bestScore).toLocaleString()],
-              ["Rank", rank === null ? "—" : `#${rank.toLocaleString()}`],
-              ["Runs", runs.toLocaleString()],
-              ["Total points", points(totalScore).toLocaleString()],
+              [t("Best"), bestScore === null ? "—" : points(bestScore).toLocaleString()],
+              [t("Rank"), rank === null ? "—" : `#${rank.toLocaleString()}`],
+              [t("Runs"), runs.toLocaleString()],
+              [t("Total points"), points(totalScore).toLocaleString()],
             ] as const
           ).map(([label, value]) => (
             <div key={label} className="rounded-lg bg-surface p-2">
@@ -68,7 +70,9 @@ export function YourStats({ slug }: { slug: string }) {
       )}
       <StreakNote slug={slug} className="mt-3 flex justify-start text-left" />
       {lastPlayedAt && (
-        <p className="mt-2 text-xs text-muted-foreground">Last played {fmtDate(lastPlayedAt)}</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {t("Last played {lastPlayedAt}", { lastPlayedAt: fmtDate(lastPlayedAt) })}
+        </p>
       )}
     </section>
   );

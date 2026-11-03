@@ -1,0 +1,662 @@
+/** Albanian for the game screens: runs, boards, results and the feed around them. */
+export const sqGames: Record<string, string> = {
+  " This run was already recorded, so nothing was counted twice.":
+    " Kjo lojë ishte regjistruar tashmë, ndaj asgjë nuk u numërua dy herë.",
+  "This run was already recorded, so nothing was counted twice.":
+    "Kjo lojë ishte regjistruar tashmë, ndaj asgjë nuk u numërua dy herë.",
+  " This solve was already recorded, so nothing was counted twice.":
+    " Kjo zgjidhje ishte regjistruar tashmë, ndaj asgjë nuk u numërua dy herë.",
+  "{error} Nothing was saved, and nothing needs to be — sending the same run again is safe.":
+    "{error} Asgjë nuk u ruajt, dhe nuk ka nevojë — dërgimi sërish i së njëjtës lojë është i sigurt.",
+  "{error} Nothing was saved. Sending it again is safe; the server times the solve itself, so a later retry scores a little less.":
+    "{error} Asgjë nuk u ruajt. Dërgimi sërish është i sigurt; serveri e mat vetë kohën e zgjidhjes, ndaj një provë e mëvonshme jep pak më pak pikë.",
+  "{error} Nothing was saved. Sending the same run again is safe, but a timed run has to reach the server soon after its clock runs out.":
+    "{error} Asgjë nuk u ruajt. Dërgimi sërish i së njëjtës lojë është i sigurt, por një lojë me kohë duhet të arrijë te serveri menjëherë pasi t'i mbarojë ora.",
+  "{tilesPlaced} taps placed, {clearedColumns} rounds cleared.":
+    "{tilesPlaced} prekje, {clearedColumns} raunde të kaluara.",
+  "{tilesPlaced} cells tapped, {clearedColumns} rounds cleared.":
+    "{tilesPlaced} kuti të prekura, {clearedColumns} raunde të kaluara.",
+  "{tilesPlaced} tiles placed, {clearedColumns} columns cleared.":
+    "{tilesPlaced} pllaka të vendosura, {clearedColumns} kolona të pastruara.",
+  "A column passed ten after {tilesPlaced} tiles; {clearedColumns} columns cleared.":
+    "Një kolonë kaloi dhjetën pas {tilesPlaced} pllakash; {clearedColumns} kolona të pastruara.",
+  "{clearedColumns} {n} sorted, {tilesPlaced} {n2}.":
+    "{clearedColumns} {n} të renditura, {tilesPlaced} {n2}.",
+  "{clearedColumns} {n} cleared, {tilesPlaced} {n2}.":
+    "{clearedColumns} {n} të pastruara, {tilesPlaced} {n2}.",
+  "{clearedColumns} {n} solved.": "{clearedColumns} {n} të zgjidhura.",
+  "{tilesPlaced} {n}, {clearedColumns} {n2} solved.":
+    "{tilesPlaced} {n}, {clearedColumns} {n2} të zgjidhura.",
+  "{tilesPlaced} {n}, {clearedColumns} {n2} restored.":
+    "{tilesPlaced} {n}, {clearedColumns} {n2} të rikthyera.",
+  "{tilesPlaced} {n} sent off, {clearedColumns} {n2} cleared.":
+    "{tilesPlaced} {n} të nisura jashtë, {clearedColumns} {n2} të pastruara.",
+  "Chain broken": "Zinxhiri u këput",
+  "Couldn't start a run": "Loja nuk mund të nisej",
+  Duration: "Kohëzgjatja",
+  "Every round adds a tap and tightens the beat. A wrong tap ends the run.":
+    "Çdo raund shton një prekje dhe e shpejton ritmin. Një prekje e gabuar e mbyll lojën.",
+  "Guest run": "Lojë si mysafir",
+  "Offline practice": "Ushtrim pa internet",
+  Pads: "Butonat",
+  Rank: "Vendi",
+  Ranked: "Në renditje",
+  Round: "Raund",
+  "Round {round}": "Raundi {round}",
+  "Round {round}: watch {round2} {n}…": "Raundi {round}: shiko {round2} {n}…",
+  "Rounds cleared": "Raunde të kaluara",
+  "Run ended": "Loja mbaroi",
+  "Run ended.": "Loja mbaroi.",
+  "Run over": "Loja mbaroi",
+  Score: "Pikët",
+  "Start a new run": "Nis një lojë të re",
+  "Starting a run…": "Po niset loja…",
+  tap: "prekje",
+  taps: "prekje",
+  "The taps so far are your score if the server agrees.":
+    "Prekjet deri tani janë pikët e tua, nëse serveri pajtohet.",
+  "Top speed: the beat stops getting faster.": "Shpejtësia maksimale: ritmi nuk shpejtohet më.",
+  "Try submitting again": "Provo ta dërgosh sërish",
+  "Verified by replaying your taps on the server, then saved to the leaderboard.":
+    "U verifikua duke riluajtur prekjet e tua në server, pastaj u ruajt në renditje.",
+  "Verified by replaying your taps on the server. This was a guest run, so it is not on the leaderboard.":
+    "U verifikua duke riluajtur prekjet e tua në server. Kjo ishte lojë si mysafir, ndaj nuk është në renditje.",
+  "Verifying your run with the server…": "Po verifikohet loja jote me serverin…",
+  "Your best": "Rekordi yt",
+  "Your run was not verified": "Loja jote nuk u verifikua",
+  "Your turn — repeat {round} {n}.": "Radha jote — përsërit {round} {n}.",
+  ", best tile": ", pllaka më e mirë",
+  "Back to {title}": "Kthehu te {title}",
+  "Board — {slides} slides played": "Tabela — {slides} rrëshqitje të luajtura",
+  "Color Merge board. Use the arrow keys to slide.":
+    "Tabela e Bashko Ngjyrat. Përdor shigjetat për të rrëshqitur.",
+  "Guest run: verified, but not ranked": "Lojë si mysafir: e verifikuar, por jo në renditje",
+  "Next tile: {promotionPercent}% chance it arrives as a {promotedValue}. Each tile merges once per slide.":
+    "Pllaka e radhës: {promotionPercent}% mundësi të vijë si {promotedValue}. Çdo pllakë bashkohet një herë për rrëshqitje.",
+  "Row {row} column {column}, {shade}": "Rreshti {row}, kolona {column}, {shade}",
+  "Row {row} column {column}, empty": "Rreshti {row}, kolona {column}, bosh",
+  "Row {row} column {column}, {n}": "Rreshti {row}, kolona {column}, {n}",
+  "Signed in: this run can be ranked": "I identifikuar: kjo lojë mund të hyjë në renditje",
+  slide: "rrëshqitje",
+  slides: "rrëshqitje",
+  "Slide {slides}": "Rrëshqitja {slides}",
+  "Slide down": "Rrëshqit poshtë",
+  "Slide left": "Rrëshqit majtas",
+  "Slide right": "Rrëshqit djathtas",
+  "Slide up": "Rrëshqit lart",
+  "Slide to merge — best tile {best}.": "Rrëshqit për të bashkuar — pllaka më e mirë {best}.",
+  Slides: "Rrëshqitje",
+  "Start run": "Nis lojën",
+  "Submission limit reached": "U arrit kufiri i dërgimit",
+  "Submission limit reached.": "U arrit kufiri i dërgimit.",
+  "The board locked": "Tabela u bllokua",
+  "The board locked.": "Tabela u bllokua.",
+  "The run is over. Your result is on its way.": "Loja mbaroi. Rezultati yt po vjen.",
+  "The slides you made are your score if the server agrees.":
+    "Rrëshqitjet që bëre janë pikët e tua, nëse serveri pajtohet.",
+  "Verified by replaying your slides on the server, then saved to the leaderboard.":
+    "U verifikua duke riluajtur rrëshqitjet e tua në server, pastaj u ruajt në renditje.",
+  "Verified by replaying your slides on the server. This was a guest run, so it is not on the leaderboard.":
+    "U verifikua duke riluajtur rrëshqitjet e tua në server. Kjo ishte lojë si mysafir, ndaj nuk është në renditje.",
+
+  // The crossword (Fjalekryqi in Albanian)
+  "{number} {n}: {clue}. Tap to switch direction.":
+    "{number} {n}: {clue}. Prek për të ndërruar drejtimin.",
+  Across: "Horizontalisht",
+  Down: "Vertikalisht",
+  "An unsolved crossword scores nothing, and this is today's ranked attempt.":
+    "Një fjalëkryq i pazgjidhur nuk jep pikë, dhe kjo është përpjekja jote e sotme në renditje.",
+  "An unsolved crossword scores nothing.": "Një fjalëkryq i pazgjidhur nuk jep pikë.",
+  "Back to the rules": "Kthehu te rregullat",
+  "Black: you had it": "E zezë: e kishe saktë",
+  "Blue: left empty": "Blu: e lënë bosh",
+  check: "kontroll",
+  checks: "kontrolle",
+  Check: "Kontrollo",
+  "Checking your solve with the server…": "Po kontrollohet zgjidhja jote me serverin…",
+  "Couldn't start today's crossword": "Fjalëkryqi i sotëm nuk mund të nisej",
+  Delete: "Fshi",
+  "Fetching today's crossword…": "Po merret fjalëkryqi i sotëm…",
+  Monday: "E hënë",
+  Tuesday: "E martë",
+  Wednesday: "E mërkurë",
+  Thursday: "E enjte",
+  Friday: "E premte",
+  Saturday: "E shtunë",
+  Sunday: "E diel",
+  "Give up": "Dorëzohu",
+  "Give up today's crossword?": "Të dorëzohesh në fjalëkryqin e sotëm?",
+  "Help used": "Ndihma e përdorur",
+  "Here's how it solves": "Ja si zgjidhet",
+  "In {durationMs}{n}{n2}.": "Për {durationMs}{n}{n2}.",
+  "Keep solving": "Vazhdo zgjidhjen",
+  Keyboard: "Tastiera",
+  letter: "shkronjë",
+  letters: "shkronja",
+  Letter: "Shkronja",
+  "Midi 7×7": "Midi 7×7",
+  "Mini 5×5": "Mini 5×5",
+  "Next clue": "Përkufizimi tjetër",
+  "Previous clue": "Përkufizimi i mëparshëm",
+  "Not solved today": "I pazgjidhur sot",
+  "One ranked solve a day keeps the board a comparison of the same puzzle. {nextPuzzleIn}":
+    "Një zgjidhje në renditje në ditë e mban renditjen një krahasim të së njëjtës enigmë. {nextPuzzleIn}",
+  "Red: you had it wrong (yours struck through)": "E kuqe: e kishe gabim (e jotja e vijëzuar)",
+  "Row {n} column {n2}{n3}, {n4}{n5}{n6}": "Rreshti {n}, kolona {n2}{n3}, {n4}{n5}{n6}",
+  "See the leaderboard": "Shiko renditjen",
+  "Signed in: today's solve can be ranked, once":
+    "I identifikuar: zgjidhja e sotme mund të hyjë në renditje, një herë",
+  "Solved · {day}": "I zgjidhur · {day}",
+  "Start today's crossword": "Nis fjalëkryqin e sotëm",
+  "The answers": "Përgjigjet",
+  "The next crossword arrives in {n}{minutes} min (midnight UTC).":
+    "Fjalëkryqi tjetër vjen pas {n}{minutes} min (mesnatë UTC).",
+  "The solved grid: {join}": "Rrjeta e zgjidhur: {join}",
+  Time: "Koha",
+  "Time {formatSeconds}": "Koha {formatSeconds}",
+  "Today: {today}": "Sot: {today}",
+  "Today's crossword, {side} by {side2}": "Fjalëkryqi i sotëm, {side} me {side2}",
+  "Verified by replaying your solve on the server, which timed it itself. That was today's ranked attempt.":
+    "U verifikua duke riluajtur zgjidhjen tënde në server, i cili e mati vetë kohën. Kjo ishte përpjekja jote e sotme në renditje.",
+  "Verified by replaying your solve on the server. This was a guest run, so it is not on the leaderboard.":
+    "U verifikua duke riluajtur zgjidhjen tënde në server. Kjo ishte lojë si mysafir, ndaj nuk është në renditje.",
+  Word: "Fjala",
+  Worth: "Vlen",
+  "You had {right} {n} right{n2}{n3}.": "Kishe {right} {n} saktë{n2}{n3}.",
+  "You've done today's crossword": "E ke bërë fjalëkryqin e sotëm",
+  "Your solve was not verified": "Zgjidhja jote nuk u verifikua",
+
+  // Decant
+  "Add an empty tube to this board, for {n} seconds of clock":
+    "Shto një epruvetë bosh në këtë tabelë, për {n} sekonda nga ora",
+  board: "tabelë",
+  boards: "tabela",
+  Board: "Tabela",
+  "Board {level}": "Tabela {level}",
+  "Board {level}, {length} tubes. Number keys pick a tube; U undoes, R restarts the board.":
+    "Tabela {level}, {length} epruveta. Tastet me numra zgjedhin një epruvetë; U zhbën, R e rinis tabelën.",
+  "Board {n} sorted, +{points}.": "Tabela {n} u rendit, +{points}.",
+  "Boards sorted": "Tabela të renditura",
+  "colours ·": "ngjyra ·",
+  "End run": "Mbyll lojën",
+  "End this run?": "Ta mbyllësh këtë lojë?",
+  "Keep playing": "Vazhdo lojën",
+  "One more colour from here.": "Një ngjyrë më shumë nga këtu.",
+  pour: "derdhje",
+  pours: "derdhje",
+  Restart: "Rinis",
+  "Solving this board adds {formatClockGain}.": "Zgjidhja e kësaj tabele shton {formatClockGain}.",
+  "Tap a tube, then the tube to pour it into.":
+    "Prek një epruvetë, pastaj epruvetën ku do ta derdhësh.",
+  "The pours you made are your score if the server agrees.":
+    "Derdhjet që bëre janë pikët e tua, nëse serveri pajtohet.",
+  "Time left": "Koha e mbetur",
+  "Time's up": "Mbaroi koha",
+  "Time's up.": "Mbaroi koha.",
+  Tube: "Epruveta",
+  "Tube {n} picked up — tap a tube to pour into it.":
+    "Epruveta {n} u mor — prek një epruvetë për ta derdhur aty.",
+  "Tube {n}{n2}: {n3}{n4}{n5}{n6}": "Epruveta {n}{n2}: {n3}{n4}{n5}{n6}",
+  Undo: "Zhbëj",
+  "Verified by replaying your pours on the server, then saved to the leaderboard.":
+    "U verifikua duke riluajtur derdhjet e tua në server, pastaj u ruajt në renditje.",
+  "Verified by replaying your pours on the server. This was a guest run, so it is not on the leaderboard.":
+    "U verifikua duke riluajtur derdhjet e tua në server. Kjo ishte lojë si mysafir, ndaj nuk është në renditje.",
+  "Your score of {score} is kept and sent for verification. The board you are on is not scored.":
+    "Rezultati yt prej {score} pikësh ruhet dhe dërgohet për verifikim. Tabela ku je nuk llogaritet.",
+  "Your score of {score} is kept as practice: offline runs are not verified or saved.":
+    "Rezultati yt prej {score} pikësh mbetet si ushtrim: lojërat pa internet nuk verifikohen dhe nuk ruhen.",
+  "Your score of {score} is kept and sent for verification.":
+    "Rezultati yt prej {score} pikësh ruhet dhe dërgohet për verifikim.",
+  "Finish later": "Përfundoje më vonë",
+  "Finish later and the run is waiting for you next time — or end it now and your score of {score} is kept and sent for verification.":
+    "Përfundoje më vonë dhe loja të pret herën tjetër — ose mbylle tani dhe rezultati yt prej {score} pikësh ruhet dhe dërgohet për verifikim.",
+
+  // Don't Touch the Black
+  " before one slipped past.": " para se njëra të kalonte.",
+  " before the black one.": " para asaj të zezës.",
+  "A white tile got past": "Një pllakë e bardhë kaloi",
+  "A white tile got past the line.": "Një pllakë e bardhë e kaloi vijën.",
+  Black: "E zezë",
+  White: "E bardhë",
+  "white tile": "pllakë e bardhë",
+  "white tiles": "pllaka të bardha",
+  "Black tiles: {blackShare}% of this row. Clear every white; never touch black.":
+    "Pllaka të zeza: {blackShare}% e këtij rreshti. Pastro çdo të bardhë; mos prek kurrë të zezën.",
+  "Don't Touch the Black conveyor. Tap the white tiles in the row at the line.":
+    "Shiriti i Mos Prek të Zezën. Prek pllakat e bardha në rreshtin te vija.",
+  Row: "Rreshti",
+  "Row {n}, lane {n2}, {n3}{n4}": "Rreshti {n}, korsia {n2}, {n3}{n4}",
+  "Tap lane {n}": "Prek korsinë {n}",
+  "Tap the white tiles in the row at the line.": "Prek pllakat e bardha në rreshtin te vija.",
+  Taps: "Prekje",
+  "The taps you made are your score if the server agrees.":
+    "Prekjet që bëre janë pikët e tua, nëse serveri pajtohet.",
+  "You touched the black": "Preke të zezën",
+  "You touched the black.": "Preke të zezën.",
+
+  // 8 Puzzle
+  ", in place": ", në vend",
+  "· par": "· norma",
+  "Board {level} — 1 to 8, gap last.": "Tabela {level} — 1 deri në 8, hapësira në fund.",
+  "Board {level}, 3 by 3. Arrow keys slide a tile into the gap.":
+    "Tabela {level}, 3 me 3. Shigjetat rrëshqasin një pllakë në hapësirë.",
+  "Board {n} solved, +{points}. Board {level} is scrambled a little more.":
+    "Tabela {n} u zgjidh, +{points}. Tabela {level} është pak më e përzier.",
+  "Boards solved": "Tabela të zgjidhura",
+  "Every board is fully scrambled from here.": "Nga këtu çdo tabelë është plotësisht e përzier.",
+  "Hint: slide this tile.": "Ndihmë: rrëshqit këtë pllakë.",
+  move: "lëvizje",
+  moves: "lëvizje",
+  "Solving this board adds {formatClockGain}. Arrow keys slide too.":
+    "Zgjidhja e kësaj tabele shton {formatClockGain}. Edhe shigjetat rrëshqasin.",
+
+  // The feed and cards
+  "As soon as games are published they show up in this feed.":
+    "Sapo lojërat publikohen, shfaqen në këtë rrjedhë.",
+  "Couldn't load the feed": "Rrjedha nuk mund të ngarkohej",
+  Feed: "Rrjedha",
+  "For You": "Për ty",
+  "Nothing here yet": "Ende asgjë këtu",
+  Details: "Detaje",
+  Leaderboard: "Renditja",
+  Like: "Pëlqej",
+  "Loading feed": "Po ngarkohet rrjedha",
+  "Not playable yet": "Ende jo e luajtshme",
+  "Play {title}": "Luaj {title}",
+  Rules: "Rregullat",
+  Save: "Ruaj",
+  Share: "Ndaj",
+  "Something went wrong.": "Diçka shkoi keq.",
+  "Tap to play": "Prek për të luajtur",
+  "View {title}": "Shiko {title}",
+  "Daily challenge": "Sfida e ditës",
+  Daily: "Ditore",
+  Playable: "E luajtshme",
+  "Check back soon — new games are added every week.":
+    "Kthehu së shpejti — lojëra të reja shtohen çdo javë.",
+  "Couldn't load games": "Lojërat nuk mund të ngarkoheshin",
+  "Load more": "Ngarko më shumë",
+  "Loading…": "Po ngarkohet…",
+
+  // Gridburst
+  "Bigger pieces turn up more often the longer you last.":
+    "Sa më gjatë të qëndrosh, aq më shpesh vijnë copa më të mëdha.",
+  "Board — {length} pieces placed": "Tabela — {length} copa të vendosura",
+  "Combo ×{combo}": "Kombinim ×{combo}",
+  "Combo ×{combo} — burst again within {n} {n2} to keep it.":
+    "Kombinim ×{combo} — shpërthe sërish brenda {n} {n2} për ta mbajtur.",
+  "Drag a piece onto the grid. Fill a row or column to burst it.":
+    "Tërhiq një copë në rrjetë. Mbush një rresht ose kolonë për ta shpërthyer.",
+  empty: "bosh",
+  filled: "e mbushur",
+  "Gridburst board. Press 1, 2 or 3 to pick a piece, the arrow keys to move it and Enter to place it.":
+    "Tabela e Gridburst. Shtyp 1, 2 ose 3 për të zgjedhur një copë, shigjetat për ta lëvizur dhe Enter për ta vendosur.",
+  line: "vijë",
+  lines: "vija",
+  Lines: "Vija",
+  "Nothing fits": "Asgjë nuk përshtatet",
+  "Nothing in your tray fits.": "Asgjë nga copat e tua nuk përshtatet.",
+  piece: "copë",
+  pieces: "copa",
+  "Piece {n}, {length} squares{n2}{n3}": "Copa {n}, {length} katrorë{n2}{n3}",
+  "Slot {n}, placed": "Vendi {n}, e vendosur",
+  "Tap a square for the piece's top-left corner.":
+    "Prek një katror për këndin e sipërm majtas të copës.",
+  "The pieces you placed are your score if the server agrees.":
+    "Copat që vendose janë pikët e tua, nëse serveri pajtohet.",
+  "Verified by replaying your placements on the server, then saved to the leaderboard.":
+    "U verifikua duke riluajtur vendosjet e tua në server, pastaj u ruajt në renditje.",
+  "Verified by replaying your placements on the server. This was a guest run, so it is not on the leaderboard.":
+    "U verifikua duke riluajtur vendosjet e tua në server. Kjo ishte lojë si mysafir, ndaj nuk është në renditje.",
+  "Your pieces": "Copat e tua",
+
+  // Hints and rules sheets
+  Hint: "Ndihmë",
+  "Hint:": "Ndihmë:",
+  "Next hint in {waitSeconds}s": "Ndihma tjetër pas {waitSeconds}s",
+  "How to play {title}": "Si luhet {title}",
+  "The rules for this game are not written yet.": "Rregullat e kësaj loje ende nuk janë shkruar.",
+  "The rules, before you start.": "Rregullat, para se të nisësh.",
+
+  // Huedini
+  "{n} block, {w} by {h}, row {n2}, column {n3}. {n4}":
+    "Blloku {n}, {w} me {h}, rreshti {n2}, kolona {n3}. {n4}",
+  "{n} gate on the {n2} edge": "Porta {n} në anën {n2}",
+  "{tier} boards from here.": "Tabela {tier} nga këtu.",
+  "Board {level}, {side} by {side2}, {length} blocks. Drag a block, or focus it and use the arrow keys.":
+    "Tabela {level}, {side} me {side2}, {length} blloqe. Tërhiq një bllok, ose zgjidhe dhe përdor shigjetat.",
+  "Board {n} cleared. Here comes the next one.": "Tabela {n} u pastrua. Po vjen tjetra.",
+  "Boards cleared": "Tabela të pastruara",
+  "Clearing this board scores {dealt} and adds {formatClockGain}.":
+    "Pastrimi i kësaj tabele jep {dealt} pikë dhe shton {formatClockGain}.",
+  "Drag each block out through the gate of its colour.":
+    "Nxirr çdo bllok nga porta e ngjyrës së vet.",
+  "The moves you made are your score if the server agrees.":
+    "Lëvizjet që bëre janë pikët e tua, nëse serveri pajtohet.",
+  "Verified by replaying your moves on the server, then saved to the leaderboard.":
+    "U verifikua duke riluajtur lëvizjet e tua në server, pastaj u ruajt në renditje.",
+  "Verified by replaying your moves on the server. This was a guest run, so it is not on the leaderboard.":
+    "U verifikua duke riluajtur lëvizjet e tua në server. Kjo ishte lojë si mysafir, ndaj nuk është në renditje.",
+
+  // Leaderboards
+  "{games} games": "{games} lojëra",
+  "1 game": "1 lojë",
+  "A former player": "Një ish-lojtar",
+  "A player is ranked once they have verified scores in {minGames} different games.":
+    "Një lojtar hyn në renditje kur ka rezultate të verifikuara në {minGames} lojëra të ndryshme.",
+  "A score appears here once a run has been verified and saved. Nothing is ranked until then.":
+    "Një rezultat shfaqet këtu pasi loja të jetë verifikuar dhe ruajtur. Deri atëherë asgjë nuk renditet.",
+  "Couldn't load the leaderboard": "Renditja nuk mund të ngarkohej",
+  "Find people": "Gjej njerëz",
+  "Follow players from their profiles or from search, and their best scores show up here.":
+    "Ndiq lojtarë nga profilet e tyre ose nga kërkimi, dhe rezultatet e tyre më të mira shfaqen këtu.",
+  "games (": "lojëra (",
+  "Log in": "Hyr",
+  "No game selected": "Asnjë lojë e zgjedhur",
+  "No one is ranked in this window": "Askush nuk është në renditje në këtë periudhë",
+  "No one is ranked yet": "Ende askush në renditje",
+  "No scores in this window": "Asnjë rezultat në këtë periudhë",
+  "No scores yet": "Ende asnjë rezultat",
+  "Nobody you follow is on this board yet. Their best runs show up here once they're verified.":
+    "Askush që ndjek nuk është ende në këtë renditje. Lojërat e tyre më të mira shfaqen këtu pasi të verifikohen.",
+  "Nobody you follow is ranked yet": "Askush që ndjek nuk është ende në renditje",
+  "Play {gamesLeft} more games": "Luaj edhe {gamesLeft} lojëra",
+  "Play 1 more game": "Luaj edhe 1 lojë",
+  "points).": "pikë).",
+  "Scores belong to a game, so pick one to see its board.":
+    "Rezultatet i përkasin një loje, ndaj zgjidh një për të parë renditjen e saj.",
+  "See how the people you follow did": "Shiko si ia dolën ata që ndjek",
+  "Sign in, follow a few players, and their ratings show up here next to yours.":
+    "Identifikohu, ndiq disa lojtarë, dhe vlerësimet e tyre shfaqen këtu pranë tëndit.",
+  "Sign in, follow a few players, and their scores show up here next to yours.":
+    "Identifikohu, ndiq disa lojtarë, dhe rezultatet e tyre shfaqen këtu pranë tëndit.",
+  "to get on the board.": "për të hyrë në renditje.",
+  "View @{username}'s profile": "Shiko profilin e @{username}",
+  "View your profile": "Shiko profilin tënd",
+  You: "Ti",
+  "You're not following anyone yet": "Ende nuk ndjek askënd",
+  "You're rated in": "Je i vlerësuar në",
+  "Your best score in each game becomes a percentile of everyone who played it, up to 100 per game. Your rating adds them up. Play {minGames} games to get ranked.":
+    "Rezultati yt më i mirë në çdo lojë bëhet përqindësh i të gjithë atyre që e luajtën, deri në 100 për lojë. Vlerësimi yt i mbledh. Luaj {minGames} lojëra për të hyrë në renditje.",
+  "{title} leaderboard": "Renditja e {title}",
+  "All game": "Të gjitha lojërat",
+  "All games": "Të gjitha lojërat",
+  "All games leaderboard": "Renditja e të gjitha lojërave",
+  "All time": "Gjithë kohës",
+  Global: "Globale",
+  "The catalogue is unavailable, so the game list is empty.":
+    "Katalogu nuk është i disponueshëm, ndaj lista e lojërave është bosh.",
+  "This week": "Këtë javë",
+  "Time period": "Periudha",
+  Today: "Sot",
+  "Verified scores only.": "Vetëm rezultate të verifikuara.",
+  "Next: {next}": "Tjetra: {next}",
+
+  // Memory Flash
+  "board · flash": "tabela · ndriçimi",
+  cell: "kuti",
+  cells: "kuti",
+  "Cell {n}": "Kutia {n}",
+  "Pattern broken": "Modeli u prish",
+  "Pattern broken.": "Modeli u prish.",
+  "Pattern grid, {side} by {side2}": "Rrjeta e modelit, {side} me {side2}",
+  "Rebuild each pattern in any order. A wrong cell ends the run. 100 points a round, with no final pattern.":
+    "Rindërto çdo model në çfarëdo radhe. Një kuti e gabuar e mbyll lojën. 100 pikë për raund, pa model të fundit.",
+  "The board grows to {side}×{side2}.": "Tabela rritet në {side}×{side2}.",
+  "The cells entered so far are your score if the server agrees.":
+    "Kutitë e plotësuara deri tani janë pikët e tua, nëse serveri pajtohet.",
+  "Watch the pattern — {round} {n} lit.": "Shiko modelin — {round} {n} të ndezura.",
+  "Your turn — {remaining} more {n} in this pattern.":
+    "Radha jote — edhe {remaining} {n} në këtë model.",
+
+  // Sudoku and Mini Sudoku
+  " and {open} {n} still empty": " dhe {open} {n} ende bosh",
+  ", notes {join}": ", shënime {join}",
+  "…and {n} more, marked in red above.": "…dhe {n} të tjera, të shënuara me të kuqe më lart.",
+  "{cell}: a {placed} fit for the moment, but the board's only solution has a {answer} there, so the {placed2} would have blocked it later.":
+    "{cell}: një {placed} përshtatej për momentin, por zgjidhja e vetme e tabelës ka {answer} aty, ndaj {placed2} do ta kishte bllokuar më vonë.",
+  "{cell}: your {placed} repeats the {placed2} already in that {clash}. It needed a {answer}.":
+    "{cell}: {placed} jote përsërit {placed2} që është tashmë në atë {clash}. Duhej {answer}.",
+  "{length} wrong {n}{empties}. A wrong digit doesn't end the run, but it hides the right answer and costs you time.":
+    "{length} {n} gabim{empties}. Një shifër e gabuar nuk e mbyll lojën, por fsheh përgjigjen e saktë dhe të kushton kohë.",
+  "Board {level} checked against its solution. {summary} {join}":
+    "Tabela {level} u krahasua me zgjidhjen e saj. {summary} {join}",
+  "Board {level}, {level2} — 1 to 6 in every row, column and box.":
+    "Tabela {level}, {level2} — 1 deri në 6 në çdo rresht, kolonë dhe kuti.",
+  "Board {level}, {level2} — 1 to 9 in every row, column and box.":
+    "Tabela {level}, {level2} — 1 deri në 9 në çdo rresht, kolonë dhe kuti.",
+  "Board {level}, {MINI_SUDOKU_SIDE} by {MINI_SUDOKU_SIDE2}":
+    "Tabela {level}, {MINI_SUDOKU_SIDE} me {MINI_SUDOKU_SIDE2}",
+  "Board {level}, {SUDOKU_SIDE} by {SUDOKU_SIDE2}":
+    "Tabela {level}, {SUDOKU_SIDE} me {SUDOKU_SIDE2}",
+  "Board {level}, checked": "Tabela {level}, e kontrolluar",
+  "Board {n} solved, +{MINI_SUDOKU_POINTS_PER_BOARD}. Board {level} is {level2}.":
+    "Tabela {n} u zgjidh, +{MINI_SUDOKU_POINTS_PER_BOARD}. Tabela {level} është {level2}.",
+  "Board {n} solved, +{SUDOKU_POINTS_PER_BOARD}. Board {level} is {level2}.":
+    "Tabela {n} u zgjidh, +{SUDOKU_POINTS_PER_BOARD}. Tabela {level} është {level2}.",
+  digit: "shifër",
+  digits: "shifra",
+  Erase: "Fshi",
+  "Everything you placed was right.": "Gjithçka që vendose ishte e saktë.",
+  "Faint: not filled in": "E zbehtë: e paplotësuar",
+  "From here, boards need more than singles: pencil notes help.":
+    "Nga këtu, tabelat duan më shumë se zgjidhje të vetme: shënimet me laps ndihmojnë.",
+  "From here, look along rows and columns too, not just boxes.":
+    "Nga këtu, shiko edhe rreshtat dhe kolonat, jo vetëm kutitë.",
+  "Hard boards from here: fewer clues, and more pairs to find.":
+    "Tabela të vështira nga këtu: më pak ndihma dhe më shumë çifte për të gjetur.",
+  "No mistakes: {open} {n} still empty when the run ended. Here is the rest of the board.":
+    "Asnjë gabim: {open} {n} ende bosh kur mbaroi loja. Ja pjesa tjetër e tabelës.",
+  Note: "Shënim",
+  "Note {digit}": "Shënim {digit}",
+  Notes: "Shënimet",
+  "Notes on": "Shënimet aktive",
+  Numbers: "Numrat",
+  "Place {digit}, {left} left": "Vendos {digit}, mbeten {left}",
+  "Row {n} column {n2}, {n3}{n4}{n5}{notesText}":
+    "Rreshti {n}, kolona {n2}, {n3}{n4}{n5}{notesText}",
+  "Row {n}, column {n2}": "Rreshti {n}, kolona {n2}",
+  "Something clashes: a red digit repeats in its row, column or box.":
+    "Diçka përplaset: një shifër e kuqe përsëritet në rreshtin, kolonën ose kutinë e saj.",
+  square: "katror",
+  squares: "katrorë",
+  "square was": "katror ishte",
+  "squares were": "katrorë ishin",
+  "Where board {level} went wrong": "Ku gaboi tabela {level}",
+  "Wrong (yours struck through)": "Gabim (e jotja e vijëzuar)",
+  "Your last board": "Tabela jote e fundit",
+  "Yours, right": "E jotja, e saktë",
+
+  // One Move
+  "A move flips a cross. Find the one that restores the pattern. 100 points a board, with no final board.":
+    "Një lëvizje kthen një kryq. Gjej atë që e rikthen modelin. 100 pikë për tabelë, pa tabelë të fundit.",
+  "board ·": "tabela ·",
+  "Board {level} — one move restores the checkerboard.":
+    "Tabela {level} — një lëvizje e rikthen shahun.",
+  "Board {level}, {size} by {size2}": "Tabela {level}, {size} me {size2}",
+  "Boards are {nextSide}×{nextSide2} from here.": "Nga këtu tabelat janë {nextSide}×{nextSide2}.",
+  "Boards restored": "Tabela të rikthyera",
+  dark: "e errët",
+  light: "e çelët",
+  "Hint: tap here.": "Ndihmë: prek këtu.",
+  "Hint: the move is in this row.": "Ndihmë: lëvizja është në këtë rresht.",
+  "One move missed": "Lëvizja u humb",
+  "One move missed.": "Lëvizja u humb.",
+  "Row {n} column {n2}": "Rreshti {n}, kolona {n2}",
+
+  // Crowns
+  "{mistakesLeft} of {QUEENS_MISTAKES} mistakes left":
+    "Mbeten {mistakesLeft} nga {QUEENS_MISTAKES} gabime",
+  "Board {level} — one crown per row, column and colour.":
+    "Tabela {level} — një kurorë për rresht, kolonë dhe ngjyrë.",
+  "Board {n} solved, +{points}. Board {level} is {level2}×{level3}.":
+    "Tabela {n} u zgjidh, +{points}. Tabela {level} është {level2}×{level3}.",
+  "clear it": "pastroje",
+  "empty, ruled out by a crown": "bosh, e përjashtuar nga një kurorë",
+  "Faint Xs mark cells your crowns already rule out.":
+    "X-të e zbehta shënojnë kutitë që kurorat e tua i përjashtojnë tashmë.",
+  "Hint: a crown goes here.": "Ndihmë: këtu shkon një kurorë.",
+  "Hint: no crown goes here.": "Ndihmë: këtu nuk shkon kurorë.",
+  "mark an X": "shëno një X",
+  "marked X": "e shënuar X",
+  mistake: "gabim",
+  mistakes: "gabime",
+  "No crown goes there. {left} {n} left.": "Aty nuk shkon kurorë. Mbeten {left} {n}.",
+  "Out of mistakes": "Mbaruan gabimet",
+  "place a crown": "vendos një kurorë",
+  "ruled out by a mistake": "e përjashtuar nga një gabim",
+  "Three mistakes. The run is over.": "Tre gabime. Loja mbaroi.",
+  "Play again": "Luaj sërish",
+  "Sign in to rank your scores": "Identifikohu për t'i futur rezultatet në renditje",
+
+  // Saved runs
+  "Continue run": "Vazhdo lojën",
+  "Left at": "Lënë te",
+  "New run": "Lojë e re",
+  "Pick up where you left off?": "Të vazhdosh aty ku e le?",
+  "Score so far": "Pikët deri tani",
+  "Starting a new run ends this one and keeps its score of {score}.":
+    "Nisja e një loje të re e mbyll këtë dhe ruan rezultatin e saj prej {score} pikësh.",
+  "You have an unfinished run of {title}, saved to your account.":
+    "Ke një lojë të papërfunduar të {title}, të ruajtur në llogarinë tënde.",
+
+  // Scatter
+  "{jams} of {SCATTER_MAX_JAMS} jams": "{jams} nga {SCATTER_MAX_JAMS} bllokime",
+  "Board {level}, {side} by {side2}, {tiles} tiles.":
+    "Tabela {level}, {side} me {side2}, {tiles} pllaka.",
+  "Board {n} cleared, +{SCATTER_CLEAR_BONUS}.": "Tabela {n} u pastrua, +{SCATTER_CLEAR_BONUS}.",
+  "Boards are {side}×{side2} from here.": "Nga këtu tabelat janë {side}×{side2}.",
+  "Clearing the board adds {SCATTER_CLEAR_BONUS}.":
+    "Pastrimi i tabelës shton {SCATTER_CLEAR_BONUS}.",
+  "Jammed — something is in the way. {n} left.": "U bllokua — diçka është në rrugë. Mbeten {n}.",
+  "No tile could leave, so that board is lost. {n} jams left.":
+    "Asnjë pllakë nuk mund të dilte, ndaj ajo tabelë humbi. Mbeten {n} bllokime.",
+  "Out of jams": "Mbaruan bllokimet",
+  "Row {n}, column {n2}: {n3}tile pointing {n4}{n5}.":
+    "Rreshti {n}, kolona {n2}: {n3}pllakë që tregon {n4}{n5}.",
+  "Tap a tile with a clear lane to send it off the board.":
+    "Prek një pllakë me rrugë të lirë për ta nxjerrë nga tabela.",
+  "Three jams. The run is over.": "Tre bllokime. Loja mbaroi.",
+  tile: "pllakë",
+  tiles: "pllaka",
+
+  // 7 Second
+  "· right answers add 1.5s · wrong answers cost 2s":
+    "· përgjigjet e sakta shtojnë 1.5s · të gabuarat kushtojnë 2s",
+  "{correct} correct of {length} answered": "{correct} të sakta nga {length} të përgjigjura",
+  "7 Second table": "Tabela e 7 Sekondave",
+  "Answer {option}": "Përgjigju {option}",
+  Answers: "Përgjigje",
+  "Checking your run…": "Po kontrollohet loja jote…",
+  "Clock remaining": "Koha e mbetur",
+  Correct: "Saktë",
+  "Correct — 1.5 seconds back.": "Saktë — 1.5 sekonda mbrapsht.",
+  "Guest run: verified, but not ranked — practise as often as you like":
+    "Lojë si mysafir: e verifikuar, por jo në renditje — ushtrohu sa herë të duash",
+  "Offline practice: not verified or ranked — practise as often as you like":
+    "Ushtrim pa internet: as i verifikuar, as në renditje — ushtrohu sa herë të duash",
+  "One ranked run a day keeps the daily board a comparison of the same deck. The next one arrives at midnight UTC.":
+    "Një lojë në renditje në ditë e mban renditjen ditore një krahasim të së njëjtës pako. Tjetra vjen në mesnatë UTC.",
+  "Pick the right answer.": "Zgjidh përgjigjen e saktë.",
+  Press: "Shtyp",
+  "Signed in: this is today's ranked attempt":
+    "I identifikuar: kjo është përpjekja jote e sotme në renditje",
+  "Sixty answers — the deck is done": "Gjashtëdhjetë përgjigje — pakoja mbaroi",
+  "The next daily deck arrives at midnight UTC.": "Pakoja e radhës ditore vjen në mesnatë UTC.",
+  "The score is the server's replay, not the number on this screen.":
+    "Rezultati është riluajtja e serverit, jo numri në këtë ekran.",
+  "Time remaining": "Koha e mbetur",
+  "Today's attempt is done": "Përpjekja e sotme mbaroi",
+  "Verified by replaying your answers on the server, then saved to the leaderboard. That was today's ranked attempt.":
+    "U verifikua duke riluajtur përgjigjet e tua në server, pastaj u ruajt në renditje. Kjo ishte përpjekja jote e sotme në renditje.",
+  "Verified by replaying your answers on the server. This was a guest run, so it is not on the leaderboard.":
+    "U verifikua duke riluajtur përgjigjet e tua në server. Kjo ishte lojë si mysafir, ndaj nuk është në renditje.",
+  "Wrong — 2 seconds gone.": "Gabim — 2 sekonda humbën.",
+
+  // Stack 10
+  "Add up to exactly ten to clear a column. Past ten ends the run. There is no final tile.":
+    "Mblidh saktësisht dhjetë për të pastruar një kolonë. Mbi dhjetë e mbyll lojën. Nuk ka pllakë të fundit.",
+  "Columns cleared": "Kolona të pastruara",
+  "Heavier tile chance {pressurePercent}% · up to +{heavyBonus}":
+    "Mundësia e pllakës më të rëndë {pressurePercent}% · deri në +{heavyBonus}",
+  "Heavier tiles can start arriving now": "Pllakat më të rënda mund të nisin të vijnë tani",
+  "Next tile": "Pllaka e radhës",
+  "Tile {n}": "Pllaka {n}",
+  "Warm-up: heavier tiles start after tile {STACK10_TILES}":
+    "Ngrohje: pllakat më të rënda nisin pas pllakës {STACK10_TILES}",
+
+  // Sun & Moon
+  ", breaks a rule": ", shkel një rregull",
+  ", fixed": ", e fiksuar",
+  "Board {level} — three suns and three moons in every line.":
+    "Tabela {level} — tre diej dhe tre hëna në çdo vijë.",
+  "Board {level} · {level2} cells to start · clock +{n}":
+    "Tabela {level} · {level2} kuti në fillim · ora +{n}",
+  "Board {level}, {TANGO_SIDE} by {TANGO_SIDE2}": "Tabela {level}, {TANGO_SIDE} me {TANGO_SIDE2}",
+  "Board {n} solved, +{points}. Board {level} starts with {level2} cells.":
+    "Tabela {n} u zgjidh, +{points}. Tabela {level} nis me {level2} kuti.",
+  "Boards start with three cells from here.": "Nga këtu tabelat nisin me tre kuti.",
+  "make it a moon": "bëje hënë",
+  moon: "hënë",
+  "place a sun": "vendos një diell",
+  sun: "diell",
+  "Something clashes: the red cells break a rule.":
+    "Diçka përplaset: kutitë e kuqe shkelin një rregull.",
+  "Tap for a sun, again for a moon. Solving this board adds {formatClockGain}.":
+    "Prek për diell, sërish për hënë. Zgjidhja e kësaj tabele shton {formatClockGain}.",
+  "this is": "kjo është",
+  "this should be": "kjo duhet të jetë",
+
+  // Flutter
+  Flaps: "Përplasje krahësh",
+  "Flight time": "Koha e fluturimit",
+  "Flutter field. Tap, click or press Space to flap.":
+    "Fusha e Fluturo. Prek, kliko ose shtyp Space për të përplasur krahët.",
+  gap: "hapësirë",
+  gaps: "hapësira",
+  "Tap to flap": "Prek për të përplasur krahët",
+  "Tap, click or press Space to flap. Thread the gaps; don't touch the columns or the ground.":
+    "Prek, kliko ose shtyp Space për të përplasur krahët. Kalo nëpër hapësira; mos prek kolonat ose tokën.",
+  "Verified by replaying your flight on the server, then saved to the leaderboard.":
+    "U verifikua duke riluajtur fluturimin tënd në server, pastaj u ruajt në renditje.",
+  "Verified by replaying your flight on the server. This was a guest run, so it is not on the leaderboard.":
+    "U verifikua duke riluajtur fluturimin tënd në server. Kjo ishte lojë si mysafir, ndaj nuk është në renditje.",
+  "You hit the wall": "U përplase",
+
+  // Your stats
+  Best: "Më i miri",
+  "Last played {lastPlayedAt}": "Luajtur për herë të fundit më {lastPlayedAt}",
+  "No runs yet. Your scores and stats, and any run you leave unfinished, are kept on your account.":
+    "Ende asnjë lojë. Rezultatet, statistikat dhe çdo lojë që lë përgjysmë ruhen në llogarinë tënde.",
+  Runs: "Lojëra",
+  "to keep your scores, your stats and any run you leave unfinished.":
+    "për të ruajtur rezultatet, statistikat dhe çdo lojë që lë përgjysmë.",
+  "Total points": "Pikët gjithsej",
+  "Your stats": "Statistikat e tua",
+
+  // Trail
+  "Board {level} — start on 1.": "Tabela {level} — nis te 1.",
+  "Board {n} solved, +{points}. Start on 1.": "Tabela {n} u zgjidh, +{points}. Nis te 1.",
+  "Every cell, 1 to {last} in order.": "Çdo kuti, nga 1 deri në {last} me radhë.",
+  "Hint: go back to here.": "Ndihmë: kthehu deri këtu.",
+  "Hint: go here next.": "Ndihmë: shko këtu më pas.",
+  "on the path": "në shteg",
+  "The path you drew is your score if the server agrees.":
+    "Shtegu që vizatove janë pikët e tua, nëse serveri pajtohet.",
+  "Verified by replaying your path on the server, then saved to the leaderboard.":
+    "U verifikua duke riluajtur shtegun tënd në server, pastaj u ruajt në renditje.",
+  "Verified by replaying your path on the server. This was a guest run, so it is not on the leaderboard.":
+    "U verifikua duke riluajtur shtegun tënd në server. Kjo ishte lojë si mysafir, ndaj nuk është në renditje.",
+
+  // Following feed, offline play and streaks
+  "Couldn't load more games.": "Nuk mund të ngarkoheshin më shumë lojëra.",
+  "Couldn't load the following feed.": "Rrjedha e të ndjekurve nuk mund të ngarkohej.",
+  "Sign in to view your following feed.": "Identifikohu për të parë rrjedhën e të ndjekurve.",
+  "You played this offline, so it was a practice run: it was not verified or saved, and it is not on the leaderboard.":
+    "E luajte pa internet, ndaj ishte ushtrim: nuk u verifikua, nuk u ruajt dhe nuk është në renditje.",
+  "{days}, on a rest day. You missed yesterday, so play today to save it.":
+    "{days}, në një ditë pushimi. Dje nuk luajte, ndaj luaj sot për ta shpëtuar.",
+  "{streak}-day streak": "{streak} ditë rresht",
+  "1-day streak": "1 ditë rresht",
+};

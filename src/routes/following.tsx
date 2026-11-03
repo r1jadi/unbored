@@ -11,8 +11,9 @@ import { useFollowingFeed } from "@/lib/games/following";
 import { listFollowees } from "@/lib/social/follows";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/following")({
-  head: () => seo("Following", "Games played and made by people you follow."),
+  head: () => seo(t("Following"), t("Games played and made by people you follow.")),
   component: Following,
 });
 
@@ -47,7 +48,7 @@ function Following() {
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setFollowError(error instanceof Error ? error.message : "Couldn't load follows.");
+          setFollowError(error instanceof Error ? error.message : t("Couldn't load follows."));
           setFolloweeCount(0);
         }
       });
@@ -62,12 +63,12 @@ function Following() {
       <FollowingPage>
         <EmptyState
           icon={Users}
-          title="Sign in to follow creators"
-          body="Following keeps the games of people you follow in one place."
+          title={t("Sign in to follow creators")}
+          body={t("Following keeps the games of people you follow in one place.")}
           action={
             <Button asChild>
               <Link to="/login" search={{ redirect: "/following" }}>
-                Log in
+                {t("Log in")}
               </Link>
             </Button>
           }
@@ -88,7 +89,7 @@ function Following() {
     return (
       <FollowingPage>
         <ErrorState
-          title="Couldn't load follows"
+          title={t("Couldn't load follows")}
           body={followError}
           onRetry={() => setAuthTick((n) => n + 1)}
         />
@@ -101,11 +102,13 @@ function Following() {
       <FollowingPage>
         <EmptyState
           icon={Users}
-          title="You're not following anyone yet"
-          body="Find creators in Search or on a game page, then follow them to build this feed."
+          title={t("You're not following anyone yet")}
+          body={t(
+            "Find creators in Search or on a game page, then follow them to build this feed.",
+          )}
           action={
             <Button asChild variant="secondary">
-              <Link to="/search">Discover creators</Link>
+              <Link to="/search">{t("Discover creators")}</Link>
             </Button>
           }
         />
@@ -124,12 +127,12 @@ function FollowingGames() {
       <FollowingPage>
         <EmptyState
           icon={Users}
-          title="Sign in to follow creators"
-          body="Following keeps the games of people you follow in one place."
+          title={t("Sign in to follow creators")}
+          body={t("Following keeps the games of people you follow in one place.")}
           action={
             <Button asChild>
               <Link to="/login" search={{ redirect: "/following" }}>
-                Log in
+                {t("Log in")}
               </Link>
             </Button>
           }
@@ -150,7 +153,7 @@ function FollowingGames() {
     return (
       <FollowingPage>
         <ErrorState
-          title="Couldn't load the following feed"
+          title={t("Couldn't load the following feed")}
           body={catalogErrorMessage(feed.error)}
           onRetry={feed.retry}
         />
@@ -163,8 +166,8 @@ function FollowingGames() {
       <FollowingPage>
         <EmptyState
           icon={Users}
-          title="No published games yet"
-          body="The creators you follow haven't published any games. Check back later."
+          title={t("No published games yet")}
+          body={t("The creators you follow haven't published any games. Check back later.")}
         />
       </FollowingPage>
     );
@@ -182,7 +185,7 @@ function FollowingGames() {
       </div>
       {failedMore && (
         <ErrorState
-          title="Couldn't load more games"
+          title={t("Couldn't load more games")}
           body={catalogErrorMessage(feed.error)}
           onRetry={() => void feed.loadMore()}
         />
@@ -190,7 +193,7 @@ function FollowingGames() {
       {!failedMore && feed.status === "ready" && feed.hasMore && (
         <div className="mt-4 flex justify-center">
           <Button variant="secondary" onClick={() => void feed.loadMore()}>
-            Load more
+            {t("Load more")}
           </Button>
         </div>
       )}

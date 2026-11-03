@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { publicConfig } from "@/lib/config";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/forgot-password")({
-  head: () => seo("Forgot password", "Reset your Unbored password."),
+  head: () => seo(t("Forgot password"), t("Reset your Unbored password.")),
   component: Forgot,
 });
 
@@ -28,7 +29,7 @@ function Forgot() {
       const base = publicConfig.supabase.url.replace(/\/+$/, "");
       const key = publicConfig.supabase.publishableKey;
       if (base === "" || key === "") {
-        throw new Error("Password recovery is not configured for this deployment.");
+        throw new Error(t("Password recovery is not configured for this deployment."));
       }
       const redirectTo = new URL("/auth/callback", window.location.origin);
       redirectTo.searchParams.set("next", "/reset-password");
@@ -38,11 +39,11 @@ function Forgot() {
         body: JSON.stringify({ email, options: { redirectTo: redirectTo.toString() } }),
       });
       if (!response.ok) {
-        throw new Error("We could not send the reset email. Try again shortly.");
+        throw new Error(t("We could not send the reset email. Try again shortly."));
       }
       setSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(err instanceof Error ? err.message : t("Something went wrong. Please try again."));
     } finally {
       setBusy(false);
     }
@@ -51,29 +52,29 @@ function Forgot() {
   if (sent)
     return (
       <AuthLayout
-        title="Check your inbox"
-        subtitle="If an account exists for that email, a reset link is on its way."
+        title={t("Check your inbox")}
+        subtitle={t("If an account exists for that email, a reset link is on its way.")}
       >
         <div className="flex justify-center py-8">
           <MailCheck className="size-12 text-muted-foreground" strokeWidth={1.5} />
         </div>
         <div className="mt-auto space-y-2 lg:mt-4">
           <Button asChild variant="secondary" size="lg" className="w-full">
-            <Link to="/login">Back to log in</Link>
+            <Link to="/login">{t("Back to log in")}</Link>
           </Button>
           <Button variant="ghost" size="lg" className="w-full" onClick={() => setSent(false)}>
-            Use a different email
+            {t("Use a different email")}
           </Button>
         </div>
       </AuthLayout>
     );
   return (
     <AuthLayout
-      title="Reset your password"
-      subtitle="Enter your email and we'll send you a link."
+      title={t("Reset your password")}
+      subtitle={t("Enter your email and we'll send you a link.")}
       footer={
         <Link to="/login" className="font-medium text-foreground">
-          Back to log in
+          {t("Back to log in")}
         </Link>
       }
     >
@@ -84,13 +85,20 @@ function Forgot() {
           const f = new FormData(e.currentTarget);
           const email = String(f.get("email") ?? "").trim();
           if (email === "") {
-            setError("Enter your email address.");
+            setError(t("Enter your email address."));
             return;
           }
           void submit(email);
         }}
       >
-        <Field id="email" name="email" type="email" label="Email" required autoComplete="email" />
+        <Field
+          id="email"
+          name="email"
+          type="email"
+          label={t("Email")}
+          required
+          autoComplete="email"
+        />
         {error && (
           <p className="mt-3 text-sm text-destructive" role="alert">
             {error}
@@ -103,7 +111,7 @@ function Forgot() {
           className="mt-auto w-full lg:mt-6"
           disabled={busy}
         >
-          Send reset link
+          {t("Send reset link")}
         </Button>
       </form>
     </AuthLayout>

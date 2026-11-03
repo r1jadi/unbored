@@ -6,6 +6,7 @@ import { getAccessToken, getSessionUserId } from "@/lib/auth/session";
 import { getQueryClient } from "@/lib/query";
 import { DEFAULT_BOARD_SIZE, type BoardPeriod } from "@/lib/games/sessions";
 
+import { t } from "@/lib/settings/language";
 /**
  * The all-games board: one rating across every published game.
  *
@@ -86,7 +87,7 @@ export function useOverallBoard(
     const error =
       board.error instanceof ApiError
         ? board.error
-        : new ApiError("Something went wrong. Please try again.");
+        : new ApiError(t("Something went wrong. Please try again."));
     return { status: "error", error, retry };
   }
   return { status: "loading", retry };

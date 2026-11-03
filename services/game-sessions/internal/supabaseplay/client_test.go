@@ -312,6 +312,25 @@ func TestCompleteRunRoutesCrosswordRulesToCrosswordVerifier(t *testing.T) {
 	}
 }
 
+func TestCompleteRunRoutesFjalekryqiRulesToFjalekryqiVerifier(t *testing.T) {
+	rec := newRecorder(t, http.StatusOK, resultRow)
+
+	if _, err := rec.client(t).CompleteRun(context.Background(), CompleteRequest{
+		SessionID:    "eeeeeeee-2222-4222-8222-eeeeeeeeeeee",
+		RulesVersion: "fjalekryqi@1",
+		// Ë in cell 1: 1 × 32 + 28.
+		Actions:    []int32{60, 1600},
+		Score:      0,
+		DurationMS: 20000,
+	}); err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+
+	if rec.path != "/rest/v1/rpc/complete_fjalekryqi_run" {
+		t.Fatalf("path = %s, want the Fjalekryqi verifier function", rec.path)
+	}
+}
+
 func TestCompleteRunRoutesGridburstRulesToGridburstVerifier(t *testing.T) {
 	rec := newRecorder(t, http.StatusOK, resultRow)
 

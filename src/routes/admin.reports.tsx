@@ -32,19 +32,20 @@ import {
   type ReportStatus,
 } from "@/lib/admin/api";
 
+import { t, msg } from "@/lib/settings/language";
 export const Route = createFileRoute("/admin/reports")({
   head: () => ({
-    meta: [{ title: "Reports — Unbored admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: t("Reports — Unbored admin") }, { name: "robots", content: "noindex" }],
   }),
   component: ReportsAdmin,
 });
 
 const statusOptions = [
-  { value: "", label: "All reports" },
-  { value: "open", label: "Open" },
-  { value: "reviewing", label: "Being reviewed" },
-  { value: "resolved", label: "Resolved" },
-  { value: "dismissed", label: "Dismissed" },
+  { value: "", label: msg("All reports") },
+  { value: "open", label: msg("Open") },
+  { value: "reviewing", label: msg("Being reviewed") },
+  { value: "resolved", label: msg("Resolved") },
+  { value: "dismissed", label: msg("Dismissed") },
 ];
 
 /** The decision a moderator is about to record, and the dialog it needs. */
@@ -90,7 +91,7 @@ export function ReportsAdmin() {
     setBusy(report.id);
     moderateReport(report.id, next, reason)
       .then((result) => {
-        toast.success(`Report is now ${result.status ?? next}.`);
+        toast.success(t("Report is now {n}.", { n: result.status ?? next }));
         reports.retry();
         log.retry();
       })
@@ -101,7 +102,7 @@ export function ReportsAdmin() {
   const logColumns: Column<AdminModerationEntry>[] = [
     {
       key: "when",
-      head: "When",
+      head: t("When"),
       className: "w-40",
       cell: (entry) => (
         <span className="text-xs text-muted-foreground">{formatStamp(entry.createdAt) ?? "—"}</span>
@@ -109,17 +110,17 @@ export function ReportsAdmin() {
     },
     {
       key: "moderator",
-      head: "Moderator",
+      head: t("Moderator"),
       cell: (entry) => <span className="text-sm">@{entry.moderatorUsername}</span>,
     },
     {
       key: "action",
-      head: "Action",
+      head: t("Action"),
       cell: (entry) => <StatusBadge tone="muted">{entry.action.replace(/_/g, " ")}</StatusBadge>,
     },
     {
       key: "target",
-      head: "Target",
+      head: t("Target"),
       cell: (entry) => (
         <span className="text-sm text-muted-foreground">
           {entry.targetKind} ·{" "}
@@ -129,7 +130,7 @@ export function ReportsAdmin() {
     },
     {
       key: "reason",
-      head: "Reason",
+      head: t("Reason"),
       className: "min-w-64",
       cell: (entry) => (
         <span className="line-clamp-2 text-sm text-muted-foreground">{entry.reason ?? "—"}</span>
@@ -139,31 +140,35 @@ export function ReportsAdmin() {
 
   return (
     <AdminPage
-      title="Reports"
-      subtitle="Player reports and the decisions recorded against them. Both lists are the database's."
+      title={t("Reports")}
+      subtitle={t(
+        "Player reports and the decisions recorded against them. Both lists are the database's.",
+      )}
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <StatCard
-          label="Open"
+          label={t("Open")}
           value={overview.status === "ready" ? String(overview.data.openReports) : "—"}
           tone={overview.status === "ready" && overview.data.openReports > 0 ? "warning" : "muted"}
         />
         <StatCard
-          label="Being reviewed"
+          label={t("Being reviewed")}
           value={overview.status === "ready" ? String(overview.data.reviewingReports) : "—"}
         />
         <StatCard
-          label="Hidden comments"
+          label={t("Hidden comments")}
           value={overview.status === "ready" ? String(overview.data.hiddenComments) : "—"}
           delta={
-            overview.status === "ready" ? `${overview.data.comments} comments in total` : undefined
+            overview.status === "ready"
+              ? t("{comments} comments in total", { comments: overview.data.comments })
+              : undefined
           }
         />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <FilterSelect
-          label="Report status"
+          label={t("Report status")}
           value={status}
           onChange={(value) => {
             setStatus(value);
@@ -188,11 +193,13 @@ export function ReportsAdmin() {
         <SectionCard>
           <AdminListStates
             state="ready"
-            emptyTitle={status ? "Nothing with that status" : "No reports"}
+            emptyTitle={status ? t("Nothing with that status") : t("No reports")}
             emptyBody={
               status
-                ? "Choose another status, or clear the filter."
-                : "No player has reported anything. New reports appear here the moment they are filed."
+                ? t("Choose another status, or clear the filter.")
+                : t(
+                    "No player has reported anything. New reports appear here the moment they are filed.",
+                  )
             }
           />
         </SectionCard>
@@ -209,7 +216,7 @@ export function ReportsAdmin() {
                         {report.targetKind}
                       </StatusBadge>
                       <span className="text-sm font-medium">
-                        {report.targetLabel ?? report.targetDetail ?? "(deleted content)"}
+                        {report.targetLabel ?? report.targetDetail ?? t("(deleted content)")}
                       </span>
                     </div>
                     <p className="mt-2 text-sm">
@@ -220,12 +227,15 @@ export function ReportsAdmin() {
                     </p>
                     <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span>
-                        Reported by <span className="font-medium">@{report.reporterUsername}</span>
+                        {t("Reported by")}{" "}
+                        <span className="font-medium">@{report.reporterUsername}</span>
                       </span>
-                      <span>Filed {formatAgo(report.createdAt) ?? "—"}</span>
+                      <span>
+                        {t("Filed")} {formatAgo(report.createdAt) ?? "—"}
+                      </span>
                       {report.resolvedByUsername && (
                         <span>
-                          Decided by{" "}
+                          {t("Decided by")}{" "}
                           <span className="font-medium">@{report.resolvedByUsername}</span>
                           {report.resolvedAt ? ` · ${formatAgo(report.resolvedAt)}` : ""}
                         </span>
@@ -239,7 +249,7 @@ export function ReportsAdmin() {
                             so the dashboard does not have to join three tables. */}
                         <Link to="/games/$id" params={{ id: report.targetDetail }}>
                           <ArrowUpRight />
-                          Open game
+                          {t("Open game")}
                         </Link>
                       </Button>
                     )}
@@ -251,7 +261,7 @@ export function ReportsAdmin() {
                         onClick={() => decide(report, "reviewing")}
                       >
                         <Eye />
-                        Start review
+                        {t("Start review")}
                       </Button>
                     )}
                     {report.status !== "resolved" && (
@@ -261,7 +271,7 @@ export function ReportsAdmin() {
                         onClick={() => setPending({ report, status: "resolved", prompt: true })}
                       >
                         <ShieldCheck />
-                        Resolve
+                        {t("Resolve")}
                       </Button>
                     )}
                     {report.status !== "dismissed" && (
@@ -272,7 +282,7 @@ export function ReportsAdmin() {
                         onClick={() => setPending({ report, status: "dismissed", prompt: true })}
                       >
                         <X />
-                        Dismiss
+                        {t("Dismiss")}
                       </Button>
                     )}
                     {report.status !== "open" && (
@@ -283,7 +293,7 @@ export function ReportsAdmin() {
                         onClick={() => setPending({ report, status: "open", prompt: false })}
                       >
                         <RotateCcw />
-                        Reopen
+                        {t("Reopen")}
                       </Button>
                     )}
                   </div>
@@ -303,12 +313,12 @@ export function ReportsAdmin() {
       )}
 
       <SectionCard
-        title="Decisions recorded"
+        title={t("Decisions recorded")}
         className="mt-5"
         bodyClassName="p-0"
         action={
           <span className="text-xs text-muted-foreground">
-            Every moderation action, newest first
+            {t("Every moderation action, newest first")}
           </span>
         }
       >
@@ -324,8 +334,10 @@ export function ReportsAdmin() {
         ) : log.data.items.length === 0 ? (
           <AdminListStates
             state="ready"
-            emptyTitle="No decisions yet"
-            emptyBody="Approving a game, resolving a report, hiding a comment or suspending an account is recorded here with the moderator's name."
+            emptyTitle={t("No decisions yet")}
+            emptyBody={t(
+              "Approving a game, resolving a report, hiding a comment or suspending an account is recorded here with the moderator's name.",
+            )}
           />
         ) : (
           <>
@@ -369,17 +381,19 @@ export function ReportsAdmin() {
       <PromptDialog
         open={pending?.prompt === true}
         onOpenChange={(open) => !open && setPending(null)}
-        title={pending?.status === "resolved" ? "Resolve this report" : "Dismiss this report"}
+        title={pending?.status === "resolved" ? t("Resolve this report") : t("Dismiss this report")}
         description={
           pending
-            ? `The decision is stored with your username, and the reason is kept with it.`
+            ? t("The decision is stored with your username, and the reason is kept with it.")
             : undefined
         }
-        label="Reason for the decision"
+        label={t("Reason for the decision")}
         placeholder={
-          pending?.status === "resolved" ? "What was done about it?" : "Why is no action needed?"
+          pending?.status === "resolved"
+            ? t("What was done about it?")
+            : t("Why is no action needed?")
         }
-        confirmLabel={pending?.status === "resolved" ? "Resolve" : "Dismiss"}
+        confirmLabel={pending?.status === "resolved" ? t("Resolve") : t("Dismiss")}
         destructive={pending?.status === "dismissed"}
         onConfirm={(reason) => {
           if (pending) decide(pending.report, pending.status, reason);

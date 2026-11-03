@@ -13,8 +13,10 @@ import {
   type ProfileState,
 } from "@/lib/users/profile";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/profile")({
-  head: () => seo("Your profile", "Your scores, achievements, saved and recently played games."),
+  head: () =>
+    seo(t("Your profile"), t("Your scores, achievements, saved and recently played games.")),
   component: OwnProfile,
 });
 
@@ -70,12 +72,12 @@ function absent(state: ProfileState) {
     case "anonymous":
       return (
         <EmptyState
-          title="Sign in to see your profile"
-          body="Your profile, scores and saves belong to your account."
+          title={t("Sign in to see your profile")}
+          body={t("Your profile, scores and saves belong to your account.")}
           action={
             <Button asChild>
               <Link to="/login" search={{ redirect: "/profile" }}>
-                Log in
+                {t("Log in")}
               </Link>
             </Button>
           }
@@ -84,11 +86,13 @@ function absent(state: ProfileState) {
     case "missing":
       return (
         <EmptyState
-          title="No profile yet"
-          body="This account has no profile stored. A profile is created with the account, so try again in a moment."
+          title={t("No profile yet")}
+          body={t(
+            "This account has no profile stored. A profile is created with the account, so try again in a moment.",
+          )}
           action={
             <Button variant="secondary" onClick={() => void refreshProfile()}>
-              Try again
+              {t("Try again")}
             </Button>
           }
         />
@@ -96,7 +100,7 @@ function absent(state: ProfileState) {
     case "error":
       return (
         <ErrorState
-          title="Couldn't load your profile"
+          title={t("Couldn't load your profile")}
           body={state.error.message}
           onRetry={() => void refreshProfile()}
         />

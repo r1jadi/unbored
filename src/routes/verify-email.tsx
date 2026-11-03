@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { authErrorMessage, resendConfirmation } from "@/lib/auth/session";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/verify-email")({
   validateSearch: (search: Record<string, unknown>) => ({
     email: typeof search["email"] === "string" ? (search["email"] as string) : undefined,
   }),
   head: () =>
-    seo("Verify your email", "Confirm your email address to finish creating your account."),
+    seo(t("Verify your email"), t("Confirm your email address to finish creating your account.")),
   component: Verify,
 });
 
@@ -33,7 +34,7 @@ function Verify() {
   async function resend() {
     const value = address.trim();
     if (value === "") {
-      setError("Enter the email address you signed up with.");
+      setError(t("Enter the email address you signed up with."));
       return;
     }
     setError(undefined);
@@ -41,7 +42,7 @@ function Verify() {
     setBusy(true);
     try {
       await resendConfirmation(value);
-      setStatus("If that address is waiting for confirmation, a new link is on its way.");
+      setStatus(t("If that address is waiting for confirmation, a new link is on its way."));
     } catch (err) {
       setError(authErrorMessage(err));
     } finally {
@@ -51,20 +52,23 @@ function Verify() {
 
   return (
     <AuthLayout
-      title="Check your email"
+      title={t("Check your email")}
       subtitle={
         address
-          ? `We sent a confirmation link to ${address}. Open it to verify your address.`
-          : "We sent you a confirmation link. Open it to verify your address."
+          ? t("We sent a confirmation link to {address}. Open it to verify your address.", {
+              address,
+            })
+          : t("We sent you a confirmation link. Open it to verify your address.")
       }
     >
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          The email contains a link — not a code. Clicking it opens Unbored and signs you in
-          automatically. If you already opened the link, continue to log in.
+          {t(
+            "The email contains a link — not a code. Clicking it opens Unbored and signs you in automatically. If you already opened the link, continue to log in.",
+          )}
         </p>
         <label className="block space-y-1.5" htmlFor="verify-email">
-          <span className="text-sm font-medium">Email</span>
+          <span className="text-sm font-medium">{t("Email")}</span>
           <input
             id="verify-email"
             type="email"
@@ -87,7 +91,7 @@ function Verify() {
         )}
         <div className="grid gap-2">
           <Button variant="secondary" size="lg" className="w-full" disabled={busy} onClick={resend}>
-            Resend confirmation link
+            {t("Resend confirmation link")}
           </Button>
           <Button
             variant="play"
@@ -95,12 +99,12 @@ function Verify() {
             className="w-full"
             onClick={() => nav({ to: "/login", search: address ? { email: address } : undefined })}
           >
-            Continue to log in
+            {t("Continue to log in")}
           </Button>
           <p className="text-center text-xs text-muted-foreground">
-            Didn&apos;t get the email? Check spam, then resend. Links expire — use the newest one.{" "}
+            {t("Didn't get the email? Check spam, then resend. Links expire — use the newest one.")}{" "}
             <Link to="/signup" className="underline underline-offset-4">
-              Start over
+              {t("Start over")}
             </Link>
           </p>
         </div>

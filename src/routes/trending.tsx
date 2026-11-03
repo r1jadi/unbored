@@ -5,8 +5,9 @@ import { EmptyState } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/trending")({
-  head: () => seo("Trending games", "What everyone is playing right now."),
+  head: () => seo(t("Trending games"), t("What everyone is playing right now.")),
   component: Trending,
 });
 
@@ -21,13 +22,13 @@ export const Route = createFileRoute("/trending")({
  */
 function Trending() {
   return (
-    <GameListPage title="Trending games" subtitle="What everyone is playing right now.">
+    <GameListPage title={t("Trending games")} subtitle={t("What everyone is playing right now.")}>
       <EmptyState
-        title="Trending is coming soon"
-        body="Until then, see which games people have played the most."
+        title={t("Trending is coming soon")}
+        body={t("Until then, see which games people have played the most.")}
         action={
           <Button asChild variant="secondary">
-            <Link to="/popular">See popular games</Link>
+            <Link to="/popular">{t("See popular games")}</Link>
           </Button>
         }
       />

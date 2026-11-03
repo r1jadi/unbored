@@ -4,6 +4,7 @@ import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { Button } from "@/components/ui/button";
 import { points } from "@/lib/format";
 
+import { t } from "@/lib/settings/language";
 /**
  * An unfinished run, found on the player's account.
  *
@@ -36,19 +37,19 @@ export function SavedRunCard({
           <History className="size-5 text-muted-foreground" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold">Pick up where you left off?</h1>
+          <h1 className="text-2xl font-semibold">{t("Pick up where you left off?")}</h1>
           <p className="text-sm text-muted-foreground">
-            You have an unfinished run of {title}, saved to your account.
+            {t("You have an unfinished run of {title}, saved to your account.", { title })}
           </p>
         </div>
 
         <dl className="grid w-full grid-cols-2 gap-2 text-sm">
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Score so far</dt>
+            <dt className="text-xs text-muted-foreground">{t("Score so far")}</dt>
             <dd className="text-lg font-semibold tabular">{points(score)}</dd>
           </div>
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Left at</dt>
+            <dt className="text-xs text-muted-foreground">{t("Left at")}</dt>
             <dd className="text-lg font-semibold tabular">{where}</dd>
           </div>
         </dl>
@@ -56,19 +57,21 @@ export function SavedRunCard({
         <div className="flex w-full flex-col gap-2">
           <Button variant="play" size="lg" onClick={onContinue} autoFocus>
             <Play className="fill-current" />
-            Continue run
+            {t("Continue run")}
           </Button>
           <Button variant="secondary" size="lg" onClick={onNewRun}>
             <RotateCcw />
-            New run
+            {t("New run")}
           </Button>
           <Button asChild variant="ghost" size="lg">
-            <ExitGameLink slug={slug}>Back to {title}</ExitGameLink>
+            <ExitGameLink slug={slug}>{t("Back to {title}", { title })}</ExitGameLink>
           </Button>
         </div>
 
         <p className="text-xs text-muted-foreground">
-          {`Starting a new run ends this one and keeps its score of ${points(score)}.`}
+          {t("Starting a new run ends this one and keeps its score of {score}.", {
+            score: points(score),
+          })}
         </p>
       </div>
     </div>

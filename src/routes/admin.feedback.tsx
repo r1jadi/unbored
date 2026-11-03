@@ -24,34 +24,35 @@ import {
   type FeedbackCategory,
 } from "@/lib/admin/api";
 
+import { t, msg } from "@/lib/settings/language";
 export const Route = createFileRoute("/admin/feedback")({
   head: () => ({
-    meta: [{ title: "Feedback — Unbored admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: t("Feedback — Unbored admin") }, { name: "robots", content: "noindex" }],
   }),
   component: FeedbackAdmin,
 });
 
 const categoryOptions = [
-  { value: "all", label: "All feedback" },
-  { value: "idea", label: "Ideas" },
-  { value: "bug", label: "Something broke" },
-  { value: "praise", label: "Kind words" },
-  { value: "other", label: "Something else" },
+  { value: "all", label: msg("All feedback") },
+  { value: "idea", label: msg("Ideas") },
+  { value: "bug", label: msg("Something broke") },
+  { value: "praise", label: msg("Kind words") },
+  { value: "other", label: msg("Something else") },
 ];
 
 const categories: Record<FeedbackCategory, { label: string; icon: LucideIcon }> = {
-  idea: { label: "Idea", icon: Lightbulb },
-  bug: { label: "Something broke", icon: Bug },
-  praise: { label: "Kind words", icon: Heart },
-  other: { label: "Something else", icon: MessageCircle },
+  idea: { label: msg("Idea"), icon: Lightbulb },
+  bug: { label: msg("Something broke"), icon: Bug },
+  praise: { label: msg("Kind words"), icon: Heart },
+  other: { label: msg("Something else"), icon: MessageCircle },
 };
 
 const moods: Record<number, string> = {
-  1: "😣 Rough",
-  2: "😕 Meh",
-  3: "😐 Okay",
-  4: "🙂 Good",
-  5: "🤩 Love it",
+  1: msg("😣 Rough"),
+  2: msg("😕 Meh"),
+  3: msg("😐 Okay"),
+  4: msg("🙂 Good"),
+  5: msg("🤩 Love it"),
 };
 
 function CategoryLabel({ category }: { category: FeedbackCategory }) {
@@ -59,7 +60,7 @@ function CategoryLabel({ category }: { category: FeedbackCategory }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-sm">
       <Icon className="size-3.5 text-muted-foreground" aria-hidden />
-      {label}
+      {t(label)}
     </span>
   );
 }
@@ -90,7 +91,7 @@ export function FeedbackAdmin() {
   const columns: Column<AdminFeedback>[] = [
     {
       key: "message",
-      head: "Feedback",
+      head: t("Feedback"),
       className: "min-w-96",
       cell: (f) => (
         <div className="min-w-0">
@@ -103,15 +104,19 @@ export function FeedbackAdmin() {
         </div>
       ),
     },
-    { key: "kind", head: "Kind", cell: (f) => <CategoryLabel category={f.category} /> },
+    { key: "kind", head: t("Kind"), cell: (f) => <CategoryLabel category={f.category} /> },
     {
       key: "mood",
-      head: "Mood",
-      cell: (f) => <span className="text-sm whitespace-nowrap">{moods[f.mood] ?? f.mood}</span>,
+      head: t("Mood"),
+      cell: (f) => (
+        <span className="text-sm whitespace-nowrap">
+          {moods[f.mood] ? t(moods[f.mood]!) : f.mood}
+        </span>
+      ),
     },
     {
       key: "from",
-      head: "From",
+      head: t("From"),
       cell: (f) => (
         <span className="flex items-center gap-2">
           <UserAvatar username={f.senderUsername} size="sm" />
@@ -121,17 +126,17 @@ export function FeedbackAdmin() {
     },
     {
       key: "when",
-      head: "Sent",
+      head: t("Sent"),
       cell: (f) => (
         <span className="text-xs text-muted-foreground">{formatAgo(f.createdAt) ?? "—"}</span>
       ),
     },
     {
       key: "email",
-      head: "Team inbox",
+      head: t("Team inbox"),
       cell: (f) => (
         <StatusBadge tone={f.emailedAt ? "success" : "warning"}>
-          {f.emailedAt ? "emailed" : "pending"}
+          {f.emailedAt ? t("emailed") : t("pending")}
         </StatusBadge>
       ),
     },
@@ -139,8 +144,10 @@ export function FeedbackAdmin() {
 
   return (
     <AdminPage
-      title="Feedback"
-      subtitle="Ideas, bugs and kind words from Settings → Send feedback. Each one is also emailed to the team inbox."
+      title={t("Feedback")}
+      subtitle={t(
+        "Ideas, bugs and kind words from Settings → Send feedback. Each one is also emailed to the team inbox.",
+      )}
     >
       <Toolbar>
         <SearchField
@@ -149,11 +156,11 @@ export function FeedbackAdmin() {
             setQ(value);
             setPage(0);
           }}
-          label="Search feedback"
-          placeholder="Search the text"
+          label={t("Search feedback")}
+          placeholder={t("Search the text")}
         />
         <FilterSelect
-          label="Kind of feedback"
+          label={t("Kind of feedback")}
           value={category}
           onChange={(value) => {
             setCategory(value);
@@ -178,9 +185,11 @@ export function FeedbackAdmin() {
         <SectionCard>
           <AdminListStates
             state="ready"
-            emptyTitle={term ? "No feedback matches that" : "No feedback yet"}
+            emptyTitle={term ? t("No feedback matches that") : t("No feedback yet")}
             emptyBody={
-              term ? "Try a different search." : "Nothing has been sent from the feedback page."
+              term
+                ? t("Try a different search.")
+                : t("Nothing has been sent from the feedback page.")
             }
           />
         </SectionCard>
@@ -196,12 +205,12 @@ export function FeedbackAdmin() {
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm break-words whitespace-pre-wrap">{f.message}</span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    @{f.senderUsername} · {categories[f.category].label} · {moods[f.mood] ?? f.mood}{" "}
-                    · {formatAgo(f.createdAt) ?? "—"}
+                    @{f.senderUsername} · {t(categories[f.category].label)} ·{" "}
+                    {moods[f.mood] ? t(moods[f.mood]!) : f.mood} · {formatAgo(f.createdAt) ?? "—"}
                   </span>
                 </span>
                 {f.emailedAt && (
-                  <Mail className="size-4 text-muted-foreground" aria-label="Emailed" />
+                  <Mail className="size-4 text-muted-foreground" aria-label={t("Emailed")} />
                 )}
               </MobileRow>
             )}

@@ -20,6 +20,7 @@ import { seo } from "@/lib/seo";
 import { readWithLegacy, safeLocalStorage } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
+import { t, msg } from "@/lib/settings/language";
 type SearchTab = "top" | "games" | "people";
 
 type SearchParams = {
@@ -28,6 +29,9 @@ type SearchParams = {
   /** The result tab, when it is not the default "top". */
   tab?: Exclude<SearchTab, "top">;
 };
+
+/** The tabs' names, by key. */
+const TAB_LABELS = { top: msg("Top"), games: msg("Games"), people: msg("People") };
 
 export const Route = createFileRoute("/search")({
   // Lenient on purpose: a hand-edited or old link should open the search page,
@@ -41,7 +45,7 @@ export const Route = createFileRoute("/search")({
       ...(tab ? { tab } : {}),
     };
   },
-  head: () => seo("Search", "Search games, creators and players."),
+  head: () => seo(t("Search"), t("Search games, creators and players.")),
   component: SearchPage,
 });
 
@@ -135,7 +139,7 @@ function SearchPage() {
     <Page>
       <div className="sticky top-0 z-30 bg-background/90 px-4 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-4 backdrop-blur-xl md:static md:px-0 md:pt-8">
         <Label htmlFor="q" className="sr-only">
-          Search
+          {t("Search")}
         </Label>
         <div className="relative">
           <SearchIcon className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -147,12 +151,12 @@ function SearchPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && q.trim() !== "") remember(q.trim());
             }}
-            placeholder="Search games and people"
+            placeholder={t("Search games and people")}
             className="h-11 w-full rounded-xl bg-surface pr-10 pl-10 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           {q && (
             <button
-              aria-label="Clear search"
+              aria-label={t("Clear search")}
               onClick={() => setQ("")}
               className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground"
             >
@@ -162,20 +166,20 @@ function SearchPage() {
         </div>
         {q && (
           <div className="mt-3 flex gap-5 border-b border-border text-sm" role="tablist">
-            {(["top", "games", "people"] as const).map((t) => (
+            {(["top", "games", "people"] as const).map((key) => (
               <button
-                key={t}
+                key={key}
                 role="tab"
-                aria-selected={tab === t}
-                onClick={() => setTab(t)}
+                aria-selected={tab === key}
+                onClick={() => setTab(key)}
                 className={cn(
-                  "-mb-px border-b-2 pb-2 capitalize",
-                  tab === t
+                  "-mb-px border-b-2 pb-2",
+                  tab === key
                     ? "border-foreground font-medium"
                     : "border-transparent text-muted-foreground",
                 )}
               >
-                {t}
+                {t(TAB_LABELS[key])}
               </button>
             ))}
           </div>
@@ -185,15 +189,15 @@ function SearchPage() {
       {!q && (
         <div className="px-4 md:px-0">
           <div className="mt-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Recent</h2>
+            <h2 className="text-sm font-semibold">{t("Recent")}</h2>
             {recent.length > 0 && (
               <button className="text-xs text-muted-foreground" onClick={clearRecent}>
-                Clear all
+                {t("Clear all")}
               </button>
             )}
           </div>
           {recent.length === 0 ? (
-            <p className="py-6 text-sm text-muted-foreground">No recent searches.</p>
+            <p className="py-6 text-sm text-muted-foreground">{t("No recent searches.")}</p>
           ) : (
             <ul className="mt-2">
               {recent.map((r) => (
@@ -203,7 +207,7 @@ function SearchPage() {
                     {r}
                   </button>
                   <button
-                    aria-label={`Remove ${r}`}
+                    aria-label={t("Remove {r}", { r })}
                     onClick={() => {
                       const next = recent.filter((x) => x !== r);
                       setRecent(next);
@@ -216,7 +220,7 @@ function SearchPage() {
               ))}
             </ul>
           )}
-          <h2 className="mt-6 text-sm font-semibold">Popular searches</h2>
+          <h2 className="mt-6 text-sm font-semibold">{t("Popular searches")}</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             {["daily", "puzzle", "reaction", "color merge"].map((s) => (
               <button
@@ -250,15 +254,19 @@ function GameResults({ term }: { term: string }) {
   if (status === "loading") return <ListSkeleton rows={5} />;
   if (status === "error") {
     return (
-      <ErrorState title="Couldn't search games" body={catalogErrorMessage(error)} onRetry={retry} />
+      <ErrorState
+        title={t("Couldn't search games")}
+        body={catalogErrorMessage(error)}
+        onRetry={retry}
+      />
     );
   }
   if (items.length === 0) {
     return (
       <EmptyState
         icon={SearchIcon}
-        title={`No games for "${term}"`}
-        body="Try a different spelling or a category name."
+        title={t('No games for "{term}"', { term })}
+        body={t("Try a different spelling or a category name.")}
       />
     );
   }
@@ -329,7 +337,7 @@ function PeopleResults({ query, only }: { query: string; only: boolean }) {
         setPeople(visible);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Couldn't search people.");
+          setError(err instanceof Error ? err.message : t("Couldn't search people."));
           setPeople([]);
         }
       }
@@ -343,7 +351,7 @@ function PeopleResults({ query, only }: { query: string; only: boolean }) {
   if (error) {
     return (
       <ErrorState
-        title="Couldn't search people"
+        title={t("Couldn't search people")}
         body={error}
         onRetry={() => setAttempt((n) => n + 1)}
       />
@@ -354,8 +362,8 @@ function PeopleResults({ query, only }: { query: string; only: boolean }) {
     return (
       <EmptyState
         icon={SearchIcon}
-        title={`No people for "${query}"`}
-        body="Try a different spelling."
+        title={t('No people for "{query}"', { query })}
+        body={t("Try a different spelling.")}
       />
     );
   }

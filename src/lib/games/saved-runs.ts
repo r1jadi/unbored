@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, type RefObject } from "react";
 
 import { getAccessToken, getAuthState, useAuth } from "@/lib/auth/session";
+import { browserOffline } from "@/lib/games/offline";
 import { restMutate, supabaseBase, supabaseHeaders } from "@/lib/supabase/rest";
 
 import type { PlaySession } from "@/lib/games/sessions";
@@ -72,7 +73,8 @@ export async function fetchSavedRun(
   rulesVersion: string,
 ): Promise<SavedRun | null> {
   const token = signedInToken();
-  if (!token || !RESUMABLE_RULES.has(rulesVersion)) return null;
+  // Offline there is no account to read it from: start an offline run instead.
+  if (!token || !RESUMABLE_RULES.has(rulesVersion) || browserOffline()) return null;
   try {
     const response = await restMutate("rpc/saved_run", "POST", token, {
       p_game_slug: gameSlug,

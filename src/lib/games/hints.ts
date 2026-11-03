@@ -77,6 +77,7 @@ import {
 } from "@/lib/games/tango";
 import { solution as zipSolution, type ZipRun } from "@/lib/games/zip";
 
+import { msg, t } from "@/lib/settings/language";
 /** How long a player goes without a right move before a hint is offered. */
 export const HINT_IDLE_MS = 10_000;
 /** How long after one hint the next can be asked for. */
@@ -93,11 +94,17 @@ function either(items: readonly (string | number)[]): string {
 /** "1, 2 and 3". */
 function all(items: readonly (string | number)[]): string {
   if (items.length <= 1) return items.join("");
-  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+  return t("{list} and {last}", {
+    list: items.slice(0, -1).join(", "),
+    last: items[items.length - 1],
+  });
 }
 
 function at(cell: number, side: number): string {
-  return `row ${Math.floor(cell / side) + 1}, column ${(cell % side) + 1}`;
+  return t("row {row}, column {column}", {
+    row: Math.floor(cell / side) + 1,
+    column: (cell % side) + 1,
+  });
 }
 
 // ── Stack 10 ────────────────────────────────────────────────────────────────
@@ -134,24 +141,27 @@ export function stack10Hint(run: Stack10Run): { column: number; reason: string }
     }
   }
   if (!best) return null;
-  const name = `column ${best.column + 1}`;
+  const name = t("column {n}", { n: best.column + 1 });
   const reason = best.clears
-    ? `The ${tile} makes ${name} exactly 10, which clears it${
-        clearing > 1 ? ` — and it holds the most tiles of the columns that would clear` : ""
-      }.`
-    : `No column reaches exactly 10 with a ${tile}. ${
-        name[0].toUpperCase() + name.slice(1)
-      } gets closest, at ${best.total}, without going over.`;
+    ? t("The {tile} makes {name} exactly 10, which clears it{n}.", {
+        tile,
+        name,
+        n: clearing > 1 ? t(" — and it holds the most tiles of the columns that would clear") : "",
+      })
+    : t(
+        "No column reaches exactly 10 with a {tile}. {n} gets closest, at {total}, without going over.",
+        { tile, n: name[0].toUpperCase() + name.slice(1), total: best.total },
+      );
   return { column: best.column, reason };
 }
 
 // ── Color Merge ─────────────────────────────────────────────────────────────
 
 const DIRECTION_NAMES: Record<ColorMergeDirection, string> = {
-  0: "up",
-  [RIGHT]: "right",
-  [DOWN]: "down",
-  [LEFT]: "left",
+  0: msg("up"),
+  [RIGHT]: msg("right"),
+  [DOWN]: msg("down"),
+  [LEFT]: msg("left"),
 };
 
 /**
@@ -170,13 +180,19 @@ export function colorMergeHint(
     if (best === null || gain > best.gain) best = { direction, gain };
   }
   if (!best) return null;
-  const name = DIRECTION_NAMES[best.direction];
+  const name = t(DIRECTION_NAMES[best.direction]);
   return {
     direction: best.direction,
     reason:
       best.gain > 0
-        ? `Sliding ${name} merges the most tiles of any slide: +${best.gain}.`
-        : `No slide merges anything yet. Sliding ${name} moves the board so new pairs can line up.`,
+        ? t("Sliding {name} merges the most tiles of any slide: +{gain}.", {
+            name,
+            gain: best.gain,
+          })
+        : t(
+            "No slide merges anything yet. Sliding {name} moves the board so new pairs can line up.",
+            { name },
+          ),
   };
 }
 
@@ -219,8 +235,11 @@ export function gridburstHint(
     cell,
     reason:
       lines > 0
-        ? `Piece ${slot + 1} at row ${row}, column ${column} bursts ${lines} ${lines === 1 ? "line" : "lines"}.`
-        : `Nothing bursts yet. Piece ${slot + 1} at row ${row}, column ${column} keeps room for the rest of your tray.`,
+        ? `Piece ${slot + 1} at row ${row}, column ${column} bursts ${lines} ${lines === 1 ? t("line") : t("lines")}.`
+        : t(
+            "Nothing bursts yet. Piece {n} at row {row}, column {column} keeps room for the rest of your tray.",
+            { n: slot + 1, row, column },
+          ),
   };
 }
 
@@ -253,12 +272,17 @@ export function oneMoveHint(
         kind: "row",
         row,
         size,
-        reason: `Row ${row + 1} has the most cells out of the checkerboard pattern (${offInRow}). A move flips a cell and its neighbours, so the middle of that cross is in this row.`,
+        reason: t(
+          "Row {n} has the most cells out of the checkerboard pattern ({offInRow}). A move flips a cell and its neighbours, so the middle of that cross is in this row.",
+          { n: row + 1, offInRow },
+        ),
       }
     : {
         kind: "cell",
         cell,
-        reason: `The cells out of the checkerboard pattern are this one and its neighbours above, below, left and right — exactly the cross a tap here flips back.`,
+        reason: t(
+          "The cells out of the checkerboard pattern are this one and its neighbours above, below, left and right — exactly the cross a tap here flips back.",
+        ),
       };
 }
 
@@ -301,22 +325,22 @@ export function queensHint(run: QueensRun): QueensHint | null {
   const units: Unit[] = [];
   for (let line = 0; line < size; line += 1) {
     units.push({
-      name: `row ${line + 1}`,
-      own: `row ${line + 1}`,
+      name: t("row {n}", { n: line + 1 }),
+      own: t("row {n}", { n: line + 1 }),
       cells: everyCell.filter((cell) => rowOf(cell) === line),
     });
   }
   for (let line = 0; line < size; line += 1) {
     units.push({
-      name: `column ${line + 1}`,
-      own: `column ${line + 1}`,
+      name: t("column {n}", { n: line + 1 }),
+      own: t("column {n}", { n: line + 1 }),
       cells: everyCell.filter((cell) => columnOf(cell) === line),
     });
   }
   for (let region = 0; region < size; region += 1) {
     units.push({
-      name: "the outlined colour region",
-      own: "its colour region",
+      name: t("the outlined colour region"),
+      own: t("its colour region"),
       cells: everyCell.filter((cell) => regions[cell] === region),
     });
   }
@@ -331,8 +355,11 @@ export function queensHint(run: QueensRun): QueensHint | null {
     if (left.length !== 1) continue;
     const reason =
       unit.cells.length === 1
-        ? "Its colour region is this one cell, so the crown goes here."
-        : `It's the only cell left in ${unit.own} where a crown can go: every other one is ruled out by a crown or an X in red.`;
+        ? t("Its colour region is this one cell, so the crown goes here.")
+        : t(
+            "It's the only cell left in {own} where a crown can go: every other one is ruled out by a crown or an X in red.",
+            { own: unit.own },
+          );
     return { cell: left[0], kind: "crown", reason, focus: unit.cells };
   }
 
@@ -350,7 +377,10 @@ export function queensHint(run: QueensRun): QueensHint | null {
       return {
         cell: target,
         kind: "mark",
-        reason: `The outlined colour region only has room in ${line.name}, so ${line.name}'s crown goes in that region — not here. Mark it with an X.`,
+        reason: t(
+          "The outlined colour region only has room in {name}, so {name2}'s crown goes in that region — not here. Mark it with an X.",
+          { name: line.name, name2: line.name },
+        ),
         focus: roomy,
       };
     }
@@ -366,7 +396,10 @@ export function queensHint(run: QueensRun): QueensHint | null {
     return {
       cell: target,
       kind: "mark",
-      reason: `Every open cell in ${line.name} is in this cell's colour region, so that region's crown must be in ${line.name} — not here. Mark it with an X.`,
+      reason: t(
+        "Every open cell in {name} is in this cell's colour region, so that region's crown must be in {name2} — not here. Mark it with an X.",
+        { name: line.name, name2: line.name },
+      ),
       focus: roomy,
     };
   }
@@ -388,7 +421,9 @@ export function queensHint(run: QueensRun): QueensHint | null {
       return {
         cell,
         kind: "mark",
-        reason: `A crown here would leave no room for one in ${unit.name}. Mark it with an X.`,
+        reason: t("A crown here would leave no room for one in {name}. Mark it with an X.", {
+          name: unit.name,
+        }),
         focus: roomy,
       };
     }
@@ -401,7 +436,10 @@ export function queensHint(run: QueensRun): QueensHint | null {
     return {
       cell,
       kind: "crown",
-      reason: `This is the only cell in row ${row + 1} that works: a crown anywhere else in that row leads to a dead end further on.`,
+      reason: t(
+        "This is the only cell in row {n} that works: a crown anywhere else in that row leads to a dead end further on.",
+        { n: row + 1 },
+      ),
       focus: everyCell.filter((other) => rowOf(other) === row),
     };
   }
@@ -465,10 +503,11 @@ export function eightPuzzleHint(run: EightPuzzleRun): { cell: number; reason: st
     cell: best.cell,
     reason:
       best.left === 0
-        ? `Sliding the ${tile} into the gap solves the board.`
-        : `Sliding the ${tile} leaves ${best.left} ${
-            best.left === 1 ? "slide" : "slides"
-          } to solve the board — the fewest of any move from here.`,
+        ? t("Sliding the {tile} into the gap solves the board.", { tile })
+        : t(
+            "Sliding the {tile} leaves {left} {n} to solve the board — the fewest of any move from here.",
+            { tile, left: best.left, n: best.left === 1 ? t("slide") : t("slides") },
+          ),
   };
 }
 
@@ -482,8 +521,8 @@ export type TangoHint = {
   readonly reason: string;
 };
 
-const symbol = (value: TangoValue) => (value === SUN ? "sun" : "moon");
-const symbols = (value: TangoValue) => (value === SUN ? "suns" : "moons");
+const symbol = (value: TangoValue) => (value === SUN ? t("sun") : t("moon"));
+const symbols = (value: TangoValue) => (value === SUN ? t("suns") : t("moons"));
 const other = (value: TangoValue): TangoValue => (value === SUN ? MOON : SUN);
 
 /** The six cells of each row and column, named. */
@@ -491,11 +530,11 @@ const TANGO_LINES: readonly { name: string; cells: readonly number[] }[] = (() =
   const lines: { name: string; cells: number[] }[] = [];
   for (let line = 0; line < TANGO_SIDE; line += 1) {
     lines.push({
-      name: `row ${line + 1}`,
+      name: t("row {n}", { n: line + 1 }),
       cells: Array.from({ length: TANGO_SIDE }, (_, index) => line * TANGO_SIDE + index),
     });
     lines.push({
-      name: `column ${line + 1}`,
+      name: t("column {n}", { n: line + 1 }),
       cells: Array.from({ length: TANGO_SIDE }, (_, index) => index * TANGO_SIDE + line),
     });
   }
@@ -515,12 +554,19 @@ function tangoClash(
     if (index < 0) continue;
     for (let start = Math.max(0, index - 2); start <= Math.min(index, TANGO_SIDE - 3); start += 1) {
       if ([0, 1, 2].every((step) => cells[line.cells[start + step]] === value)) {
-        return `that makes three ${symbols(value)} in a row in ${line.name}`;
+        return t("that makes three {value} in a row in {name}", {
+          value: symbols(value),
+          name: line.name,
+        });
       }
     }
     const count = line.cells.filter((other) => cells[other] === value).length;
     if (count > TANGO_SIDE / 2) {
-      return `${line.name} would have ${count} ${symbols(value)}, and only three fit`;
+      return t("{name} would have {count} {value}, and only three fit", {
+        name: line.name,
+        count,
+        value: symbols(value),
+      });
     }
   }
   for (const sign of signs) {
@@ -528,9 +574,10 @@ function tangoClash(
     const x = cells[sign.a];
     const y = cells[sign.b];
     if (x && y && (x === y) !== sign.same) {
-      return `the ${sign.same ? "=" : "×"} sign next to it says the two cells ${
-        sign.same ? "match" : "differ"
-      }`;
+      return t("the {n} sign next to it says the two cells {n2}", {
+        n: sign.same ? "=" : "×",
+        n2: sign.same ? t("match") : t("differ"),
+      });
     }
   }
   return null;
@@ -556,10 +603,15 @@ function tangoForced(
       return {
         cell: here,
         value: sign.same ? near : other(near),
-        reason: `The ${sign.same ? "=" : "×"} sign between this cell and ${at(
-          there,
-          TANGO_SIDE,
-        )} means they ${sign.same ? "match" : "differ"}, and that one is a ${symbol(near)}.`,
+        reason: t(
+          "The {n} sign between this cell and {there} means they {n2}, and that one is a {near}.",
+          {
+            n: sign.same ? "=" : "×",
+            there: at(there, TANGO_SIDE),
+            n2: sign.same ? t("match") : t("differ"),
+            near: symbol(near),
+          },
+        ),
       };
     }
   }
@@ -579,7 +631,10 @@ function tangoForced(
           return {
             cell,
             value: other(look(a)),
-            reason: `Two ${symbols(look(a))} sit next to it in ${line.name}, and three in a row isn't allowed.`,
+            reason: t("Two {n} sit next to it in {name}, and three in a row isn't allowed.", {
+              n: symbols(look(a)),
+              name: line.name,
+            }),
           };
         }
       }
@@ -587,7 +642,10 @@ function tangoForced(
         return {
           cell,
           value: other(look(-1)),
-          reason: `It sits between two ${symbols(look(-1))} in ${line.name}, and three in a row isn't allowed.`,
+          reason: t("It sits between two {n} in {name}, and three in a row isn't allowed.", {
+            n: symbols(look(-1)),
+            name: line.name,
+          }),
         };
       }
     }
@@ -601,7 +659,11 @@ function tangoForced(
         return {
           cell: gap,
           value: other(value),
-          reason: `${name} already has its three ${symbols(value)}, so the rest of it is ${symbols(other(value))}.`,
+          reason: t("{name} already has its three {value}, so the rest of it is {n}.", {
+            name,
+            value: symbols(value),
+            n: symbols(other(value)),
+          }),
         };
       }
     }
@@ -629,7 +691,7 @@ function tangoContradiction(
         const words = tangoClash(trial, signs, at);
         if (words) return words;
       }
-      return "a clash";
+      return t("a clash");
     }
     const next = tangoForced(trial, signs);
     if (!next) return null;
@@ -662,7 +724,11 @@ export function tangoHint(run: TangoRun): TangoHint | null {
         cell,
         value: answer[cell],
         fix: true,
-        reason: `This ${symbol(value)} breaks a rule: ${words}. It should be a ${symbol(answer[cell])}.`,
+        reason: t("This {value} breaks a rule: {words}. It should be a {n}.", {
+          value: symbol(value),
+          words,
+          n: symbol(answer[cell]),
+        }),
       };
     }
   }
@@ -672,7 +738,10 @@ export function tangoHint(run: TangoRun): TangoHint | null {
       cell,
       value: answer[cell],
       fix: true,
-      reason: `With a ${symbol(value)} here the board can't be finished — it needs a ${symbol(answer[cell])}.`,
+      reason: t("With a {value} here the board can't be finished — it needs a {n}.", {
+        value: symbol(value),
+        n: symbol(answer[cell]),
+      }),
     };
   }
 
@@ -688,7 +757,10 @@ export function tangoHint(run: TangoRun): TangoHint | null {
         cell,
         value: other(value),
         fix: false,
-        reason: `If this were a ${symbol(value)}, the rules would force a clash: ${words}. So it's a ${symbol(other(value))}.`,
+        reason: t(
+          "If this were a {value}, the rules would force a clash: {words}. So it's a {n}.",
+          { value: symbol(value), words, n: symbol(other(value)) },
+        ),
       };
     }
   }
@@ -699,9 +771,10 @@ export function tangoHint(run: TangoRun): TangoHint | null {
     cell: empty,
     value: answer[empty],
     fix: false,
-    reason: `Only a ${symbol(answer[empty])} here lets the board be finished: a ${symbol(
-      other(answer[empty]),
-    )} leads to a dead end a few steps on.`,
+    reason: t(
+      "Only a {n} here lets the board be finished: a {n2} leads to a dead end a few steps on.",
+      { n: symbol(answer[empty]), n2: symbol(other(answer[empty])) },
+    ),
   };
 }
 
@@ -753,10 +826,10 @@ export function sudokuHint(run: SudokuRun): SudokuHint | null {
     const same = (unit: readonly number[]) =>
       unit.some((other) => other !== repeat && cells[other] === digit);
     const where = same(units.row)
-      ? `row ${Math.floor(repeat / 9) + 1}`
+      ? t("row {n}", { n: Math.floor(repeat / 9) + 1 })
       : same(units.column)
-        ? `column ${(repeat % 9) + 1}`
-        : "its box";
+        ? t("column {n}", { n: (repeat % 9) + 1 })
+        : t("its box");
     return {
       cell: repeat,
       action: "clear",
@@ -778,7 +851,9 @@ export function sudokuHint(run: SudokuRun): SudokuHint | null {
         cell: culprit,
         action: "clear",
         digit: cells[culprit],
-        reason: `With a ${cells[culprit]} here, the rest of the board can't be finished. Clear it.`,
+        reason: t("With a {n} here, the rest of the board can't be finished. Clear it.", {
+          n: cells[culprit],
+        }),
       };
     }
     const first = filled.find((cell) => cells[cell] !== solution[cell]) ?? filled[0];
@@ -787,7 +862,9 @@ export function sudokuHint(run: SudokuRun): SudokuHint | null {
         cell: first,
         action: "clear",
         digit: cells[first],
-        reason: `The board can't be finished as it stands. Start by clearing this ${cells[first]}.`,
+        reason: t("The board can't be finished as it stands. Start by clearing this {n}.", {
+          n: cells[first],
+        }),
       };
     }
   }
@@ -805,18 +882,25 @@ export function sudokuHint(run: SudokuRun): SudokuHint | null {
         const spots = unit.filter((cell) => options[cell].includes(digit));
         if (spots.length !== 1) continue;
         const name =
-          kind === "box" ? "its box" : kind === "row" ? `row ${index + 1}` : `column ${index + 1}`;
+          kind === "box"
+            ? t("its box")
+            : kind === "row"
+              ? t("row {n}", { n: index + 1 })
+              : t("column {n}", { n: index + 1 });
         const sees =
           kind === "box"
-            ? "its row or column"
+            ? t("its row or column")
             : kind === "row"
-              ? "its column or box"
-              : "its row or box";
+              ? t("its column or box")
+              : t("its row or box");
         return {
           cell: spots[0],
           action: "place",
           digit,
-          reason: `This is the only place in ${name} where a ${digit} fits: every other empty cell there already sees a ${digit} in ${sees}.`,
+          reason: t(
+            "This is the only place in {name} where a {digit} fits: every other empty cell there already sees a {digit2} in {sees}.",
+            { name, digit, digit2: digit, sees },
+          ),
         };
       }
     }
@@ -830,9 +914,10 @@ export function sudokuHint(run: SudokuRun): SudokuHint | null {
       cell: single,
       action: "place",
       digit,
-      reason: `Only a ${digit} fits here: its row, column and box already hold ${all(
-        DIGITS.filter((other) => other !== digit),
-      )}.`,
+      reason: t("Only a {digit} fits here: its row, column and box already hold {n}.", {
+        digit,
+        n: all(DIGITS.filter((other) => other !== digit)),
+      }),
     };
   }
 
@@ -853,10 +938,18 @@ export function sudokuHint(run: SudokuRun): SudokuHint | null {
   const failing = fits.filter((other) => !working.includes(other));
   const reason =
     working.length === 1
-      ? `Only ${either(fits)} fit here, and with ${
-          failing.length === 1 ? `a ${failing[0]}` : either(failing)
-        } the rest of the board can't be finished — so it's a ${digit}.`
-      : `${either(fits)} all fit here, and more than one of them can finish the board. A ${digit} works.`;
+      ? t(
+          "Only {fits} fit here, and with {n} the rest of the board can't be finished — so it's a {digit}.",
+          {
+            fits: either(fits),
+            n: failing.length === 1 ? `a ${failing[0]}` : either(failing),
+            digit,
+          },
+        )
+      : t("{fits} all fit here, and more than one of them can finish the board. A {digit} works.", {
+          fits: either(fits),
+          digit,
+        });
   return { cell: best, action: "place", digit, reason };
 }
 

@@ -25,6 +25,7 @@ import { useDocumentTitle } from "@/lib/document-title";
 import { prefetchGamePage } from "@/lib/prefetch";
 import { breadcrumbJsonLd, seo, videoGameJsonLd } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/games/$id")({
   loader: ({ context, params }) => prefetchGamePage(context.queryClient, params.id),
   // Document metadata is built before the record arrives, so the title comes from
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/games/$id")({
       jsonLd: [
         videoGameJsonLd({ id: params.id, title }),
         breadcrumbJsonLd([
-          { name: "Explore", path: "/explore" },
+          { name: t("Explore"), path: "/explore" },
           { name: title, path: `/games/${params.id}` },
         ]),
       ],
@@ -53,7 +54,7 @@ function GameDetails() {
     state.status === "ready"
       ? state.game.title
       : state.status === "missing"
-        ? "Game not found"
+        ? t("Game not found")
         : undefined,
   );
 
@@ -69,13 +70,15 @@ function GameDetails() {
   if (state.status === "missing") {
     return (
       <Page className="max-w-5xl">
-        <PageHeader back title="Game not found" />
+        <PageHeader back title={t("Game not found")} />
         <EmptyState
-          title="No such game"
-          body="This game is not in the catalogue. It may not be published, or the link may be wrong."
+          title={t("No such game")}
+          body={t(
+            "This game is not in the catalogue. It may not be published, or the link may be wrong.",
+          )}
           action={
             <Button asChild variant="secondary">
-              <Link to="/explore">Browse games</Link>
+              <Link to="/explore">{t("Browse games")}</Link>
             </Button>
           }
         />
@@ -88,7 +91,7 @@ function GameDetails() {
       <Page className="max-w-5xl">
         <PageHeader back title={titleFromSlug(id)} />
         <ErrorState
-          title="Couldn't load this game"
+          title={t("Couldn't load this game")}
           body={catalogErrorMessage(state.error)}
           onRetry={state.retry}
         />
@@ -119,7 +122,7 @@ function Detail({ game }: { game: Game }) {
         nav({ to: "/login", search: { redirect: `/games/${game.slug}` } });
         return;
       }
-      toast.error(error instanceof ApiError ? error.message : "Something went wrong.");
+      toast.error(error instanceof ApiError ? error.message : t("Something went wrong."));
     }
   }
 
@@ -134,7 +137,7 @@ function Detail({ game }: { game: Game }) {
           />
           <div className="px-4 pt-4 md:px-0">
             {game.isOfficial && (
-              <p className="text-sm font-medium text-muted-foreground">Unbored</p>
+              <p className="text-sm font-medium text-muted-foreground">{t("Unbored")}</p>
             )}
             {game.tagline && <p className="mt-1 text-lg font-medium">{game.tagline}</p>}
             {game.description && <p className="mt-3 text-muted-foreground">{game.description}</p>}
@@ -146,9 +149,9 @@ function Detail({ game }: { game: Game }) {
             <dl className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-surface p-3 text-center">
               {(
                 [
-                  ["Plays", String(game.plays)],
-                  ["Category", category ?? "—"],
-                  ["Published", published ?? "—"],
+                  [t("Plays"), String(game.plays)],
+                  [t("Category"), category ?? "—"],
+                  [t("Published"), published ?? "—"],
                 ] as const
               ).map(([label, value]) => (
                 <div key={label}>
@@ -160,7 +163,7 @@ function Detail({ game }: { game: Game }) {
 
             {game.instructions && (
               <section className="mt-4 rounded-xl border border-border p-4">
-                <h2 className="text-sm font-semibold">How to play</h2>
+                <h2 className="text-sm font-semibold">{t("How to play")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{game.instructions}</p>
               </section>
             )}
@@ -175,14 +178,14 @@ function Detail({ game }: { game: Game }) {
                 onClick={() => void guarded(() => engagement.toggleLike())}
               >
                 <Heart className={engagement.liked ? "fill-primary text-primary" : ""} />
-                Like
+                {t("Like")}
                 {engagement.likeCount !== null && engagement.likeCount > 0 && (
                   <span className="tabular text-muted-foreground">{fmt(engagement.likeCount)}</span>
                 )}
               </Button>
               <Button variant="secondary" className="flex-1" onClick={() => setComments(true)}>
                 <MessageCircle />
-                Comments
+                {t("Comments")}
                 {engagement.commentCount !== null && engagement.commentCount > 0 && (
                   <span className="tabular text-muted-foreground">
                     {fmt(engagement.commentCount)}
@@ -192,7 +195,7 @@ function Detail({ game }: { game: Game }) {
               <Button
                 variant="secondary"
                 size="icon"
-                aria-label="Save"
+                aria-label={t("Save")}
                 aria-pressed={engagement.saved}
                 onClick={() => void guarded(() => engagement.toggleSave())}
               >
@@ -201,7 +204,7 @@ function Detail({ game }: { game: Game }) {
               <Button
                 variant="secondary"
                 size="icon"
-                aria-label="Share"
+                aria-label={t("Share")}
                 onClick={() => setShare(true)}
               >
                 <Share2 />
@@ -212,13 +215,13 @@ function Detail({ game }: { game: Game }) {
 
         <aside className="md:sticky md:top-8 md:self-start">
           <div className="hidden rounded-2xl border border-border bg-surface p-4 md:block">
-            <p className="text-xs text-muted-foreground">Availability</p>
+            <p className="text-xs text-muted-foreground">{t("Availability")}</p>
             <p className="flex items-center gap-2 text-lg font-semibold">
               {game.playable ? (
-                "Playable"
+                t("Playable")
               ) : (
                 <>
-                  <Clock className="size-4" /> Not playable yet
+                  <Clock className="size-4" /> {t("Not playable yet")}
                 </>
               )}
             </p>
@@ -226,25 +229,26 @@ function Detail({ game }: { game: Game }) {
               <Button asChild variant="play" size="xl" className="mt-4 w-full">
                 <Link to="/play/$id" params={{ id: game.slug }} search={{ start: true }}>
                   <Play className="fill-current" />
-                  Play
+                  {t("Play")}
                 </Link>
               </Button>
             ) : (
               <p className="mt-3 text-xs text-muted-foreground">
-                This game has no runtime yet, so there is nothing to start. It is listed because it
-                is part of the catalogue.
+                {t(
+                  "This game has no runtime yet, so there is nothing to start. It is listed because it is part of the catalogue.",
+                )}
               </p>
             )}
           </div>
           <Section
-            title="Top scores"
+            title={t("Top scores")}
             action={
               <Link
                 to="/leaderboards/$id"
                 params={{ id: game.slug }}
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
-                Full board
+                {t("Full board")}
               </Link>
             }
           >
@@ -260,13 +264,13 @@ function Detail({ game }: { game: Game }) {
           <Button asChild variant="play" size="lg" className="w-full">
             <Link to="/play/$id" params={{ id: game.slug }} search={{ start: true }}>
               <Play className="fill-current" />
-              Play {game.title}
+              {t("Play")} {game.title}
             </Link>
           </Button>
         ) : (
           <Button variant="secondary" size="lg" className="w-full" disabled>
             <Clock />
-            Not playable yet
+            {t("Not playable yet")}
           </Button>
         )}
       </div>
@@ -310,12 +314,12 @@ function SameCategory({ category, exclude }: { category: string; exclude: string
   if (status !== "ready") return null;
 
   return (
-    <Section title="More like this">
+    <Section title={t("More like this")}>
       {related.length === 0 ? (
         <div className="px-4 md:px-0">
           <EmptyState
-            title="Nothing else here yet"
-            body="This is the only game in its category so far."
+            title={t("Nothing else here yet")}
+            body={t("This is the only game in its category so far.")}
           />
         </div>
       ) : (

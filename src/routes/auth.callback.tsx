@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth/session";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 const searchSchema = z.object({
   code: z.string().optional(),
   token_hash: z.string().optional(),
@@ -22,7 +23,7 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/auth/callback")({
   validateSearch: (search) => searchSchema.parse(search),
-  head: () => seo("Confirming", "Finishing email confirmation."),
+  head: () => seo(t("Confirming"), t("Finishing email confirmation.")),
   component: Callback,
 });
 
@@ -124,7 +125,7 @@ function Callback() {
       }
       return {
         status: "failed",
-        message: "That link is missing its confirmation details. Request a new one.",
+        message: t("That link is missing its confirmation details. Request a new one."),
       };
     }
 
@@ -149,9 +150,9 @@ function Callback() {
 
   if (outcome.status === "working") {
     return (
-      <AuthLayout title="Confirming…" subtitle="Finishing verification.">
+      <AuthLayout title={t("Confirming…")} subtitle={t("Finishing verification.")}>
         <p className="text-sm text-muted-foreground" role="status">
-          Checking the link with the server…
+          {t("Checking the link with the server…")}
         </p>
       </AuthLayout>
     );
@@ -160,17 +161,17 @@ function Callback() {
   if (outcome.status === "done") {
     return (
       <AuthLayout
-        title="Signed in"
+        title={t("Signed in")}
         subtitle={
           outcome.onboarded === false
-            ? "One more step to finish your account."
-            : "Taking you back to Unbored…"
+            ? t("One more step to finish your account.")
+            : t("Taking you back to Unbored…")
         }
       >
         <p className="text-sm text-muted-foreground" role="status">
           {outcome.onboarded === false
-            ? "Finishing your registration…"
-            : "Your account is ready. Redirecting…"}
+            ? t("Finishing your registration…")
+            : t("Your account is ready. Redirecting…")}
         </p>
       </AuthLayout>
     );
@@ -178,30 +179,33 @@ function Callback() {
 
   if (outcome.status === "confirmed-no-session") {
     return (
-      <AuthLayout title="Email confirmed" subtitle="Your address is verified.">
+      <AuthLayout title={t("Email confirmed")} subtitle={t("Your address is verified.")}>
         <p className="text-sm text-muted-foreground">
-          Sign in to continue — no session was issued with this confirmation.
+          {t("Sign in to continue — no session was issued with this confirmation.")}
         </p>
         <Button asChild variant="play" size="xl" className="mt-6 w-full">
-          <Link to="/login">Continue to log in</Link>
+          <Link to="/login">{t("Continue to log in")}</Link>
         </Button>
       </AuthLayout>
     );
   }
 
   return (
-    <AuthLayout title="Link didn't work" subtitle="That confirmation link could not be used.">
+    <AuthLayout
+      title={t("Link didn't work")}
+      subtitle={t("That confirmation link could not be used.")}
+    >
       <p className="text-sm text-destructive" role="alert">
         {outcome.message}
       </p>
       <div className="mt-6 grid gap-2">
         <Button asChild variant="secondary" size="lg" className="w-full">
           <Link to="/verify-email" search={{ email: undefined }}>
-            Request a new link
+            {t("Request a new link")}
           </Link>
         </Button>
         <Button asChild variant="play" size="xl" className="w-full">
-          <Link to="/login">Back to log in</Link>
+          <Link to="/login">{t("Back to log in")}</Link>
         </Button>
       </div>
     </AuthLayout>
@@ -226,7 +230,7 @@ function parseFragment(hash: string): Record<string, string> {
 
 function describeOAuthError(code: string, description?: string): string {
   if (code === "access_denied") {
-    return "Google sign-in was cancelled. Try again when you're ready.";
+    return t("Google sign-in was cancelled. Try again when you're ready.");
   }
   // Supabase refuses to attach a Google identity to an address that already
   // belongs to an account it cannot safely link. Nothing was created, and the
@@ -237,9 +241,9 @@ function describeOAuthError(code: string, description?: string): string {
     code === "user_already_exists" ||
     code === "identity_already_exists"
   ) {
-    return "An account with this email already exists. Please sign in instead.";
+    return t("An account with this email already exists. Please sign in instead.");
   }
   return description && description !== ""
     ? description
-    : "That sign-in did not complete. Try again.";
+    : t("That sign-in did not complete. Try again.");
 }

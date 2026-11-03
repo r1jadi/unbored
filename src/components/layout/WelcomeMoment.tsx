@@ -6,6 +6,7 @@ import { useProfile, type Profile } from "@/lib/users/profile";
 import { markWelcomed, shouldWelcome } from "@/lib/users/welcome";
 import { safeLocalStorage } from "@/lib/storage";
 
+import { t } from "@/lib/settings/language";
 /**
  * The first-arrival welcome on the home feed.
  *
@@ -174,31 +175,32 @@ function WelcomeOverlay({ profile, onClose }: { profile: Profile; onClose: () =>
           className="welcome-rise mt-6 text-xs font-semibold tracking-[0.2em] text-primary uppercase"
           style={{ animationDelay: "1400ms" }}
         >
-          Boredom: cancelled
+          {t("Boredom: cancelled")}
         </p>
         <h1
           id="welcome-title"
           className="welcome-rise mt-3 text-4xl leading-tight font-semibold text-balance"
           style={{ animationDelay: "1550ms" }}
         >
-          Welcome, <span className="text-primary">{name}</span>.
+          {t("Welcome,")} <span className="text-primary">{name}</span>.
         </h1>
         <p
           id="welcome-body"
           className="welcome-rise mt-3 text-muted-foreground text-pretty"
           style={{ animationDelay: "1750ms" }}
         >
-          You&apos;re verified and in. Every card in your feed is a game that takes seconds to play
-          — set a score, then come back and beat it.
+          {t(
+            "You're verified and in. Every card in your feed is a game that takes seconds to play — set a score, then come back and beat it.",
+          )}
         </p>
 
         <div className="welcome-rise mt-8 w-full space-y-2" style={{ animationDelay: "1950ms" }}>
           <Button ref={primary} variant="play" size="xl" className="w-full" onClick={close}>
-            Let&apos;s play
+            {t("Let's play")}
           </Button>
           <Button asChild variant="ghost" size="lg" className="w-full text-muted-foreground">
             <Link to="/settings/$section" params={{ section: "profile" }} onClick={onClose}>
-              Add a photo and bio first
+              {t("Add a photo and bio first")}
             </Link>
           </Button>
         </div>

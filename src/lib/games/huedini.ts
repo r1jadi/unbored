@@ -441,10 +441,19 @@ export type HuediniSubmission = {
   readonly rulesVersion: string;
   readonly actions: readonly number[];
   readonly score: number;
+  /** The run's own summary, shown for an offline practice run the server never saw. */
+  readonly tapsPlaced: number;
+  readonly levelsCleared: number;
 };
 
 export function submission(run: HuediniRun): HuediniSubmission {
-  return { rulesVersion: run.rulesVersion, actions: run.actions, score: run.score };
+  return {
+    rulesVersion: run.rulesVersion,
+    actions: run.actions,
+    score: run.score,
+    tapsPlaced: run.moves,
+    levelsCleared: run.levelsCleared,
+  };
 }
 
 /**

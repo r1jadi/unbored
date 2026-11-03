@@ -237,6 +237,12 @@ describe("a run", () => {
     const run = finish(createRun("12345"), "stopped");
     expect(run.outcome).toBe("over");
     expect(run.ending).toBe("stopped");
-    expect(submission(run)).toEqual({ rulesVersion: "huedini@1", actions: [], score: 0 });
+    expect(submission(run)).toEqual({
+      rulesVersion: "huedini@1",
+      actions: [],
+      score: 0,
+      tapsPlaced: 0,
+      levelsCleared: 0,
+    });
   });
 });

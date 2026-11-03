@@ -19,6 +19,7 @@ import { absoluteUrl } from "@/lib/seo";
 import { MAX_COMMENT_LENGTH, useComments, type GameComment } from "@/lib/social/engagement";
 import { avatarUrl, getProfileState } from "@/lib/users/profile";
 
+import { t } from "@/lib/settings/language";
 /**
  * The comment thread for one game.
  *
@@ -93,7 +94,7 @@ export function CommentsSheet({
       setDraft("");
       setReplyTo(null);
     } catch (error) {
-      setPostError(error instanceof ApiError ? error.message : "Couldn't post the comment.");
+      setPostError(error instanceof ApiError ? error.message : t("Couldn't post the comment."));
     }
   }
 
@@ -105,13 +106,15 @@ export function CommentsSheet({
       >
         <SheetHeader className="border-b border-border px-4 py-3 text-center">
           <SheetTitle className="text-sm">
-            {total === null ? "Comments" : `${fmt(total)} comment${total === 1 ? "" : "s"}`}
+            {total === null
+              ? t("Comments")
+              : t("{total} comment{n}", { total: fmt(total), n: total === 1 ? "" : "s" })}
           </SheetTitle>
-          <SheetDescription className="sr-only">Comments on this game</SheetDescription>
+          <SheetDescription className="sr-only">{t("Comments on this game")}</SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {thread.loading ? (
-            <div className="space-y-3" aria-busy="true" aria-label="Loading comments">
+            <div className="space-y-3" aria-busy="true" aria-label={t("Loading comments")}>
               {[0, 1, 2].map((i) => (
                 <div key={i} className="flex gap-3">
                   <div className="size-8 shrink-0 animate-pulse rounded-full bg-surface-2" />
@@ -123,14 +126,18 @@ export function CommentsSheet({
               ))}
             </div>
           ) : thread.error ? (
-            <ErrorState title="Couldn't load comments" body={thread.error} onRetry={thread.retry} />
+            <ErrorState
+              title={t("Couldn't load comments")}
+              body={thread.error}
+              onRetry={thread.retry}
+            />
           ) : thread.items.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center">
-              <p className="font-medium">No comments yet</p>
+              <p className="font-medium">{t("No comments yet")}</p>
               <p className="text-sm text-muted-foreground">
                 {auth.status === "authenticated"
-                  ? "Start the conversation below."
-                  : "Sign in to start the conversation."}
+                  ? t("Start the conversation below.")
+                  : t("Sign in to start the conversation.")}
               </p>
             </div>
           ) : (
@@ -151,7 +158,7 @@ export function CommentsSheet({
                   }
                 >
                   {replies.length > 0 && (
-                    <ul className="mt-3 space-y-3" aria-label="Replies">
+                    <ul className="mt-3 space-y-3" aria-label={t("Replies")}>
                       {replies.map((reply) => (
                         <CommentRow
                           key={reply.id}
@@ -172,11 +179,12 @@ export function CommentsSheet({
             {activeReply && (
               <div className="mb-2 flex items-center justify-between rounded-full bg-surface-2 px-3 py-1 text-xs text-muted-foreground">
                 <span className="truncate">
-                  Replying to {activeReply.author ? `@${activeReply.author.username}` : "a player"}
+                  {t("Replying to")}{" "}
+                  {activeReply.author ? `@${activeReply.author.username}` : t("a player")}
                 </span>
                 <button
                   type="button"
-                  aria-label="Cancel reply"
+                  aria-label={t("Cancel reply")}
                   className="ml-2 shrink-0 hover:text-foreground"
                   onClick={() => setReplyTo(null)}
                 >
@@ -185,7 +193,7 @@ export function CommentsSheet({
               </div>
             )}
             <Label htmlFor="comment" className="sr-only">
-              {activeReply ? "Write a reply" : "Add a comment"}
+              {activeReply ? t("Write a reply") : t("Add a comment")}
             </Label>
             <div className="flex items-center gap-2">
               <Avatar name={name} src={avatar} size="sm" />
@@ -194,7 +202,7 @@ export function CommentsSheet({
                 ref={input}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder={activeReply ? "Add a reply…" : "Add a comment…"}
+                placeholder={activeReply ? t("Add a reply…") : t("Add a comment…")}
                 maxLength={MAX_COMMENT_LENGTH + 1}
                 aria-describedby={postError ? "comment-error" : undefined}
                 className="h-10 flex-1 rounded-full bg-surface-2 px-4 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
@@ -202,7 +210,7 @@ export function CommentsSheet({
               <Button
                 type="submit"
                 size="icon"
-                aria-label={activeReply ? "Post reply" : "Post comment"}
+                aria-label={activeReply ? t("Post reply") : t("Post comment")}
                 disabled={thread.posting || draft.trim() === ""}
                 className="rounded-full"
               >
@@ -223,9 +231,9 @@ export function CommentsSheet({
                 search={{ redirect: here }}
                 className="font-medium text-foreground underline underline-offset-4"
               >
-                Log in
+                {t("Log in")}
               </Link>{" "}
-              to join the conversation.
+              {t("to join the conversation.")}
             </p>
           </div>
         )}
@@ -265,7 +273,7 @@ function CommentRow({
         <Link
           to="/u/$username"
           params={{ username: author.username }}
-          aria-label={`View @${author.username}'s profile`}
+          aria-label={t("View @{username}'s profile", { username: author.username })}
           className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <UserAvatar username={author.username} path={author.avatar_path} size="sm" />
@@ -284,29 +292,29 @@ function CommentRow({
               @{author.username}
             </Link>
           ) : (
-            <span className="text-sm font-medium">A player</span>
+            <span className="text-sm font-medium">{t("A player")}</span>
           )}
           {date && <span className="text-xs text-muted-foreground">{date}</span>}
-          {edited && <span className="text-xs text-muted-foreground">· edited</span>}
+          {edited && <span className="text-xs text-muted-foreground">{t("· edited")}</span>}
         </div>
         <p className="mt-0.5 text-sm break-words whitespace-pre-wrap">{comment.body}</p>
         <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
           {onReply && (
             <button
               type="button"
-              aria-label={`Reply to ${author ? `@${author.username}` : "this comment"}`}
+              aria-label={t("Reply to {n}", { n: author ? `@${author.username}` : "this comment" })}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               onClick={onReply}
             >
               <Reply className="size-3.5" />
-              Reply
+              {t("Reply")}
             </button>
           )}
           {mine && (
             <div>
               {confirming ? (
                 <span className="flex items-center gap-2 text-xs">
-                  <span className="text-muted-foreground">Delete this comment?</span>
+                  <span className="text-muted-foreground">{t("Delete this comment?")}</span>
                   <button
                     type="button"
                     disabled={busy}
@@ -315,7 +323,7 @@ function CommentRow({
                       setBusy(true);
                       void onDelete()
                         .catch(() => {
-                          toast.error("Couldn't delete the comment.");
+                          toast.error(t("Couldn't delete the comment."));
                         })
                         .finally(() => {
                           setBusy(false);
@@ -323,25 +331,25 @@ function CommentRow({
                         });
                     }}
                   >
-                    Delete
+                    {t("Delete")}
                   </button>
                   <button
                     type="button"
                     className="text-muted-foreground underline underline-offset-4"
                     onClick={() => setConfirming(false)}
                   >
-                    Keep
+                    {t("Keep")}
                   </button>
                 </span>
               ) : (
                 <button
                   type="button"
-                  aria-label="Delete comment"
+                  aria-label={t("Delete comment")}
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
                   onClick={() => setConfirming(true)}
                 >
                   <Trash2 className="size-3.5" />
-                  Delete
+                  {t("Delete")}
                 </button>
               )}
             </div>
@@ -378,9 +386,9 @@ export function ShareSheet({
     try {
       if (!navigator.clipboard) throw new Error("clipboard unavailable");
       await navigator.clipboard.writeText(url);
-      toast.success("Link copied");
+      toast.success(t("Link copied"));
     } catch {
-      toast.error("Couldn't copy the link.");
+      toast.error(t("Couldn't copy the link."));
     }
   }
 
@@ -406,8 +414,8 @@ export function ShareSheet({
         className="mx-auto max-w-xl rounded-t-2xl border-glass-border pb-8"
       >
         <SheetHeader>
-          <SheetTitle>Share {title}</SheetTitle>
-          <SheetDescription>Copy a link or use your device share sheet.</SheetDescription>
+          <SheetTitle>{t("Share {title}", { title })}</SheetTitle>
+          <SheetDescription>{t("Copy a link or use your device share sheet.")}</SheetDescription>
         </SheetHeader>
         <div className="grid grid-cols-3 gap-2 px-4 pt-2">
           <Button
@@ -416,15 +424,15 @@ export function ShareSheet({
             onClick={() => void copyLink()}
           >
             <Link2 />
-            Copy link
+            {t("Copy link")}
           </Button>
           <Button
             variant="secondary"
             className="h-16 flex-col gap-1 text-xs"
-            onClick={() => toast("Direct messages are not implemented.")}
+            onClick={() => toast(t("Direct messages are not implemented."))}
           >
             <MessageCircle />
-            Message
+            {t("Message")}
           </Button>
           <Button
             variant="secondary"
@@ -434,12 +442,12 @@ export function ShareSheet({
             }}
           >
             <Mail />
-            Email
+            {t("Email")}
           </Button>
         </div>
         <div className="px-4 pt-3">
           <Button className="w-full" variant="outline" onClick={() => void systemShare()}>
-            More options
+            {t("More options")}
           </Button>
         </div>
       </SheetContent>

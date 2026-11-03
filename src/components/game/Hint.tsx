@@ -3,6 +3,7 @@ import { Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import { t } from "@/lib/settings/language";
 /**
  * Why the hinted move is right, in a sentence. Shown in place of a game's status
  * line while a hint is up, and announced like it.
@@ -18,7 +19,7 @@ export function HintNote({ reason, className }: { reason: string; className?: st
     >
       <Lightbulb className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
       <span>
-        <span className="sr-only">Hint: </span>
+        <span className="sr-only">{t("Hint:")} </span>
         {reason}
       </span>
     </p>
@@ -46,7 +47,7 @@ export function HintButton({
       className="enter tabular"
     >
       <Lightbulb />
-      {waitSeconds > 0 ? `Next hint in ${waitSeconds}s` : "Hint"}
+      {waitSeconds > 0 ? t("Next hint in {waitSeconds}s", { waitSeconds }) : t("Hint")}
     </Button>
   );
 }

@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 
+import { t } from "@/lib/settings/language";
 const hueBg: Record<string, string> = {
   "game-1": "bg-game-1",
   "game-2": "bg-game-2",
@@ -616,7 +617,7 @@ function Seven() {
       </span>
       {/* Only where there is room for it to be read: a thumbnail shows the dial. */}
       <span className="text-[length:min(3.5cqw,0.75rem)] font-medium whitespace-nowrap text-muted-foreground uppercase @max-[9rem]:hidden">
-        Daily challenge
+        {t("Daily challenge")}
       </span>
     </div>
   );

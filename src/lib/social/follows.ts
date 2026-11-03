@@ -34,6 +34,7 @@ import {
 } from "@/lib/auth/session";
 import { restCount, restGet, restMutate, SupabaseRestError } from "@/lib/supabase/rest";
 
+import { t } from "@/lib/settings/language";
 export type PublicProfile = {
   id: string;
   username: string;
@@ -70,7 +71,7 @@ function announceFollowGraphChange(): void {
 }
 
 function unauthorised(): ApiError {
-  return new ApiError("Sign in to follow creators.", { code: "unauthorized", status: 401 });
+  return new ApiError(t("Sign in to follow creators."), { code: "unauthorized", status: 401 });
 }
 
 /**
@@ -99,24 +100,24 @@ function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
   if (error instanceof SupabaseRestError) {
     if (error.status === 401) {
-      return new ApiError("Sign in to follow creators.", { code: "unauthorized", status: 401 });
+      return new ApiError(t("Sign in to follow creators."), { code: "unauthorized", status: 401 });
     }
     if (error.status === 409 || error.code === "23505") {
       // The insert is idempotent, so a duplicate should never produce this; a
       // caller that does see it reconciles against the follow graph (see
       // `useFollowState`) rather than repeating a message the button it was
       // clicked from may already contradict.
-      return new ApiError("You're already following this account.", {
+      return new ApiError(t("You're already following this account."), {
         code: "conflict",
         status: 409,
       });
     }
-    return new ApiError("Couldn't update the follow. Try again.", {
+    return new ApiError(t("Couldn't update the follow. Try again."), {
       code: "follow_failed",
       status: error.status,
     });
   }
-  return new ApiError("Couldn't update the follow. Try again.", { code: "follow_failed" });
+  return new ApiError(t("Couldn't update the follow. Try again."), { code: "follow_failed" });
 }
 
 /** Resolves a username to its profile id via the public projection. */
@@ -162,7 +163,7 @@ export async function getFollowCounts(
   token: string | undefined = getAccessToken(),
 ): Promise<FollowCounts> {
   if (userId === "") {
-    throw new ApiError("Couldn't read this account's follows.", {
+    throw new ApiError(t("Couldn't read this account's follows."), {
       code: "bad_request",
       status: 400,
     });
@@ -233,7 +234,7 @@ export function useFollowCounts(userId: string | undefined): FollowCountsState {
         setState((current) => ({
           status: "error",
           counts: current.counts,
-          error: error instanceof Error ? error.message : "Couldn't load follow counts.",
+          error: error instanceof Error ? error.message : t("Couldn't load follow counts."),
         }));
       });
     return () => {
@@ -260,7 +261,7 @@ export async function followUser(followeeId: string): Promise<void> {
   const actor = getSessionUserId();
   if (!actor) throw unauthorised();
   if (actor === followeeId) {
-    throw new ApiError("You can't follow yourself.", { code: "bad_request", status: 400 });
+    throw new ApiError(t("You can't follow yourself."), { code: "bad_request", status: 400 });
   }
   try {
     // `on conflict do nothing` on the follow's own primary key: repeating a
@@ -364,7 +365,7 @@ export function useFollowState(targetUserId: string | undefined, initial?: boole
           // Keeping the button's default with no word about it would present a
           // guess as an answer; the failure is surfaced instead. The reconcile
           // path in `toggle` still means a retry re-reads the truth.
-          if (!cancelled) setError("Couldn't check your follow state. Try again.");
+          if (!cancelled) setError(t("Couldn't check your follow state. Try again."));
         })
         .finally(() => {
           if (!cancelled) setLoading(false);
@@ -379,7 +380,7 @@ export function useFollowState(targetUserId: string | undefined, initial?: boole
           }
         })
         .catch(() => {
-          if (!cancelled) setError("Couldn't check your follow state. Try again.");
+          if (!cancelled) setError(t("Couldn't check your follow state. Try again."));
         });
     });
     return () => {
@@ -417,7 +418,9 @@ export function useFollowState(targetUserId: string | undefined, initial?: boole
         // The re-read failed too; fall through to the message below.
       }
       if (!reconciled) {
-        setError(err instanceof ApiError ? err.message : "Couldn't update the follow. Try again.");
+        setError(
+          err instanceof ApiError ? err.message : t("Couldn't update the follow. Try again."),
+        );
       }
     } finally {
       setBusy(false);

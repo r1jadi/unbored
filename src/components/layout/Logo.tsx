@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 
+import { t } from "@/lib/settings/language";
 // The mark is the sleep "Z" breaking apart: three pieces knocked off their axis
 // with a few fragments flying. public/favicon.svg and the PNG app icons are
 // drawn from this same geometry; change them together.
@@ -22,5 +23,5 @@ export function LogoMark({ className, label }: { className?: string; label?: str
 }
 
 export function Logo({ className }: { className?: string }) {
-  return <LogoMark label="Unbored" className={cn("size-9", className)} />;
+  return <LogoMark label={t("Unbored")} className={cn("size-9", className)} />;
 }

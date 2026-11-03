@@ -1,181 +1,163 @@
 /**
- * Real localization for the languages the app genuinely supports.
+ * Real localization for the languages the app genuinely supports: English, the
+ * default, and Albanian.
  *
- * Only English and Polish are offered: both dictionaries below are complete
- * for every string routed through `t()`, and the test suite fails on a missing
- * key rather than rendering a placeholder. Adding a language means adding a
- * complete dictionary — never an entry in the selector alone.
+ * Strings are written in English in the code and wrapped in `t()`; the English
+ * text is the key, and `sq.ts` maps it to Albanian. `src/lib/i18n.test.ts` scans
+ * every `t("…")` in the source and fails on one with no Albanian entry, so a
+ * partial translation cannot ship. Adding a language means adding a complete
+ * dictionary — never an entry in the selector alone.
+ *
+ * The choice lives in a cookie, not only in `localStorage`, because the server
+ * renders the page: it reads the cookie per request, so a player who chose
+ * Albanian gets Albanian HTML, and the first client render agrees with it.
+ * Switching language reloads the page for the same reason — every screen,
+ * title and date is rendered again in the new language, with nothing left over.
  */
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createIsomorphicFn } from "@tanstack/react-start";
+import { getRequestHeader } from "@tanstack/react-start/server";
+import { createContext, useContext, type ReactNode } from "react";
 
 import { readWithLegacy, safeLocalStorage } from "@/lib/storage";
+import { sq } from "@/lib/i18n/sq";
 
-export type Language = "en" | "pl";
+export type Language = "en" | "sq";
 
+/** Kept for the screens that typed their labels: any English source string. */
+export type TranslationKey = string;
+
+const COOKIE = "unbored-language";
 const STORAGE_KEY = "unbored-language";
 /** Pre-rename key: read once and moved forward by `readWithLegacy`. */
 const LEGACY_STORAGE_KEY = "onemore-language";
+const ONE_YEAR_S = 60 * 60 * 24 * 365;
 
-const dictionaries = {
-  en: {
-    "nav.home": "Home",
-    "nav.ranks": "Ranks",
-    "nav.inbox": "Inbox",
-    "nav.forYou": "For You",
-    "nav.following": "Following",
-    "nav.explore": "Explore",
-    "nav.search": "Search",
-    "nav.leaderboards": "Leaderboards",
-    "nav.notifications": "Notifications",
-    "nav.saved": "Saved",
-    "nav.recent": "Recently played",
-    "nav.profile": "Profile",
-    "nav.settings": "Settings",
-    "nav.admin": "Admin",
-    "auth.login": "Log in",
-    "auth.signup": "Create account",
-    "auth.logout": "Log out",
-    "settings.title": "Settings",
-    "settings.account": "Account",
-    "settings.profile": "Profile",
-    "settings.privacy": "Privacy",
-    "settings.notifications": "Notifications",
-    "settings.language": "Language",
-    "settings.appearance": "Appearance",
-    "settings.accessibility": "Accessibility",
-    "settings.blocked": "Blocked users",
-    "settings.help": "Help",
-    "settings.about": "About",
-    "common.retry": "Retry",
-    "common.signInRequired": "Sign in to continue.",
-    "following.empty": "You're not following anyone yet",
-    "notifications.empty": "You're all caught up",
-  },
-  pl: {
-    "nav.home": "Główna",
-    "nav.ranks": "Rankingi",
-    "nav.inbox": "Skrzynka",
-    "nav.forYou": "Dla Ciebie",
-    "nav.following": "Obserwowane",
-    "nav.explore": "Odkrywaj",
-    "nav.search": "Szukaj",
-    "nav.leaderboards": "Rankingi",
-    "nav.notifications": "Powiadomienia",
-    "nav.saved": "Zapisane",
-    "nav.recent": "Ostatnio grane",
-    "nav.profile": "Profil",
-    "nav.settings": "Ustawienia",
-    "nav.admin": "Admin",
-    "auth.login": "Zaloguj się",
-    "auth.signup": "Załóż konto",
-    "auth.logout": "Wyloguj się",
-    "settings.title": "Ustawienia",
-    "settings.account": "Konto",
-    "settings.profile": "Profil",
-    "settings.privacy": "Prywatność",
-    "settings.notifications": "Powiadomienia",
-    "settings.language": "Język",
-    "settings.appearance": "Wygląd",
-    "settings.accessibility": "Dostępność",
-    "settings.blocked": "Zablokowani",
-    "settings.help": "Pomoc",
-    "settings.about": "O aplikacji",
-    "common.retry": "Spróbuj ponownie",
-    "common.signInRequired": "Zaloguj się, aby kontynuować.",
-    "following.empty": "Nikogo jeszcze nie obserwujesz",
-    "notifications.empty": "Wszystko nadrobione",
-  },
-} as const;
-
-export type TranslationKey = keyof (typeof dictionaries)["en"];
-
-/** Whether a language can be chosen today. See `offeredLanguages`. */
-function isOffered(code: Language): boolean {
-  return offeredLanguages.some((option) => option.code === code);
+function parseLanguage(value: string | null | undefined): Language {
+  return value === "sq" ? "sq" : "en";
 }
 
-function readStored(): Language {
-  const raw = readWithLegacy(safeLocalStorage(), STORAGE_KEY, LEGACY_STORAGE_KEY);
-  // A stored choice of a language that is no longer offered falls back to
-  // English rather than leaving someone in a half-translated interface.
-  if (raw === "pl") return isOffered("pl") ? "pl" : "en";
-  if (raw === "en") return "en";
+function fromCookieHeader(header: string | null | undefined): Language {
+  const match = /(?:^|;\s*)unbored-language=([^;]+)/.exec(header ?? "");
+  return parseLanguage(match?.[1]);
+}
+
+/**
+ * The browser's language for this page load. Read once: changing it reloads the
+ * page. A choice stored only in `localStorage` (from before the cookie) is moved
+ * into the cookie, and any language no longer offered falls back to English.
+ */
+let clientLanguage: Language | undefined;
+
+function readClientLanguage(): Language {
+  if (clientLanguage) return clientLanguage;
+  let language = "en" as Language;
   try {
-    const nav = navigator.language.toLowerCase();
-    if (nav.startsWith("pl") && isOffered("pl")) return "pl";
+    if (/(?:^|;\s*)unbored-language=/.test(document.cookie)) {
+      language = fromCookieHeader(document.cookie);
+    } else {
+      language = parseLanguage(readWithLegacy(safeLocalStorage(), STORAGE_KEY, LEGACY_STORAGE_KEY));
+      if (language !== "en") writeCookie(language);
+    }
   } catch {
-    // Ignore locale detection failures.
+    // No document or blocked storage: English.
   }
-  return "en";
+  clientLanguage = language;
+  return language;
 }
 
-const LanguageContext = createContext<{
-  language: Language;
-  setLanguage: (next: Language) => void;
-}>({
-  language: "en",
-  setLanguage: () => undefined,
-});
+/** Forgets the language read for this page, so a test can render in another one. */
+export function resetLanguageForTests(): void {
+  clientLanguage = undefined;
+}
+
+function writeCookie(language: Language): void {
+  document.cookie = `${COOKIE}=${language}; path=/; max-age=${ONE_YEAR_S}; samesite=lax`;
+}
+
+/** The request's language, from its cookie. Outside a request (a prerender), English. */
+const requestLanguage = createIsomorphicFn()
+  .server((): Language => {
+    try {
+      return fromCookieHeader(getRequestHeader("cookie"));
+    } catch {
+      return "en";
+    }
+  })
+  .client((): Language => "en");
+
+/** The language this render is in: the request's cookie on the server, the page's in the browser. */
+export function currentLanguage(): Language {
+  return typeof window === "undefined" ? (requestLanguage() ?? "en") : readClientLanguage();
+}
+
+/**
+ * Translates an English source string. `{name}` placeholders are filled from
+ * `values`, in either language. A string with no Albanian entry is shown in
+ * English rather than as a key; the test suite is what keeps that from shipping.
+ */
+export function t(
+  text: string,
+  values?: Record<string, string | number | null | undefined>,
+): string {
+  const language = currentLanguage();
+  const translated = language === "sq" ? (sq[text] ?? text) : text;
+  if (!values) return translated;
+  return translated.replace(/\{(\w+)\}/g, (whole: string, name: string) =>
+    name in values ? String(values[name] ?? "") : whole,
+  );
+}
+
+/**
+ * Marks an English string for translation where it is defined, in data built
+ * before any request — a menu, a list of options — without translating it
+ * there. The screen that shows it passes it to `t()`. The dictionary test scans
+ * `msg("…")` like `t("…")`, so a marked string cannot go untranslated.
+ */
+export function msg<T extends string>(text: T): T {
+  return text;
+}
+
+/**
+ * Translates text that comes from outside the code — the catalogue, a server's
+ * message — when the dictionary knows it, and leaves it as it is otherwise. Not
+ * scanned by the test: an edited catalogue entry is simply shown as written.
+ */
+export function translateContent(text: string): string;
+export function translateContent(text: string | null | undefined): string | null | undefined;
+export function translateContent(text: string | null | undefined): string | null | undefined {
+  if (!text || currentLanguage() !== "sq") return text;
+  return sq[text] ?? text;
+}
+
+const LanguageContext = createContext<Language>("en");
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(() =>
-    typeof window === "undefined" ? "en" : readStored(),
-  );
+  return <LanguageContext.Provider value={currentLanguage()}>{children}</LanguageContext.Provider>;
+}
 
-  useEffect(() => {
-    try {
-      document.documentElement.lang = language;
-    } catch {
-      // Non-fatal.
-    }
-  }, [language]);
-
-  function setLanguage(next: Language): void {
-    setLanguageState(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      // Best effort.
-    }
-    try {
-      document.documentElement.lang = next;
-    } catch {
-      // Non-fatal.
-    }
+function setLanguage(next: Language): void {
+  if (next === currentLanguage()) return;
+  try {
+    writeCookie(next);
+    localStorage.setItem(STORAGE_KEY, next);
+  } catch {
+    // Best effort: the cookie is what matters.
   }
-
-  return (
-    <LanguageContext.Provider value={{ language, setLanguage }}>
-      {children}
-    </LanguageContext.Provider>
-  );
+  window.location.reload();
 }
 
 export function useLanguage(): {
   language: Language;
   setLanguage: (next: Language) => void;
-  t: (key: TranslationKey) => string;
+  t: typeof t;
 } {
-  const { language, setLanguage } = useContext(LanguageContext);
-  return { language, setLanguage, t: (key) => dictionaries[language][key] };
+  const language = useContext(LanguageContext);
+  return { language, setLanguage, t };
 }
 
-/**
- * The languages a player can choose. Polish is held back: its dictionary covers
- * the navigation labels only, and offering it would switch the menus while every
- * screen stays English. Add it back here once the whole interface is translated.
- */
+/** The languages a player can choose. English is the default. */
 export const offeredLanguages: Array<{ code: Language; label: string; native: string }> = [
-  { code: "en", label: "English", native: "English" },
+  { code: "en", label: msg("English"), native: "English" },
+  { code: "sq", label: msg("Albanian"), native: "Shqip" },
 ];
-
-/** Fails when a dictionary is missing a key, so partial translations cannot ship. */
-export function assertDictionariesComplete(): string[] {
-  const base = Object.keys(dictionaries.en);
-  const missing: string[] = [];
-  for (const key of base) {
-    if (!(key in dictionaries.pl)) missing.push(`pl:${key}`);
-  }
-  return missing;
-}

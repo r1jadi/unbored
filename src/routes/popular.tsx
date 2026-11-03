@@ -3,8 +3,9 @@ import { GameListPage } from "@/components/game/GameListPage";
 import { MAX_PAGE_SIZE, mostPlayed } from "@/lib/games/catalog";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/popular")({
-  head: () => seo("Popular games", "The most played games on Unbored."),
+  head: () => seo(t("Popular games"), t("The most played games on Unbored.")),
   component: Popular,
 });
 
@@ -18,14 +19,14 @@ export const Route = createFileRoute("/popular")({
 function Popular() {
   return (
     <GameListPage
-      title="Popular games"
-      subtitle="The most played games on Unbored."
+      title={t("Popular games")}
+      subtitle={t("The most played games on Unbored.")}
       query={{ limit: MAX_PAGE_SIZE }}
       arrange={mostPlayed}
       ranked
       empty={{
-        title: "Nothing played yet",
-        body: "Once people finish a few runs, the most played games show up here.",
+        title: t("Nothing played yet"),
+        body: t("Once people finish a few runs, the most played games show up here."),
       }}
     />
   );

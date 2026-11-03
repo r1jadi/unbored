@@ -3,9 +3,10 @@ import { Gamepad2, Star, Tags } from "lucide-react";
 import { AdminPage, SectionCard, UnavailablePanel } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/admin/featured")({
   head: () => ({
-    meta: [{ title: "Featured games — Unbored admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: t("Featured games — Unbored admin") }, { name: "robots", content: "noindex" }],
   }),
   component: FeaturedAdmin,
 });
@@ -21,12 +22,17 @@ export const Route = createFileRoute("/admin/featured")({
  */
 export function FeaturedAdmin() {
   return (
-    <AdminPage title="Featured games" subtitle="Editorial placement in the feed and Explore.">
+    <AdminPage
+      title={t("Featured games")}
+      subtitle={t("Editorial placement in the feed and Explore.")}
+    >
       <SectionCard bodyClassName="p-0">
         <UnavailablePanel
           icon={Star}
-          title="Featured placement is not implemented"
-          body="There is nowhere to store an editorial slot and no endpoint that would apply one, so this screen has no games to reorder and no order to save."
+          title={t("Featured placement is not implemented")}
+          body={t(
+            "There is nowhere to store an editorial slot and no endpoint that would apply one, so this screen has no games to reorder and no order to save.",
+          )}
           points={[
             "The catalogue already orders games from real data — play counts, recency and category — and that ordering is served by the games API.",
             "What is missing is a placement model: a table of slots with an order and the moderator who set it, and a write path that reorders them inside a transaction.",
@@ -37,13 +43,13 @@ export function FeaturedAdmin() {
               <Button asChild variant="secondary" size="sm">
                 <Link to="/admin/games">
                   <Gamepad2 />
-                  Manage games
+                  {t("Manage games")}
                 </Link>
               </Button>
               <Button asChild variant="ghost" size="sm">
                 <Link to="/admin/categories">
                   <Tags />
-                  See categories
+                  {t("See categories")}
                 </Link>
               </Button>
             </>

@@ -13,8 +13,9 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ApiError, apiFetch } from "@/lib/api/client";
 import { getAccessToken, getAuthState } from "@/lib/auth/session";
-import type { Game } from "@/lib/games/catalog";
+import { localizeGame, type Game } from "@/lib/games/catalog";
 
+import { t } from "@/lib/settings/language";
 const Route = "/games/following";
 
 export type FollowingPage = {
@@ -36,7 +37,7 @@ export function fetchFollowingFeed(
   const token = getAccessToken();
   if (!token || getAuthState().status !== "authenticated") {
     return Promise.reject(
-      new ApiError("Sign in to view your following feed.", {
+      new ApiError(t("Sign in to view your following feed."), {
         code: "unauthorized",
         status: 401,
       }),
@@ -46,7 +47,7 @@ export function fetchFollowingFeed(
     token,
     query: { limit: query.limit, cursor: query.cursor, q: query.q },
     signal: options.signal,
-  });
+  }).then((page) => ({ ...page, items: page.items.map(localizeGame) }));
 }
 
 export type FollowingFeedState =
@@ -93,7 +94,9 @@ export function useFollowingFeed(query: Omit<FollowingQuery, "cursor"> = {}) {
         setState({
           status: "error",
           error:
-            error instanceof ApiError ? error : new ApiError("Couldn't load the following feed."),
+            error instanceof ApiError
+              ? error
+              : new ApiError(t("Couldn't load the following feed.")),
           items: [],
         });
       });
@@ -118,7 +121,7 @@ export function useFollowingFeed(query: Omit<FollowingQuery, "cursor"> = {}) {
       // Keep the pages already shown; the error belongs to the next page.
       setState({
         status: "error",
-        error: error instanceof ApiError ? error : new ApiError("Couldn't load more games."),
+        error: error instanceof ApiError ? error : new ApiError(t("Couldn't load more games.")),
         items: state.items,
       });
     }

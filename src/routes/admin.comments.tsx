@@ -31,17 +31,18 @@ import {
 } from "@/lib/admin/api";
 import { fmt } from "@/lib/format";
 
+import { t, msg } from "@/lib/settings/language";
 export const Route = createFileRoute("/admin/comments")({
   head: () => ({
-    meta: [{ title: "Comments — Unbored admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: t("Comments — Unbored admin") }, { name: "robots", content: "noindex" }],
   }),
   component: CommentsAdmin,
 });
 
 const stateOptions = [
-  { value: "all", label: "All comments" },
-  { value: "visible", label: "Visible" },
-  { value: "hidden", label: "Hidden" },
+  { value: "all", label: msg("All comments") },
+  { value: "visible", label: msg("Visible") },
+  { value: "hidden", label: msg("Hidden") },
 ];
 
 /** A hide or restore waiting on its reason. */
@@ -78,7 +79,7 @@ export function CommentsAdmin() {
     setBusy(comment.id);
     moderateComment(comment.id, hidden, reason)
       .then((result) => {
-        toast.success(result.hidden ? "Comment hidden." : "Comment restored.");
+        toast.success(result.hidden ? t("Comment hidden.") : t("Comment restored."));
         comments.retry();
         overview.retry();
       })
@@ -89,7 +90,7 @@ export function CommentsAdmin() {
   const columns: Column<AdminComment>[] = [
     {
       key: "comment",
-      head: "Comment",
+      head: t("Comment"),
       className: "min-w-80",
       cell: (c) => (
         <div className="min-w-0">
@@ -102,7 +103,7 @@ export function CommentsAdmin() {
     },
     {
       key: "author",
-      head: "Author",
+      head: t("Author"),
       cell: (c) => (
         <span className="flex items-center gap-2">
           <UserAvatar username={c.authorUsername} size="sm" />
@@ -112,7 +113,7 @@ export function CommentsAdmin() {
     },
     {
       key: "game",
-      head: "On",
+      head: t("On"),
       cell: (c) => (
         <Link
           to="/games/$id"
@@ -125,7 +126,7 @@ export function CommentsAdmin() {
     },
     {
       key: "engagement",
-      head: "Likes / reports",
+      head: t("Likes / reports"),
       className: "text-right",
       cell: (c) => (
         <span className="font-mono text-sm tabular">
@@ -135,17 +136,17 @@ export function CommentsAdmin() {
     },
     {
       key: "when",
-      head: "Posted",
+      head: t("Posted"),
       cell: (c) => (
         <span className="text-xs text-muted-foreground">{formatAgo(c.createdAt) ?? "—"}</span>
       ),
     },
     {
       key: "state",
-      head: "State",
+      head: t("State"),
       cell: (c) => (
         <StatusBadge tone={c.isHidden ? "destructive" : "success"}>
-          {c.isHidden ? "hidden" : "visible"}
+          {c.isHidden ? t("hidden") : t("visible")}
         </StatusBadge>
       ),
     },
@@ -161,7 +162,7 @@ export function CommentsAdmin() {
           onClick={() => setPending({ comment: c, hidden: !c.isHidden })}
         >
           {c.isHidden ? <Undo2 /> : <EyeOff />}
-          {c.isHidden ? "Restore" : "Hide"}
+          {c.isHidden ? t("Restore") : t("Hide")}
         </Button>
       ),
     },
@@ -169,11 +170,17 @@ export function CommentsAdmin() {
 
   return (
     <AdminPage
-      title="Comments"
+      title={t("Comments")}
       subtitle={
         overview.status === "ready"
-          ? `${fmt(overview.data.comments)} comments · ${fmt(overview.data.hiddenComments)} hidden. Hiding a comment keeps it in the database and hides it from players.`
-          : "Every comment, including hidden ones."
+          ? t(
+              "{comments} comments · {hiddenComments} hidden. Hiding a comment keeps it in the database and hides it from players.",
+              {
+                comments: fmt(overview.data.comments),
+                hiddenComments: fmt(overview.data.hiddenComments),
+              },
+            )
+          : t("Every comment, including hidden ones.")
       }
     >
       <Toolbar>
@@ -183,11 +190,11 @@ export function CommentsAdmin() {
             setQ(value);
             setPage(0);
           }}
-          label="Search comments"
-          placeholder="Search the text"
+          label={t("Search comments")}
+          placeholder={t("Search the text")}
         />
         <FilterSelect
-          label="Comment state"
+          label={t("Comment state")}
           value={state}
           onChange={(value) => {
             setState(value as CommentState);
@@ -214,17 +221,17 @@ export function CommentsAdmin() {
             state="ready"
             emptyTitle={
               term
-                ? "No comment matches that"
+                ? t("No comment matches that")
                 : state === "hidden"
-                  ? "Nothing is hidden"
-                  : "No comments"
+                  ? t("Nothing is hidden")
+                  : t("No comments")
             }
             emptyBody={
               term
-                ? "Try a different search."
+                ? t("Try a different search.")
                 : state === "hidden"
-                  ? "No comment has been hidden."
-                  : "Players have not commented yet."
+                  ? t("No comment has been hidden.")
+                  : t("Players have not commented yet.")
             }
           />
         </SectionCard>
@@ -244,12 +251,12 @@ export function CommentsAdmin() {
                   </span>
                 </span>
                 <StatusBadge tone={c.isHidden ? "destructive" : "success"}>
-                  {c.isHidden ? "hidden" : "visible"}
+                  {c.isHidden ? t("hidden") : t("visible")}
                 </StatusBadge>
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label={c.isHidden ? "Restore comment" : "Hide comment"}
+                  aria-label={c.isHidden ? t("Restore comment") : t("Hide comment")}
                   disabled={busy === c.id}
                   onClick={() => setPending({ comment: c, hidden: !c.isHidden })}
                 >
@@ -272,7 +279,7 @@ export function CommentsAdmin() {
       <PromptDialog
         open={pending !== null}
         onOpenChange={(open) => !open && setPending(null)}
-        title={pending?.hidden ? "Hide this comment" : "Restore this comment"}
+        title={pending?.hidden ? t("Hide this comment") : t("Restore this comment")}
         description={
           pending ? (
             <>
@@ -282,14 +289,18 @@ export function CommentsAdmin() {
               </span>
               <span className="mt-2 block">
                 {pending.hidden
-                  ? "It stays in the database and disappears from the game page. The reason is stored with the decision."
-                  : "It becomes visible again on the game page. The reason is stored with the decision."}
+                  ? t(
+                      "It stays in the database and disappears from the game page. The reason is stored with the decision.",
+                    )
+                  : t(
+                      "It becomes visible again on the game page. The reason is stored with the decision.",
+                    )}
               </span>
             </>
           ) : undefined
         }
-        label="Reason"
-        confirmLabel={pending?.hidden ? "Hide" : "Restore"}
+        label={t("Reason")}
+        confirmLabel={pending?.hidden ? t("Hide") : t("Restore")}
         destructive={pending?.hidden}
         onConfirm={(reason) => {
           if (pending) decide(pending.comment, pending.hidden, reason);

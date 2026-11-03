@@ -4,8 +4,9 @@ import { Logo } from "@/components/layout/Logo";
 import { Button } from "@/components/ui/button";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/welcome")({
-  head: () => seo("Welcome", "Unbored is a social feed of short, playable games."),
+  head: () => seo(t("Welcome"), t("Unbored is a social feed of short, playable games.")),
   component: Welcome,
 });
 
@@ -34,23 +35,25 @@ function Welcome() {
       <div className="enter relative mx-auto w-full max-w-sm px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <Logo />
         <h1 className="mt-4 text-3xl font-semibold leading-tight">
-          Play a game.
+          {t("Play a game.")}
           <br />
-          Then one more.
+          {t("Then one more.")}
         </h1>
-        <p className="mt-2 text-muted-foreground">Short games, real scores, and friends to beat.</p>
+        <p className="mt-2 text-muted-foreground">
+          {t("Short games, real scores, and friends to beat.")}
+        </p>
         <div className="mt-8 space-y-2">
           <Button asChild variant="play" size="xl" className="w-full">
-            <Link to="/onboarding">Get started</Link>
+            <Link to="/onboarding">{t("Get started")}</Link>
           </Button>
           <Button asChild variant="secondary" size="xl" className="w-full">
-            <Link to="/login">I have an account</Link>
+            <Link to="/login">{t("I have an account")}</Link>
           </Button>
           <Link
             to="/"
             className="block py-2 text-center text-sm text-muted-foreground hover:text-foreground"
           >
-            Browse without an account
+            {t("Browse without an account")}
           </Link>
         </div>
       </div>

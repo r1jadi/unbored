@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/layout/AppShell";
 import { SESSION_STORAGE_KEY, clearSession, initializeSession, signIn } from "@/lib/auth/session";
-import { LanguageProvider } from "@/lib/settings/language";
+import { LanguageProvider, resetLanguageForTests } from "@/lib/settings/language";
 import { routeTree } from "@/routeTree.gen";
 
 const testUserID = "3f7c2b1e-4d5a-4c9b-8e2f-1a2b3c4d5e6f";
@@ -241,16 +241,30 @@ describe("session restoration on boot", () => {
 });
 
 describe("language selection", () => {
-  // Polish is held back until the whole interface is translated, so a visitor who
-  // chose it earlier is shown English rather than English screens under Polish menus.
+  afterEach(() => {
+    document.cookie = "unbored-language=; path=/; max-age=0";
+    resetLanguageForTests();
+  });
+
+  // Polish is no longer offered, so a visitor who chose it earlier sees English.
   it("falls back to English for a stored language that is no longer offered", async () => {
     window.localStorage.setItem("unbored-language", "pl");
+    resetLanguageForTests();
     await renderShell();
 
     const sidebar = desktopSidebar();
     expect(within(sidebar).getByRole("link", { name: "For You" })).toHaveAttribute("href", "/");
     expect(within(sidebar).queryByRole("link", { name: "Dla Ciebie" })).toBeNull();
-    expect(document.documentElement.lang).toBe("en");
+  });
+
+  it("shows the app in Albanian when that is the chosen language", async () => {
+    document.cookie = "unbored-language=sq; path=/";
+    resetLanguageForTests();
+    await renderShell();
+
+    const sidebar = desktopSidebar();
+    expect(within(sidebar).getByRole("link", { name: "Për ty" })).toHaveAttribute("href", "/");
+    expect(within(sidebar).queryByRole("link", { name: "For You" })).toBeNull();
   });
 });
 

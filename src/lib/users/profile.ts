@@ -41,6 +41,7 @@ import { publicConfig } from "@/lib/config";
 import { AVATAR_TYPES, MAX_AVATAR_BYTES, prepareAvatar } from "@/lib/users/avatar-image";
 import { rememberAvatar } from "@/lib/users/avatars";
 
+import { t } from "@/lib/settings/language";
 /** Routes implemented by `services/users`. Kept together so they cannot drift. */
 const Routes = {
   me: "/users/me",
@@ -214,7 +215,7 @@ async function recoverRefusedToken(apiError: ApiError): Promise<ProfileState> {
 function asApiError(error: unknown): ApiError {
   return error instanceof ApiError
     ? error
-    : new ApiError("Something went wrong. Please try again.");
+    : new ApiError(t("Something went wrong. Please try again."));
 }
 
 /**
@@ -277,7 +278,7 @@ export function useProfile(): ProfileState {
 export async function updateProfile(patch: ProfilePatch): Promise<Profile> {
   const token = getAccessToken();
   if (!token) {
-    throw new ApiError("Sign in to change your profile.", { code: "unauthorized", status: 401 });
+    throw new ApiError(t("Sign in to change your profile."), { code: "unauthorized", status: 401 });
   }
   const profile = await apiFetch<Profile>(Routes.me, { method: "PATCH", token, body: patch });
   adopt({ status: "ready", profile });
@@ -300,22 +301,22 @@ export async function changeAvatar(chosen: File): Promise<Profile> {
   const file = await prepareAvatar(chosen);
   const extension = AVATAR_TYPES[file.type];
   if (!extension) {
-    throw new ApiError("Choose a PNG, JPEG or WebP image.", { code: "bad_request" });
+    throw new ApiError(t("Choose a PNG, JPEG or WebP image."), { code: "bad_request" });
   }
   if (file.size > MAX_AVATAR_BYTES) {
-    throw new ApiError("That image is larger than 2 MB.", { code: "bad_request" });
+    throw new ApiError(t("That image is larger than 2 MB."), { code: "bad_request" });
   }
 
   const auth = getAuthState();
   const token = getAccessToken();
   if (auth.status !== "authenticated" || !token) {
-    throw new ApiError("Sign in to change your photo.", { code: "unauthorized", status: 401 });
+    throw new ApiError(t("Sign in to change your photo."), { code: "unauthorized", status: 401 });
   }
 
   const baseUrl = publicConfig.supabase.url.replace(/\/+$/, "");
   const publishableKey = publicConfig.supabase.publishableKey;
   if (baseUrl === "" || publishableKey === "") {
-    throw new ApiError("Photo uploads are not configured for this deployment.", {
+    throw new ApiError(t("Photo uploads are not configured for this deployment."), {
       code: "internal_error",
     });
   }
@@ -342,7 +343,7 @@ export async function changeAvatar(chosen: File): Promise<Profile> {
   });
 
   if (!response.ok) {
-    throw new ApiError("That photo could not be uploaded. Try again.", {
+    throw new ApiError(t("That photo could not be uploaded. Try again."), {
       code: "upload_failed",
       status: response.status,
     });
@@ -382,7 +383,7 @@ export function avatarUrl(profile: Profile | undefined): string | undefined {
  * transport failure and gets a generic message instead of an internal detail.
  */
 export function profileErrorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Something went wrong. Please try again.";
+  return error instanceof ApiError ? error.message : t("Something went wrong. Please try again.");
 }
 
 /**

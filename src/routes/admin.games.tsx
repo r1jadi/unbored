@@ -39,20 +39,21 @@ import {
 } from "@/lib/admin/api";
 import { fmt } from "@/lib/format";
 
+import { t, msg } from "@/lib/settings/language";
 export const Route = createFileRoute("/admin/games")({
   head: () => ({
-    meta: [{ title: "Games — Unbored admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: t("Games — Unbored admin") }, { name: "robots", content: "noindex" }],
   }),
   component: GamesAdmin,
 });
 
 const statusOptions = [
-  { value: "", label: "All statuses" },
-  { value: "published", label: "Published" },
-  { value: "review", label: "In review" },
-  { value: "draft", label: "Draft" },
-  { value: "rejected", label: "Rejected" },
-  { value: "archived", label: "Archived" },
+  { value: "", label: msg("All statuses") },
+  { value: "published", label: msg("Published") },
+  { value: "review", label: msg("In review") },
+  { value: "draft", label: msg("Draft") },
+  { value: "rejected", label: msg("Rejected") },
+  { value: "archived", label: msg("Archived") },
 ];
 
 /** A decision a moderator is about to make, waiting on the dialog. */
@@ -89,7 +90,7 @@ export function GamesAdmin() {
     setBusy(game.id);
     moderateGame(game.id, next, reason)
       .then((result) => {
-        toast.success(`“${game.title}” is now ${result.status ?? next}.`);
+        toast.success(t("“{title}” is now {n}.", { title: game.title, n: result.status ?? next }));
         games.retry();
       })
       .catch((error: unknown) => toast.error(asApiError(error).message))
@@ -99,7 +100,7 @@ export function GamesAdmin() {
   const columns: Column<AdminGame>[] = [
     {
       key: "game",
-      head: "Game",
+      head: t("Game"),
       className: "min-w-64",
       cell: (g) => (
         <div className="flex min-w-0 items-center gap-3">
@@ -127,17 +128,17 @@ export function GamesAdmin() {
     },
     {
       key: "status",
-      head: "Status",
+      head: t("Status"),
       cell: (g) => (
         <span className="flex flex-wrap items-center gap-1.5">
           <StatusBadge tone={statusTone(g.status)}>{g.status}</StatusBadge>
-          {!g.playable && <StatusBadge tone="muted">no runtime</StatusBadge>}
+          {!g.playable && <StatusBadge tone="muted">{t("no runtime")}</StatusBadge>}
         </span>
       ),
     },
     {
       key: "owner",
-      head: "Owner",
+      head: t("Owner"),
       cell: (g) => (
         <span className="text-sm text-muted-foreground">
           {g.ownerUsername ? `@${g.ownerUsername}` : g.isOfficial ? "official" : "—"}
@@ -146,19 +147,19 @@ export function GamesAdmin() {
     },
     {
       key: "plays",
-      head: "Runs",
+      head: t("Runs"),
       className: "text-right",
       cell: (g) => <span className="font-mono text-sm tabular">{fmt(g.plays)}</span>,
     },
     {
       key: "players",
-      head: "Players",
+      head: t("Players"),
       className: "text-right",
       cell: (g) => <span className="font-mono text-sm tabular">{fmt(g.players)}</span>,
     },
     {
       key: "best",
-      head: "Best score",
+      head: t("Best score"),
       className: "text-right",
       cell: (g) => (
         <span className="font-mono text-sm tabular">
@@ -168,7 +169,7 @@ export function GamesAdmin() {
     },
     {
       key: "updated",
-      head: "Updated",
+      head: t("Updated"),
       cell: (g) => (
         <span className="text-xs text-muted-foreground">{formatAgo(g.updatedAt) ?? "—"}</span>
       ),
@@ -183,8 +184,10 @@ export function GamesAdmin() {
 
   return (
     <AdminPage
-      title="Games"
-      subtitle="Every game the database holds, published or not. A decision here is written to the moderation log."
+      title={t("Games")}
+      subtitle={t(
+        "Every game the database holds, published or not. A decision here is written to the moderation log.",
+      )}
     >
       <Toolbar>
         <SearchField
@@ -193,11 +196,11 @@ export function GamesAdmin() {
             setQ(value);
             setPage(0);
           }}
-          label="Search games"
-          placeholder="Search title, slug or owner"
+          label={t("Search games")}
+          placeholder={t("Search title, slug or owner")}
         />
         <FilterSelect
-          label="Status"
+          label={t("Status")}
           value={status}
           onChange={(value) => {
             setStatus(value);
@@ -222,11 +225,11 @@ export function GamesAdmin() {
         <SectionCard>
           <AdminListStates
             state="ready"
-            emptyTitle={term || status ? "No game matches this filter" : "No games yet"}
+            emptyTitle={term || status ? t("No game matches this filter") : t("No games yet")}
             emptyBody={
               term || status
-                ? "Clear the search or choose another status."
-                : "Games appear here once the catalogue has one."
+                ? t("Clear the search or choose another status.")
+                : t("Games appear here once the catalogue has one.")
             }
           />
         </SectionCard>
@@ -247,7 +250,11 @@ export function GamesAdmin() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{g.title}</span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    {g.status} · {fmt(g.plays)} runs · {fmt(g.players)} players
+                    {t("{status} · {plays} runs · {players} players", {
+                      status: g.status,
+                      plays: fmt(g.plays),
+                      players: fmt(g.players),
+                    })}
                   </span>
                 </span>
                 <RowActions game={g} busy={busy === g.id} onDecide={setPending} />
@@ -268,13 +275,16 @@ export function GamesAdmin() {
       <ConfirmDialog
         open={pending?.status === "published"}
         onOpenChange={(open) => !open && setPending(null)}
-        title="Publish this game?"
+        title={t("Publish this game?")}
         description={
           pending
-            ? `“${pending.game.title}” becomes visible in the catalogue and playable by everyone. The decision is recorded against your account.`
+            ? t(
+                "“{title}” becomes visible in the catalogue and playable by everyone. The decision is recorded against your account.",
+                { title: pending.game.title },
+              )
             : undefined
         }
-        confirmLabel="Publish"
+        confirmLabel={t("Publish")}
         onConfirm={() => {
           if (pending) decide(pending.game, "published");
           setPending(null);
@@ -284,13 +294,15 @@ export function GamesAdmin() {
       <ConfirmDialog
         open={pending?.status === "review"}
         onOpenChange={(open) => !open && setPending(null)}
-        title="Send back to review?"
+        title={t("Send back to review?")}
         description={
           pending
-            ? `“${pending.game.title}” leaves the public catalogue until it is published again.`
+            ? t("“{title}” leaves the public catalogue until it is published again.", {
+                title: pending.game.title,
+              })
             : undefined
         }
-        confirmLabel="Move to review"
+        confirmLabel={t("Move to review")}
         onConfirm={() => {
           if (pending) decide(pending.game, "review");
           setPending(null);
@@ -300,15 +312,17 @@ export function GamesAdmin() {
       <PromptDialog
         open={pending?.status === "rejected"}
         onOpenChange={(open) => !open && setPending(null)}
-        title="Reject this game"
+        title={t("Reject this game")}
         description={
           pending
-            ? `“${pending.game.title}” will not be published. The reason is stored with the decision.`
+            ? t("“{title}” will not be published. The reason is stored with the decision.", {
+                title: pending.game.title,
+              })
             : undefined
         }
-        label="Reason for rejection"
-        placeholder="What has to change before this can be published?"
-        confirmLabel="Reject"
+        label={t("Reason for rejection")}
+        placeholder={t("What has to change before this can be published?")}
+        confirmLabel={t("Reject")}
         destructive
         onConfirm={(reason) => {
           if (pending) decide(pending.game, "rejected", reason);
@@ -319,15 +333,17 @@ export function GamesAdmin() {
       <PromptDialog
         open={pending?.status === "archived"}
         onOpenChange={(open) => !open && setPending(null)}
-        title="Archive this game"
+        title={t("Archive this game")}
         description={
           pending
-            ? `“${pending.game.title}” is removed from the catalogue but its runs and scores are kept.`
+            ? t("“{title}” is removed from the catalogue but its runs and scores are kept.", {
+                title: pending.game.title,
+              })
             : undefined
         }
-        label="Reason for archiving"
-        placeholder="Why is this game being archived?"
-        confirmLabel="Archive"
+        label={t("Reason for archiving")}
+        placeholder={t("Why is this game being archived?")}
+        confirmLabel={t("Archive")}
         destructive
         onConfirm={(reason) => {
           if (pending) decide(pending.game, "archived", reason);
@@ -353,7 +369,7 @@ function RowActions({
         <Button
           variant="ghost"
           size="icon"
-          aria-label={`Actions for ${game.title}`}
+          aria-label={t("Actions for {title}", { title: game.title })}
           disabled={busy}
         >
           <MoreHorizontal />
@@ -363,31 +379,31 @@ function RowActions({
         <DropdownMenuItem asChild>
           <Link to="/games/$id" params={{ id: game.slug }}>
             <Eye />
-            Open page
+            {t("Open page")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/play/$id" params={{ id: game.slug }}>
             <Play className="fill-current" />
-            Play
+            {t("Play")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {game.status !== "published" && (
           <DropdownMenuItem onClick={() => onDecide({ game, status: "published" })}>
             <CheckCircle2 />
-            Publish
+            {t("Publish")}
           </DropdownMenuItem>
         )}
         {game.status !== "review" && (
           <DropdownMenuItem onClick={() => onDecide({ game, status: "review" })}>
             <RotateCcw />
-            Move to review
+            {t("Move to review")}
           </DropdownMenuItem>
         )}
         <DropdownMenuItem onClick={() => onDecide({ game, status: "rejected" })}>
           <XCircle />
-          Reject
+          {t("Reject")}
         </DropdownMenuItem>
         {game.status !== "archived" && (
           <>
@@ -397,7 +413,7 @@ function RowActions({
               onClick={() => onDecide({ game, status: "archived" })}
             >
               <Archive />
-              Archive
+              {t("Archive")}
             </DropdownMenuItem>
           </>
         )}

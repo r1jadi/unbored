@@ -22,6 +22,7 @@ import { categoryName, type Game } from "@/lib/games/catalog";
 import { useGameEngagement } from "@/lib/social/engagement";
 import { cn } from "@/lib/utils";
 
+import { t } from "@/lib/settings/language";
 /**
  * One item in the swipeable feed.
  *
@@ -114,7 +115,7 @@ export function FeedItem({ game }: { game: Game }) {
         nav({ to: "/login", search: { redirect: here } });
         return;
       }
-      toast.error(error instanceof ApiError ? error.message : "Something went wrong.");
+      toast.error(error instanceof ApiError ? error.message : t("Something went wrong."));
     }
   }
 
@@ -135,11 +136,11 @@ export function FeedItem({ game }: { game: Game }) {
             <span className="press flex shrink-0 items-center gap-2 rounded-full glass px-5 py-3 text-sm font-semibold group-hover:bg-surface-2">
               {game.playable ? (
                 <>
-                  <Play className="size-4 fill-current" /> Tap to play
+                  <Play className="size-4 fill-current" /> {t("Tap to play")}
                 </>
               ) : (
                 <>
-                  <Clock className="size-4" /> Not playable yet
+                  <Clock className="size-4" /> {t("Not playable yet")}
                 </>
               )}
             </span>
@@ -168,18 +169,18 @@ export function FeedItem({ game }: { game: Game }) {
                 <>
                   <Button asChild variant="play" size="lg" className="flex-1">
                     <Link to="/play/$id" params={{ id: game.slug }} search={{ start: true }}>
-                      <Play className="fill-current" /> Tap to play
+                      <Play className="fill-current" /> {t("Tap to play")}
                     </Link>
                   </Button>
                   {/* Sized to its label, so Tap to play keeps the width. */}
                   <Button variant="glass" size="lg" className="px-4" onClick={() => setHowTo(true)}>
-                    <BookOpen /> Rules
+                    <BookOpen /> {t("Rules")}
                   </Button>
                 </>
               ) : (
                 <Button asChild variant="play" size="lg" className="flex-1">
                   <Link to="/games/$id" params={{ id: game.slug }}>
-                    <Info /> Details
+                    <Info /> {t("Details")}
                   </Link>
                 </Button>
               )}
@@ -193,25 +194,25 @@ export function FeedItem({ game }: { game: Game }) {
       <div className="absolute right-3 bottom-44 flex flex-col gap-4 md:static md:ml-4 md:self-end md:pb-6">
         <Action
           icon={Heart}
-          label="Like"
+          label={t("Like")}
           count={engagement.likeCount}
           active={engagement.liked}
           onClick={() => void guarded(() => engagement.toggleLike())}
         />
         <Action
           icon={MessageCircle}
-          label="Comments"
+          label={t("Comments")}
           count={engagement.commentCount}
           onClick={() => setComments(true)}
         />
         <Action
           icon={Bookmark}
-          label="Save"
+          label={t("Save")}
           active={engagement.saved}
           onClick={() => void guarded(() => engagement.toggleSave())}
         />
-        <Action icon={Trophy} label="Leaderboard" to={{ id: game.slug }} />
-        <Action icon={Share2} label="Share" onClick={() => setShare(true)} />
+        <Action icon={Trophy} label={t("Leaderboard")} to={{ id: game.slug }} />
+        <Action icon={Share2} label={t("Share")} onClick={() => setShare(true)} />
       </div>
 
       <HowToPlaySheet open={howTo} onOpenChange={setHowTo} game={game} />
@@ -237,7 +238,7 @@ export function FeedSkeleton() {
     <div
       className="flex h-dvh items-center justify-center md:py-6"
       aria-busy="true"
-      aria-label="Loading feed"
+      aria-label={t("Loading feed")}
     >
       <div className="relative h-full w-full max-w-[460px] animate-pulse bg-surface md:rounded-2xl">
         <div className="absolute bottom-24 left-4 right-20 space-y-3">
@@ -263,7 +264,7 @@ function BoardLink({ game, children }: { game: Game; children: React.ReactNode }
       params={{ id: game.slug }}
       search={{ start: true }}
       className={className}
-      aria-label={`Play ${game.title}`}
+      aria-label={t("Play {title}", { title: game.title })}
     >
       {children}
     </Link>
@@ -272,7 +273,7 @@ function BoardLink({ game, children }: { game: Game; children: React.ReactNode }
       to="/games/$id"
       params={{ id: game.slug }}
       className={className}
-      aria-label={`View ${game.title}`}
+      aria-label={t("View {title}", { title: game.title })}
     >
       {children}
     </Link>

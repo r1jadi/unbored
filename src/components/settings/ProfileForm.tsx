@@ -19,6 +19,7 @@ import {
   type Profile,
 } from "@/lib/users/profile";
 
+import { t } from "@/lib/settings/language";
 /**
  * The profile editor. Every field here is stored in `public.profiles` and written
  * through `PATCH /api/v1/users/me`, which resolves the row from the verified
@@ -38,12 +39,12 @@ export function ProfileForm() {
     return (
       <div className="px-4 md:px-0">
         <EmptyState
-          title="Sign in to edit your profile"
-          body="Your name, username, bio and photo belong to your account."
+          title={t("Sign in to edit your profile")}
+          body={t("Your name, username, bio and photo belong to your account.")}
           action={
             <Button asChild>
               <Link to="/login" search={{ redirect: "/settings/profile" }}>
-                Log in
+                {t("Log in")}
               </Link>
             </Button>
           }
@@ -55,11 +56,13 @@ export function ProfileForm() {
     return (
       <div className="px-4 md:px-0">
         <EmptyState
-          title="No profile yet"
-          body="This account has no profile stored, so there is nothing to edit. Try again in a moment."
+          title={t("No profile yet")}
+          body={t(
+            "This account has no profile stored, so there is nothing to edit. Try again in a moment.",
+          )}
           action={
             <Button variant="secondary" onClick={() => void refreshProfile()}>
-              Try again
+              {t("Try again")}
             </Button>
           }
         />
@@ -69,7 +72,7 @@ export function ProfileForm() {
   return (
     <div className="px-4 md:px-0">
       <ErrorState
-        title="Couldn't load your profile"
+        title={t("Couldn't load your profile")}
         body={state.error.message}
         onRetry={() => void refreshProfile()}
       />
@@ -80,7 +83,7 @@ export function ProfileForm() {
 /** The same three fields, drawn as skeletons until the profile arrives. */
 function Loading() {
   return (
-    <div className="space-y-4 px-4 md:px-0" aria-busy="true" aria-label="Loading">
+    <div className="space-y-4 px-4 md:px-0" aria-busy="true" aria-label={t("Loading")}>
       <div className="flex items-center gap-4">
         <Skeleton className="size-24 rounded-full" />
         <Skeleton className="h-9 w-32 rounded-md" />
@@ -107,15 +110,15 @@ function Loading() {
  * a server refusal — the database stays the authority behind it.
  */
 function validateUsername(value: string): string | undefined {
-  if (value === "") return "Add a username.";
+  if (value === "") return t("Add a username.");
   // Spread into code points, the way the API counts runes: a length error and
   // a format error stay distinct even for non-ASCII input.
   const length = [...value].length;
   if (length < 3 || length > 24) {
-    return "Use 3–24 characters for your username.";
+    return t("Use 3–24 characters for your username.");
   }
   if (!/^[a-z0-9_]+$/.test(value)) {
-    return "Use only lowercase letters, numbers and underscores.";
+    return t("Use only lowercase letters, numbers and underscores.");
   }
   return undefined;
 }
@@ -144,7 +147,7 @@ function Editor({ profile }: { profile: Profile }) {
     event.preventDefault();
     const displayName = value.displayName.trim();
     if (displayName === "") {
-      setErrors({ displayName: "Add a display name." });
+      setErrors({ displayName: t("Add a display name.") });
       setBanner(undefined);
       return;
     }
@@ -174,7 +177,7 @@ function Editor({ profile }: { profile: Profile }) {
         expectedUpdatedAt: profile.updatedAt,
       });
       setDraft(undefined);
-      toast.success("Profile saved");
+      toast.success(t("Profile saved"));
     } catch (error) {
       if (error instanceof ApiError && error.status === 409 && !fieldError(error, "username")) {
         // Somebody else's edit landed first — but not a taken username, which
@@ -209,7 +212,7 @@ function Editor({ profile }: { profile: Profile }) {
     setBanner(undefined);
     try {
       await changeAvatar(chosen);
-      toast.success("Photo updated");
+      toast.success(t("Photo updated"));
       // Show the new photo where others see it.
       void navigate({ to: "/profile" });
     } catch (error) {
@@ -228,7 +231,7 @@ function Editor({ profile }: { profile: Profile }) {
           type="file"
           accept="image/*"
           className="hidden"
-          aria-label="Choose a profile picture"
+          aria-label={t("Choose a profile picture")}
           onChange={pick}
         />
         <Button
@@ -237,12 +240,12 @@ function Editor({ profile }: { profile: Profile }) {
           disabled={busy}
           onClick={() => file.current?.click()}
         >
-          Change photo
+          {t("Change photo")}
         </Button>
       </div>
       <Field
         id="name"
-        label="Display name"
+        label={t("Display name")}
         value={value.displayName}
         maxLength={60}
         required
@@ -251,16 +254,16 @@ function Editor({ profile }: { profile: Profile }) {
       />
       <Field
         id="username"
-        label="Username"
+        label={t("Username")}
         value={value.username}
         maxLength={24}
         required
-        hint="3–24 characters: lowercase letters, numbers, underscores."
+        hint={t("3–24 characters: lowercase letters, numbers, underscores.")}
         error={errors.username}
         onChange={(event) => setDraft({ ...value, username: event.target.value })}
       />
       <div className="space-y-1.5">
-        <Label htmlFor="bio">Bio</Label>
+        <Label htmlFor="bio">{t("Bio")}</Label>
         <Textarea
           id="bio"
           value={value.bio}
@@ -269,7 +272,7 @@ function Editor({ profile }: { profile: Profile }) {
           aria-invalid={!!errors.bio}
           onChange={(event) => setDraft({ ...value, bio: event.target.value })}
         />
-        <p className="text-xs text-muted-foreground">Up to 120 characters.</p>
+        <p className="text-xs text-muted-foreground">{t("Up to 120 characters.")}</p>
         {errors.bio && <p className="text-xs text-destructive">{errors.bio}</p>}
       </div>
       {banner && (
@@ -278,7 +281,7 @@ function Editor({ profile }: { profile: Profile }) {
         </p>
       )}
       <Button type="submit" size="lg" className="w-full md:w-auto" disabled={busy}>
-        Save changes
+        {t("Save changes")}
       </Button>
     </form>
   );

@@ -12,6 +12,7 @@
 
 import { ApiError } from "@/lib/api/client";
 
+import { t } from "@/lib/settings/language";
 /** The bucket's own limits, repeated here so a bad file fails before it is sent. */
 export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 export const AVATAR_TYPES: Record<string, string> = {
@@ -94,12 +95,15 @@ async function render(image: Decoded, width: number, height: number): Promise<Bl
 }
 
 function unsupported(): ApiError {
-  return new ApiError("Choose a PNG, JPEG or WebP image.", { code: "bad_request" });
+  return new ApiError(t("Choose a PNG, JPEG or WebP image."), { code: "bad_request" });
 }
 function tooLarge(): ApiError {
-  return new ApiError("That image is over 2 MB and couldn't be resized. Try a different photo.", {
-    code: "bad_request",
-  });
+  return new ApiError(
+    t("That image is over 2 MB and couldn't be resized. Try a different photo."),
+    {
+      code: "bad_request",
+    },
+  );
 }
 
 /**

@@ -11,6 +11,7 @@
 
 import { publicConfig } from "@/lib/config";
 
+import { t } from "@/lib/settings/language";
 export type ApiErrorDetail = { field?: string; rule?: string; message?: string };
 
 type ApiErrorEnvelope = {
@@ -172,7 +173,7 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
       const aborted = cause instanceof Error && cause.name === "TimeoutError";
       if (signal?.aborted || aborted || lastAttempt) {
         throw new ApiError(
-          aborted ? "The request timed out. Try again." : "Could not reach the server.",
+          aborted ? t("The request timed out. Try again.") : t("Could not reach the server."),
           {
             code: aborted ? "timeout" : "network_error",
           },
@@ -199,8 +200,8 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
     // A bare 502/503/504 comes from the platform in front of the API, not from
     // the API, so it has no message of its own to pass through.
     const fallback = RETRYABLE_STATUSES.has(response.status)
-      ? "The server is busy right now. Try again in a moment."
-      : `Request failed with status ${response.status}.`;
+      ? t("The server is busy right now. Try again in a moment.")
+      : t("Request failed with status {status}.", { status: response.status });
     throw new ApiError(envelope.error?.message ?? fallback, {
       code: envelope.error?.code ?? "http_error",
       status: response.status,
@@ -214,7 +215,7 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   }
 
   if (payload === undefined) {
-    throw new ApiError("The server returned a response that could not be read.", {
+    throw new ApiError(t("The server returned a response that could not be read."), {
       code: "invalid_response",
       status: response.status,
     });

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ApiError } from "@/lib/api/client";
 import { changePassword, fetchLinkedProviders, signOut, useAuth } from "@/lib/auth/session";
-import { offeredLanguages, useLanguage } from "@/lib/settings/language";
+import { offeredLanguages, useLanguage, t, msg } from "@/lib/settings/language";
 import { useTheme, type Appearance } from "@/lib/settings/theme";
 import { useAccessibility } from "@/lib/settings/accessibility";
 import { useSoundEnabled } from "@/lib/sound";
@@ -28,23 +28,24 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/settings/$section")({
   head: ({ params }) => {
     const item = allSettings.find((s) => s.slug === params.section);
-    const t = item?.title;
+    const name = item ? t(item.title) : undefined;
     // An unknown section has no name of its own; without the guard the title
     // reads "Settings settings — Unbored". Pages that are not settings as such
     // (Help, the legal pages, About) carry their own `pageTitle`.
-    const pageTitle = item ? (item.pageTitle ?? `${item.title} settings`) : "Settings";
+    const pageTitle = item
+      ? item.pageTitle
+        ? t(item.pageTitle)
+        : t("{title} settings", { title: name ?? "" })
+      : t("Settings");
+    const description = name
+      ? t("Manage {name} on Unbored.", { name: name.toLowerCase() })
+      : t("Manage your Unbored settings.");
     return {
       meta: [
-        { title: `${pageTitle} — Unbored` },
-        {
-          name: "description",
-          content: t ? `Manage ${t.toLowerCase()} on Unbored.` : "Manage your Unbored settings.",
-        },
-        { property: "og:title", content: t ? `${t} — Unbored` : "Settings — Unbored" },
-        {
-          property: "og:description",
-          content: t ? `Manage ${t.toLowerCase()} on Unbored.` : "Manage your Unbored settings.",
-        },
+        { title: t("{pageTitle} — Unbored", { pageTitle }) },
+        { name: "description", content: description },
+        { property: "og:title", content: `${name ?? t("Settings")} — Unbored` },
+        { property: "og:description", content: description },
       ],
     };
   },
@@ -127,7 +128,7 @@ function usePrefs() {
     try {
       await savePreferences(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save. Try again.");
+      setError(err instanceof Error ? err.message : t("Couldn't save. Try again."));
     } finally {
       setSaving(false);
     }
@@ -142,12 +143,12 @@ function RequireSignIn({ body }: { body: string }) {
   return (
     <div className="px-4 md:px-0">
       <EmptyState
-        title="Sign in to manage settings"
+        title={t("Sign in to manage settings")}
         body={body}
         action={
           <Button asChild>
             <Link to="/login" search={{ redirect: path }}>
-              Log in
+              {t("Log in")}
             </Link>
           </Button>
         }
@@ -158,24 +159,32 @@ function RequireSignIn({ body }: { body: string }) {
 
 const faq = [
   [
-    "How do I create an account?",
-    "Use Sign up with an email and password, open the confirmation link we email you, then log in. Google sign-in is available from the same screens once the provider is enabled.",
+    msg("How do I create an account?"),
+    msg(
+      "Use Sign up with an email and password, open the confirmation link we email you, then log in. Google sign-in is available from the same screens once the provider is enabled.",
+    ),
   ],
   [
-    "How are scores verified?",
-    "Play sessions are created by the server and scores are recorded against them. Only published games appear on leaderboards.",
+    msg("How are scores verified?"),
+    msg(
+      "Play sessions are created by the server and scores are recorded against them. Only published games appear on leaderboards.",
+    ),
   ],
   [
-    "How do I follow a creator?",
-    "Open their profile or find them in Search and use Follow. Your Following feed shows published games by creators you follow.",
+    msg("How do I follow a creator?"),
+    msg(
+      "Open their profile or find them in Search and use Follow. Your Following feed shows published games by creators you follow.",
+    ),
   ],
   [
-    "How do I report a player?",
-    "Open their profile, tap the menu, and choose Report. Reports are reviewed by moderators.",
+    msg("How do I report a player?"),
+    msg("Open their profile, tap the menu, and choose Report. Reports are reviewed by moderators."),
   ],
   [
-    "How do I delete my account?",
-    "Settings → Delete account explains the current process. Deletion removes your profile and social relationships; scores on public leaderboards are retained without attribution where required.",
+    msg("How do I delete my account?"),
+    msg(
+      "Settings → Delete account explains the current process. Deletion removes your profile and social relationships; scores on public leaderboards are retained without attribution where required.",
+    ),
   ],
 ];
 
@@ -199,47 +208,47 @@ function Body({ section }: { section: string }) {
       // The real editor: reads and writes the account's own profile row.
       return <ProfileForm />;
     case "privacy":
-      if (!signedIn) return <RequireSignIn body="Privacy choices belong to your account." />;
-      if (loading) return <p className="px-4 text-sm text-muted-foreground">Loading…</p>;
+      if (!signedIn) return <RequireSignIn body={t("Privacy choices belong to your account.")} />;
+      if (loading) return <p className="px-4 text-sm text-muted-foreground">{t("Loading…")}</p>;
       return (
         <>
-          <Group title="Visibility">
+          <Group title={t("Visibility")}>
             <Toggle
               id="p1"
-              label="Private account"
-              desc="Only approved followers see your activity"
+              label={t("Private account")}
+              desc={t("Only approved followers see your activity")}
               checked={prefs.privateAccount}
               onChange={(v) => void update({ ...prefs, privateAccount: v })}
             />
             <Toggle
               id="p2"
-              label="Show on leaderboards"
+              label={t("Show on leaderboards")}
               checked={prefs.showOnLeaderboards}
               onChange={(v) => void update({ ...prefs, showOnLeaderboards: v })}
             />
             <Toggle
               id="p3"
-              label="Show recently played"
+              label={t("Show recently played")}
               checked={prefs.showRecentlyPlayed}
               onChange={(v) => void update({ ...prefs, showRecentlyPlayed: v })}
             />
           </Group>
-          <Group title="Interactions">
+          <Group title={t("Interactions")}>
             <Toggle
               id="p4"
-              label="Allow comments on my scores"
+              label={t("Allow comments on my scores")}
               checked={prefs.allowComments}
               onChange={(v) => void update({ ...prefs, allowComments: v })}
             />
             <Toggle
               id="p5"
-              label="Allow mentions"
+              label={t("Allow mentions")}
               checked={prefs.allowMentions}
               onChange={(v) => void update({ ...prefs, allowMentions: v })}
             />
             <Toggle
               id="p6"
-              label="Personalised recommendations"
+              label={t("Personalised recommendations")}
               checked={prefs.personalisedRecommendations}
               onChange={(v) => void update({ ...prefs, personalisedRecommendations: v })}
             />
@@ -253,46 +262,48 @@ function Body({ section }: { section: string }) {
       );
     case "notifications":
       if (!signedIn)
-        return <RequireSignIn body="Notification preferences belong to your account." />;
-      if (loading) return <p className="px-4 text-sm text-muted-foreground">Loading…</p>;
+        return <RequireSignIn body={t("Notification preferences belong to your account.")} />;
+      if (loading) return <p className="px-4 text-sm text-muted-foreground">{t("Loading…")}</p>;
       return (
         <>
-          <Group title="In-app">
+          <Group title={t("In-app")}>
             <Toggle
               id="n1"
-              label="Someone beats your score"
+              label={t("Someone beats your score")}
               checked={prefs.notifyBeats}
               onChange={(v) => void update({ ...prefs, notifyBeats: v })}
             />
             <Toggle
               id="n2"
-              label="New followers"
+              label={t("New followers")}
               checked={prefs.notifyFollowers}
               onChange={(v) => void update({ ...prefs, notifyFollowers: v })}
             />
             <Toggle
               id="n3"
-              label="Comments and replies"
+              label={t("Comments and replies")}
               checked={prefs.notifyComments}
               onChange={(v) => void update({ ...prefs, notifyComments: v })}
             />
           </Group>
-          <Group title="Email">
+          <Group title={t("Email")}>
             <Toggle
               id="n4"
-              label="New games"
-              desc="One email after every five new games, with how to play. Turn it off any time."
+              label={t("New games")}
+              desc={t(
+                "One email after every five new games, with how to play. Turn it off any time.",
+              )}
               checked={prefs.notifyNewGames}
               onChange={(v) => void update({ ...prefs, notifyNewGames: v })}
             />
           </Group>
-          <Group title="Push">
+          <Group title={t("Push")}>
             <Row
-              label="Push notifications"
-              value="Not available"
+              label={t("Push notifications")}
+              value={t("Not available")}
               action={
                 <span className="text-xs text-muted-foreground">
-                  No push delivery is implemented
+                  {t("No push delivery is implemented")}
                 </span>
               }
             />
@@ -308,7 +319,7 @@ function Body({ section }: { section: string }) {
       return <SecuritySection signedIn={signedIn} />;
     case "language":
       return (
-        <div className="grid gap-2 px-4 md:px-0" role="radiogroup" aria-label="Language">
+        <div className="grid gap-2 px-4 md:px-0" role="radiogroup" aria-label={t("Language")}>
           {offeredLanguages.map((option) => (
             <button
               key={option.code}
@@ -324,7 +335,7 @@ function Body({ section }: { section: string }) {
             >
               <span className="flex-1">
                 <span className="block text-sm font-medium">{option.native}</span>
-                <span className="text-xs text-muted-foreground">{option.label}</span>
+                <span className="text-xs text-muted-foreground">{t(option.label)}</span>
               </span>
               {language === option.code && <Check className="size-4 text-primary" />}
             </button>
@@ -333,13 +344,17 @@ function Body({ section }: { section: string }) {
       );
     case "appearance": {
       const options: Array<{ value: Appearance; desc: string }> = [
-        { value: "dark", desc: "Default. Best for playing at night." },
-        { value: "light", desc: "Light surfaces for bright rooms." },
-        { value: "system", desc: "Follow your device setting" },
+        { value: "dark", desc: t("Default. Best for playing at night.") },
+        { value: "light", desc: t("Light surfaces for bright rooms.") },
+        { value: "system", desc: t("Follow your device setting") },
       ];
-      const labels: Record<Appearance, string> = { dark: "Dark", light: "Light", system: "System" };
+      const labels: Record<Appearance, string> = {
+        dark: t("Dark"),
+        light: t("Light"),
+        system: t("System"),
+      };
       return (
-        <div className="grid gap-2 px-4 md:px-0" role="radiogroup" aria-label="Appearance">
+        <div className="grid gap-2 px-4 md:px-0" role="radiogroup" aria-label={t("Appearance")}>
           {options.map((option) => (
             <button
               key={option.value}
@@ -366,40 +381,40 @@ function Body({ section }: { section: string }) {
     case "accessibility":
       return (
         <>
-          <Group title="Motion">
+          <Group title={t("Motion")}>
             <Toggle
               id="a1"
-              label="Reduce motion"
-              desc="Minimise animations across the app"
+              label={t("Reduce motion")}
+              desc={t("Minimise animations across the app")}
               checked={a11y.reduceMotion}
               onChange={(v) => setA11y({ ...a11y, reduceMotion: v })}
             />
           </Group>
-          <Group title="Sound">
+          <Group title={t("Sound")}>
             <Toggle
               id="a5"
-              label="Game sound effects"
-              desc="Play sounds for moves, clears and the end of a run"
+              label={t("Game sound effects")}
+              desc={t("Play sounds for moves, clears and the end of a run")}
               checked={soundOn}
               onChange={setSoundOn}
             />
           </Group>
-          <Group title="Display">
+          <Group title={t("Display")}>
             <Toggle
               id="a3"
-              label="Increase contrast"
+              label={t("Increase contrast")}
               checked={a11y.increaseContrast}
               onChange={(v) => setA11y({ ...a11y, increaseContrast: v })}
             />
             <Toggle
               id="a4"
-              label="Larger text"
+              label={t("Larger text")}
               checked={a11y.largerText}
               onChange={(v) => setA11y({ ...a11y, largerText: v })}
             />
           </Group>
           <p className="mt-3 px-4 text-xs text-muted-foreground md:px-0">
-            Changes apply immediately and are remembered on this device.
+            {t("Changes apply immediately and are remembered on this device.")}
           </p>
         </>
       );
@@ -412,24 +427,26 @@ function Body({ section }: { section: string }) {
     case "help":
       return (
         <>
-          <Group title="Frequently asked">
+          <Group title={t("Frequently asked")}>
             {faq.map(([q, a]) => (
               <details key={q} className="group px-4 py-3">
                 <summary className="flex cursor-pointer list-none items-center justify-between text-sm">
-                  {q}
+                  {t(q)}
                   <ChevronDown className="size-4 text-muted-foreground transition-transform duration-150 group-open:rotate-180" />
                 </summary>
-                <p className="mt-2 text-sm text-muted-foreground">{a}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{t(a)}</p>
               </details>
             ))}
           </Group>
           <div className="mt-4 px-4 md:px-0">
             <p className="text-sm text-muted-foreground">
-              Still stuck, or found a bug? Tell us on our issue tracker and we&apos;ll take a look.
+              {t(
+                "Still stuck, or found a bug? Tell us on our issue tracker and we'll take a look.",
+              )}
             </p>
             <Button asChild size="lg" className="mt-3 w-full md:w-auto">
               <a href="https://github.com/r1jadi/unbored/issues" target="_blank" rel="noreferrer">
-                Open an issue
+                {t("Open an issue")}
               </a>
             </Button>
           </div>
@@ -450,27 +467,27 @@ function Body({ section }: { section: string }) {
     case "about":
       return (
         <Group>
-          <Row label="Version" value={import.meta.env?.["VITE_APP_VERSION"] || "0.1.0"} />
+          <Row label={t("Version")} value={import.meta.env?.["VITE_APP_VERSION"] || "0.1.0"} />
           <Row
-            label="Source"
+            label={t("Source")}
             action={
               <Button asChild size="sm" variant="ghost">
                 <a href="https://github.com/r1jadi/unbored" target="_blank" rel="noreferrer">
-                  View
+                  {t("View")}
                 </a>
               </Button>
             }
           />
-          <Row label="Website" value="unbored.lol" />
+          <Row label={t("Website")} value="unbored.lol" />
         </Group>
       );
     default:
       return (
         <EmptyState
-          title="Setting not found"
+          title={t("Setting not found")}
           action={
             <Button asChild variant="secondary">
-              <Link to="/settings">Back to settings</Link>
+              <Link to="/settings">{t("Back to settings")}</Link>
             </Button>
           }
         />
@@ -483,24 +500,24 @@ function AccountSection({ signedIn }: { signedIn: boolean }) {
   const auth = useAuth();
   const email = auth.status === "authenticated" ? (auth.session.email ?? "") : "";
 
-  if (!signedIn) return <RequireSignIn body="Your account details belong to your account." />;
+  if (!signedIn) return <RequireSignIn body={t("Your account details belong to your account.")} />;
 
   if (profile.status === "ready") {
     return (
       <>
-        <Group title="Login">
-          <Row label="Email" value={maskEmail(email || "unknown")} />
+        <Group title={t("Login")}>
+          <Row label={t("Email")} value={maskEmail(email || "unknown")} />
           <Row
-            label="Password"
-            value="Set at signup"
+            label={t("Password")}
+            value={t("Set at signup")}
             action={
               <Button asChild size="sm" variant="ghost">
-                <Link to="/reset-password">Change</Link>
+                <Link to="/reset-password">{t("Change")}</Link>
               </Button>
             }
           />
         </Group>
-        <Group title="Profile">
+        <Group title={t("Profile")}>
           <div className="flex items-center gap-3 px-4 py-3">
             <Avatar name={profile.profile.username} src={avatarUrl(profile.profile)} size="sm" />
             <span className="flex-1 text-sm">
@@ -508,7 +525,7 @@ function AccountSection({ signedIn }: { signedIn: boolean }) {
             </span>
             <Button asChild size="sm" variant="ghost">
               <Link to="/settings/$section" params={{ section: "profile" }}>
-                Edit
+                {t("Edit")}
               </Link>
             </Button>
           </div>
@@ -520,14 +537,14 @@ function AccountSection({ signedIn }: { signedIn: boolean }) {
     return (
       <div className="px-4 md:px-0">
         <ErrorState
-          title="Couldn't load your account"
+          title={t("Couldn't load your account")}
           body={profile.error.message}
           onRetry={() => window.location.reload()}
         />
       </div>
     );
   }
-  return <p className="px-4 text-sm text-muted-foreground">Loading your account…</p>;
+  return <p className="px-4 text-sm text-muted-foreground">{t("Loading your account…")}</p>;
 }
 
 function maskEmail(email: string): string {
@@ -545,16 +562,16 @@ export function SecuritySection({ signedIn }: { signedIn: boolean }) {
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
-  if (!signedIn) return <RequireSignIn body="Security controls belong to your account." />;
+  if (!signedIn) return <RequireSignIn body={t("Security controls belong to your account.")} />;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (password.length < 8) {
-      setError("Use at least 8 characters for your password.");
+      setError(t("Use at least 8 characters for your password."));
       return;
     }
     if (password !== confirm) {
-      setError("Passwords don't match.");
+      setError(t("Passwords don't match."));
       return;
     }
     setError(undefined);
@@ -562,11 +579,11 @@ export function SecuritySection({ signedIn }: { signedIn: boolean }) {
     setBusy(true);
     try {
       await changePassword(password);
-      setStatus("Password updated.");
+      setStatus(t("Password updated."));
       setPassword("");
       setConfirm("");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't update the password.");
+      setError(err instanceof ApiError ? err.message : t("Couldn't update the password."));
     } finally {
       setBusy(false);
     }
@@ -574,10 +591,10 @@ export function SecuritySection({ signedIn }: { signedIn: boolean }) {
 
   return (
     <>
-      <Group title="Password">
+      <Group title={t("Password")}>
         <form className="space-y-3 px-4 py-3" onSubmit={submit}>
           <label className="block space-y-1.5" htmlFor="new-password">
-            <span className="text-sm">New password</span>
+            <span className="text-sm">{t("New password")}</span>
             <input
               id="new-password"
               type="password"
@@ -590,9 +607,9 @@ export function SecuritySection({ signedIn }: { signedIn: boolean }) {
           {/* The rule the server enforces, stated where it is needed: without it
               a short password left the button disabled with no reason. It sits
               outside the label so it does not become part of the field's name. */}
-          <p className="text-xs text-muted-foreground">At least 8 characters.</p>
+          <p className="text-xs text-muted-foreground">{t("At least 8 characters.")}</p>
           <label className="block space-y-1.5" htmlFor="confirm-password">
-            <span className="text-sm">Confirm password</span>
+            <span className="text-sm">{t("Confirm password")}</span>
             <input
               id="confirm-password"
               type="password"
@@ -613,14 +630,14 @@ export function SecuritySection({ signedIn }: { signedIn: boolean }) {
             </p>
           )}
           <Button type="submit" disabled={busy}>
-            Update password
+            {t("Update password")}
           </Button>
         </form>
       </Group>
-      <Group title="Sessions">
+      <Group title={t("Sessions")}>
         <Row
-          label="This device"
-          value="Current session"
+          label={t("This device")}
+          value={t("Current session")}
           action={
             <Button
               size="sm"
@@ -637,23 +654,24 @@ export function SecuritySection({ signedIn }: { signedIn: boolean }) {
                 void navigate({ to: "/welcome" });
               }}
             >
-              Log out
+              {t("Log out")}
             </Button>
           }
         />
         <Row
-          label="Other sessions"
-          value="Use log out on each device"
+          label={t("Other sessions")}
+          value={t("Use log out on each device")}
           action={
             <span className="text-xs text-muted-foreground">
-              Per-device session list is not implemented
+              {t("Per-device session list is not implemented")}
             </span>
           }
         />
       </Group>
       <p className="mt-3 px-4 text-xs text-muted-foreground md:px-0">
-        Two-step verification is not implemented — it is not offered here rather than shown as a
-        toggle that does nothing.
+        {t(
+          "Two-step verification is not implemented — it is not offered here rather than shown as a toggle that does nothing.",
+        )}
       </p>
     </>
   );
@@ -678,24 +696,24 @@ function ConnectedSection({ signedIn }: { signedIn: boolean }) {
     };
   }, [signedIn]);
 
-  if (!signedIn) return <RequireSignIn body="Connected accounts belong to your account." />;
-  if (!loaded) return <p className="px-4 text-sm text-muted-foreground">Loading…</p>;
+  if (!signedIn) return <RequireSignIn body={t("Connected accounts belong to your account.")} />;
+  if (!loaded) return <p className="px-4 text-sm text-muted-foreground">{t("Loading…")}</p>;
 
   const googleConnected = providers.includes("google");
   return (
     <Group>
       <Row
-        label="Google"
-        value={googleConnected ? "Connected" : "Not connected"}
+        label={t("Google")}
+        value={googleConnected ? t("Connected") : t("Not connected")}
         action={
           googleConnected ? (
-            <span className="text-xs text-muted-foreground">Linked to this account</span>
+            <span className="text-xs text-muted-foreground">{t("Linked to this account")}</span>
           ) : (
             // Signing in with Google is not linking: the OAuth flow replaces the
             // browser session, and a different Google account would land the
             // visitor in a different account. Identity linking needs its own
             // server-side flow, so it is reported as unavailable instead.
-            <span className="text-xs text-muted-foreground">Linking is not implemented</span>
+            <span className="text-xs text-muted-foreground">{t("Linking is not implemented")}</span>
           )
         }
       />
@@ -719,7 +737,7 @@ function BlockedSection({ signedIn }: { signedIn: boolean }) {
         if (!cancelled) setList(entries);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Couldn't load the list.");
+        if (!cancelled) setError(err instanceof Error ? err.message : t("Couldn't load the list."));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -729,13 +747,13 @@ function BlockedSection({ signedIn }: { signedIn: boolean }) {
     };
   }, [signedIn]);
 
-  if (!signedIn) return <RequireSignIn body="Blocked users belong to your account." />;
-  if (loading) return <p className="px-4 text-sm text-muted-foreground">Loading…</p>;
+  if (!signedIn) return <RequireSignIn body={t("Blocked users belong to your account.")} />;
+  if (loading) return <p className="px-4 text-sm text-muted-foreground">{t("Loading…")}</p>;
   if (error) {
     return (
       <div className="px-4 md:px-0">
         <ErrorState
-          title="Couldn't load blocked users"
+          title={t("Couldn't load blocked users")}
           body={error}
           onRetry={() => window.location.reload()}
         />
@@ -745,8 +763,8 @@ function BlockedSection({ signedIn }: { signedIn: boolean }) {
   if (list.length === 0)
     return (
       <EmptyState
-        title="No blocked users"
-        body="People you block can't see your profile or comment on your scores."
+        title={t("No blocked users")}
+        body={t("People you block can't see your profile or comment on your scores.")}
       />
     );
   return (
@@ -762,11 +780,11 @@ function BlockedSection({ signedIn }: { signedIn: boolean }) {
               unblockUser(u.id)
                 .then(() => setList((prev) => prev.filter((x) => x.id !== u.id)))
                 .catch((err: unknown) =>
-                  setError(err instanceof Error ? err.message : "Couldn't unblock."),
+                  setError(err instanceof Error ? err.message : t("Couldn't unblock.")),
                 )
             }
           >
-            Unblock
+            {t("Unblock")}
           </Button>
         </div>
       ))}
@@ -779,7 +797,7 @@ function Section() {
   const meta = allSettings.find((s) => s.slug === section);
   return (
     <Page>
-      <PageHeader back title={meta?.title ?? "Settings"} />
+      <PageHeader back title={meta ? t(meta.title) : t("Settings")} />
       <div className="enter">
         <Body section={section} />
       </div>

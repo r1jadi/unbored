@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api/client";
 import { getAccessToken, getAuthState, subscribe as subscribeToAuth } from "@/lib/auth/session";
 import { restGet, restMutate, SupabaseRestError } from "@/lib/supabase/rest";
 
+import { t } from "@/lib/settings/language";
 export type NotificationKind = "follow" | "comment" | "like" | "score" | "moderation" | "system";
 
 export type AppNotification = {
@@ -44,16 +45,18 @@ function toNotification(row: Row): AppNotification {
 function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
   if (error instanceof SupabaseRestError && error.status === 401) {
-    return new ApiError("Sign in to view notifications.", { code: "unauthorized", status: 401 });
+    return new ApiError(t("Sign in to view notifications."), { code: "unauthorized", status: 401 });
   }
-  return new ApiError("Couldn't load notifications. Try again.", { code: "notifications_failed" });
+  return new ApiError(t("Couldn't load notifications. Try again."), {
+    code: "notifications_failed",
+  });
 }
 
 export async function fetchNotifications(limit = 50): Promise<AppNotification[]> {
   const token = getAccessToken();
   const auth = getAuthState();
   if (!token || auth.status !== "authenticated") {
-    throw new ApiError("Sign in to view notifications.", { code: "unauthorized", status: 401 });
+    throw new ApiError(t("Sign in to view notifications."), { code: "unauthorized", status: 401 });
   }
   try {
     const rows = await restGet<Row[]>(
@@ -70,7 +73,7 @@ export async function fetchUnreadCount(): Promise<number> {
   const token = getAccessToken();
   const auth = getAuthState();
   if (!token || auth.status !== "authenticated") {
-    throw new ApiError("Sign in to view notifications.", { code: "unauthorized", status: 401 });
+    throw new ApiError(t("Sign in to view notifications."), { code: "unauthorized", status: 401 });
   }
   try {
     const rows = await restGet<Array<{ id: string }>>(
@@ -89,7 +92,7 @@ export async function markAllRead(): Promise<void> {
   const token = getAccessToken();
   const auth = getAuthState();
   if (!token || auth.status !== "authenticated") {
-    throw new ApiError("Sign in to view notifications.", { code: "unauthorized", status: 401 });
+    throw new ApiError(t("Sign in to view notifications."), { code: "unauthorized", status: 401 });
   }
   try {
     await restMutate("notifications?read_at=is.null", "PATCH", token, {
@@ -104,7 +107,7 @@ export async function markRead(id: string): Promise<void> {
   const token = getAccessToken();
   const auth = getAuthState();
   if (!token || auth.status !== "authenticated") {
-    throw new ApiError("Sign in to view notifications.", { code: "unauthorized", status: 401 });
+    throw new ApiError(t("Sign in to view notifications."), { code: "unauthorized", status: 401 });
   }
   try {
     await restMutate(`notifications?id=eq.${encodeURIComponent(id)}`, "PATCH", token, {
@@ -167,7 +170,8 @@ export function useNotifications(): NotificationsState & { retry: () => void } {
         if (!cancelled) {
           setState({
             status: "error",
-            error: error instanceof ApiError ? error : new ApiError("Couldn't load notifications."),
+            error:
+              error instanceof ApiError ? error : new ApiError(t("Couldn't load notifications.")),
           });
         }
       });
@@ -230,7 +234,8 @@ export function useUnreadCount(): UnreadBadgeState & { retry: () => void } {
           setState({
             status: "error",
             count: 0,
-            error: error instanceof ApiError ? error : new ApiError("Couldn't load notifications."),
+            error:
+              error instanceof ApiError ? error : new ApiError(t("Couldn't load notifications.")),
           });
         }
       });
@@ -290,17 +295,17 @@ export function describeNotification(item: AppNotification): string {
   const text = typeof payload["text"] === "string" ? payload["text"] : "";
   switch (item.kind) {
     case "follow":
-      return text !== "" ? text : "started following you";
+      return text !== "" ? text : t("started following you");
     case "comment":
-      return text !== "" ? text : "commented on your score";
+      return text !== "" ? text : t("commented on your score");
     case "like":
-      return text !== "" ? text : "liked your score";
+      return text !== "" ? text : t("liked your score");
     case "score":
-      return text !== "" ? text : "beat your score";
+      return text !== "" ? text : t("beat your score");
     case "moderation":
-      return text !== "" ? text : "An update about your content";
+      return text !== "" ? text : t("An update about your content");
     case "system":
     default:
-      return text !== "" ? text : "An update from Unbored";
+      return text !== "" ? text : t("An update from Unbored");
   }
 }

@@ -10,6 +10,7 @@
 import { getAccessToken, getAuthState } from "@/lib/auth/session";
 import { restGet, restMutate } from "@/lib/supabase/rest";
 
+import { t } from "@/lib/settings/language";
 export type UserPreferences = {
   privateAccount: boolean;
   showOnLeaderboards: boolean;
@@ -112,7 +113,7 @@ export async function savePreferences(prefs: UserPreferences): Promise<UserPrefe
   const token = getAccessToken();
   const auth = getAuthState();
   if (!token || auth.status !== "authenticated") {
-    throw new Error("Sign in to change preferences.");
+    throw new Error(t("Sign in to change preferences."));
   }
   const row = toRow(prefs, auth.session.userId);
   // Upsert on the primary key: one row per user, owned by that user.

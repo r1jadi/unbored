@@ -1,4 +1,5 @@
 import type { GameRule } from "@/lib/games/rules";
+import { t } from "@/lib/settings/language";
 
 /** A game's rules as the rules card shows them: each one led by its bold lead. */
 export function RulesList({ rules }: { rules: readonly GameRule[] }) {
@@ -6,7 +7,7 @@ export function RulesList({ rules }: { rules: readonly GameRule[] }) {
     <div className="w-full space-y-2 rounded-2xl bg-surface p-4 text-left text-sm">
       {rules.map((rule) => (
         <p key={rule.lead}>
-          <span className="font-medium text-foreground">{rule.lead}</span> {rule.text}
+          <span className="font-medium text-foreground">{t(rule.lead)}</span> {t(rule.text)}
         </p>
       ))}
     </div>

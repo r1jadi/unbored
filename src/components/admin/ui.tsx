@@ -33,6 +33,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
+import { t, translateContent } from "@/lib/settings/language";
 /* ------------------------------------------------------------------ layout */
 
 export function AdminPage({
@@ -151,7 +152,9 @@ export function StatusBadge({
         className,
       )}
     >
-      {children}
+      {/* Many badges show a stored value (a status, a role): translated when the
+          dictionary knows it, as written otherwise. */}
+      {typeof children === "string" ? translateContent(children) : children}
     </span>
   );
 }
@@ -209,9 +212,9 @@ export function MetaRow({
 export function SearchField({
   value,
   onChange,
-  placeholder = "Search",
+  placeholder = t("Search"),
   className,
-  label = "Search",
+  label = t("Search"),
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -235,7 +238,7 @@ export function SearchField({
       {value && (
         <button
           type="button"
-          aria-label="Clear search"
+          aria-label={t("Clear search")}
           onClick={() => onChange("")}
           className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground"
         >
@@ -271,7 +274,7 @@ export function FilterSelect({
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
-          {o.label}
+          {t(o.label)}
         </option>
       ))}
     </select>
@@ -489,13 +492,15 @@ export function OffsetPager({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
       <p className="text-xs text-muted-foreground tabular">
-        {rows === 0 ? `No ${label} on this page` : `Showing ${from}–${to} ${label}`}
+        {rows === 0
+          ? t("No {label} on this page", { label })
+          : t("Showing {from}–{to} {label}", { from, to, label })}
       </p>
       <div className="flex items-center gap-1">
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Previous page"
+          aria-label={t("Previous page")}
           disabled={page === 0}
           onClick={() => setPage(Math.max(0, page - 1))}
         >
@@ -505,7 +510,7 @@ export function OffsetPager({
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Next page"
+          aria-label={t("Next page")}
           disabled={!hasMore}
           onClick={() => setPage(page + 1)}
         >
@@ -552,13 +557,13 @@ export function Pager({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
       <p className="text-xs text-muted-foreground tabular">
-        Showing {from}–{to} of {total} {label}
+        {t("Showing {from}–{to} of {total} {label}", { from, to, total, label })}
       </p>
       <div className="flex items-center gap-1">
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Previous page"
+          aria-label={t("Previous page")}
           disabled={page <= 1}
           onClick={() => setPage(page - 1)}
         >
@@ -579,7 +584,7 @@ export function Pager({
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Next page"
+          aria-label={t("Next page")}
           disabled={page >= pages}
           onClick={() => setPage(page + 1)}
         >
@@ -597,7 +602,7 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Confirm",
+  confirmLabel = t("Confirm"),
   destructive,
   onConfirm,
   children,
@@ -620,7 +625,7 @@ export function ConfirmDialog({
         </AlertDialogHeader>
         {children}
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
           <AlertDialogAction
             className={destructive ? buttonVariants({ variant: "destructive" }) : undefined}
             onClick={onConfirm}
@@ -638,9 +643,9 @@ export function PromptDialog({
   onOpenChange,
   title,
   description,
-  label = "Reason",
+  label = t("Reason"),
   placeholder,
-  confirmLabel = "Submit",
+  confirmLabel = t("Submit"),
   destructive,
   onConfirm,
 }: {
@@ -680,7 +685,7 @@ export function PromptDialog({
         </div>
         <DialogFooter className="gap-2">
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button
             variant={destructive ? "destructive" : "default"}

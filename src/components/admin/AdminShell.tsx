@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminOverview, useAdminSession } from "@/lib/admin/api";
 import { cn } from "@/lib/utils";
 
+import { t, msg } from "@/lib/settings/language";
 type AdminRoute =
   | "/admin"
   | "/admin/reports"
@@ -43,37 +44,37 @@ type AdminNavItem = { to: AdminRoute; label: string; icon: typeof LayoutDashboar
 
 const nav: { label: string; items: AdminNavItem[] }[] = [
   {
-    label: "Overview",
-    items: [{ to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true }],
+    label: msg("Overview"),
+    items: [{ to: "/admin", label: msg("Overview"), icon: LayoutDashboard, exact: true }],
   },
   {
-    label: "Moderation",
+    label: msg("Moderation"),
     items: [
-      { to: "/admin/reports", label: "Reports", icon: Flag, exact: false },
-      { to: "/admin/review", label: "Review queue", icon: ClipboardCheck, exact: false },
-      { to: "/admin/comments", label: "Comments", icon: MessageSquare, exact: false },
-      { to: "/admin/feedback", label: "Feedback", icon: MessageSquareHeart, exact: false },
+      { to: "/admin/reports", label: msg("Reports"), icon: Flag, exact: false },
+      { to: "/admin/review", label: msg("Review queue"), icon: ClipboardCheck, exact: false },
+      { to: "/admin/comments", label: msg("Comments"), icon: MessageSquare, exact: false },
+      { to: "/admin/feedback", label: msg("Feedback"), icon: MessageSquareHeart, exact: false },
     ],
   },
   {
-    label: "Content",
+    label: msg("Content"),
     items: [
-      { to: "/admin/games", label: "Games", icon: Gamepad2, exact: false },
-      { to: "/admin/categories", label: "Categories", icon: Tags, exact: false },
-      { to: "/admin/featured", label: "Featured", icon: Star, exact: false },
-      { to: "/admin/leaderboards", label: "Leaderboards", icon: Trophy, exact: false },
+      { to: "/admin/games", label: msg("Games"), icon: Gamepad2, exact: false },
+      { to: "/admin/categories", label: msg("Categories"), icon: Tags, exact: false },
+      { to: "/admin/featured", label: msg("Featured"), icon: Star, exact: false },
+      { to: "/admin/leaderboards", label: msg("Leaderboards"), icon: Trophy, exact: false },
     ],
   },
   {
-    label: "Community",
-    items: [{ to: "/admin/users", label: "Users", icon: Users, exact: false }],
+    label: msg("Community"),
+    items: [{ to: "/admin/users", label: msg("Users"), icon: Users, exact: false }],
   },
   {
-    label: "System",
+    label: msg("System"),
     items: [
-      { to: "/admin/analytics", label: "Analytics", icon: BarChart3, exact: false },
-      { to: "/admin/notifications", label: "Notifications", icon: Send, exact: false },
-      { to: "/admin/settings", label: "Settings", icon: SlidersHorizontal, exact: false },
+      { to: "/admin/analytics", label: msg("Analytics"), icon: BarChart3, exact: false },
+      { to: "/admin/notifications", label: msg("Notifications"), icon: Send, exact: false },
+      { to: "/admin/settings", label: msg("Settings"), icon: SlidersHorizontal, exact: false },
     ],
   },
 ];
@@ -124,12 +125,12 @@ export function AdminShell({ children }: { children?: ReactNode }) {
     if (error.isUnauthorized) {
       return (
         <AdminGate
-          title="Sign in to open the dashboard"
-          body="The admin API answers only requests that carry a verified session."
+          title={t("Sign in to open the dashboard")}
+          body={t("The admin API answers only requests that carry a verified session.")}
         >
           <Button asChild>
             <Link to="/login" search={{ redirect: "/admin" }}>
-              Sign in
+              {t("Sign in")}
             </Link>
           </Button>
         </AdminGate>
@@ -141,11 +142,13 @@ export function AdminShell({ children }: { children?: ReactNode }) {
   if (!session.data.isStaff) {
     return (
       <AdminGate
-        title="This area requires an administrator account"
-        body="Your account is not on the administrator allowlist, so the API has no admin data to show you."
+        title={t("This area requires an administrator account")}
+        body={t(
+          "Your account is not on the administrator allowlist, so the API has no admin data to show you.",
+        )}
       >
         <Button asChild variant="secondary">
-          <Link to="/">Back to Unbored</Link>
+          <Link to="/">{t("Back to Unbored")}</Link>
         </Button>
       </AdminGate>
     );
@@ -193,21 +196,28 @@ function AdminDashboard({
   const isActive = (to: string, exact?: boolean) =>
     exact ? path === to || path === `${to}/` : path.startsWith(to);
 
-  const roleLabel = session.isAdmin ? "Administrator" : "Moderator";
+  const roleLabel = session.isAdmin ? t("Administrator") : t("Moderator");
 
   return (
     <div className="min-h-dvh md:flex">
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-5 md:flex lg:w-64">
-        <Link to="/" className="mb-1 flex items-center gap-2 px-3" aria-label="Back to Unbored">
+        <Link
+          to="/"
+          className="mb-1 flex items-center gap-2 px-3"
+          aria-label={t("Back to Unbored")}
+        >
           <LogoMark className="size-6" />
-          <span className="text-base font-semibold">Unbored</span>
+          <span className="text-base font-semibold">{t("Unbored")}</span>
         </Link>
-        <p className="mb-4 px-3 text-xs text-muted-foreground">Admin dashboard</p>
-        <nav className="no-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto" aria-label="Admin">
+        <p className="mb-4 px-3 text-xs text-muted-foreground">{t("Admin dashboard")}</p>
+        <nav
+          className="no-scrollbar flex flex-1 flex-col gap-4 overflow-y-auto"
+          aria-label={t("Admin")}
+        >
           {nav.map((group) => (
             <div key={group.label} className="flex flex-col gap-0.5">
               <p className="px-3 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                {group.label}
+                {t(group.label)}
               </p>
               {group.items.map(({ to, label, icon: Icon, exact }) => (
                 <Link
@@ -219,7 +229,7 @@ function AdminDashboard({
                   )}
                 >
                   <Icon className="size-[18px]" strokeWidth={1.75} />
-                  <span className="flex-1">{label}</span>
+                  <span className="flex-1">{t(label)}</span>
                   {to === "/admin/reports" && (
                     <QueueBadge count={counts?.openReports} tone="primary" />
                   )}
@@ -237,7 +247,7 @@ function AdminDashboard({
             className="press flex h-10 items-center gap-3 rounded-lg px-3 text-sm text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground"
           >
             <ArrowLeft className="size-[18px]" strokeWidth={1.75} />
-            Back to Unbored
+            {t("Back to Unbored")}
           </Link>
           <div className="mt-1 flex items-center gap-2.5 px-3 pt-2">
             <UserAvatar username={session.username} size="sm" />
@@ -252,15 +262,22 @@ function AdminDashboard({
       <div className="min-w-0 flex-1">
         <div className="sticky top-0 z-40 glass border-x-0 border-t-0 md:hidden">
           <div className="flex items-center gap-2 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-2">
-            <Link to="/" aria-label="Back to Unbored" className="press flex items-center gap-2">
+            <Link
+              to="/"
+              aria-label={t("Back to Unbored")}
+              className="press flex items-center gap-2"
+            >
               <LogoMark className="size-6" />
-              <span className="text-sm font-semibold">Unbored admin</span>
+              <span className="text-sm font-semibold">{t("Unbored admin")}</span>
             </Link>
             <span className="ml-auto rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted-foreground">
               {roleLabel}
             </span>
           </div>
-          <nav aria-label="Admin" className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-3">
+          <nav
+            aria-label={t("Admin")}
+            className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-3"
+          >
             {flat.map(({ to, label, exact }) => (
               <Link
                 key={to}
@@ -272,7 +289,7 @@ function AdminDashboard({
                     : "bg-surface text-muted-foreground",
                 )}
               >
-                {label}
+                {t(label)}
               </Link>
             ))}
           </nav>

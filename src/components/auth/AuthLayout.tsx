@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { t } from "@/lib/settings/language";
 // Catalogue slugs, drawn as a decorative collage. They are plain strings because
 // the artwork component keys on the slug the catalogue serves.
 const collage: string[] = ["stack-10", "memory-flash", "color-merge", "dont-break-the-chain"];
@@ -28,7 +29,7 @@ export function AuthLayout({
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-2">
       <div className="hidden border-r border-border bg-sidebar p-10 lg:flex lg:flex-col">
-        <Link to="/" aria-label="Unbored home">
+        <Link to="/" aria-label={t("Unbored home")}>
           <Logo />
         </Link>
         <div className="my-auto grid max-w-md grid-cols-2 gap-3 self-center">
@@ -41,7 +42,7 @@ export function AuthLayout({
           ))}
         </div>
         <p className="max-w-sm text-sm text-muted-foreground">
-          Short games. Real scores. Stay unbored.
+          {t("Short games. Real scores. Stay unbored.")}
         </p>
       </div>
       <div className="flex min-h-dvh flex-col px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
@@ -50,7 +51,7 @@ export function AuthLayout({
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Go back"
+              aria-label={t("Go back")}
               className="-ml-2"
               onClick={() => router.history.back()}
             >
@@ -119,12 +120,12 @@ export function SocialButtons({ next }: { next?: string } = {}) {
             });
           }}
         >
-          Continue with Google
+          {t("Continue with Google")}
         </Button>
       </div>
       <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
-        or with email
+        {t("or with email")}
         <span className="h-px flex-1 bg-border" />
       </div>
     </>

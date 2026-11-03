@@ -4,12 +4,13 @@ import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/account-created")({
-  head: () => seo("You're in", "Your Unbored account is ready."),
+  head: () => seo(t("You're in"), t("Your Unbored account is ready.")),
   component: () => (
     <AuthLayout
-      title="You're in"
-      subtitle="Your account is ready. Your first game is waiting."
+      title={t("You're in")}
+      subtitle={t("Your account is ready. Your first game is waiting.")}
       back={false}
     >
       <div className="flex justify-center py-10">
@@ -19,11 +20,11 @@ export const Route = createFileRoute("/account-created")({
       </div>
       <div className="mt-auto space-y-2 lg:mt-4">
         <Button asChild variant="play" size="xl" className="w-full">
-          <Link to="/">Start playing</Link>
+          <Link to="/">{t("Start playing")}</Link>
         </Button>
         <Button asChild variant="ghost" size="lg" className="w-full">
           <Link to="/settings/$section" params={{ section: "profile" }}>
-            Set up your profile
+            {t("Set up your profile")}
           </Link>
         </Button>
       </div>

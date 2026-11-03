@@ -41,6 +41,16 @@
  * times the solve, from the session's start to the submission, so the number here
  * is the screen's estimate — the verified score is the server's.
  *
+ * ## Fjalekryqi
+ *
+ * The same game in Albanian, played when the app is in Albanian: rules version
+ * `fjalekryqi@1`, its own bank (`fjalekryqi-bank.ts`) and verifier
+ * (`public.complete_fjalekryqi_run` in
+ * `supabase/migrations/20261201120000_fjalekryqi_sessions.sql`). Its alphabet is
+ * Albanian's single letters — A–Z without W, plus Ç (code 27) and Ë (code 28);
+ * a digraph such as SH takes two squares. Every other rule, move and score is
+ * the crossword's.
+ *
  * Storage rule: nothing here is persisted. A score only exists once the server has
  * verified it.
  */
@@ -50,6 +60,31 @@ export const CROSSWORD_RUNTIME = "crossword";
 
 /** The rules the server can verify. Sent with every run and pinned to a session. */
 export const CROSSWORD_RULES_VERSION = "crossword@1";
+
+/** Fjalekryqi, the Albanian crossword: the same rules over Albanian puzzles. */
+export const FJALEKRYQI_RULES_VERSION = "fjalekryqi@1";
+
+/**
+ * The on-screen keyboard's rows: English QWERTY, and the Albanian QWERTZ layout
+ * with Ç and Ë and without W, which Albanian does not use.
+ */
+export function keyboardFor(rulesVersion: string): readonly string[] {
+  return rulesVersion === FJALEKRYQI_RULES_VERSION
+    ? ["QERTZUIOPÇ", "ASDFGHJKLË", "YXCVBNM"]
+    : ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+}
+
+/** Every letter a run under these rules can be written with. */
+export function alphabetFor(rulesVersion: string): string {
+  return keyboardFor(rulesVersion).join("");
+}
+
+/** A letter's move code: A–Z are 1–26, Ç is 27 and Ë is 28. */
+export function letterCode(letter: string): number {
+  if (letter === "Ç") return 27;
+  if (letter === "Ë") return 28;
+  return letter.charCodeAt(0) - 64;
+}
 
 /** The most moves one submission may carry. */
 export const CROSSWORD_MAX_ACTIONS = 2048;
@@ -219,13 +254,20 @@ function toDay(seed: string | number | bigint): number {
   return Number(text);
 }
 
-/** A fresh run on the day's grid (`grid` is that day's, from the bank). */
-export function createRun(seed: string | number | bigint, grid: string): CrosswordRun {
+/**
+ * A fresh run on the day's grid (`grid` is that day's, from the bank of the
+ * rules played: the crossword's, or Fjalekryqi's).
+ */
+export function createRun(
+  seed: string | number | bigint,
+  grid: string,
+  rulesVersion: string = CROSSWORD_RULES_VERSION,
+): CrosswordRun {
   const day = toDay(seed);
   const puzzle = readPuzzle(day, grid);
   return {
     seed: String(day),
-    rulesVersion: CROSSWORD_RULES_VERSION,
+    rulesVersion,
     puzzle,
     moves: [],
     letters: new Array<string>(grid.length).fill(""),
@@ -272,15 +314,18 @@ function apply(run: CrosswordRun, move: number, changes: Partial<CrosswordRun>):
 }
 
 /**
- * Puts a letter (A–Z) in a cell, or clears it with "". A move that changes
- * nothing, or one the rules refuse, returns the same run object.
+ * Puts a letter of the run's alphabet in a cell (`alphabetFor`), or clears it
+ * with "". A move that changes nothing, or one the rules refuse, returns the
+ * same run object.
  */
 export function enter(run: CrosswordRun, cell: number, letter: string): CrosswordRun {
   const value = letter.toUpperCase();
-  if (!canWrite(run, cell) || !/^[A-Z]?$/.test(value) || run.letters[cell] === value) return run;
+  const known =
+    value === "" || (value.length === 1 && alphabetFor(run.rulesVersion).includes(value));
+  if (!canWrite(run, cell) || !known || run.letters[cell] === value) return run;
   const letters = [...run.letters];
   letters[cell] = value;
-  const code = value ? value.charCodeAt(0) - 64 : 0;
+  const code = value ? letterCode(value) : 0;
   return apply(run, cell * LETTER_STRIDE + code, { letters });
 }
 

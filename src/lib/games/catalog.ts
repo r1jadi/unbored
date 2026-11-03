@@ -17,11 +17,13 @@
  *     unknown slug and a draft, so a failed detail read is reported as "missing"
  *     rather than as an error to retry.
  *
- * Storage rule: the catalogue is cached in memory only, in the app's query cache
- * (`lib/query.ts`), for as long as the tab is open. It is public and the same for
- * every visitor, so nothing personal can leak between accounts through it, and
- * nothing is written to disk, so a new deployment is never served from a stale
- * copy. A cached screen opens instantly and refreshes in the background.
+ * Storage rule: the app caches the catalogue in memory, in its query cache
+ * (`lib/query.ts`), for as long as the tab is open. The service worker
+ * (`public/sw.js`) also keeps the last answer to each public read on disk, but
+ * only as an offline fallback: online, every read goes to the network, so a new
+ * deployment is never served from a stale copy. The catalogue is public and the
+ * same for every visitor, so nothing personal can leak between accounts through
+ * it. A cached screen opens instantly and refreshes in the background.
  */
 
 import {
@@ -36,6 +38,7 @@ import { ApiError, apiFetch, type ApiRequestOptions } from "@/lib/api/client";
 import { publicConfig } from "@/lib/config";
 import { getQueryClient } from "@/lib/query";
 
+import { t, translateContent } from "@/lib/settings/language";
 /** Routes implemented by `services/games`. Kept together so they cannot drift. */
 const Routes = {
   games: "/games",
@@ -208,6 +211,34 @@ type RequestOptions = { signal?: AbortSignal };
 
 // ── Requests ────────────────────────────────────────────────────────────────
 
+/**
+ * A game's catalogue text in the player's language: its title, tagline,
+ * description, instructions and category, where the dictionary has them (see
+ * `lib/i18n/catalog-sq.ts`). Text an admin has since edited has no entry and is
+ * shown as written. The language is fixed for a page load, so a game is
+ * localized once, as it arrives.
+ */
+export function localizeGame<T extends LocalizableGame>(game: T): T {
+  return {
+    ...game,
+    title: translateContent(game.title),
+    tagline: translateContent(game.tagline),
+    description: translateContent(game.description),
+    instructions: translateContent(game.instructions),
+    ...(game.category
+      ? { category: { ...game.category, name: translateContent(game.category.name) } }
+      : {}),
+  };
+}
+
+type LocalizableGame = {
+  title: string;
+  tagline?: string | null;
+  description?: string | null;
+  instructions?: string | null;
+  category?: { name: string } | null;
+};
+
 /** Reads a page of published games. Public: no token. */
 export function fetchGames(query: GameQuery = {}, options: RequestOptions = {}): Promise<GameList> {
   return apiFetch<GameList>(Routes.games, {
@@ -219,7 +250,7 @@ export function fetchGames(query: GameQuery = {}, options: RequestOptions = {}):
       sort: query.sort,
     },
     signal: options.signal,
-  });
+  }).then((list) => ({ ...list, items: list.items.map(localizeGame) }));
 }
 
 /**
@@ -229,12 +260,21 @@ export function fetchGames(query: GameQuery = {}, options: RequestOptions = {}):
  * caller must treat them identically: `useGame` reports `missing` for both.
  */
 export function fetchGame(slug: string, options: RequestOptions = {}): Promise<Game> {
-  return apiFetch<Game>(`${Routes.games}/${encodeURIComponent(slug)}`, { signal: options.signal });
+  return apiFetch<Game>(`${Routes.games}/${encodeURIComponent(slug)}`, {
+    signal: options.signal,
+  }).then(localizeGame);
 }
 
 /** Reads every category with its real published-game count. Public. */
 export function fetchCategories(options: RequestOptions = {}): Promise<CategoryList> {
-  return apiFetch<CategoryList>(Routes.categories, { signal: options.signal });
+  return apiFetch<CategoryList>(Routes.categories, { signal: options.signal }).then((list) => ({
+    ...list,
+    items: list.items.map((category) => ({
+      ...category,
+      name: translateContent(category.name),
+      description: translateContent(category.description),
+    })),
+  }));
 }
 
 // ── Presentation helpers ────────────────────────────────────────────────────
@@ -285,6 +325,10 @@ export function categoryPath(game: Pick<Game, "category">): string | undefined {
  * comes from the API.
  */
 export function titleFromSlug(slug: string): string {
+  return translateContent(englishTitleFromSlug(slug));
+}
+
+function englishTitleFromSlug(slug: string): string {
   return slug
     .split("-")
     .filter(Boolean)
@@ -346,13 +390,13 @@ const SMALL_WORDS = new Set([
  * instead of an internal detail.
  */
 export function catalogErrorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Something went wrong. Please try again.";
+  return error instanceof ApiError ? error.message : t("Something went wrong. Please try again.");
 }
 
 function asApiError(error: unknown): ApiError {
   return error instanceof ApiError
     ? error
-    : new ApiError("Something went wrong. Please try again.");
+    : new ApiError(t("Something went wrong. Please try again."));
 }
 
 // ── React bindings ──────────────────────────────────────────────────────────

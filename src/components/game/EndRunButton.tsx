@@ -14,6 +14,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { RunLeaveContext } from "@/lib/games/run-progress";
 import { points } from "@/lib/format";
 
+import { t } from "@/lib/settings/language";
 /**
  * End run, with a confirmation.
  *
@@ -24,11 +25,14 @@ import { points } from "@/lib/format";
  */
 export function EndRunButton({
   score,
+  offline = false,
   disabled,
   onEnd,
 }: {
   /** The score the run has earned so far, which is the one kept. */
   score: number;
+  /** An offline practice run: ending it keeps the score on screen, and sends nothing. */
+  offline?: boolean;
   disabled: boolean;
   onEnd: () => void;
 }) {
@@ -40,30 +44,40 @@ export function EndRunButton({
     <>
       <div className="flex justify-center pt-1">
         <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setConfirming(true)}>
-          End run
+          {t("End run")}
         </Button>
       </div>
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>End this run?</AlertDialogTitle>
+            <AlertDialogTitle>{t("End this run?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {later
-                ? `Finish later and the run is waiting for you next time — or end it now and your score of ${points(score)} is kept and sent for verification.`
-                : `Your score of ${points(score)} is kept and sent for verification.`}
+              {offline
+                ? t(
+                    "Your score of {score} is kept as practice: offline runs are not verified or saved.",
+                    { score: points(score) },
+                  )
+                : later
+                  ? t(
+                      "Finish later and the run is waiting for you next time — or end it now and your score of {score} is kept and sent for verification.",
+                      { score: points(score) },
+                    )
+                  : t("Your score of {score} is kept and sent for verification.", {
+                      score: points(score),
+                    })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep playing</AlertDialogCancel>
+            <AlertDialogCancel>{t("Keep playing")}</AlertDialogCancel>
             {later && (
               <AlertDialogAction
                 className={buttonVariants({ variant: "secondary" })}
                 onClick={leave.leave}
               >
-                Finish later
+                {t("Finish later")}
               </AlertDialogAction>
             )}
-            <AlertDialogAction onClick={onEnd}>End run</AlertDialogAction>
+            <AlertDialogAction onClick={onEnd}>{t("End run")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

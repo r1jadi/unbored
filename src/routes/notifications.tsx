@@ -13,8 +13,9 @@ import { seo } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import { formatAgo } from "@/lib/admin/api";
 
+import { t, msg } from "@/lib/settings/language";
 export const Route = createFileRoute("/notifications")({
-  head: () => seo("Notifications", "Follows, comments, likes and score updates."),
+  head: () => seo(t("Notifications"), t("Follows, comments, likes and score updates.")),
   component: Notifications,
 });
 
@@ -27,7 +28,7 @@ const icon: Record<AppNotification["kind"], typeof Bell> = {
   system: Bell,
 };
 
-const filters = ["All", "Scores", "Social", "Comments"] as const;
+const filters = [msg("All"), msg("Scores"), msg("Social"), msg("Comments")] as const;
 
 function matchesFilter(item: AppNotification, filter: (typeof filters)[number]): boolean {
   switch (filter) {
@@ -73,15 +74,15 @@ function Notifications() {
   if (state.status === "anonymous") {
     return (
       <Page>
-        <PageHeader title="Notifications" />
+        <PageHeader title={t("Notifications")} />
         <EmptyState
           icon={Bell}
-          title="Sign in to see notifications"
-          body="Follows, comments and score updates show up here once you're signed in."
+          title={t("Sign in to see notifications")}
+          body={t("Follows, comments and score updates show up here once you're signed in.")}
           action={
             <Button asChild>
               <Link to="/login" search={{ redirect: "/notifications" }}>
-                Log in
+                {t("Log in")}
               </Link>
             </Button>
           }
@@ -93,7 +94,7 @@ function Notifications() {
   if (state.status === "loading") {
     return (
       <Page>
-        <PageHeader title="Notifications" />
+        <PageHeader title={t("Notifications")} />
         <ListSkeleton />
       </Page>
     );
@@ -102,9 +103,9 @@ function Notifications() {
   if (state.status === "error") {
     return (
       <Page>
-        <PageHeader title="Notifications" />
+        <PageHeader title={t("Notifications")} />
         <ErrorState
-          title="Couldn't load notifications"
+          title={t("Couldn't load notifications")}
           body={state.error.message}
           onRetry={state.retry}
         />
@@ -118,10 +119,10 @@ function Notifications() {
   return (
     <Page>
       <PageHeader
-        title="Notifications"
-        subtitle={fresh > 0 ? `${fresh} new` : undefined}
+        title={t("Notifications")}
+        subtitle={fresh > 0 ? t("{fresh} new", { fresh }) : undefined}
         actions={
-          <Button asChild variant="ghost" size="icon" aria-label="Notification settings">
+          <Button asChild variant="ghost" size="icon" aria-label={t("Notification settings")}>
             <Link to="/settings/$section" params={{ section: "notifications" }}>
               <Settings />
             </Link>
@@ -141,21 +142,21 @@ function Notifications() {
                 : "bg-surface text-muted-foreground",
             )}
           >
-            {f}
+            {t(f)}
           </button>
         ))}
         <Link
           to="/activity"
           className="ml-auto shrink-0 self-center text-sm text-muted-foreground hover:text-foreground"
         >
-          Your activity
+          {t("Your activity")}
         </Link>
       </div>
       {list.length === 0 ? (
         <EmptyState
           icon={Bell}
-          title="You're all caught up"
-          body="New follows, comments and score updates show up here."
+          title={t("You're all caught up")}
+          body={t("New follows, comments and score updates show up here.")}
         />
       ) : (
         <ul className="divide-y divide-border md:space-y-1 md:divide-y-0">
@@ -199,12 +200,12 @@ function Notifications() {
                 {game && (
                   <Button asChild size="sm" variant="secondary">
                     <Link to="/games/$id" params={{ id: game }}>
-                      Open
+                      {t("Open")}
                     </Link>
                   </Button>
                 )}
                 {!item.readAt && (
-                  <span className="size-2 rounded-full bg-primary" aria-label="New" />
+                  <span className="size-2 rounded-full bg-primary" aria-label={t("New")} />
                 )}
               </li>
             );

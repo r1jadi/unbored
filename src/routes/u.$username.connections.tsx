@@ -21,14 +21,24 @@ import {
 import type { PublicProfile } from "@/lib/social/follows";
 import { cn } from "@/lib/utils";
 
+import { t, msg } from "@/lib/settings/language";
+/** The tabs' names, by key. */
+const TAB_LABELS = { followers: msg("Followers"), following: msg("Following") };
+
 export const Route = createFileRoute("/u/$username/connections")({
   validateSearch: z.object({ tab: z.enum(["followers", "following"]).optional() }),
   head: ({ params }) => ({
     meta: [
-      { title: `@${params.username} connections — Unbored` },
-      { name: "description", content: `Followers and following of @${params.username}.` },
+      { title: t("@{username} connections — Unbored", { username: params.username }) },
+      {
+        name: "description",
+        content: t("Followers and following of @{username}.", { username: params.username }),
+      },
       { property: "og:title", content: `@${params.username} connections` },
-      { property: "og:description", content: `Followers and following of @${params.username}.` },
+      {
+        property: "og:description",
+        content: t("Followers and following of @{username}.", { username: params.username }),
+      },
     ],
   }),
   component: Connections,
@@ -57,7 +67,7 @@ function Connections() {
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Couldn't load connections.");
+          setError(err instanceof Error ? err.message : t("Couldn't load connections."));
           setList([]);
         }
       });
@@ -70,22 +80,22 @@ function Connections() {
     <Page>
       <PageHeader back title={`@${username}`} />
       <div className="flex border-b border-border text-sm" role="tablist">
-        {(["followers", "following"] as const).map((t) => (
+        {(["followers", "following"] as const).map((key) => (
           <Link
-            key={t}
+            key={key}
             to="/u/$username/connections"
             params={{ username }}
-            search={{ tab: t }}
+            search={{ tab: key }}
             role="tab"
-            aria-selected={tab === t}
+            aria-selected={tab === key}
             className={cn(
-              "-mb-px flex-1 border-b-2 py-3 text-center capitalize",
-              tab === t
+              "-mb-px flex-1 border-b-2 py-3 text-center",
+              tab === key
                 ? "border-foreground font-medium"
                 : "border-transparent text-muted-foreground",
             )}
           >
-            {t}
+            {t(TAB_LABELS[key])}
           </Link>
         ))}
       </div>
@@ -93,12 +103,12 @@ function Connections() {
         <ListSkeleton />
       ) : error ? (
         <ErrorState
-          title="Couldn't load connections"
+          title={t("Couldn't load connections")}
           body={error}
           onRetry={() => window.location.reload()}
         />
       ) : list.length === 0 ? (
-        <EmptyState icon={Users} title="No one here yet" />
+        <EmptyState icon={Users} title={t("No one here yet")} />
       ) : (
         <ul>
           {list.map((u) => (

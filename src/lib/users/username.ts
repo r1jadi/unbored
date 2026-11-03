@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api/client";
 
+import { t } from "@/lib/settings/language";
 export const USERNAME_MIN_LENGTH = 3;
 export const USERNAME_MAX_LENGTH = 24;
 
@@ -36,13 +37,13 @@ export function normalizeUsername(value: string): string {
  * that before calling it.
  */
 export function usernameValidationMessage(value: string): string | undefined {
-  if (value === "") return "Choose a username.";
+  if (value === "") return t("Choose a username.");
   const length = [...value].length;
   if (length < USERNAME_MIN_LENGTH || length > USERNAME_MAX_LENGTH) {
-    return "Use 3–24 characters for your username.";
+    return t("Use 3–24 characters for your username.");
   }
   if (!USERNAME_PATTERN.test(value)) {
-    return "Use only letters, numbers and underscores.";
+    return t("Use only letters, numbers and underscores.");
   }
   return undefined;
 }
@@ -81,17 +82,17 @@ export type UsernameStatus =
 export function usernameStatusMessage(status: UsernameStatus): string {
   switch (status.state) {
     case "empty":
-      return "Choose a username";
+      return t("Choose a username");
     case "invalid":
       return status.message;
     case "checking":
-      return "Checking availability...";
+      return t("Checking availability...");
     case "available":
-      return "Username is available";
+      return t("Username is available");
     case "taken":
-      return "Username is already taken";
+      return t("Username is already taken");
     case "error":
-      return "Couldn't check username availability. Try again.";
+      return t("Couldn't check username availability. Try again.");
   }
 }
 

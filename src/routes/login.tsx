@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api/client";
 import { authErrorMessage, signIn } from "@/lib/auth/session";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 const searchSchema = z.object({
   email: z.string().optional(),
   redirect: z.string().optional(),
@@ -15,7 +16,7 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search) => searchSchema.parse(search),
-  head: () => seo("Log in", "Log in to Unbored to keep your scores and streaks."),
+  head: () => seo(t("Log in"), t("Log in to Unbored to keep your scores and streaks.")),
   component: Login,
 });
 
@@ -36,7 +37,7 @@ function Login() {
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email") ?? "").trim();
     const password = String(form.get("password") ?? "");
-    if (!email || !password) return setErr("Enter your email and password.");
+    if (!email || !password) return setErr(t("Enter your email and password."));
     setErr(undefined);
     setBusy(true);
     try {
@@ -52,13 +53,13 @@ function Login() {
 
   return (
     <AuthLayout
-      title="Welcome back"
-      subtitle="Log in to keep your scores and streaks."
+      title={t("Welcome back")}
+      subtitle={t("Log in to keep your scores and streaks.")}
       footer={
         <>
-          New to Unbored?{" "}
+          {t("New to Unbored?")}{" "}
           <Link to="/signup" className="font-medium text-foreground">
-            Create account
+            {t("Create account")}
           </Link>
         </>
       }
@@ -69,7 +70,7 @@ function Login() {
           id="email"
           name="email"
           type="email"
-          label="Email"
+          label={t("Email")}
           autoComplete="email"
           defaultValue={search.email ?? ""}
         />
@@ -78,20 +79,20 @@ function Login() {
             id="password"
             name="password"
             type={show ? "text" : "password"}
-            label="Password"
+            label={t("Password")}
             autoComplete="current-password"
             hint={
               <Link
                 to="/forgot-password"
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
-                Forgot password?
+                {t("Forgot password?")}
               </Link>
             }
           />
           <button
             type="button"
-            aria-label={show ? "Hide password" : "Show password"}
+            aria-label={show ? t("Hide password") : t("Show password")}
             onClick={() => setShow(!show)}
             className="absolute right-3 bottom-3.5 text-muted-foreground"
           >
@@ -104,7 +105,7 @@ function Login() {
           </p>
         )}
         <Button type="submit" variant="play" size="xl" className="w-full" disabled={busy}>
-          Log in
+          {t("Log in")}
         </Button>
       </form>
     </AuthLayout>
@@ -126,7 +127,7 @@ function sanitizeNext(value: string | undefined): string {
 function describeLoginError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === "network_error") {
-      return "Could not reach the server. Check your connection and try again.";
+      return t("Could not reach the server. Check your connection and try again.");
     }
     return authErrorMessage(error);
   }

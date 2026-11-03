@@ -10,16 +10,17 @@ import { MAX_PAGE_SIZE, mostPlayed, useCategories, useGames } from "@/lib/games/
 import { prefetchExplore } from "@/lib/prefetch";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/explore")({
   loader: ({ context }) => prefetchExplore(context.queryClient),
-  head: () => seo("Explore", "Discover new games and browse every category."),
+  head: () => seo(t("Explore"), t("Discover new games and browse every category.")),
   component: Explore,
 });
 
 function More({ to }: { to: string }) {
   return (
     <Link to={to} className="flex items-center text-sm text-muted-foreground hover:text-foreground">
-      See all
+      {t("See all")}
       <ChevronRight className="size-4" />
     </Link>
   );
@@ -42,7 +43,7 @@ function SectionError({ children, onRetry }: { children: ReactNode; onRetry: () 
         onClick={onRetry}
         className="font-medium underline underline-offset-4 transition-colors hover:text-primary"
       >
-        Retry
+        {t("Retry")}
       </button>
     </div>
   );
@@ -74,10 +75,10 @@ export function Explore() {
   return (
     <Page className="max-w-5xl">
       <PageHeader
-        title="Explore"
-        subtitle="Find your next game."
+        title={t("Explore")}
+        subtitle={t("Find your next game.")}
         actions={
-          <Button asChild variant="ghost" size="icon" aria-label="Search">
+          <Button asChild variant="ghost" size="icon" aria-label={t("Search")}>
             <Link to="/search">
               <Search />
             </Link>
@@ -90,12 +91,12 @@ export function Explore() {
           className="press flex h-11 items-center gap-2 rounded-xl bg-surface px-4 text-sm text-muted-foreground md:hidden"
         >
           <Search className="size-4" />
-          Search games
+          {t("Search games")}
         </Link>
         {daily.status === "error" ? (
           <div className="mt-4">
             <SectionError onRetry={daily.retry}>
-              Today's challenge is unavailable right now.
+              {t("Today's challenge is unavailable right now.")}
             </SectionError>
           </div>
         ) : challenge ? (
@@ -105,14 +106,14 @@ export function Explore() {
             className="press mt-4 flex items-center gap-4 overflow-hidden rounded-2xl border border-glass-border bg-surface p-4"
           >
             <div className="flex-1">
-              <p className="text-xs font-medium text-primary">Today's challenge</p>
+              <p className="text-xs font-medium text-primary">{t("Today's challenge")}</p>
               <p className="mt-1 text-lg font-semibold">{challenge.title}</p>
               <p className="text-sm text-muted-foreground">
                 {!challenge.playable
-                  ? "Not playable yet."
+                  ? t("Not playable yet.")
                   : signedIn
-                    ? "One ranked attempt a day."
-                    : "Practise as often as you like."}
+                    ? t("One ranked attempt a day.")
+                    : t("Practise as often as you like.")}
               </p>
             </div>
             <GameArt id={challenge.slug} className="size-24 shrink-0 rounded-xl" />
@@ -120,13 +121,13 @@ export function Explore() {
         ) : null}
       </div>
 
-      <Section title="Categories" action={<More to="/categories" />}>
+      <Section title={t("Categories")} action={<More to="/categories" />}>
         {categories.status === "loading" ? (
           <GridSkeleton count={3} />
         ) : categories.status === "error" ? (
           <div className="px-4 md:px-0">
             <SectionError onRetry={categories.retry}>
-              Categories are unavailable right now.
+              {t("Categories are unavailable right now.")}
             </SectionError>
           </div>
         ) : (
@@ -145,17 +146,17 @@ export function Explore() {
         )}
       </Section>
 
-      <Section title="New" action={<More to="/new" />}>
+      <Section title={t("New")} action={<More to="/new" />}>
         {newest.status === "loading" ? (
           <GridSkeleton count={3} />
         ) : newest.status === "error" ? (
           <div className="px-4 md:px-0">
             <SectionError onRetry={newest.retry}>
-              The catalogue is unavailable right now.
+              {t("The catalogue is unavailable right now.")}
             </SectionError>
           </div>
         ) : newestItems.length === 0 ? (
-          <EmptyState title="No games published yet" />
+          <EmptyState title={t("No games published yet")} />
         ) : (
           <div className="no-scrollbar flex gap-3 overflow-x-auto px-4 md:grid md:grid-cols-4 md:px-0 lg:grid-cols-5">
             {newestItems.map((game) => (
@@ -168,7 +169,7 @@ export function Explore() {
       {/* Hidden until something has been played: an empty "Popular" row says
           nothing a player can use. */}
       {catalogue.status === "ready" && popular.length > 0 && (
-        <Section title="Popular" action={<More to="/popular" />}>
+        <Section title={t("Popular")} action={<More to="/popular" />}>
           <div className="no-scrollbar flex gap-3 overflow-x-auto px-4 md:grid md:grid-cols-4 md:px-0 lg:grid-cols-5">
             {popular.map((game, i) => (
               <GameCard

@@ -4,6 +4,7 @@ import { Home } from "lucide-react";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { Button } from "@/components/ui/button";
 
+import { t } from "@/lib/settings/language";
 /**
  * The two ways out of a game screen that has nothing left to play — a daily
  * attempt already used, a run that could not be verified, a game that cannot
@@ -18,7 +19,7 @@ export function GameExits({ slug, title }: { slug?: string; title?: string }) {
     <Button asChild variant="secondary" size="lg" className="px-3">
       <Link to="/">
         <Home />
-        For You
+        {t("For You")}
       </Link>
     </Button>
   );
@@ -31,7 +32,7 @@ export function GameExits({ slug, title }: { slug?: string; title?: string }) {
     <div className="mx-auto grid w-full max-w-xs grid-cols-2 gap-2">
       {feed}
       <Button asChild variant="secondary" size="lg" className="min-w-0 px-3">
-        <ExitGameLink slug={slug} aria-label={`Back to ${title}`}>
+        <ExitGameLink slug={slug} aria-label={t("Back to {title}", { title })}>
           <span className="truncate">{title}</span>
         </ExitGameLink>
       </Button>

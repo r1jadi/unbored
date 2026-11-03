@@ -1,0 +1,670 @@
+# Fjalekryqi: the Albanian crossword word list, one entry per line, ANSWER|clue.
+#
+# Every clue here is original to this project. Answers are common Albanian words
+# and place names, family-friendly, written with the alphabet's single letters
+# (A–Z, Ç, Ë): a digraph such as SH, GJ or RR takes two squares, as in Albanian
+# crosswords. scripts/generate-crossword-bank.mjs --lang sq fills grids from this
+# list; a word with no line here never appears in a puzzle.
+
+# ── Three letters ───────────────────────────────────────────────────────────
+AJO|Përemër vetor, femër
+ANË|Krah, faqe e diçkaje
+ARË|Tokë e punuar për të mbjellë
+ARI|Kafshë e madhe e pyllit që fle gjatë dimrit
+ART|Krijimtari që kërkon talent
+ATA|Përemër, shumës mashkullor
+ATO|Përemër, shumës femëror
+AZI|Kontinenti më i madh
+BAR|Rritet në livadh dhe e hanë delet
+BIE|Rrëzohet përtokë
+BIR|Djalë, në raport me prindin
+BLI|Pemë me lule erëmira për çaj
+BLU|Ngjyra e qiellit të kthjellët
+BRI|Rritet në kokën e dhisë
+BUF|Zog nate me sy të mëdhenj
+ÇAJ|Pije e nxehtë me gjethe
+ÇDO|Secili, të gjithë një nga një
+ÇEL|Hap petalet në pranverë
+DAL|Shkoj jashtë
+DEL|Shfaqet, nxirret jashtë
+DEM|Mashkulli i lopës
+DET|Ujë i kripur e i gjerë
+DHI|Kafshë shtëpiake me brirë e mjekër
+DIL|Urdhër: largohu jashtë!
+DJE|Dita para sotit
+DRE|Kafshë me brirë të degëzuar
+DRU|Lëndë që merret nga pema
+DUA|Kam dëshirë, në vetën e parë
+ECI|Lëviz me këmbë
+EJA|Urdhër: afrohu!
+ENË|Pjatë, tas ose tenxhere
+ERA|Fryn, në trajtë të shquar
+ERË|Ajër në lëvizje
+FAT|Rastësi e mbarë
+FIK|Frut i ëmbël mesdhetar
+FLE|Bën gjumë
+FLI|Gatim me shtresa që piqet me saç
+FOL|Urdhër: thuaj diçka!
+FYT|Gryka, nga kalon zëri
+GAZ|Lëndë si ajri; edhe gëzim
+GJI|Pjesë e detit që hyn në tokë
+GJU|Nyja në mes të këmbës
+GOL|Topi në rrjetë
+GRI|Ngjyrë mes të bardhës e të zezës
+GUR|Copë shkëmbi
+HAN|Bujtinë e vjetër për udhëtarët
+HAP|E kundërta e mbyll
+HIÇ|Aspak, asgjë
+HIP|Urdhër: ngjitu sipër!
+HUA|Para e marrë për t'u kthyer
+HYJ|Futem brenda
+HYR|Urdhër: futu brenda!
+IDE|Mendim i ri
+ISH|I mëparshëm, që ka qenë
+JAM|Ekzistoj, në vetën e parë
+JAP|Dhuroj, ia zgjas dikujt
+JEP|Dhuron, ia zgjat dikujt
+JUG|E kundërta e veriut
+KAM|Zotëroj, në vetën e parë
+KAP|Zë me dorë
+KAQ|Në këtë masë
+KEC|Dhi e vogël
+KEQ|E kundërta e mirë
+KJO|Përemër dëftor femëror
+KOS|Qumësht i thartuar
+KOT|Pa dobi, më ...
+KUJ|Fjalë pyetëse: për cilin?
+KUQ|Ngjyra e gjakut
+KUR|Fjalë pyetëse për kohën
+LAJ|Pastroj me ujë
+LAK|Nyjë rrethore në litar
+LEK|Monedha e Shqipërisë
+LIG|I keq, dashakeq
+LIS|Pemë e fortë, dushk
+LOT|Pikë që del nga syri kur qajmë
+MAJ|Muaji i pestë
+MAL|Lartësi e madhe toke
+MAT|Përcaktoj gjatësinë
+MBI|Sipër
+MIK|Shok i ngushtë
+MIU|Kafsha e vogël që do djathin
+MOS|Fjalë mohuese urdhërore
+MOT|Kohë atmosferike; edhe vit
+MUA|Përemri unë, në kallëzore
+MUR|Ndërtim prej guri ose tulle
+NGA|Prej, nga vjen
+NIL|Lumi i Egjiptit
+NIP|Djali i fëmijës sonë
+NIS|Fillon
+NJË|Numri i parë
+NOT|Lëvizje me krahë në ujë
+NUK|Fjalë mohuese
+ORA|Tregon kohën, në trajtë të shquar
+ORË|Gjashtëdhjetë minuta
+OSE|Lidhëz ndarëse
+PAK|Jo shumë
+PAS|Mbas, prapa
+PËR|Parafjalë qëllimi
+POR|Lidhëz kundërshtuese
+PSE|Fjalë pyetëse për arsyen
+PUS|Gropë e thellë për ujë
+QAJ|Derdh lot
+QEN|Shoku besnik i njeriut
+RRI|Qëndron, ndenjet
+SAJ|I asaj
+SHI|Ujë që bie nga retë
+SKI|Rrëshqitje në borë
+SOT|Kjo ditë
+SUP|Pjesa ku lidhet krahu
+TEK|Numër që nuk ndahet me dy
+TIJ|I atij
+TOP|Luhet me këmbë në fushë
+TRE|Numri pas dy
+TRI|Numri pas dy, për femërore
+TUL|Mishi i frutit
+UJË|Lëng i domosdoshëm për jetën
+UJK|Kafshë e egër që ulërin
+UNË|Përemri i vetës së parë
+URA|Kalon mbi lumë, në trajtë të shquar
+URË|Ndërtim që kalon mbi lumë
+URI|Dëshira për të ngrënë
+VAJ|Lëng që nxirret nga ullinjtë
+VEÇ|Përveç, vetëm
+VIÇ|Lopë e vogël
+VIJ|Afrohem, mbërrij
+VIT|Dymbëdhjetë muaj
+YLL|Ndriçon natën në qiell
+ZOG|Kafshë me pupla që fluturon
+ZOT|Zotëri, pronar
+ËMË|Nënë, në gjuhë të vjetër
+
+# ── Four letters ────────────────────────────────────────────────────────────
+AFËR|Jo larg
+AGIM|Fillimi i ditës
+AJËR|Atë që thithim
+ARKË|Kuti ku mbahen paratë
+ARMË|Pushkë ose shpatë
+ARRË|Fryt me lëvozhgë të fortë
+BABA|Prindi mashkull
+BARI|Ruan delet në kullotë
+BARK|Pjesa ku është stomaku
+BERN|Kryeqyteti i Zvicrës
+BESË|Fjala e dhënë, nderi shqiptar
+BLEJ|Paguaj për diçka
+BORË|Bie në dimër, e bardhë
+BOSH|I zbrazët
+BOTA|Planeti me gjithë njerëzit, e shquar
+BOTË|Toka me gjithë njerëzit
+BOZË|Pije e ëmbël nga misri
+BUKË|Gatuhet në furrë nga mielli
+BUNË|Lumi që del nga liqeni i Shkodrës
+BUZË|Pjesë e gojës
+ÇATI|Mbulesa e shtëpisë
+ÇMIM|Sa kushton diçka
+ÇUDI|Diçka e jashtëzakonshme
+ÇUPË|Vajzë, në të folur
+DAJË|Vëllai i nënës
+DAJT|Mali mbi Tiranë
+DASH|Mashkulli i deles
+DEGË|Krah i pemës
+DELE|Kafshë që jep lesh
+DERË|Hapet me çelës
+DERR|Kafshë që rënkon në baltë
+DEVE|Ka gunga dhe jeton në shkretëtirë
+DIEL|Dita e fundit e javës
+DITA|Koha me dritë, në trajtë të shquar
+DITË|Koha nga mëngjesi në mbrëmje
+DJEP|Shtrat foshnje që lëkundet
+DORA|Ka pesë gishta, në trajtë të shquar
+DORË|Ka pesë gishta
+DRIN|Lumi më i gjatë i Shqipërisë
+DUSH|Larje në këmbë me ujë që bie
+EDHE|Gjithashtu
+EMËR|Si quhet dikush
+EURO|Monedha e Kosovës
+FARË|Mbillet në tokë
+FAQE|Pjesë e librit ose e fytyrës
+FIER|Qytet në Myzeqe
+FLAS|Them fjalë
+FOLË|Shtëpia e zogut
+FORT|Me forcë
+FRYT|Rritet në pemë
+FUND|Mbarimi
+GARË|Konkurrim, garim
+GJAK|Lëng i kuq në trup
+GJEL|Këndon në agim
+GOCË|Vajzë e re
+GOJË|Hapet për të ngrënë
+GOTË|Pimë ujë me të
+GRUA|Femër e rritur
+HALË|Gjethe e pishës
+HARE|Gëzim
+HËNË|Ndriçon natën; edhe dita e parë e javës
+HIJE|Formohet kur pengohet drita
+ILIR|Banor i lashtë i Ballkanit
+JAVË|Shtatë ditë
+JETA|E kundërta e vdekjes, e shquar
+JETË|E kundërta e vdekjes
+KAFE|Pije e zezë në filxhan
+KALA|Fortesë e vjetër
+KALË|Kafshë që vrapon e mbart kalorës
+KOHA|E mat ora, në trajtë të shquar
+KOHË|E mat ora
+KOKË|Pjesa e sipërme e trupit
+KORB|Zog i zi
+KOSË|Vegël për të prerë barin
+KRAH|Lidhet me supin
+KUFI|Vija ndarëse mes shteteve
+KUSH|Fjalë pyetëse për njeriun
+KUTI|Arkë e vogël
+LAJM|Njoftim i ri
+LAPS|Shkruan me grafit
+LARG|Jo afër
+LART|Sipër
+LËNG|Pije nga frutat
+LESH|Mbulon delen
+LEXO|Urdhër për librin
+LIMA|Kryeqyteti i Perusë
+LIRË|Me çmim të ulët, femërore
+LIRI|Pavarësi, mungesë robërie
+LOJA|Argëtim me rregulla, e shquar
+LOJË|Argëtim me rregulla
+LOPË|Jep qumësht
+LUAJ|Bëj lojë
+LUAN|Mbreti i kafshëve
+LUGË|Me të hamë supë
+LULE|Çel në pranverë
+LUMI|Rrjedh drejt detit
+MACE|Kafshë shtëpiake që mjaullin
+MADH|Jo i vogël
+MALL|Dëshirë për dikë që është larg
+MAMA|Nëna, me dashuri
+MARS|Muaji i tretë
+MEND|Arsye, gjykim
+MËSO|Urdhër: studio!
+MIJË|Dhjetë herë qind
+MIKE|Shoqe e ngushtë
+MIRË|Jo keq
+MISH|Ushqim nga kafshët
+MIZË|Insekt që zukat
+MJEK|Shëron të sëmurët
+MUAJ|Rreth tridhjetë ditë
+MUZE|Ruan vepra arti e histori
+MUZG|Koha kur bie nata
+NATA|Kur errësohet, në trajtë të shquar
+NATË|Kur errësohet
+NDER|Krenari, dinjitet
+NDEZ|I jap zjarr
+NËNË|Prindi femër
+NOTË|Vlerësim në shkollë; edhe tingull
+NUSE|Femra në dasmë
+OHRI|Liqeni i vjetër mes Shqipërisë dhe Maqedonisë
+ORAR|Plan me orë
+OREZ|Drithë i bardhë aziatik
+OSLO|Kryeqyteti i Norvegjisë
+PAQE|E kundërta e luftës
+PARA|Me to blejmë
+PARK|Kopsht publik
+PATË|Shpend i madh shtëpiak
+PEJË|Qytet në Kosovë
+PEMË|Ka rrënjë, trung e degë
+PESË|Numri pas katër
+PIKË|Shenjë në fund të fjalisë
+PITE|Byrek
+PLAK|Burrë i moshuar
+PLIS|Kapelë e bardhë shqiptare
+PLOT|Jo bosh
+POET|Shkruan vjersha
+POÇE|Enë balte
+PULË|Bën vezë
+PUNË|Bëhet për rrogë
+PYLL|Shumë pemë bashkë
+QAFË|Lidh kokën me trupin
+QEPË|Perime që të lot sytë
+QESH|Shpreh gëzim me zë
+QIND|Dhjetë herë dhjetë
+RAFT|Mbajtëse librash në mur
+RAKI|Pije e fortë shqiptare
+RETË|Mbulojnë qiellin
+RËRË|Gjendet në plazh
+RINI|Mosha e të rinjve
+ROMË|Kryeqyteti i Italisë
+ROSË|Shpend që noton
+ROZË|Ngjyrë e çelët e kuqe
+SHAH|Lojë me mbret e mbretëreshë
+SHOH|Përdor sytë
+SHOK|Mik, shoqërues
+SOBË|Ngroh shtëpinë
+SPEC|Perime e gjelbër ose e kuqe
+STOL|Ulëse e gjatë në park
+SUPË|Gjellë me lëng
+SYTË|Shohim me ta
+TANI|Në këtë çast
+TAVË|Enë për gjellë në furrë
+TETË|Numri pas shtatë
+TEZE|Motra e nënës
+THUA|Rritet në majë të gishtit
+TOKA|Planeti ynë, në trajtë të shquar
+TOKË|Planeti ynë
+TREG|Vend shitblerjeje
+TREN|Udhëton mbi shina
+TRIM|Burrë i guximshëm
+TRUP|Gjithë qenia fizike
+TUFË|Grup lulesh ose delesh
+TURP|Ndjenjë kur gabon para të tjerëve
+UDHË|Rrugë, shteg
+ULËT|Jo i lartë
+ULLI|Pemë që jep vaj
+VALË|Lëvizje e ujit në det
+VAPË|Nxehtësi e madhe
+VEND|Atdhe; edhe një pikë në hartë
+VERË|Stina më e nxehtë; edhe pije
+VERI|Drejtimi i busullës lart
+VESË|Pika uji në bar në mëngjes
+VESH|Me të dëgjojmë
+VEZË|E bën pula
+VIJË|Hiqet me vizore
+VJEÇ|Fjalë për moshën
+VRAP|Ecje shumë e shpejtë
+XHEP|Fut duart aty
+ZANË|Qenie e bukur e përrallave
+ZERO|Asgjë, si numër
+ZEZË|Ngjyra e natës, femërore
+ZOGJ|Shpendë, shumës
+ZYRË|Vend pune me tavolina
+
+# ── Five letters ────────────────────────────────────────────────────────────
+AKULL|Ujë i ngrirë
+ANIJE|Lundron në det
+ARMIK|E kundërta e mikut
+ASGJË|Hiç
+ATDHE|Vendi ku ke lindur
+AVION|Fluturon në qiell
+BALLË|Pjesa mbi sy
+BALTË|Dhè i lagur
+BANJË|Ku lahemi
+BANKË|Ruan paratë
+BERAT|Qyteti i një mbi një dritareve
+BESIM|Siguri te dikush
+BIRRË|Pije me shkumë
+BLETË|Bën mjaltë
+BUKUR|E hijshme, e lezetshme
+BURIM|Ku del uji nga toka
+BURRË|Mashkull i rritur
+BYREK|Pite me petë
+ÇADËR|Mbron nga shiu
+ÇANTË|Mbart librat në shkollë
+ÇELËS|Hap derën
+ÇFARË|Fjalë pyetëse për sendin
+ÇIZME|Këpucë të larta për shi
+DARKË|Vakti i mbrëmjes
+DASMË|Festë martese
+DHËMB|Me të përtypim
+DHOMË|Pjesë e shtëpisë
+DIÇKA|Një send
+DIELL|Ylli që na ngroh
+DIMËR|Stina e borës
+DJALË|Fëmijë mashkull
+DOBËT|Pa fuqi
+DREKË|Vakti i mesditës
+DRITË|E kundërta e errësirës
+DUHAN|Pihet në cigare
+DYQAN|Ku blejmë
+EKRAN|Pjesa që shohim e telefonit
+ENJTE|Dita para së premtes
+ËMBËL|Si sheqeri
+FESTË|Ditë gëzimi
+FJALË|Përbëhet nga shkronja
+FLETË|Faqe fletoreje
+FLOKË|Rriten në kokë
+FORTË|Me fuqi
+FQINJ|Banon pranë nesh
+FRIKË|Ndjenjë para rrezikut
+FSHAT|Vendbanim më i vogël se qyteti
+FURRË|Pjek bukën
+FUSHË|Tokë e sheshtë
+FYELL|Vegël fryme prej druri
+GISHT|Dora ka pesë të tillë
+GJATË|Jo i shkurtër
+GJOKS|Pjesa para e trupit
+GJUHË|Me të flasim
+GJUMË|Pushim i natës
+GJYSH|Babai i prindit
+GOMAR|Kafshë kokëfortë me veshë të gjatë
+GRURË|Prej tij bëhet mielli
+GUSHT|Muaji i tetë
+GËZIM|Hare, lumturi
+HALLË|Motra e babait
+HARTË|Vizatim i vendeve
+HEKUR|Metal i fortë
+HUNDË|Me të nuhatim
+JANAR|Muaji i parë
+KAIRO|Kryeqyteti i Egjiptit
+KATËR|Numri pas tre
+KËMBË|Me to ecim
+KËNGË|Këndohet
+KISHË|Faltore e krishterë
+KLASË|Dhoma e mësimit
+KOCKË|Pjesë e skeletit
+KODËR|Mal i vogël
+KORÇË|Qyteti i serenatave
+KRIPË|I jep shije gjellës
+KRUJË|Qyteti i Skënderbeut
+KUKËS|Qytet në verilindje
+LAKËR|Perime me gjethe
+LARTË|Jo i ulët
+LEHTË|Jo i rëndë
+LEPUR|Kafshë me veshë të gjatë që hidhet
+LETËR|Shkruajmë mbi të
+LEXOJ|Përdor librin
+LEZHË|Qytet ku u mbajt Kuvendi i 1444
+LIBËR|Lexohet
+LIMON|Frut i verdhë e i thartë
+LIQEN|Ujë i ëmbël i rrethuar nga toka
+LUFTË|E kundërta e paqes
+MARTË|Dita pas së hënës
+MBESË|Vajza e vëllait ose e motrës
+MBRET|Sundimtar me kurorë
+MBYLL|E kundërta e hap
+MËSIM|Ora e shkollës
+MËSOJ|Studioj
+MIELL|Pluhur gruri për bukë
+MISËR|Drithë me kalli
+MOLLË|Fruti që i ra Njutonit
+MOSHË|Sa vjeç je
+MOTËR|Vajza e të njëjtëve prindër
+NESËR|Dita pas sotit
+NËNTË|Numri pas tetë
+NJERI|Qenie njerëzore
+NOTOJ|Lëviz në ujë
+NUMËR|Një, dy, tre…
+OBORR|Hapësira para shtëpisë
+OQEAN|Det shumë i madh
+PARIS|Kryeqyteti i Francës
+PESHK|Jeton në ujë
+PIRUN|Ka dhëmbë, për të ngrënë
+PISHË|Pemë halore
+PJATË|Enë për ushqim
+PLAKË|Grua e moshuar
+PLAZH|Bregu me rërë
+POLIC|Ruan rendin
+PORTË|E ruan portieri
+POSTË|Sjell letrat
+PRESH|Perime e gjatë si qepë
+PRIFT|Klerik i kishës
+PRILL|Muaji i katërt
+PROVË|Test
+PUNOJ|Bëj punë
+QENGJ|Dele e vogël
+QIELL|Sipër nesh, blu
+QOFTE|Mish i grirë i pjekur
+QYTET|Vendbanim i madh
+RËNDË|Jo i lehtë
+RROBA|Ato që veshim
+RROTË|E rrumbullakët, lëviz makinën
+RRUFE|Shkarkesë elektrike nga qielli
+RRUGË|Udhë në qytet
+RRUSH|Prej tij bëhet vera
+SAHAT|Orë e madhe, në të folur
+SAPUN|Lajmë duart me të
+SHANS|Rast i mirë
+SHEGË|Frut i kuq me shumë kokrra
+SHESH|Hapësirë e madhe në qytet
+SHKOJ|Nisem diku
+SHKOP|Copë druri e gjatë
+SHQIP|Gjuha jonë
+SHUMË|Jo pak
+SOFRË|Tryezë e ulët për të ngrënë
+SORRË|Zog i zi që kërren
+STUHI|Mot shumë i keq
+TAPET|Shtrohet në dysheme
+TAVAN|Sipër kokës në dhomë
+TENIS|Lojë me raketë e rrjetë
+TETOR|Muaji i dhjetë
+TEUTA|Mbretëresha ilire
+THATË|Pa lagështi
+THIKË|Pret bukën
+TIGAN|Për të skuqur
+TIGËR|Mace e madhe me vija
+TORTË|Ëmbëlsirë ditëlindjeje
+VAJZË|Fëmijë femër
+VALLE|Kërcim popullor
+VËLLA|Djali i të njëjtëve prindër
+VLORË|Qyteti ku u shpall pavarësia
+VOGËL|E kundërta e madh
+XHAMI|Faltore myslimane
+YLBER|Harku shumëngjyrësh pas shiut
+ZEBËR|Kalë me vija
+ZEMËR|Rreh në gjoks
+ZJARR|Djeg dhe ngroh
+
+# ── Six letters ─────────────────────────────────────────────────────────────
+AFRIKË|Kontinent me shkretëtirën Sahara
+BALENË|Gjitari më i madh i detit
+BARDHË|Ngjyra e borës
+BASKET|Lojë me kosh
+BRENDA|Jo jashtë
+DARDHË|Frut si këmbanë
+DAULLE|Bie me shkop
+DELFIN|Gjitar i zgjuar i detit
+DETYRË|Punë për shtëpi
+DHALLË|Pije nga kosi
+DHJETË|Numri i gishtave të duarve
+DJATHË|Bëhet nga qumështi
+DOLLAP|Ruan rrobat
+DOMATE|Perime e kuqe në sallatë
+DURRËS|Qytet bregdetar me amfiteatër
+EVROPË|Kontinenti ynë
+FËMIJË|Djalë ose vajzë i vogël
+FITORE|Kur fiton
+FLAMUR|Simbol i shtetit
+FLUTUR|Insekt me krahë shumëngjyrësh
+FTOHTË|Jo ngrohtë
+FUSTAN|Veshje grash
+FYTYRË|Sy, hundë e gojë
+GJALLË|Me jetë
+GJALPË|Lyhet mbi bukë
+GJETHE|Bien nga pema në vjeshtë
+GJITHË|Të tërë
+GJYSHE|Nëna e prindit
+HUMBJE|Kur humbet
+JASHTË|Jo brenda
+JASTËK|Mbështesim kokën kur flemë
+KADAIF|Ëmbëlsirë me fije
+KAFENE|Vend ku pihet kafe
+KAFSHË|Qenie e gjallë që nuk është bimë
+KALTËR|Blu e çelët
+KAMION|Mjet i madh transporti
+KAPELË|Vihet në kokë
+KËPUCË|Vishen në këmbë
+KËRCEJ|Hidhem lart
+KËNDOJ|Them këngë
+KINEMA|Ku shohim filma
+KOPSHT|Ku rriten lulet
+KORRIK|Muaji i shtatë
+KUJTIM|Diçka që mbajmë mend
+LAHUTË|Vegël me një tel për këngë kreshnike
+LËKURË|Mbulon trupin
+LIVADH|Fushë me bar
+LLAMBË|Jep dritë
+LOJTAR|Merr pjesë në lojë
+LUMTUR|Plot gëzim
+MAJMUN|Kafshë që ngjitet në pemë
+MAKINË|Mjet me katër rrota
+MENÇUR|Me mend
+MENDIM|Ide, gjykim
+MËSUES|Jep mësim në shkollë
+MIQËSI|Lidhje mes shokësh
+MINUTË|Gjashtëdhjetë sekonda
+MJALTË|E bëjnë bletët
+MJEKËR|Rritet në fytyrën e burrit
+MUSHKË|Mes kalit e gomarit
+NDIHMË|Përkrahje
+NËNTOR|Muaji i njëmbëdhjetë
+NGJYRË|E kuqe, blu ose e verdhë
+NXEHTË|Shumë i ngrohtë
+NXËNËS|Mëson në shkollë
+PALLAT|Ndërtesë e lartë banimi
+PERIME|Domate, speca, qepë
+PIKTOR|Pikturon
+PJEPËR|Frut i verdhë i verës
+POSHTË|Nën
+PREMTE|Dita para së shtunës
+PROVIM|Test i madh
+PUSHIM|Koha pa punë
+QERSHI|Frut i kuq me bisht
+REKORD|Arritja më e mirë
+ROZAFA|Kalaja e Shkodrës
+RRËNJË|Pjesa e pemës nën tokë
+SHALQI|Frut i madh i verës
+SHEQER|E ëmbëlson kafenë
+SHKURT|Muaji i dytë
+SHKËMB|Gur i madh
+SHOFER|Ngas makinën
+SHPEJT|Me vrap
+SHPINË|Pjesa e pasme e trupit
+SHQIPE|Shpendi në flamurin tonë
+SHTATË|Numri pas gjashtë
+SHTRAT|Flemë në të
+SHTUNË|Dita e parë e fundjavës
+SPITAL|Ku shërohen të sëmurët
+TABELË|Dërrasë ku shënohet rezultati
+TEATËR|Skenë për shfaqje
+TIRANË|Kryeqyteti i Shqipërisë
+TOMORR|Mali i shenjtë mbi Berat
+TRAGET|Anije që mbart makina
+TROFTË|Peshk lumi
+TRYEZË|Tavolinë
+UTHULL|E thartë, për sallatë
+VERDHË|Ngjyra e limonit
+VJETËR|Jo i ri
+VRAPIM|Garë me këmbë
+XHAXHA|Vëllai i babait
+ZAMBAK|Lule e bardhë
+ZGJUAR|Inteligjent
+ËNDËRR|E shohim kur flemë
+
+# ── Seven letters ───────────────────────────────────────────────────────────
+ALFABET|Të gjitha shkronjat me radhë
+BAKLAVA|Ëmbëlsirë me arra e sherbet
+BREGDET|Toka buzë detit
+BRESHËR|Shi me kokrra akulli
+BRESHKË|Ecën ngadalë me guaskë
+ÇIFTELI|Vegël muzikore me dy tela
+DASHURI|Ndjenjë e ngrohtë për dikë
+DHELPËR|Kafshë dinake me bisht të kuq
+DHËNDËR|Burri i vajzës
+DHJETOR|Muaji i fundit
+DHURATË|Jepet në ditëlindje
+DRITARE|Hapje në mur për dritë
+DYSHEME|Ecim mbi të në shtëpi
+ELBASAN|Qytet në mes të Shqipërisë
+ELEFANT|Ka feçkë të gjatë
+FILXHAN|Për kafe
+FLETORE|Shkruajmë në të në shkollë
+FOSHNJË|Fëmijë shumë i vogël
+FSHATAR|Banor i fshatit
+FUTBOLL|Lojë me top e dy porta
+GAFORRE|Ecën anash
+GJARPËR|Zvarranik pa këmbë
+GJASHTË|Numri pas pesë
+GJELBËR|Ngjyra e barit
+KAMPION|Fitues i kampionatit
+KARRIGE|Ulemi mbi të
+KËMISHË|Ka mëngë e jakë
+KUMBULL|Frut i vogël vjollcë
+KUSHËRI|Fëmija i dajës ose i hallës
+KUZHINË|Ku gatuhet
+MBRËMJE|Pjesa e fundit e ditës
+MESDITË|Ora dymbëdhjetë e ditës
+MESNATË|Ora dymbëdhjetë e natës
+MJEGULL|Re e ulët mbi tokë
+MËNGJES|Fillimi i ditës; edhe vakt
+NDESHJE|Lojë mes dy skuadrave
+NGADALË|Jo shpejt
+NGROHTË|Jo ftohtë
+PASQYRË|Ku shohim veten
+PJESHKË|Frut me lëkurë si kadife
+PËLLUMB|Zogu i paqes
+PRIZREN|Qytet në Kosovë me kala
+QELESHE|Plis i bardhë
+QERSHOR|Muaji i gjashtë
+QUMËSHT|Pije e bardhë nga lopa
+SALLATË|Gjellë me perime të freskëta
+SARANDË|Qytet bregdetar në jug
+SEKONDË|Pjesë e minutës
+SHEKULL|Njëqind vjet
+SHËNDET|Mirëqenie e trupit
+SHKODËR|Qytet me kalanë Rozafa
+SHKOLLË|Ku mësojnë fëmijët
+SHPELLË|Zgavër në mal
+SHPRESË|Pritje e mirë për të ardhmen
+SHTATOR|Muaji i nëntë
+SHTËPI|Ku banojmë
+SKIFTER|Zog grabitqar
+SKUADËR|Ekip
+STACION|Ndalesa e trenit
+TELEFON|Me të telefonojmë
+VJESHTË|Stina kur bien gjethet
+VJOLLCË|Lule e vogël lejla
+XHAKETË|Vishet mbi këmishë

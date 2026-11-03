@@ -36,6 +36,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api/client";
 import { getAccessToken, getSessionUserId } from "@/lib/auth/session";
 import { getQueryClient } from "@/lib/query";
+import {
+  browserOffline,
+  isOfflineSession,
+  isUnreachable,
+  offlineResult,
+  offlineSession,
+} from "@/lib/games/offline";
 import { fetchSavedRun, useSaveProgress } from "@/lib/games/saved-runs";
 import {
   createRun as createChainRun,
@@ -159,6 +166,7 @@ import {
   check as checkCrossword,
   createRun as createCrosswordRun,
   CROSSWORD_RULES_VERSION,
+  FJALEKRYQI_RULES_VERSION,
   enter as enterCrossword,
   finish as finishCrossword,
   gridForDay,
@@ -211,6 +219,7 @@ import {
   type Stack10Run,
 } from "@/lib/games/stack10";
 
+import { currentLanguage, t } from "@/lib/settings/language";
 /** Routes implemented by `services/game-sessions` and the catalogue's boards. */
 const Routes = {
   sessions: "/sessions",
@@ -239,6 +248,8 @@ export type PlaySession = {
   expiresAt: string;
   /** False for a guest run: played and verified, and never eligible for a score. */
   ranked: boolean;
+  /** True for a run issued on this device because the API could not be reached. */
+  offline?: boolean;
 };
 
 /** A verified run, as `POST /sessions/{id}/complete` answers with it. */
@@ -258,6 +269,8 @@ export type RunResult = {
   rank: number | null;
   /** True when this submission was a retry of the run already recorded. */
   duplicate: boolean;
+  /** An offline practice run: the client's own summary, never verified or saved. */
+  offline?: boolean;
 };
 
 /** One row of a board. The caller's own row is returned separately, as `me`. */
@@ -306,18 +319,29 @@ type RequestOptions = { signal?: AbortSignal; rulesVersion?: string };
  * eligible for a score. The request carries no user id — the token is the identity.
  * The rules default to Stack 10's; every other runtime passes its own version,
  * which is what the server's start gate matches against the game's runtime.
+ *
+ * When the API cannot be reached at all, the run is issued on this device as
+ * offline practice instead (see `lib/games/offline.ts`): never ranked, never
+ * submitted. A refusal from the API is still an error.
  */
 export function startSession(gameSlug: string, options: RequestOptions = {}): Promise<PlaySession> {
+  const rulesVersion = options.rulesVersion ?? STACK10_RULES_VERSION;
+  if (browserOffline()) return Promise.resolve(offlineSession(gameSlug, rulesVersion));
   const token = getAccessToken();
   return apiFetch<PlaySession>(Routes.sessions, {
     method: "POST",
     body: {
       gameSlug,
-      rulesVersion: options.rulesVersion ?? STACK10_RULES_VERSION,
+      rulesVersion,
       client: CLIENT,
     },
     token,
     signal: options.signal,
+  }).catch((error: unknown) => {
+    if (!options.signal?.aborted && isUnreachable(error)) {
+      return offlineSession(gameSlug, rulesVersion);
+    }
+    throw error;
   });
 }
 
@@ -328,6 +352,9 @@ export function startSession(gameSlug: string, options: RequestOptions = {}): Pr
  * and the run ending — a client-side delta, so a wrong system clock cannot make the
  * server see an impossible duration. The server still checks it against the age of
  * the session.
+ *
+ * An offline run is not sent anywhere: the server never issued it, so it could not
+ * verify it. Its result is the run's own summary, marked `offline`.
  */
 export function completeRun(
   sessionId: string,
@@ -335,6 +362,9 @@ export function completeRun(
   durationMs: number,
   options: RequestOptions = {},
 ): Promise<RunResult> {
+  if (isOfflineSession(sessionId)) {
+    return Promise.resolve(offlineResult(sessionId, submissionBody, durationMs));
+  }
   const token = getAccessToken();
   return postCompletion(sessionId, submissionBody, durationMs, token, options).then((result) => {
     // A verified run changes the game's board, its play count and the player's
@@ -407,13 +437,13 @@ export function fetchLeaderboard(
  * transport failure or a bug and gets a generic sentence rather than a detail.
  */
 export function playErrorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Something went wrong. Please try again.";
+  return error instanceof ApiError ? error.message : t("Something went wrong. Please try again.");
 }
 
 function asApiError(error: unknown): ApiError {
   return error instanceof ApiError
     ? error
-    : new ApiError("Something went wrong. Please try again.");
+    : new ApiError(t("Something went wrong. Please try again."));
 }
 
 // ── A run of Stack 10, from session to score ────────────────────────────────
@@ -2643,18 +2673,32 @@ export function useCrosswordRun(gameSlug: string, autoStart = false): CrosswordR
     submitting.current = false;
     setState({ status: "starting" });
 
+    // In Albanian the daily crossword is Fjalekryqi: the same game over the
+    // Albanian bank, under its own rules version.
+    const albanian = currentLanguage() === "sq";
+    const rulesVersion = albanian ? FJALEKRYQI_RULES_VERSION : CROSSWORD_RULES_VERSION;
     Promise.all([
-      startSession(gameSlug, { signal: controller.signal, rulesVersion: CROSSWORD_RULES_VERSION }),
-      import("@/lib/games/crossword-bank"),
+      startSession(gameSlug, { signal: controller.signal, rulesVersion }),
+      albanian
+        ? import("@/lib/games/fjalekryqi-bank").then((bank) => ({
+            minis: bank.FJALEKRYQI_MINIS,
+            midis: bank.FJALEKRYQI_MIDIS,
+            clues: bank.FJALEKRYQI_CLUES,
+          }))
+        : import("@/lib/games/crossword-bank").then((bank) => ({
+            minis: bank.CROSSWORD_MINIS,
+            midis: bank.CROSSWORD_MIDIS,
+            clues: bank.CROSSWORD_CLUES,
+          })),
     ])
       .then(([session, bank]) => {
         if (controller.signal.aborted) return;
-        const grid = gridForDay(Number(session.seed), bank.CROSSWORD_MINIS, bank.CROSSWORD_MIDIS);
+        const grid = gridForDay(Number(session.seed), bank.minis, bank.midis);
         setState({
           status: "playing",
           session,
-          run: createCrosswordRun(session.seed, grid),
-          clues: bank.CROSSWORD_CLUES,
+          run: createCrosswordRun(session.seed, grid, session.rulesVersion),
+          clues: bank.clues,
           startedAt: Date.now(),
         });
       })

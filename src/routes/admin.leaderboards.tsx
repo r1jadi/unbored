@@ -25,9 +25,10 @@ import {
 } from "@/lib/admin/api";
 import { fmt, points } from "@/lib/format";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/admin/leaderboards")({
   head: () => ({
-    meta: [{ title: "Scores — Unbored admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: t("Scores — Unbored admin") }, { name: "robots", content: "noindex" }],
   }),
   component: ScoresAdmin,
 });
@@ -57,7 +58,7 @@ export function ScoresAdmin() {
   // the database holds. One request, capped at the API's maximum page size.
   const games = useAdminGames({ limit: ADMIN_MAX_LIMIT });
   const gameOptions = [
-    { value: "", label: "All games" },
+    { value: "", label: t("All games") },
     ...(games.status === "ready"
       ? games.data.items.map((g) => ({ value: g.slug, label: g.title }))
       : []),
@@ -69,7 +70,7 @@ export function ScoresAdmin() {
   const columns: Column<AdminScore>[] = [
     {
       key: "player",
-      head: "Player",
+      head: t("Player"),
       className: "min-w-48",
       cell: (s) => (
         <span className="flex min-w-0 items-center gap-3">
@@ -80,7 +81,7 @@ export function ScoresAdmin() {
     },
     {
       key: "score",
-      head: "Score",
+      head: t("Score"),
       className: "text-right",
       cell: (s) => (
         <span className="font-mono text-sm font-semibold tabular">{fmt(points(s.score))}</span>
@@ -88,7 +89,7 @@ export function ScoresAdmin() {
     },
     {
       key: "game",
-      head: "Game",
+      head: t("Game"),
       cell: (s) => (
         <Link
           to="/games/$id"
@@ -101,7 +102,7 @@ export function ScoresAdmin() {
     },
     {
       key: "session",
-      head: "Session started",
+      head: t("Session started"),
       cell: (s) => (
         <span className="text-xs text-muted-foreground">
           {formatStamp(s.sessionStartedAt) ?? "—"}
@@ -110,7 +111,7 @@ export function ScoresAdmin() {
     },
     {
       key: "recorded",
-      head: "Recorded",
+      head: t("Recorded"),
       cell: (s) => (
         <span className="text-xs text-muted-foreground">{formatAgo(s.createdAt) ?? "—"}</span>
       ),
@@ -119,8 +120,10 @@ export function ScoresAdmin() {
 
   return (
     <AdminPage
-      title="Scores"
-      subtitle="Verified scores only. A row exists because a finished run was replayed against the rules of its session."
+      title={t("Scores")}
+      subtitle={t(
+        "Verified scores only. A row exists because a finished run was replayed against the rules of its session.",
+      )}
     >
       <Toolbar>
         <SearchField
@@ -129,11 +132,11 @@ export function ScoresAdmin() {
             setQ(value);
             setPage(0);
           }}
-          label="Search players"
-          placeholder="Search a username"
+          label={t("Search players")}
+          placeholder={t("Search a username")}
         />
         <FilterSelect
-          label="Game"
+          label={t("Game")}
           value={game}
           onChange={(value) => {
             setGame(value);
@@ -158,11 +161,11 @@ export function ScoresAdmin() {
         <SectionCard>
           <AdminListStates
             state="ready"
-            emptyTitle={game || term ? "No score matches" : "No scores recorded"}
+            emptyTitle={game || term ? t("No score matches") : t("No scores recorded")}
             emptyBody={
               game || term
-                ? "Clear the filters to see every recorded score."
-                : "A score appears here when a run has been finished and verified."
+                ? t("Clear the filters to see every recorded score.")
+                : t("A score appears here when a run has been finished and verified.")
             }
           />
         </SectionCard>

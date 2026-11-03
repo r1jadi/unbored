@@ -11,6 +11,45 @@
  * as the decimal separator, one decimal place, no trailing `.0`) is a design
  * decision rather than a localisation one.
  */
+import { currentLanguage } from "@/lib/settings/language";
+
+/** Albanian's short month names, from January. */
+const ALBANIAN_MONTHS = [
+  "jan",
+  "shk",
+  "mar",
+  "pri",
+  "maj",
+  "qer",
+  "korr",
+  "gush",
+  "sht",
+  "tet",
+  "nën",
+  "dhj",
+];
+
+/**
+ * A date as "Sep 1, 2026", or "1 sht 2026" in Albanian.
+ *
+ * Albanian is spelled out here rather than asked of `Intl`: browsers built with
+ * reduced locale data (and some Node builds) have no Albanian, and would print
+ * English — differently from the server, which would break hydration. English
+ * names its locale for the same reason: the page must not depend on the
+ * machine's own.
+ */
+export function shortDate(date: Date, withYear: boolean): string {
+  if (currentLanguage() === "sq") {
+    const day = `${date.getDate()} ${ALBANIAN_MONTHS[date.getMonth()]}`;
+    return withYear ? `${day} ${date.getFullYear()}` : day;
+  }
+  return date.toLocaleDateString("en-US", {
+    ...(withYear ? { year: "numeric" } : {}),
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export const fmt = (n: number): string =>
   n >= 1_000_000
     ? `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
@@ -43,5 +82,5 @@ export const fmtDate = (value: string | null | undefined): string | undefined =>
   if (!value) return undefined;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return undefined;
-  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return shortDate(date, true);
 };

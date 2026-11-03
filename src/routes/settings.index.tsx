@@ -23,8 +23,9 @@ import { seo } from "@/lib/seo";
 import { deleteAccount } from "@/lib/users/account";
 import { avatarUrl, clearProfile, useProfile, type ProfileState } from "@/lib/users/profile";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/settings/")({
-  head: () => seo("Settings", "Manage your Unbored account, privacy and preferences."),
+  head: () => seo(t("Settings"), t("Manage your Unbored account, privacy and preferences.")),
   component: Settings,
 });
 
@@ -62,8 +63,8 @@ function Identity({ state }: { state: ProfileState }) {
       <>
         <Avatar name="" size="lg" />
         <div className="flex-1">
-          <p className="font-medium">Couldn't load your profile</p>
-          <p className="text-sm text-muted-foreground">Open to try again</p>
+          <p className="font-medium">{t("Couldn't load your profile")}</p>
+          <p className="text-sm text-muted-foreground">{t("Open to try again")}</p>
         </div>
       </>
     );
@@ -73,12 +74,12 @@ function Identity({ state }: { state: ProfileState }) {
       <Avatar name="" size="lg" />
       <div className="flex-1">
         <p className="font-medium">
-          {state.status === "anonymous" ? "Sign in to view your profile" : "No profile yet"}
+          {state.status === "anonymous" ? t("Sign in to view your profile") : t("No profile yet")}
         </p>
         <p className="text-sm text-muted-foreground">
           {state.status === "anonymous"
-            ? "Your identity comes from your account"
-            : "Open to try again"}
+            ? t("Your identity comes from your account")
+            : t("Open to try again")}
         </p>
       </div>
     </>
@@ -99,7 +100,7 @@ function Settings() {
 
   return (
     <Page>
-      <PageHeader back title="Settings" />
+      <PageHeader back title={t("Settings")} />
       {signedIn ? (
         <Link
           to="/profile"
@@ -126,16 +127,18 @@ function Settings() {
           <MessageSquareHeart className="size-5" strokeWidth={1.75} />
         </span>
         <span className="flex-1">
-          <span className="block text-sm font-medium">Help shape Unbored</span>
+          <span className="block text-sm font-medium">{t("Help shape Unbored")}</span>
           <span className="block text-xs text-muted-foreground">
-            We&apos;re new and change daily. Tell us what to fix, add or keep.
+            {t("We're new and change daily. Tell us what to fix, add or keep.")}
           </span>
         </span>
         <ChevronRight className="size-4 text-muted-foreground" />
       </Link>
       {settingsGroups.map((g) => (
         <section key={g.label} className="mt-6">
-          <h2 className="px-4 pb-2 text-xs font-medium text-muted-foreground md:px-0">{g.label}</h2>
+          <h2 className="px-4 pb-2 text-xs font-medium text-muted-foreground md:px-0">
+            {t(g.label)}
+          </h2>
           <ul className="mx-4 divide-y divide-border overflow-hidden rounded-xl bg-surface md:mx-0">
             {g.items.map(({ slug, title, desc, icon: Icon }) => (
               <li key={slug}>
@@ -145,9 +148,9 @@ function Settings() {
                   className="flex min-h-14 items-center gap-3 px-4 hover:bg-surface-2"
                 >
                   <Icon className="size-[18px] text-muted-foreground" strokeWidth={1.75} />
-                  <span className="flex-1 text-sm">{title}</span>
+                  <span className="flex-1 text-sm">{t(title)}</span>
                   {desc && (
-                    <span className="hidden text-sm text-muted-foreground sm:block">{desc}</span>
+                    <span className="hidden text-sm text-muted-foreground sm:block">{t(desc)}</span>
                   )}
                   <ChevronRight className="size-4 text-muted-foreground" />
                 </Link>
@@ -158,7 +161,9 @@ function Settings() {
       ))}
       {showAdmin && (
         <section className="mt-6">
-          <h2 className="px-4 pb-2 text-xs font-medium text-muted-foreground md:px-0">Admin</h2>
+          <h2 className="px-4 pb-2 text-xs font-medium text-muted-foreground md:px-0">
+            {t("Admin")}
+          </h2>
           <ul className="mx-4 divide-y divide-border overflow-hidden rounded-xl bg-surface md:mx-0">
             <li>
               <Link
@@ -166,9 +171,9 @@ function Settings() {
                 className="flex min-h-14 items-center gap-3 px-4 hover:bg-surface-2"
               >
                 <Shield className="size-[18px] text-muted-foreground" strokeWidth={1.75} />
-                <span className="flex-1 text-sm">Admin dashboard</span>
+                <span className="flex-1 text-sm">{t("Admin dashboard")}</span>
                 <span className="hidden text-sm text-muted-foreground sm:block">
-                  Moderation, games, analytics
+                  {t("Moderation, games, analytics")}
                 </span>
                 <ChevronRight className="size-4 text-muted-foreground" />
               </Link>
@@ -184,7 +189,7 @@ function Settings() {
               className="flex min-h-14 w-full items-center gap-3 px-4 text-sm hover:bg-surface-2"
             >
               <LogOut className="size-[18px] text-muted-foreground" strokeWidth={1.75} />
-              Log out
+              {t("Log out")}
             </button>
           </li>
           <li>
@@ -193,19 +198,19 @@ function Settings() {
               className="flex min-h-14 w-full items-center gap-3 px-4 text-sm text-destructive hover:bg-surface-2"
             >
               <Trash2 className="size-[18px]" strokeWidth={1.75} />
-              Delete account
+              {t("Delete account")}
             </button>
           </li>
         </ul>
       ) : (
         <div className="mx-4 mt-6 rounded-xl bg-surface p-4 md:mx-0">
-          <p className="text-sm font-medium">Signed out</p>
+          <p className="text-sm font-medium">{t("Signed out")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Log in to manage your account, or browse the public catalogue as a guest.
+            {t("Log in to manage your account, or browse the public catalogue as a guest.")}
           </p>
           <Button asChild className="mt-3">
             <Link to="/login" search={{ redirect: "/settings" }}>
-              Log in
+              {t("Log in")}
             </Link>
           </Button>
         </div>
@@ -214,11 +219,13 @@ function Settings() {
       <AlertDialog open={logout} onOpenChange={setLogout}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Log out of Unbored?</AlertDialogTitle>
-            <AlertDialogDescription>Your scores are saved to your account.</AlertDialogDescription>
+            <AlertDialogTitle>{t("Log out of Unbored?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("Your scores are saved to your account.")}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
                 // The local session is cleared before the revoke is sent, so a
@@ -233,7 +240,7 @@ function Settings() {
                 nav({ to: "/welcome" });
               }}
             >
-              Log out
+              {t("Log out")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -249,16 +256,16 @@ function Settings() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogTitle>{t("Delete your account?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes your account and everything in it: your profile and picture,
-              scores and leaderboard places, comments, likes, saved games, follows and saved runs.
-              It can't be undone.
+              {t(
+                "This permanently deletes your account and everything in it: your profile and picture, scores and leaderboard places, comments, likes, saved games, follows and saved runs. It can't be undone.",
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <label className="block space-y-1.5" htmlFor="delete-confirm">
             <span className="text-sm">
-              Type <span className="font-semibold">DELETE</span> to confirm
+              {t("Type")} <span className="font-semibold">DELETE</span> {t("to confirm")}
             </span>
             <input
               id="delete-confirm"
@@ -276,7 +283,7 @@ function Settings() {
             </p>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t("Cancel")}</AlertDialogCancel>
             <Button
               variant="destructive"
               disabled={deleting || confirmText.trim() !== "DELETE"}
@@ -286,20 +293,20 @@ function Settings() {
                 try {
                   await deleteAccount();
                   setDel(false);
-                  toast.success("Your account has been deleted.");
+                  toast.success(t("Your account has been deleted."));
                   nav({ to: "/welcome" });
                 } catch (error) {
                   setDeleteError(
                     error instanceof ApiError
                       ? error.message
-                      : "Couldn't delete your account. Try again.",
+                      : t("Couldn't delete your account. Try again."),
                   );
                 } finally {
                   setDeleting(false);
                 }
               }}
             >
-              {deleting ? "Deleting…" : "Delete account"}
+              {deleting ? t("Deleting…") : t("Delete account")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

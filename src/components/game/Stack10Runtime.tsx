@@ -27,7 +27,9 @@ import {
 } from "@/lib/games/stack10";
 import { points } from "@/lib/format";
 import { useGameSounds } from "@/lib/sound";
+import { offlineResultNote } from "@/lib/games/offline";
 
+import { t } from "@/lib/settings/language";
 /**
  * Stack 10, playing for real.
  *
@@ -75,7 +77,7 @@ export function Stack10Runtime({ slug, title }: { slug: string; title: string })
     return (
       <SavedRunCard
         score={state.run.score}
-        where={`${state.run.actions.length} ${state.run.actions.length === 1 ? "tile" : "tiles"} placed`}
+        where={`${state.run.actions.length} ${state.run.actions.length === 1 ? t("tile") : t("tiles")} placed`}
         onContinue={state.continueRun}
         onNewRun={state.newRun}
         slug={slug}
@@ -88,7 +90,7 @@ export function Stack10Runtime({ slug, title }: { slug: string; title: string })
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Starting a run…</p>
+        <p className="text-sm text-muted-foreground">{t("Starting a run…")}</p>
       </div>
     );
   }
@@ -97,7 +99,7 @@ export function Stack10Runtime({ slug, title }: { slug: string; title: string })
     return (
       <div className="flex flex-1 flex-col justify-center px-6">
         <ErrorState
-          title="Couldn't start a run"
+          title={t("Couldn't start a run")}
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
@@ -114,18 +116,20 @@ export function Stack10Runtime({ slug, title }: { slug: string; title: string })
         <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-2">
           <TriangleAlert className="size-5 text-muted-foreground" />
         </div>
-        <h2 className="text-xl font-semibold">Your run was not verified</h2>
+        <h2 className="text-xl font-semibold">{t("Your run was not verified")}</h2>
         <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-          {playErrorMessage(state.error)} Nothing was saved, and nothing needs to be — sending the
-          same run again is safe.
+          {t(
+            "{error} Nothing was saved, and nothing needs to be — sending the same run again is safe.",
+            { error: playErrorMessage(state.error) },
+          )}
         </p>
         <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
           <Button variant="play" size="lg" onClick={state.retry}>
-            Try submitting again
+            {t("Try submitting again")}
           </Button>
           <Button variant="secondary" size="lg" onClick={state.restart}>
             <RotateCcw />
-            Start a new run
+            {t("Start a new run")}
           </Button>
           <GameExits slug={slug} title={title} />
         </div>
@@ -203,25 +207,27 @@ function Board({
     <div className="flex flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="flex items-center justify-between gap-3 py-2">
         <dl className="flex items-baseline gap-1">
-          <dt className="text-xs text-muted-foreground">Score</dt>
+          <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
           <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="tabular">Tile {placed + 1}</span>
+          <span className="tabular">{t("Tile {n}", { n: placed + 1 })}</span>
           {session.ranked ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-1">
               <ShieldCheck className="size-3.5" />
-              Ranked
+              {t("Ranked")}
             </span>
           ) : (
-            <span className="rounded-full bg-surface-2 px-2 py-1">Guest run</span>
+            <span className="rounded-full bg-surface-2 px-2 py-1">
+              {session.offline ? t("Offline practice") : t("Guest run")}
+            </span>
           )}
         </div>
       </div>
 
       <div className="flex flex-col items-center gap-1 py-3">
         <div className="flex items-center justify-center gap-3">
-          <span className="text-xs text-muted-foreground">Next tile</span>
+          <span className="text-xs text-muted-foreground">{t("Next tile")}</span>
           <span
             aria-live="polite"
             className="flex size-12 items-center justify-center rounded-xl bg-foreground text-xl font-semibold tabular text-background"
@@ -235,9 +241,12 @@ function Board({
           <p className="text-center text-xs text-muted-foreground tabular" aria-live="polite">
             {readout.pressurePercent === 0
               ? placed < STACK10_TILES
-                ? `Warm-up: heavier tiles start after tile ${STACK10_TILES}`
-                : "Heavier tiles can start arriving now"
-              : `Heavier tile chance ${readout.pressurePercent}% · up to +${readout.heavyBonus}`}
+                ? t("Warm-up: heavier tiles start after tile {STACK10_TILES}", { STACK10_TILES })
+                : t("Heavier tiles can start arriving now")
+              : t("Heavier tile chance {pressurePercent}% · up to +{heavyBonus}", {
+                  pressurePercent: readout.pressurePercent,
+                  heavyBonus: readout.heavyBonus,
+                })}
           </p>
         )}
       </div>
@@ -301,11 +310,14 @@ function Board({
       </div>
       <p className="pt-3 text-center text-xs text-muted-foreground" aria-live="polite">
         {verifying
-          ? "Verifying your run with the server…"
-          : "Add up to exactly ten to clear a column. Past ten ends the run. There is no final tile."}
+          ? t("Verifying your run with the server…")
+          : t(
+              "Add up to exactly ten to clear a column. Past ten ends the run. There is no final tile.",
+            )}
       </p>
       <EndRunButton
         score={run.score}
+        offline={session.offline}
         disabled={verifying || run.outcome !== "playing"}
         onEnd={onFinish}
       />
@@ -365,37 +377,43 @@ function Finished({
         </div>
         <p className="text-sm text-muted-foreground">
           {run.stopped
-            ? "Run ended"
+            ? t("Run ended")
             : run.endReason === "limit"
-              ? "Submission limit reached"
-              : "Run over"}
+              ? t("Submission limit reached")
+              : t("Run over")}
         </p>
         <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
           {run.stopped || run.endReason === "limit"
-            ? `${result.tilesPlaced} tiles placed, ${result.clearedColumns} columns cleared.`
-            : `A column passed ten after ${result.tilesPlaced} tiles; ${result.clearedColumns} columns cleared.`}
+            ? t("{tilesPlaced} tiles placed, {clearedColumns} columns cleared.", {
+                tilesPlaced: result.tilesPlaced,
+                clearedColumns: result.clearedColumns,
+              })
+            : t(
+                "A column passed ten after {tilesPlaced} tiles; {clearedColumns} columns cleared.",
+                { tilesPlaced: result.tilesPlaced, clearedColumns: result.clearedColumns },
+              )}
         </p>
       </div>
 
       <dl className="mx-auto grid w-full max-w-xs grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-surface p-3">
-          <dt className="text-xs text-muted-foreground">Duration</dt>
+          <dt className="text-xs text-muted-foreground">{t("Duration")}</dt>
           <dd className="font-semibold tabular">{formatDuration(result.durationMs)}</dd>
         </div>
         <div className="rounded-xl bg-surface p-3">
-          <dt className="text-xs text-muted-foreground">Columns cleared</dt>
+          <dt className="text-xs text-muted-foreground">{t("Columns cleared")}</dt>
           <dd className="font-semibold tabular">{result.clearedColumns}</dd>
         </div>
         {result.personalBest !== null && (
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Your best</dt>
+            <dt className="text-xs text-muted-foreground">{t("Your best")}</dt>
             <dd className="font-semibold tabular">{points(result.personalBest)}</dd>
           </div>
         )}
         {result.rank !== null && (
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Rank</dt>
+            <dt className="text-xs text-muted-foreground">{t("Rank")}</dt>
             <dd className="font-semibold tabular">#{result.rank}</dd>
           </div>
         )}
@@ -403,9 +421,14 @@ function Finished({
 
       <p className="mx-auto max-w-sm text-xs text-muted-foreground">
         {result.ranked
-          ? "Verified by replaying your moves on the server, then saved to the leaderboard."
-          : "Verified by replaying your moves on the server. This was a guest run, so it is not on the leaderboard."}
-        {result.duplicate && " This run was already recorded, so nothing was counted twice."}
+          ? t("Verified by replaying your moves on the server, then saved to the leaderboard.")
+          : result.offline
+            ? offlineResultNote()
+            : t(
+                "Verified by replaying your moves on the server. This was a guest run, so it is not on the leaderboard.",
+              )}
+        {result.duplicate &&
+          " " + t("This run was already recorded, so nothing was counted twice.")}
       </p>
 
       <RunEndActions slug={slug} ranked={result.ranked} onRestart={onRestart} />

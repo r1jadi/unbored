@@ -47,6 +47,7 @@ import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
 import { ONE_MOVE_RUNTIME } from "@/lib/games/one-move";
 import { RunLeaveContext, RunProgressContext } from "@/lib/games/run-progress";
 import { prefetchPlay } from "@/lib/prefetch";
+import { useOnline } from "@/lib/service-worker";
 import { QUEENS_RUNTIME } from "@/lib/games/queens";
 import { ZIP_RUNTIME } from "@/lib/games/zip";
 import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
@@ -58,6 +59,7 @@ import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
 import { STACK10_RUNTIME } from "@/lib/games/stack10";
 import { UPDRAFT_RUNTIME } from "@/lib/games/updraft";
 
+import { t } from "@/lib/settings/language";
 /**
  * `?start=1` starts the run straight away instead of showing the game's rules
  * first: the feed's Tap to play sends it, because a player who tapped Play has
@@ -75,7 +77,7 @@ export const Route = createFileRoute("/play/$id")({
     const title = titleFromSlug(params.id);
     return {
       meta: [
-        { title: `${title} — Unbored` },
+        { title: t("{title} — Unbored", { title }) },
         { name: "description", content: `${title} on Unbored.` },
         { property: "og:title", content: `${title} — Unbored` },
       ],
@@ -176,7 +178,7 @@ export function PlaySurface({
     state.status === "ready"
       ? state.game.title
       : state.status === "missing"
-        ? "Game not found"
+        ? t("Game not found")
         : undefined,
   );
   const playable = state.status === "ready" && state.game.playable && !!state.game.runtime;
@@ -205,6 +207,7 @@ export function PlaySurface({
       state.game.runtime === HUEDINI_RUNTIME);
 
   const nav = useNavigate();
+  const online = useOnline();
   const [confirming, setConfirming] = useState(false);
 
   // Leaving replaces this screen instead of stacking on top of it: the feed is
@@ -223,13 +226,16 @@ export function PlaySurface({
           <Button
             variant="glass"
             size="icon"
-            aria-label="Quit game"
+            aria-label={t("Quit game")}
             onClick={() => (progress ? setConfirming(true) : quit())}
           >
             <X />
           </Button>
           <div className="flex-1 text-center">
             <p className="text-xs text-muted-foreground">{title}</p>
+            {!online && (
+              <p className="text-[11px] text-muted-foreground/80">{t("Offline · practice only")}</p>
+            )}
           </div>
           <SoundToggle />
         </header>
@@ -405,10 +411,12 @@ export function PlaySurface({
             <div className="flex size-12 items-center justify-center rounded-full bg-surface-2">
               <Clock className="size-5 text-muted-foreground" />
             </div>
-            <h1 className="text-xl font-semibold">Not playable yet</h1>
+            <h1 className="text-xl font-semibold">{t("Not playable yet")}</h1>
             <p className="max-w-sm text-sm text-muted-foreground">
-              {title} has no runtime yet, so there is nothing to start. It is listed because it is
-              part of the catalogue.
+              {t(
+                "{title} has no runtime yet, so there is nothing to start. It is listed because it is part of the catalogue.",
+                { title },
+              )}
             </p>
             <div className="mt-2 w-full">
               <GameExits slug={id} title={title} />
@@ -418,16 +426,20 @@ export function PlaySurface({
 
         {state.status === "error" && (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-            <h1 className="text-xl font-semibold">Couldn't load this game</h1>
+            <h1 className="text-xl font-semibold">{t("Couldn't load this game")}</h1>
             <p className="max-w-sm text-sm text-muted-foreground">
-              The catalogue is unavailable, so there is nothing to start.
+              {online
+                ? t("The catalogue is unavailable, so there is nothing to start.")
+                : t(
+                    "You're offline and this game isn't saved on this device yet. Open it once while online to play it offline.",
+                  )}
             </p>
             <div className="flex gap-2">
               <Button variant="secondary" onClick={state.retry}>
-                Try again
+                {t("Try again")}
               </Button>
               <Button asChild variant="ghost">
-                <Link to="/explore">Browse games</Link>
+                <Link to="/explore">{t("Browse games")}</Link>
               </Button>
             </div>
             <div className="w-full">
@@ -438,12 +450,12 @@ export function PlaySurface({
 
         {state.status === "missing" && (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-            <h1 className="text-xl font-semibold">No such game</h1>
+            <h1 className="text-xl font-semibold">{t("No such game")}</h1>
             <p className="max-w-sm text-sm text-muted-foreground">
-              That game is not in the catalogue.
+              {t("That game is not in the catalogue.")}
             </p>
             <Button asChild variant="play" size="lg" className="mt-2">
-              <Link to="/explore">Browse games</Link>
+              <Link to="/explore">{t("Browse games")}</Link>
             </Button>
             <div className="w-full">
               <GameExits />
@@ -457,29 +469,41 @@ export function PlaySurface({
         <AlertDialog open={confirming} onOpenChange={setConfirming}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>{endRun ? "End this run?" : "Leave this run?"}</AlertDialogTitle>
+              <AlertDialogTitle>
+                {endRun ? t("End this run?") : t("Leave this run?")}
+              </AlertDialogTitle>
               <AlertDialogDescription>
                 {endRun && resumable
-                  ? "Your run is still going. Finish it later and it is waiting for you next time you open this game — or end it now to save your score so far."
-                  : endRun
-                    ? "Your run is still going. Ending it now saves your score so far: it is sent for verification, and the board you are on is not scored."
-                    : "Your run is still going. Leaving now discards it, and it will not be scored."}
+                  ? t(
+                      "Your run is still going. Finish it later and it is waiting for you next time you open this game — or end it now to save your score so far.",
+                    )
+                  : endRun && !online
+                    ? t(
+                        "Your run is still going. You're offline, so it is a practice run: ending it shows your score, but it is not verified or saved.",
+                      )
+                    : endRun
+                      ? t(
+                          "Your run is still going. Ending it now saves your score so far: it is sent for verification, and the board you are on is not scored.",
+                        )
+                      : t(
+                          "Your run is still going. Leaving now discards it, and it will not be scored.",
+                        )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Keep playing</AlertDialogCancel>
+              <AlertDialogCancel>{t("Keep playing")}</AlertDialogCancel>
               {endRun && resumable && (
                 <AlertDialogAction
                   className={buttonVariants({ variant: "secondary" })}
                   onClick={quit}
                 >
-                  Finish later
+                  {t("Finish later")}
                 </AlertDialogAction>
               )}
               {endRun ? (
-                <AlertDialogAction onClick={endRun}>End run and save</AlertDialogAction>
+                <AlertDialogAction onClick={endRun}>{t("End run and save")}</AlertDialogAction>
               ) : (
-                <AlertDialogAction onClick={quit}>Leave run</AlertDialogAction>
+                <AlertDialogAction onClick={quit}>{t("Leave run")}</AlertDialogAction>
               )}
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -496,7 +520,7 @@ function SoundToggle() {
     <Button
       variant="glass"
       size="icon"
-      aria-label={on ? "Mute sound effects" : "Unmute sound effects"}
+      aria-label={on ? t("Mute sound effects") : t("Unmute sound effects")}
       aria-pressed={!on}
       onClick={() => setOn(!on)}
     >

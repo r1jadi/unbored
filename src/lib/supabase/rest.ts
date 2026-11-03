@@ -13,6 +13,7 @@
 
 import { publicConfig } from "@/lib/config";
 
+import { t } from "@/lib/settings/language";
 export function supabaseBase(): string {
   return publicConfig.supabase.url.replace(/\/+$/, "");
 }
@@ -90,7 +91,7 @@ export async function restCount(path: string, token?: string): Promise<number> {
   const total = range?.split("/")[1];
   const count = total === undefined ? NaN : Number(total);
   if (!Number.isInteger(count) || count < 0) {
-    throw new SupabaseRestError("The count could not be read.", response.status, "count_failed");
+    throw new SupabaseRestError(t("The count could not be read."), response.status, "count_failed");
   }
   return count;
 }
@@ -117,7 +118,7 @@ export async function restMutate(
 }
 
 async function toRestError(response: Response): Promise<SupabaseRestError> {
-  let message = `Request failed with status ${response.status}.`;
+  let message = t("Request failed with status {status}.", { status: response.status });
   let code: string | undefined;
   try {
     const payload = (await response.json()) as { message?: string; code?: string; hint?: string };

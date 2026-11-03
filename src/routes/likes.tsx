@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { useLikedGames } from "@/lib/social/engagement";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/likes")({
-  head: () => seo("Liked games", "Games you liked."),
+  head: () => seo(t("Liked games"), t("Games you liked.")),
   component: Liked,
 });
 
@@ -24,16 +25,16 @@ function Liked() {
   if (list.status === "anonymous") {
     return (
       <Page className="max-w-5xl">
-        <PageHeader back title="Liked games" subtitle="Games you liked." />
+        <PageHeader back title={t("Liked games")} subtitle={t("Games you liked.")} />
         <div className="px-4 md:px-0">
           <EmptyState
             icon={Heart}
-            title="Sign in to like games"
-            body="Liking keeps the games you love in one place."
+            title={t("Sign in to like games")}
+            body={t("Liking keeps the games you love in one place.")}
             action={
               <Button asChild>
                 <Link to="/login" search={{ redirect: "/likes" }}>
-                  Log in
+                  {t("Log in")}
                 </Link>
               </Button>
             }
@@ -46,7 +47,7 @@ function Liked() {
   if (list.status === "loading") {
     return (
       <Page className="max-w-5xl">
-        <PageHeader back title="Liked games" subtitle="Games you liked." />
+        <PageHeader back title={t("Liked games")} subtitle={t("Games you liked.")} />
         <GridSkeleton />
       </Page>
     );
@@ -55,9 +56,13 @@ function Liked() {
   if (list.status === "error") {
     return (
       <Page className="max-w-5xl">
-        <PageHeader back title="Liked games" subtitle="Games you liked." />
+        <PageHeader back title={t("Liked games")} subtitle={t("Games you liked.")} />
         <div className="px-4 md:px-0">
-          <ErrorState title="Couldn't load liked games" body={list.error} onRetry={list.retry} />
+          <ErrorState
+            title={t("Couldn't load liked games")}
+            body={list.error}
+            onRetry={list.retry}
+          />
         </div>
       </Page>
     );
@@ -66,12 +71,12 @@ function Liked() {
   if (list.games.length === 0) {
     return (
       <Page className="max-w-5xl">
-        <PageHeader back title="Liked games" subtitle="Games you liked." />
+        <PageHeader back title={t("Liked games")} subtitle={t("Games you liked.")} />
         <div className="px-4 md:px-0">
           <EmptyState
             icon={Heart}
-            title="Nothing liked yet"
-            body="Tap the heart on any game and it shows up here."
+            title={t("Nothing liked yet")}
+            body={t("Tap the heart on any game and it shows up here.")}
           />
         </div>
       </Page>
@@ -80,7 +85,7 @@ function Liked() {
 
   return (
     <Page className="max-w-5xl">
-      <PageHeader back title="Liked games" subtitle="Games you liked." />
+      <PageHeader back title={t("Liked games")} subtitle={t("Games you liked.")} />
       <div className="grid grid-cols-2 gap-x-3 gap-y-5 px-4 md:grid-cols-3 md:px-0 lg:grid-cols-4">
         {list.games.map((game) => (
           <GameCard key={game.slug} game={game} />

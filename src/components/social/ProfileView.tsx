@@ -27,7 +27,14 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { points } from "@/lib/format";
 
-const tabs = ["Best scores", "Activity", "Saved", "Recent", "Achievements"] as const;
+import { t, msg } from "@/lib/settings/language";
+const tabs = [
+  msg("Best scores"),
+  msg("Activity"),
+  msg("Saved"),
+  msg("Recent"),
+  msg("Achievements"),
+] as const;
 
 /**
  * The identity this view draws.
@@ -65,8 +72,8 @@ function BestScores({ state }: { state: ScoreList }) {
   if (state.status === "error") {
     return (
       <ErrorState
-        title="Couldn't load your scores"
-        body={state.error ?? "Try again in a moment."}
+        title={t("Couldn't load your scores")}
+        body={state.error ?? t("Try again in a moment.")}
         onRetry={state.retry}
       />
     );
@@ -75,8 +82,8 @@ function BestScores({ state }: { state: ScoreList }) {
   if (entries.length === 0) {
     return (
       <EmptyState
-        title="No scores yet"
-        body="A score appears here after a run is verified and saved."
+        title={t("No scores yet")}
+        body={t("A score appears here after a run is verified and saved.")}
       />
     );
   }
@@ -93,7 +100,7 @@ function BestScores({ state }: { state: ScoreList }) {
                 {entry.game.title}
               </Link>
             ) : (
-              <span className="text-muted-foreground">A game</span>
+              <span className="text-muted-foreground">{t("A game")}</span>
             )}
           </span>
           <span className="font-semibold tabular">{points(entry.score)}</span>
@@ -108,8 +115,8 @@ function RecentGames({ state }: { state: GameList }) {
   if (state.status === "error") {
     return (
       <ErrorState
-        title="Couldn't load recently played games"
-        body={state.error ?? "Try again in a moment."}
+        title={t("Couldn't load recently played games")}
+        body={state.error ?? t("Try again in a moment.")}
         onRetry={state.retry}
       />
     );
@@ -118,8 +125,8 @@ function RecentGames({ state }: { state: GameList }) {
   if (games.length === 0) {
     return (
       <EmptyState
-        title="No games played yet"
-        body="A game appears here after a scored run is saved. Guest runs are not saved."
+        title={t("No games played yet")}
+        body={t("A game appears here after a scored run is saved. Guest runs are not saved.")}
       />
     );
   }
@@ -179,15 +186,15 @@ export function ProfileView({
   const skeleton = loading ?? false;
   const [tab, setTab] = useState<(typeof tabs)[number]>("Best scores");
   const [share, setShare] = useState(false);
-  const visible = self ? tabs : tabs.filter((t) => t !== "Saved");
+  const visible = self ? tabs : tabs.filter((name) => name !== "Saved");
 
   async function block() {
     try {
       const { blockUsername } = await import("@/lib/settings/blocked");
       await blockUsername(user.username);
-      toast.success(`Blocked @${user.username}`);
+      toast.success(t("Blocked @{username}", { username: user.username }));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't block this account.");
+      toast.error(error instanceof Error ? error.message : t("Couldn't block this account."));
     }
   }
 
@@ -197,21 +204,21 @@ export function ProfileView({
         back={!self}
         // The signed-in header is the display name, which is unknown until the
         // profile arrives; "Your profile" is what the tab and the page title say.
-        title={self ? user.name || "Your profile" : `@${user.username}`}
+        title={self ? user.name || t("Your profile") : `@${user.username}`}
         actions={
           <div className="flex">
             {user.username !== "" && (
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="Share profile"
+                aria-label={t("Share profile")}
                 onClick={() => setShare(true)}
               >
                 <Share2 />
               </Button>
             )}
             {self ? (
-              <Button asChild variant="ghost" size="icon" aria-label="Settings">
+              <Button asChild variant="ghost" size="icon" aria-label={t("Settings")}>
                 <Link to="/settings">
                   <Settings />
                 </Link>
@@ -219,7 +226,7 @@ export function ProfileView({
             ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="More">
+                  <Button variant="ghost" size="icon" aria-label={t("More")}>
                     <MoreHorizontal />
                   </Button>
                 </DropdownMenuTrigger>
@@ -227,14 +234,16 @@ export function ProfileView({
                   <DropdownMenuItem
                     onClick={() =>
                       toast(
-                        "Reporting is reviewed by moderators. Open an issue to report this account.",
+                        t(
+                          "Reporting is reviewed by moderators. Open an issue to report this account.",
+                        ),
                       )
                     }
                   >
-                    Report
+                    {t("Report")}
                   </DropdownMenuItem>
                   <DropdownMenuItem className="text-destructive" onClick={() => void block()}>
-                    Block
+                    {t("Block")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -266,29 +275,29 @@ export function ProfileView({
                     <div className="mt-4 flex justify-center gap-8 md:justify-start">
                       <Stat
                         value={user.stats?.followers ?? "—"}
-                        label="Followers"
+                        label={t("Followers")}
                         conn={{ username: user.username, tab: "followers" }}
                       />
                       <Stat
                         value={user.stats?.following ?? "—"}
-                        label="Following"
+                        label={t("Following")}
                         conn={{ username: user.username, tab: "following" }}
                       />
                       {!user.hidePlayed && user.stats?.played !== undefined && (
-                        <Stat value={user.stats.played} label="Games played" />
+                        <Stat value={user.stats.played} label={t("Games played")} />
                       )}
                     </div>
                   )}
                   {user.statsError && (
                     <p className="mt-2 text-xs text-muted-foreground" role="status">
-                      Couldn't load follower counts.{" "}
+                      {t("Couldn't load follower counts.")}{" "}
                       {user.onRetryStats && (
                         <button
                           type="button"
                           className="font-medium text-foreground underline underline-offset-4"
                           onClick={user.onRetryStats}
                         >
-                          Retry
+                          {t("Retry")}
                         </button>
                       )}
                     </p>
@@ -298,11 +307,11 @@ export function ProfileView({
                       <>
                         <Button asChild variant="secondary">
                           <Link to="/settings/$section" params={{ section: "profile" }}>
-                            Edit profile
+                            {t("Edit profile")}
                           </Link>
                         </Button>
                         <Button asChild variant="secondary">
-                          <Link to="/likes">Likes</Link>
+                          <Link to="/likes">{t("Likes")}</Link>
                         </Button>
                       </>
                     ) : (
@@ -315,9 +324,9 @@ export function ProfileView({
                         />
                         <Button
                           variant="secondary"
-                          onClick={() => toast("Direct messages are not implemented.")}
+                          onClick={() => toast(t("Direct messages are not implemented."))}
                         >
-                          Message
+                          {t("Message")}
                         </Button>
                       </>
                     )}
@@ -331,21 +340,21 @@ export function ProfileView({
             className="no-scrollbar mt-8 flex gap-6 overflow-x-auto border-b border-border px-4 text-sm md:px-0"
             role="tablist"
           >
-            {visible.map((t) => (
+            {visible.map((name) => (
               <button
-                key={t}
+                key={name}
                 role="tab"
-                aria-selected={tab === t}
-                onClick={() => setTab(t)}
+                aria-selected={tab === name}
+                onClick={() => setTab(name)}
                 className={cn(
                   "-mb-px shrink-0 border-b-2 pb-2.5",
-                  tab === t
+                  tab === name
                     ? "border-foreground font-medium"
                     : "border-transparent text-muted-foreground",
                 )}
               >
-                {t === "Saved" && <Lock className="mr-1 inline size-3" />}
-                {t}
+                {name === "Saved" && <Lock className="mr-1 inline size-3" />}
+                {t(name)}
               </button>
             ))}
           </div>
@@ -360,28 +369,30 @@ export function ProfileView({
                     <BestScores state={bestScores} />
                   ) : (
                     <EmptyState
-                      title="Best scores live on each game's board"
-                      body="Open a game's leaderboard to see verified scores for this account."
+                      title={t("Best scores live on each game's board")}
+                      body={t("Open a game's leaderboard to see verified scores for this account.")}
                     />
                   ))}
                 {tab === "Activity" && (
                   <EmptyState
-                    title="Activity has its own page"
-                    body="Recent plays, likes, comments and saves are listed together on the Activity page."
+                    title={t("Activity has its own page")}
+                    body={t(
+                      "Recent plays, likes, comments and saves are listed together on the Activity page.",
+                    )}
                     action={
                       <Button asChild variant="secondary">
-                        <Link to="/activity">View activity</Link>
+                        <Link to="/activity">{t("View activity")}</Link>
                       </Button>
                     }
                   />
                 )}
                 {tab === "Saved" && (
                   <EmptyState
-                    title="Saved games have their own page"
-                    body="Everything you saved is listed on the Saved page."
+                    title={t("Saved games have their own page")}
+                    body={t("Everything you saved is listed on the Saved page.")}
                     action={
                       <Button asChild variant="secondary">
-                        <Link to="/saved">View saved games</Link>
+                        <Link to="/saved">{t("View saved games")}</Link>
                       </Button>
                     }
                   />
@@ -391,11 +402,13 @@ export function ProfileView({
                     <RecentGames state={recentlyPlayed} />
                   ) : (
                     <EmptyState
-                      title="Recent games live on their own page"
-                      body="Games with a saved score are listed newest first on Recently played."
+                      title={t("Recent games live on their own page")}
+                      body={t(
+                        "Games with a saved score are listed newest first on Recently played.",
+                      )}
                       action={
                         <Button asChild variant="secondary">
-                          <Link to="/recent">View recently played</Link>
+                          <Link to="/recent">{t("View recently played")}</Link>
                         </Button>
                       }
                     />
@@ -403,8 +416,10 @@ export function ProfileView({
                 {tab === "Achievements" && (
                   <EmptyState
                     icon={Award}
-                    title="No achievements yet"
-                    body="Achievements are not recorded yet, so nothing is shown rather than a sample set."
+                    title={t("No achievements yet")}
+                    body={t(
+                      "Achievements are not recorded yet, so nothing is shown rather than a sample set.",
+                    )}
                   />
                 )}
               </>

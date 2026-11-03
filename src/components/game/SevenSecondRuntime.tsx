@@ -37,7 +37,9 @@ import {
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
 import { useGameSounds } from "@/lib/sound";
+import { offlineResultNote } from "@/lib/games/offline";
 
+import { t } from "@/lib/settings/language";
 /**
  * 7 Second, playing for real.
  *
@@ -83,7 +85,7 @@ export function SevenSecondRuntime({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Starting a run…</p>
+        <p className="text-sm text-muted-foreground">{t("Starting a run…")}</p>
       </div>
     );
   }
@@ -98,7 +100,7 @@ export function SevenSecondRuntime({
     return (
       <div className="flex flex-1 flex-col justify-center px-6">
         <ErrorState
-          title="Couldn't start a run"
+          title={t("Couldn't start a run")}
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
@@ -115,18 +117,20 @@ export function SevenSecondRuntime({
         <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-2">
           <TriangleAlert className="size-5 text-muted-foreground" />
         </div>
-        <h2 className="text-xl font-semibold">Your run was not verified</h2>
+        <h2 className="text-xl font-semibold">{t("Your run was not verified")}</h2>
         <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-          {playErrorMessage(state.error)} Nothing was saved, and nothing needs to be — sending the
-          same run again is safe.
+          {t(
+            "{error} Nothing was saved, and nothing needs to be — sending the same run again is safe.",
+            { error: playErrorMessage(state.error) },
+          )}
         </p>
         <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
           <Button variant="play" size="lg" onClick={state.retry}>
-            Try submitting again
+            {t("Try submitting again")}
           </Button>
           <Button variant="secondary" size="lg" onClick={state.restart}>
             <RotateCcw />
-            Start a new run
+            {t("Start a new run")}
           </Button>
           <GameExits slug={slug} title={title} />
         </div>
@@ -305,26 +309,28 @@ function Table({
             <Timer className="size-5 text-muted-foreground" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">{RULES.heading}</h1>
-            <p className="text-sm text-muted-foreground">{RULES.summary}</p>
+            <h1 className="text-2xl font-semibold">{t(RULES.heading)}</h1>
+            <p className="text-sm text-muted-foreground">{t(RULES.summary)}</p>
           </div>
 
           <RulesList rules={RULES.rules} />
 
           <div className="flex w-full flex-col gap-2">
             <Button variant="play" size="lg" onClick={start} autoFocus>
-              Start run
+              {t("Start run")}
             </Button>
             <Button asChild variant="ghost" size="lg">
-              <ExitGameLink slug={slug}>Back to {title}</ExitGameLink>
+              <ExitGameLink slug={slug}>{t("Back to {title}", { title })}</ExitGameLink>
             </Button>
           </div>
 
           <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="size-3.5" />
             {session.ranked
-              ? "Signed in: this is today's ranked attempt"
-              : "Guest run: verified, but not ranked — practise as often as you like"}
+              ? t("Signed in: this is today's ranked attempt")
+              : session.offline
+                ? t("Offline practice: not verified or ranked — practise as often as you like")
+                : t("Guest run: verified, but not ranked — practise as often as you like")}
           </p>
         </div>
       </div>
@@ -339,14 +345,14 @@ function Table({
   return (
     <div
       className="flex flex-1 flex-col gap-4 px-6 pb-[max(1rem,env(safe-area-inset-bottom))]"
-      aria-label="7 Second table"
+      aria-label={t("7 Second table")}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs text-muted-foreground">Time</p>
+          <p className="text-xs text-muted-foreground">{t("Time")}</p>
           <p
             role="timer"
-            aria-label="Time remaining"
+            aria-label={t("Time remaining")}
             className={cn(
               "text-4xl font-semibold tabular transition-colors",
               low && "text-destructive",
@@ -357,11 +363,11 @@ function Table({
         </div>
         <dl className="flex gap-4 text-right">
           <div>
-            <dt className="text-xs text-muted-foreground">Score</dt>
+            <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
             <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">Correct</dt>
+            <dt className="text-xs text-muted-foreground">{t("Correct")}</dt>
             <dd className="text-2xl font-semibold tabular">{stats.correct}</dd>
           </div>
         </dl>
@@ -369,7 +375,7 @@ function Table({
 
       <div
         role="progressbar"
-        aria-label="Clock remaining"
+        aria-label={t("Clock remaining")}
         aria-valuemin={0}
         aria-valuemax={SEVEN_SECOND_BASE_MS}
         aria-valuenow={Math.round(remaining)}
@@ -388,9 +394,9 @@ function Table({
         {verifying ? (
           <div className="flex flex-col items-center gap-3 text-center">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Checking your run…</p>
+            <p className="text-sm text-muted-foreground">{t("Checking your run…")}</p>
             <p className="text-xs text-muted-foreground">
-              The score is the server's replay, not the number on this screen.
+              {t("The score is the server's replay, not the number on this screen.")}
             </p>
           </div>
         ) : (
@@ -400,16 +406,16 @@ function Table({
                 {challenge ? promptOf(challenge) : "—"}
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                {lastResult === "right" && "Correct — 1.5 seconds back."}
-                {lastResult === "wrong" && "Wrong — 2 seconds gone."}
-                {lastResult === null && "Pick the right answer."}
+                {lastResult === "right" && t("Correct — 1.5 seconds back.")}
+                {lastResult === "wrong" && t("Wrong — 2 seconds gone.")}
+                {lastResult === null && t("Pick the right answer.")}
               </p>
             </div>
 
             <div
               ref={buttonsRef}
               tabIndex={-1}
-              aria-label="Answers"
+              aria-label={t("Answers")}
               className="grid w-full max-w-sm grid-cols-3 gap-2 outline-none"
             >
               {challenge?.options.map((option, index) => (
@@ -418,7 +424,7 @@ function Table({
                   variant="secondary"
                   size="lg"
                   className="h-20 text-2xl tabular"
-                  aria-label={`Answer ${option}`}
+                  aria-label={t("Answer {option}", { option })}
                   disabled={!accepting}
                   onClick={() => press(index)}
                 >
@@ -428,9 +434,9 @@ function Table({
             </div>
 
             <p className="text-center text-xs text-muted-foreground">
-              Press <span className="tabular">1</span>–<span className="tabular">3</span> or{" "}
-              <span className="tabular">A</span>–<span className="tabular">C</span> · right answers
-              add 1.5s · wrong answers cost 2s
+              {t("Press")} <span className="tabular">1</span>–<span className="tabular">3</span> or{" "}
+              <span className="tabular">A</span>–<span className="tabular">C</span>{" "}
+              {t("· right answers add 1.5s · wrong answers cost 2s")}
             </p>
           </>
         )}
@@ -482,32 +488,35 @@ function Finished({
           )}
         </div>
         <p className="text-sm text-muted-foreground">
-          {run.endReason === "answers" ? "Sixty answers — the deck is done" : "Time's up"}
+          {run.endReason === "answers" ? t("Sixty answers — the deck is done") : t("Time's up")}
         </p>
         <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
-          {run.correct} correct of {run.answers.length} answered
+          {t("{correct} correct of {length} answered", {
+            correct: run.correct,
+            length: run.answers.length,
+          })}
         </p>
       </div>
 
       <dl className="mx-auto grid w-full max-w-xs grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-surface p-3">
-          <dt className="text-xs text-muted-foreground">Duration</dt>
+          <dt className="text-xs text-muted-foreground">{t("Duration")}</dt>
           <dd className="font-semibold tabular">{formatDuration(result.durationMs)}</dd>
         </div>
         <div className="rounded-xl bg-surface p-3">
-          <dt className="text-xs text-muted-foreground">Correct</dt>
+          <dt className="text-xs text-muted-foreground">{t("Correct")}</dt>
           <dd className="font-semibold tabular">{run.correct}</dd>
         </div>
         {result.personalBest !== null && (
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Your best</dt>
+            <dt className="text-xs text-muted-foreground">{t("Your best")}</dt>
             <dd className="font-semibold tabular">{points(result.personalBest)}</dd>
           </div>
         )}
         {result.rank !== null && (
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Rank</dt>
+            <dt className="text-xs text-muted-foreground">{t("Rank")}</dt>
             <dd className="font-semibold tabular">#{result.rank}</dd>
           </div>
         )}
@@ -515,16 +524,22 @@ function Finished({
 
       <p className="mx-auto max-w-sm text-xs text-muted-foreground">
         {result.ranked
-          ? "Verified by replaying your answers on the server, then saved to the leaderboard. That was today's ranked attempt."
-          : "Verified by replaying your answers on the server. This was a guest run, so it is not on the leaderboard."}
-        {result.duplicate && " This run was already recorded, so nothing was counted twice."}
+          ? t(
+              "Verified by replaying your answers on the server, then saved to the leaderboard. That was today's ranked attempt.",
+            )
+          : result.offline
+            ? offlineResultNote()
+            : t(
+                "Verified by replaying your answers on the server. This was a guest run, so it is not on the leaderboard.",
+              )}
+        {result.duplicate && t(" This run was already recorded, so nothing was counted twice.")}
       </p>
 
       <RunEndActions slug={slug} ranked={result.ranked} onRestart={onRestart} autoFocus>
         {result.ranked && (
           <p className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-surface px-3 py-2 text-xs text-muted-foreground">
             <Clock className="size-3.5" />
-            The next daily deck arrives at midnight UTC.
+            {t("The next daily deck arrives at midnight UTC.")}
           </p>
         )}
       </RunEndActions>
@@ -539,16 +554,17 @@ function DailyDone({ slug, title, message }: { slug: string; title: string; mess
       <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-2">
         <Clock className="size-5 text-muted-foreground" />
       </div>
-      <h1 className="text-xl font-semibold">Today's attempt is done</h1>
+      <h1 className="text-xl font-semibold">{t("Today's attempt is done")}</h1>
       <p className="mx-auto max-w-sm text-sm text-muted-foreground">{message}</p>
       <p className="mx-auto max-w-sm text-xs text-muted-foreground">
-        One ranked run a day keeps the daily board a comparison of the same deck. The next one
-        arrives at midnight UTC.
+        {t(
+          "One ranked run a day keeps the daily board a comparison of the same deck. The next one arrives at midnight UTC.",
+        )}
       </p>
       <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
         <Button asChild variant="play" size="lg">
           <Link to="/leaderboards/$id" params={{ id: slug }}>
-            See the leaderboard
+            {t("See the leaderboard")}
           </Link>
         </Button>
         <GameExits slug={slug} title={title} />

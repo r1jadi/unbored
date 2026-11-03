@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { useRecentlyPlayed } from "@/lib/social/engagement";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/recent")({
-  head: () => seo("Recently played", "Pick up where you left off."),
+  head: () => seo(t("Recently played"), t("Pick up where you left off.")),
   component: Recent,
 });
 
@@ -25,16 +26,16 @@ function Recent() {
   if (list.status === "anonymous") {
     return (
       <Page className="max-w-5xl">
-        <PageHeader back title="Recently played" subtitle="Pick up where you left off." />
+        <PageHeader back title={t("Recently played")} subtitle={t("Pick up where you left off.")} />
         <div className="px-4 md:px-0">
           <EmptyState
             icon={Clock}
-            title="Sign in to see your games"
-            body="Your recently played games belong to your account."
+            title={t("Sign in to see your games")}
+            body={t("Your recently played games belong to your account.")}
             action={
               <Button asChild>
                 <Link to="/login" search={{ redirect: "/recent" }}>
-                  Log in
+                  {t("Log in")}
                 </Link>
               </Button>
             }
@@ -47,7 +48,7 @@ function Recent() {
   if (list.status === "loading") {
     return (
       <Page className="max-w-5xl">
-        <PageHeader back title="Recently played" subtitle="Pick up where you left off." />
+        <PageHeader back title={t("Recently played")} subtitle={t("Pick up where you left off.")} />
         <GridSkeleton />
       </Page>
     );
@@ -56,10 +57,10 @@ function Recent() {
   if (list.status === "error") {
     return (
       <Page className="max-w-5xl">
-        <PageHeader back title="Recently played" subtitle="Pick up where you left off." />
+        <PageHeader back title={t("Recently played")} subtitle={t("Pick up where you left off.")} />
         <div className="px-4 md:px-0">
           <ErrorState
-            title="Couldn't load recently played games"
+            title={t("Couldn't load recently played games")}
             body={list.error}
             onRetry={list.retry}
           />
@@ -71,12 +72,12 @@ function Recent() {
   if (list.games.length === 0) {
     return (
       <Page className="max-w-5xl">
-        <PageHeader back title="Recently played" subtitle="Pick up where you left off." />
+        <PageHeader back title={t("Recently played")} subtitle={t("Pick up where you left off.")} />
         <div className="px-4 md:px-0">
           <EmptyState
             icon={Clock}
-            title="No games played yet"
-            body="A game appears here after a scored run is saved. Guest runs are not saved."
+            title={t("No games played yet")}
+            body={t("A game appears here after a scored run is saved. Guest runs are not saved.")}
           />
         </div>
       </Page>
@@ -85,7 +86,7 @@ function Recent() {
 
   return (
     <Page className="max-w-5xl">
-      <PageHeader back title="Recently played" subtitle="Pick up where you left off." />
+      <PageHeader back title={t("Recently played")} subtitle={t("Pick up where you left off.")} />
       <div className="grid grid-cols-2 gap-x-3 gap-y-5 px-4 md:grid-cols-3 md:px-0 lg:grid-cols-4">
         {list.games.map((game) => (
           <GameCard key={game.slug} game={game} />

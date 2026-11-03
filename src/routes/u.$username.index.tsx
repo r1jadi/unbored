@@ -8,13 +8,20 @@ import { fetchProfileByUsername, useFollowCounts } from "@/lib/social/follows";
 import { Button } from "@/components/ui/button";
 import { avatarUrlFromPath } from "@/lib/users/profile";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/u/$username/")({
   head: ({ params }) => ({
     meta: [
-      { title: `@${params.username} — Unbored` },
-      { name: "description", content: `Scores and games played by @${params.username}.` },
+      { title: t("@{username} — Unbored", { username: params.username }) },
+      {
+        name: "description",
+        content: t("Scores and games played by @{username}.", { username: params.username }),
+      },
       { property: "og:title", content: `@${params.username} on Unbored` },
-      { property: "og:description", content: `Scores and games played by @${params.username}.` },
+      {
+        property: "og:description",
+        content: t("Scores and games played by @{username}.", { username: params.username }),
+      },
     ],
   }),
   component: UserProfile,
@@ -78,7 +85,7 @@ function UserProfile() {
       if (!cancelled) {
         setState({
           status: "error",
-          message: error instanceof Error ? error.message : "Couldn't load this profile.",
+          message: error instanceof Error ? error.message : t("Couldn't load this profile."),
         });
       }
     });
@@ -94,7 +101,12 @@ function UserProfile() {
     return (
       <ProfileView
         user={{ username, name: username }}
-        fallback={<EmptyState title="Account not found" body={`@${username} doesn't exist.`} />}
+        fallback={
+          <EmptyState
+            title={t("Account not found")}
+            body={t("@{username} doesn't exist.", { username })}
+          />
+        }
       />
     );
   }
@@ -102,7 +114,9 @@ function UserProfile() {
     return (
       <ProfileView
         user={{ username, name: username }}
-        fallback={<EmptyState title="Not available" body="This profile isn't available." />}
+        fallback={
+          <EmptyState title={t("Not available")} body={t("This profile isn't available.")} />
+        }
       />
     );
   }
@@ -112,7 +126,7 @@ function UserProfile() {
         user={{ username, name: username }}
         fallback={
           <ErrorState
-            title="Couldn't load this profile"
+            title={t("Couldn't load this profile")}
             body={state.message}
             onRetry={() => window.location.reload()}
           />
@@ -140,5 +154,5 @@ function UserProfile() {
 }
 
 export function UserProfileRetry() {
-  return <Button onClick={() => window.location.reload()}>Retry</Button>;
+  return <Button onClick={() => window.location.reload()}>{t("Retry")}</Button>;
 }

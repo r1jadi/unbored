@@ -7,35 +7,36 @@ import { Button } from "@/components/ui/button";
 import { seo } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
+import { t, msg } from "@/lib/settings/language";
 export const Route = createFileRoute("/onboarding")({
-  head: () => seo("Get started", "Tell us what you like to play."),
+  head: () => seo(t("Get started"), t("Tell us what you like to play.")),
   component: Onboarding,
 });
 
 const steps = [
   {
-    title: "Swipe to discover",
-    body: "Every card in your feed is a game you can play instantly.",
+    title: msg("Swipe to discover"),
+    body: msg("Every card in your feed is a game you can play instantly."),
     art: "dont-touch-the-black" as const,
   },
   {
-    title: "Play in seconds",
-    body: "No downloads, no tutorials. Tap play and go.",
+    title: msg("Play in seconds"),
+    body: msg("No downloads, no tutorials. Tap play and go."),
     art: "stack-10" as const,
   },
   {
-    title: "Beat your friends",
-    body: "Every run lands on a leaderboard. Follow people to compete.",
+    title: msg("Beat your friends"),
+    body: msg("Every run lands on a leaderboard. Follow people to compete."),
     art: "memory-flash" as const,
   },
 ];
 const interests = [
-  { id: "puzzle", label: "Puzzle", icon: Puzzle },
-  { id: "arcade", label: "Arcade", icon: Gamepad2 },
-  { id: "logic", label: "Logic", icon: Lightbulb },
-  { id: "reaction", label: "Reaction", icon: Zap },
-  { id: "memory", label: "Memory", icon: Brain },
-  { id: "daily", label: "Daily challenges", icon: Calendar },
+  { id: "puzzle", label: msg("Puzzle"), icon: Puzzle },
+  { id: "arcade", label: msg("Arcade"), icon: Gamepad2 },
+  { id: "logic", label: msg("Logic"), icon: Lightbulb },
+  { id: "reaction", label: msg("Reaction"), icon: Zap },
+  { id: "memory", label: msg("Memory"), icon: Brain },
+  { id: "daily", label: msg("Daily challenges"), icon: Calendar },
 ];
 
 function Onboarding() {
@@ -45,8 +46,8 @@ function Onboarding() {
 
   return (
     <AuthLayout
-      title={last ? "What do you like to play?" : steps[step].title}
-      subtitle={last ? "Pick at least two. You can change this later." : steps[step].body}
+      title={last ? t("What do you like to play?") : t(steps[step].title)}
+      subtitle={last ? t("Pick at least two. You can change this later.") : t(steps[step].body)}
       back={step > 0}
     >
       {!last ? (
@@ -56,7 +57,7 @@ function Onboarding() {
           className="enter aspect-square w-full rounded-2xl border border-glass-border"
         />
       ) : (
-        <div className="grid grid-cols-2 gap-2" role="group" aria-label="Interests">
+        <div className="grid grid-cols-2 gap-2" role="group" aria-label={t("Interests")}>
           {interests.map(({ id, label, icon: Icon }) => {
             const on = picked.includes(id);
             return (
@@ -70,7 +71,7 @@ function Onboarding() {
                 )}
               >
                 <Icon className="size-5" strokeWidth={1.75} />
-                {label}
+                {t(label)}
                 {on && <Check className="absolute top-3 right-3 size-4 text-primary" />}
               </button>
             );
@@ -97,12 +98,12 @@ function Onboarding() {
               aria-disabled={picked.length < 2}
               className={cn(picked.length < 2 && "pointer-events-none opacity-50")}
             >
-              Continue
+              {t("Continue")}
             </Link>
           </Button>
         ) : (
           <Button variant="play" size="xl" className="w-full" onClick={() => setStep(step + 1)}>
-            Continue
+            {t("Continue")}
           </Button>
         )}
         {!last && (
@@ -110,7 +111,7 @@ function Onboarding() {
             className="mt-2 w-full py-2 text-sm text-muted-foreground"
             onClick={() => setStep(steps.length)}
           >
-            Skip
+            {t("Skip")}
           </button>
         )}
       </div>

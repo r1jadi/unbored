@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { StreakNote } from "@/components/game/StreakNote";
 import { Button } from "@/components/ui/button";
 
+import { t } from "@/lib/settings/language";
 /**
  * What a player can do once a run is over, shared by every game's result screen.
  *
@@ -37,27 +38,27 @@ export function RunEndActions({
         (onRestart && (
           <Button variant="play" size="lg" onClick={onRestart} autoFocus={autoFocus}>
             <RotateCcw />
-            Play again
+            {t("Play again")}
           </Button>
         ))}
       <div className="grid grid-cols-2 gap-2">
         <Button asChild variant="secondary" size="lg" className="px-3">
           <Link to="/">
             <Home />
-            For You
+            {t("For You")}
           </Link>
         </Button>
         <Button asChild variant="secondary" size="lg" className="px-3">
           <Link to="/leaderboards/$id" params={{ id: slug }}>
             <Trophy />
-            Leaderboard
+            {t("Leaderboard")}
           </Link>
         </Button>
       </div>
       {!ranked && (
         <Button asChild variant="link" size="sm" className="text-muted-foreground">
           <Link to="/login" search={{ redirect: `/games/${slug}` }}>
-            Sign in to rank your scores
+            {t("Sign in to rank your scores")}
           </Link>
         </Button>
       )}

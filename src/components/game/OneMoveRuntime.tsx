@@ -26,7 +26,9 @@ import {
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
 import { useGameSounds } from "@/lib/sound";
+import { offlineResultNote } from "@/lib/games/offline";
 
+import { t } from "@/lib/settings/language";
 /** This game's rules, shared with the feed's How to play sheet. */
 const RULES = GAME_RULES["one-move"];
 
@@ -74,7 +76,7 @@ export function OneMoveRuntime({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Starting a run…</p>
+        <p className="text-sm text-muted-foreground">{t("Starting a run…")}</p>
       </div>
     );
   }
@@ -83,7 +85,7 @@ export function OneMoveRuntime({
     return (
       <div className="flex flex-1 flex-col justify-center px-6">
         <ErrorState
-          title="Couldn't start a run"
+          title={t("Couldn't start a run")}
           body={playErrorMessage(state.error)}
           onRetry={state.retry}
         />
@@ -100,18 +102,20 @@ export function OneMoveRuntime({
         <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-2">
           <TriangleAlert className="size-5 text-muted-foreground" />
         </div>
-        <h2 className="text-xl font-semibold">Your run was not verified</h2>
+        <h2 className="text-xl font-semibold">{t("Your run was not verified")}</h2>
         <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-          {playErrorMessage(state.error)} Nothing was saved, and nothing needs to be — sending the
-          same run again is safe.
+          {t(
+            "{error} Nothing was saved, and nothing needs to be — sending the same run again is safe.",
+            { error: playErrorMessage(state.error) },
+          )}
         </p>
         <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
           <Button variant="play" size="lg" onClick={state.retry}>
-            Try submitting again
+            {t("Try submitting again")}
           </Button>
           <Button variant="secondary" size="lg" onClick={state.restart}>
             <RotateCcw />
-            Start a new run
+            {t("Start a new run")}
           </Button>
           <GameExits slug={slug} title={title} />
         </div>
@@ -235,8 +239,8 @@ function Board({
             <Grid2x2 className="size-5 text-muted-foreground" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">{RULES.heading}</h1>
-            <p className="text-sm text-muted-foreground">{RULES.summary}</p>
+            <h1 className="text-2xl font-semibold">{t(RULES.heading)}</h1>
+            <p className="text-sm text-muted-foreground">{t(RULES.summary)}</p>
           </div>
 
           <RulesList rules={RULES.rules} />
@@ -251,10 +255,10 @@ function Board({
               }}
               autoFocus
             >
-              Start run
+              {t("Start run")}
             </Button>
             <Button asChild variant="ghost" size="lg">
-              <ExitGameLink slug={slug}>Back to {title}</ExitGameLink>
+              <ExitGameLink slug={slug}>{t("Back to {title}", { title })}</ExitGameLink>
             </Button>
           </div>
 
@@ -262,12 +266,12 @@ function Board({
             {session.ranked ? (
               <>
                 <ShieldCheck className="size-3.5" />
-                Signed in: this run can be ranked
+                {t("Signed in: this run can be ranked")}
               </>
             ) : (
               <>
                 <ShieldCheck className="size-3.5" />
-                Guest run: verified, but not ranked
+                {t("Guest run: verified, but not ranked")}
               </>
             )}
           </p>
@@ -283,18 +287,20 @@ function Board({
     <div className="flex flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="flex items-center justify-between gap-3 py-2">
         <dl className="flex items-baseline gap-1">
-          <dt className="text-xs text-muted-foreground">Score</dt>
+          <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
           <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="tabular">Board {run.level}</span>
+          <span className="tabular">{t("Board {level}", { level: run.level })}</span>
           {session.ranked ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-1">
               <ShieldCheck className="size-3.5" />
-              Ranked
+              {t("Ranked")}
             </span>
           ) : (
-            <span className="rounded-full bg-surface-2 px-2 py-1">Guest run</span>
+            <span className="rounded-full bg-surface-2 px-2 py-1">
+              {session.offline ? t("Offline practice") : t("Guest run")}
+            </span>
           )}
         </div>
       </div>
@@ -304,10 +310,10 @@ function Board({
       ) : (
         <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
           {verifying
-            ? "Verifying your run with the server…"
+            ? t("Verifying your run with the server…")
             : run.outcome === "over"
-              ? "One move missed."
-              : `Board ${run.level} — one move restores the checkerboard.`}
+              ? t("One move missed.")
+              : t("Board {level} — one move restores the checkerboard.", { level: run.level })}
         </p>
       )}
 
@@ -318,7 +324,7 @@ function Board({
         <span className="tabular">
           {board.size}×{board.size}
         </span>{" "}
-        board · <span className="tabular">{board.size * board.size}</span> cells
+        {t("board ·")} <span className="tabular">{board.size * board.size}</span> cells
       </p>
 
       {/* A square board, centred in whatever space is left. It always fits: the
@@ -350,7 +356,11 @@ function Board({
               gridTemplateRows: `repeat(${board.size}, minmax(0, 1fr))`,
             }}
             role="group"
-            aria-label={`Board ${run.level}, ${board.size} by ${board.size}`}
+            aria-label={t("Board {level}, {size} by {size2}", {
+              level: run.level,
+              size: board.size,
+              size2: board.size,
+            })}
           >
             {board.cells.map((dark, index) => {
               const hint = hints.hint;
@@ -369,8 +379,8 @@ function Board({
                   aria-label={`${cellLabel(index, board.size, dark, run, verifying)}${
                     hinted
                       ? hint?.kind === "cell"
-                        ? " Hint: tap here."
-                        : " Hint: the move is in this row."
+                        ? " " + t("Hint: tap here.")
+                        : " " + t("Hint: the move is in this row.")
                       : ""
                   }`}
                   className={cn(
@@ -384,18 +394,28 @@ function Board({
                     hinted && "animate-pulse ring-2 ring-primary",
                   )}
                 >
-                  <span className="sr-only">{`Row ${Math.floor(index / board.size) + 1} column ${
-                    (index % board.size) + 1
-                  }`}</span>
+                  <span className="sr-only">
+                    {t("Row {n} column {n2}", {
+                      n: Math.floor(index / board.size) + 1,
+                      n2: (index % board.size) + 1,
+                    })}
+                  </span>
                 </button>
               );
             })}
             {levelUp && (
               <LevelUpOverlay
                 levelUp={levelUp}
-                unit="Board"
+                unit={t("Board")}
                 next={`Board ${run.level} · ${nextSide}×${nextSide}`}
-                note={grew ? `Boards are ${nextSide}×${nextSide} from here.` : undefined}
+                note={
+                  grew
+                    ? t("Boards are {nextSide}×{nextSide2} from here.", {
+                        nextSide,
+                        nextSide2: nextSide,
+                      })
+                    : undefined
+                }
               />
             )}
           </div>
@@ -407,11 +427,14 @@ function Board({
       </div>
       <p className="pt-1 text-center text-xs text-muted-foreground" aria-live="polite">
         {verifying
-          ? "The taps you made are your score if the server agrees."
-          : "A move flips a cross. Find the one that restores the pattern. 100 points a board, with no final board."}
+          ? t("The taps you made are your score if the server agrees.")
+          : t(
+              "A move flips a cross. Find the one that restores the pattern. 100 points a board, with no final board.",
+            )}
       </p>
       <EndRunButton
         score={run.score}
+        offline={session.offline}
         disabled={verifying || run.outcome !== "playing"}
         onEnd={onFinish}
       />
@@ -429,7 +452,7 @@ function cellLabel(
 ): string {
   const row = Math.floor(index / size) + 1;
   const column = (index % size) + 1;
-  const position = `Row ${row} column ${column}, ${dark ? "dark" : "light"} cell`;
+  const position = `Row ${row} column ${column}, ${dark ? t("dark") : t("light")} cell`;
   if (verifying) return `${position}. The run is being verified.`;
   if (run.outcome !== "playing") return `${position}. The run has ended.`;
   return `${position}. Tap to flip this cell and its neighbours.`;
@@ -457,33 +480,38 @@ function Finished({
             <ShieldCheck className="size-5 text-muted-foreground" />
           )}
         </div>
-        <p className="text-sm text-muted-foreground">{stopped ? "Run ended" : "One move missed"}</p>
+        <p className="text-sm text-muted-foreground">
+          {stopped ? t("Run ended") : t("One move missed")}
+        </p>
         <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
-          {`${result.tilesPlaced} ${result.tilesPlaced === 1 ? "tap" : "taps"}, ${
-            result.clearedColumns
-          } ${result.clearedColumns === 1 ? "board" : "boards"} restored.`}
+          {t("{tilesPlaced} {n}, {clearedColumns} {n2} restored.", {
+            tilesPlaced: result.tilesPlaced,
+            n: result.tilesPlaced === 1 ? t("tap") : t("taps"),
+            clearedColumns: result.clearedColumns,
+            n2: result.clearedColumns === 1 ? t("board") : t("boards"),
+          })}
         </p>
       </div>
 
       <dl className="mx-auto grid w-full max-w-xs grid-cols-2 gap-2 text-sm">
         <div className="rounded-xl bg-surface p-3">
-          <dt className="text-xs text-muted-foreground">Duration</dt>
+          <dt className="text-xs text-muted-foreground">{t("Duration")}</dt>
           <dd className="font-semibold tabular">{formatDuration(result.durationMs)}</dd>
         </div>
         <div className="rounded-xl bg-surface p-3">
-          <dt className="text-xs text-muted-foreground">Boards restored</dt>
+          <dt className="text-xs text-muted-foreground">{t("Boards restored")}</dt>
           <dd className="font-semibold tabular">{result.clearedColumns}</dd>
         </div>
         {result.personalBest !== null && (
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Your best</dt>
+            <dt className="text-xs text-muted-foreground">{t("Your best")}</dt>
             <dd className="font-semibold tabular">{points(result.personalBest)}</dd>
           </div>
         )}
         {result.rank !== null && (
           <div className="rounded-xl bg-surface p-3">
-            <dt className="text-xs text-muted-foreground">Rank</dt>
+            <dt className="text-xs text-muted-foreground">{t("Rank")}</dt>
             <dd className="font-semibold tabular">#{result.rank}</dd>
           </div>
         )}
@@ -491,9 +519,13 @@ function Finished({
 
       <p className="mx-auto max-w-sm text-xs text-muted-foreground">
         {result.ranked
-          ? "Verified by replaying your taps on the server, then saved to the leaderboard."
-          : "Verified by replaying your taps on the server. This was a guest run, so it is not on the leaderboard."}
-        {result.duplicate && " This run was already recorded, so nothing was counted twice."}
+          ? t("Verified by replaying your taps on the server, then saved to the leaderboard.")
+          : result.offline
+            ? offlineResultNote()
+            : t(
+                "Verified by replaying your taps on the server. This was a guest run, so it is not on the leaderboard.",
+              )}
+        {result.duplicate && t(" This run was already recorded, so nothing was counted twice.")}
       </p>
 
       <RunEndActions slug={slug} ranked={result.ranked} onRestart={onRestart} autoFocus />

@@ -24,9 +24,10 @@ import {
 } from "@/lib/admin/api";
 import { fmt } from "@/lib/format";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/admin/review")({
   head: () => ({
-    meta: [{ title: "Review queue — Unbored admin" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: t("Review queue — Unbored admin") }, { name: "robots", content: "noindex" }],
   }),
   component: ReviewQueue,
 });
@@ -54,8 +55,8 @@ export function ReviewQueue() {
       .then((result) => {
         toast.success(
           result.status === "published"
-            ? `“${game.title}” is published.`
-            : `“${game.title}” was sent back.`,
+            ? t("“{title}” is published.", { title: game.title })
+            : t("“{title}” was sent back.", { title: game.title }),
         );
         queue.retry();
       })
@@ -65,8 +66,10 @@ export function ReviewQueue() {
 
   return (
     <AdminPage
-      title="Review queue"
-      subtitle="Games submitted for review. Publishing makes a game visible and playable; sending it back returns it to the submitter."
+      title={t("Review queue")}
+      subtitle={t(
+        "Games submitted for review. Publishing makes a game visible and playable; sending it back returns it to the submitter.",
+      )}
     >
       {queue.status === "error" ? (
         <SectionCard>
@@ -82,19 +85,21 @@ export function ReviewQueue() {
       ) : (
         <>
           <div className="mb-4 grid gap-3 sm:grid-cols-3">
-            <StatCard label="Waiting for review" value={String(rows.length)} icon={Inbox} />
+            <StatCard label={t("Waiting for review")} value={String(rows.length)} icon={Inbox} />
             <StatCard
-              label="With a runtime"
+              label={t("With a runtime")}
               value={String(rows.filter((g) => g.playable).length)}
               tone={rows.some((g) => !g.playable) ? "warning" : "muted"}
               delta={
                 rows.some((g) => !g.playable)
-                  ? `${rows.filter((g) => !g.playable).length} cannot be played yet`
+                  ? t("{length} cannot be played yet", {
+                      length: rows.filter((g) => !g.playable).length,
+                    })
                   : undefined
               }
             />
             <StatCard
-              label="Oldest submission"
+              label={t("Oldest submission")}
               value={rows.length === 0 ? "—" : (formatAgo(rows[rows.length - 1].createdAt) ?? "—")}
             />
           </div>
@@ -103,8 +108,8 @@ export function ReviewQueue() {
             <SectionCard>
               <AdminListStates
                 state="ready"
-                emptyTitle="Nothing is waiting"
-                emptyBody="No game has the review status right now."
+                emptyTitle={t("Nothing is waiting")}
+                emptyBody={t("No game has the review status right now.")}
               />
             </SectionCard>
           ) : (
@@ -128,37 +133,39 @@ export function ReviewQueue() {
                           {game.title}
                         </Link>
                         <StatusBadge tone={statusTone(game.status)}>{game.status}</StatusBadge>
-                        {game.isOfficial && <StatusBadge tone="info">official</StatusBadge>}
-                        {!game.playable && <StatusBadge tone="warning">no runtime</StatusBadge>}
+                        {game.isOfficial && <StatusBadge tone="info">{t("official")}</StatusBadge>}
+                        {!game.playable && (
+                          <StatusBadge tone="warning">{t("no runtime")}</StatusBadge>
+                        )}
                       </div>
                       {game.tagline && (
                         <p className="mt-1 text-sm text-muted-foreground">{game.tagline}</p>
                       )}
                       <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
                         <div className="flex gap-1.5">
-                          <dt>Owner</dt>
+                          <dt>{t("Owner")}</dt>
                           <dd className="font-medium text-foreground">
                             {game.ownerUsername ? `@${game.ownerUsername}` : "—"}
                           </dd>
                         </div>
                         <div className="flex gap-1.5">
-                          <dt>Category</dt>
+                          <dt>{t("Category")}</dt>
                           <dd className="font-medium text-foreground">
                             {game.categoryName ?? "—"}
                           </dd>
                         </div>
                         <div className="flex gap-1.5">
-                          <dt>Runtime</dt>
+                          <dt>{t("Runtime")}</dt>
                           <dd className="font-medium text-foreground">{game.runtime ?? "—"}</dd>
                         </div>
                         <div className="flex gap-1.5">
-                          <dt>Submitted</dt>
+                          <dt>{t("Submitted")}</dt>
                           <dd className="font-medium text-foreground">
                             {formatAgo(game.createdAt) ?? "—"}
                           </dd>
                         </div>
                         <div className="flex gap-1.5">
-                          <dt>Runs so far</dt>
+                          <dt>{t("Runs so far")}</dt>
                           <dd className="font-mono font-medium text-foreground tabular">
                             {fmt(game.plays)}
                           </dd>
@@ -173,7 +180,7 @@ export function ReviewQueue() {
                         onClick={() => setPending({ game, decision: "rejected" })}
                       >
                         <XCircle />
-                        Send back
+                        {t("Send back")}
                       </Button>
                       <Button
                         size="sm"
@@ -181,7 +188,7 @@ export function ReviewQueue() {
                         onClick={() => setPending({ game, decision: "published" })}
                       >
                         <CheckCircle2 />
-                        Publish
+                        {t("Publish")}
                       </Button>
                     </div>
                   </div>
@@ -195,13 +202,16 @@ export function ReviewQueue() {
       <ConfirmDialog
         open={pending?.decision === "published"}
         onOpenChange={(open) => !open && setPending(null)}
-        title="Publish this game?"
+        title={t("Publish this game?")}
         description={
           pending
-            ? `“${pending.game.title}” becomes visible and playable. The decision is recorded against your account.`
+            ? t(
+                "“{title}” becomes visible and playable. The decision is recorded against your account.",
+                { title: pending.game.title },
+              )
             : undefined
         }
-        confirmLabel="Publish"
+        confirmLabel={t("Publish")}
         onConfirm={() => {
           if (pending) decide(pending.game, "published");
           setPending(null);
@@ -211,15 +221,17 @@ export function ReviewQueue() {
       <PromptDialog
         open={pending?.decision === "rejected"}
         onOpenChange={(open) => !open && setPending(null)}
-        title="Send this game back"
+        title={t("Send this game back")}
         description={
           pending
-            ? `“${pending.game.title}” will not be published. The reason is stored with the decision.`
+            ? t("“{title}” will not be published. The reason is stored with the decision.", {
+                title: pending.game.title,
+              })
             : undefined
         }
-        label="What has to change"
-        placeholder="Explain what the submitter should fix."
-        confirmLabel="Send back"
+        label={t("What has to change")}
+        placeholder={t("Explain what the submitter should fix.")}
+        confirmLabel={t("Send back")}
         destructive
         onConfirm={(reason) => {
           if (pending) decide(pending.game, "rejected", reason);

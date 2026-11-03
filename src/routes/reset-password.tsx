@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { changePassword, useAuth } from "@/lib/auth/session";
 import { seo } from "@/lib/seo";
 
+import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/reset-password")({
-  head: () => seo("Set a new password", "Choose a new password for your Unbored account."),
+  head: () => seo(t("Set a new password"), t("Choose a new password for your Unbored account.")),
   component: Reset,
 });
 
@@ -35,7 +36,7 @@ function Reset() {
       await changePassword(a);
       setDone(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(err instanceof Error ? err.message : t("Something went wrong. Please try again."));
     } finally {
       setBusy(false);
     }
@@ -44,8 +45,8 @@ function Reset() {
   if (done)
     return (
       <AuthLayout
-        title="Password updated"
-        subtitle="You can now log in with your new password."
+        title={t("Password updated")}
+        subtitle={t("You can now log in with your new password.")}
         back={false}
       >
         <div className="flex justify-center py-8">
@@ -54,16 +55,17 @@ function Reset() {
           </span>
         </div>
         <Button asChild variant="play" size="xl" className="mt-auto w-full lg:mt-4">
-          <Link to="/login">Log in</Link>
+          <Link to="/login">{t("Log in")}</Link>
         </Button>
       </AuthLayout>
     );
   return (
-    <AuthLayout title="Set a new password" subtitle="Use at least 8 characters.">
+    <AuthLayout title={t("Set a new password")} subtitle={t("Use at least 8 characters.")}>
       {!signedIn && (
         <p className="mb-4 rounded-lg bg-surface p-3 text-sm text-muted-foreground" role="note">
-          Open the reset link from your email first — it signs you in so this screen can set the new
-          password. Links expire; use the newest one.
+          {t(
+            "Open the reset link from your email first — it signs you in so this screen can set the new password. Links expire; use the newest one.",
+          )}
         </p>
       )}
       <form className="flex flex-1 flex-col" onSubmit={submit}>
@@ -71,20 +73,20 @@ function Reset() {
           <Field
             id="new"
             type="password"
-            label="New password"
+            label={t("New password")}
             value={a}
             onChange={(e) => setA(e.target.value)}
             autoComplete="new-password"
-            error={a && a.length < 8 ? "Use at least 8 characters." : undefined}
+            error={a && a.length < 8 ? t("Use at least 8 characters.") : undefined}
           />
           <Field
             id="confirm"
             type="password"
-            label="Confirm password"
+            label={t("Confirm password")}
             value={b}
             onChange={(e) => setB(e.target.value)}
             autoComplete="new-password"
-            error={mismatch ? "Passwords don't match." : undefined}
+            error={mismatch ? t("Passwords don't match.") : undefined}
           />
         </div>
         {error && (
@@ -99,7 +101,7 @@ function Reset() {
           className="mt-auto w-full lg:mt-6"
           disabled={a.length < 8 || a !== b || busy || !signedIn}
         >
-          Update password
+          {t("Update password")}
         </Button>
       </form>
     </AuthLayout>

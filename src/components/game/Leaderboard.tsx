@@ -16,6 +16,7 @@ import { useOverallBoard } from "@/lib/games/overall-board";
 import { cn } from "@/lib/utils";
 import { points } from "@/lib/format";
 
+import { t } from "@/lib/settings/language";
 const ROW = "flex items-center gap-3 px-4 py-3.5 md:rounded-lg md:px-2";
 
 /**
@@ -28,7 +29,7 @@ function PlayerRow({ username, children }: { username: string | null; children: 
     <Link
       to="/u/$username"
       params={{ username }}
-      aria-label={`View @${username}'s profile`}
+      aria-label={t("View @{username}'s profile", { username })}
       className={cn(ROW, "transition-colors hover:bg-surface active:bg-surface")}
     >
       {children}
@@ -81,8 +82,8 @@ export function LeaderboardList({
     return (
       <EmptyState
         icon={CircleSlash}
-        title="No game selected"
-        body="Scores belong to a game, so pick one to see its board."
+        title={t("No game selected")}
+        body={t("Scores belong to a game, so pick one to see its board.")}
       />
     );
   }
@@ -96,7 +97,7 @@ export function LeaderboardList({
   if (state.status === "error") {
     return (
       <ErrorState
-        title="Couldn't load the leaderboard"
+        title={t("Couldn't load the leaderboard")}
         body={playErrorMessage(state.error)}
         onRetry={state.retry}
       />
@@ -109,8 +110,10 @@ export function LeaderboardList({
     return (
       <EmptyState
         icon={CircleSlash}
-        title={period === "all" ? "No scores yet" : "No scores in this window"}
-        body="A score appears here once a run has been verified and saved. Nothing is ranked until then."
+        title={period === "all" ? t("No scores yet") : t("No scores in this window")}
+        body={t(
+          "A score appears here once a run has been verified and saved. Nothing is ranked until then.",
+        )}
       />
     );
   }
@@ -131,7 +134,7 @@ export function LeaderboardList({
               </span>
               <UserAvatar username={row.username} size="sm" />
               <span className="flex-1 truncate text-sm">
-                {row.username ? `@${row.username}` : "A former player"}
+                {row.username ? `@${row.username}` : t("A former player")}
               </span>
               <span className="font-semibold tabular">{points(row.score)}</span>
             </PlayerRow>
@@ -141,13 +144,13 @@ export function LeaderboardList({
       {pinMe && me && (
         <Link
           to="/profile"
-          aria-label="View your profile"
+          aria-label={t("View your profile")}
           className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] mt-3 flex items-center gap-3 border-y border-primary/30 bg-surface px-4 py-3 md:bottom-0 md:rounded-lg md:border md:px-2"
         >
           <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
             {me.rank}
           </span>
-          <span className="flex-1 text-sm font-medium">You</span>
+          <span className="flex-1 text-sm font-medium">{t("You")}</span>
           <span className="font-semibold tabular">{points(me.score)}</span>
         </Link>
       )}
@@ -217,12 +220,12 @@ function FollowingBoard({ gameSlug, period }: { gameSlug: string; period: BoardP
     return (
       <EmptyState
         icon={Users}
-        title="See how the people you follow did"
-        body="Sign in, follow a few players, and their scores show up here next to yours."
+        title={t("See how the people you follow did")}
+        body={t("Sign in, follow a few players, and their scores show up here next to yours.")}
         action={
           <Button asChild variant="secondary">
             <Link to="/login" search={{ redirect: `/leaderboards/${gameSlug}` }}>
-              Log in
+              {t("Log in")}
             </Link>
           </Button>
         }
@@ -233,7 +236,7 @@ function FollowingBoard({ gameSlug, period }: { gameSlug: string; period: BoardP
   if (followed.status === "error" || board.status === "error") {
     return (
       <ErrorState
-        title="Couldn't load the leaderboard"
+        title={t("Couldn't load the leaderboard")}
         body={board.status === "error" ? playErrorMessage(board.error) : undefined}
         onRetry={() => {
           followed.retry();
@@ -251,11 +254,13 @@ function FollowingBoard({ gameSlug, period }: { gameSlug: string; period: BoardP
     return (
       <EmptyState
         icon={Users}
-        title="You're not following anyone yet"
-        body="Follow players from their profiles or from search, and their best scores show up here."
+        title={t("You're not following anyone yet")}
+        body={t(
+          "Follow players from their profiles or from search, and their best scores show up here.",
+        )}
         action={
           <Button asChild variant="secondary">
-            <Link to="/search">Find people</Link>
+            <Link to="/search">{t("Find people")}</Link>
           </Button>
         }
       />
@@ -268,8 +273,10 @@ function FollowingBoard({ gameSlug, period }: { gameSlug: string; period: BoardP
     return (
       <EmptyState
         icon={CircleSlash}
-        title={period === "all" ? "No scores yet" : "No scores in this window"}
-        body="Nobody you follow is on this board yet. Their best runs show up here once they're verified."
+        title={period === "all" ? t("No scores yet") : t("No scores in this window")}
+        body={t(
+          "Nobody you follow is on this board yet. Their best runs show up here once they're verified.",
+        )}
       />
     );
   }
@@ -323,12 +330,12 @@ export function OverallBoardList({
     return (
       <EmptyState
         icon={Users}
-        title="See how the people you follow did"
-        body="Sign in, follow a few players, and their ratings show up here next to yours."
+        title={t("See how the people you follow did")}
+        body={t("Sign in, follow a few players, and their ratings show up here next to yours.")}
         action={
           <Button asChild variant="secondary">
             <Link to="/login" search={{ redirect: "/leaderboards" }}>
-              Log in
+              {t("Log in")}
             </Link>
           </Button>
         }
@@ -339,7 +346,7 @@ export function OverallBoardList({
   if (state.status === "error" || (following && followed.status === "error")) {
     return (
       <ErrorState
-        title="Couldn't load the leaderboard"
+        title={t("Couldn't load the leaderboard")}
         body={state.status === "error" ? playErrorMessage(state.error) : undefined}
         onRetry={() => {
           state.retry();
@@ -366,15 +373,20 @@ export function OverallBoardList({
   return (
     <div>
       <p className="px-4 pb-3 text-xs text-muted-foreground md:px-2">
-        Your best score in each game becomes a percentile of everyone who played it, up to 100 per
-        game. Your rating adds them up. Play {minGames} games to get ranked.
+        {t(
+          "Your best score in each game becomes a percentile of everyone who played it, up to 100 per game. Your rating adds them up. Play {minGames} games to get ranked.",
+          { minGames },
+        )}
       </p>
 
       {gamesLeft > 0 && me && (
         <div className="mx-4 mb-3 rounded-lg border border-primary/30 bg-surface px-3 py-2.5 text-sm md:mx-2">
-          You're rated in {me.games} of {minGames} games ({me.rating} points).{" "}
-          {gamesLeft === 1 ? "Play 1 more game" : `Play ${gamesLeft} more games`} to get on the
-          board.
+          {t("You're rated in")} {me.games} of {minGames} {t("games (")}
+          {me.rating} {t("points).")}{" "}
+          {gamesLeft === 1
+            ? t("Play 1 more game")
+            : t("Play {gamesLeft} more games", { gamesLeft })}{" "}
+          {t("to get on the board.")}
         </div>
       )}
 
@@ -383,12 +395,15 @@ export function OverallBoardList({
           icon={CircleSlash}
           title={
             following
-              ? "Nobody you follow is ranked yet"
+              ? t("Nobody you follow is ranked yet")
               : period === "all"
-                ? "No one is ranked yet"
-                : "No one is ranked in this window"
+                ? t("No one is ranked yet")
+                : t("No one is ranked in this window")
           }
-          body={`A player is ranked once they have verified scores in ${minGames} different games.`}
+          body={t(
+            "A player is ranked once they have verified scores in {minGames} different games.",
+            { minGames },
+          )}
         />
       ) : (
         <ol className="divide-y divide-border">
@@ -401,10 +416,10 @@ export function OverallBoardList({
                 <UserAvatar username={row.username} size="sm" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm">
-                    {row.username ? `@${row.username}` : "A former player"}
+                    {row.username ? `@${row.username}` : t("A former player")}
                   </span>
                   <span className="block text-xs text-muted-foreground">
-                    {row.games === 1 ? "1 game" : `${row.games} games`}
+                    {row.games === 1 ? t("1 game") : t("{games} games", { games: row.games })}
                   </span>
                 </span>
                 <span className="font-semibold tabular">{row.rating}</span>
@@ -417,13 +432,13 @@ export function OverallBoardList({
       {pinMe && me && (
         <Link
           to="/profile"
-          aria-label="View your profile"
+          aria-label={t("View your profile")}
           className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] mt-3 flex items-center gap-3 border-y border-primary/30 bg-surface px-4 py-3 md:bottom-0 md:rounded-lg md:border md:px-2"
         >
           <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
             {me.rank}
           </span>
-          <span className="flex-1 text-sm font-medium">You</span>
+          <span className="flex-1 text-sm font-medium">{t("You")}</span>
           <span className="font-semibold tabular">{me.rating}</span>
         </Link>
       )}

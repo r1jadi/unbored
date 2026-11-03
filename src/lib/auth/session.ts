@@ -37,6 +37,7 @@ import {
   safeSessionStorage,
 } from "@/lib/storage";
 
+import { t } from "@/lib/settings/language";
 /** Routes implemented by `services/auth`. Kept together so they cannot drift. */
 const Routes = {
   signUp: "/auth/sign-up",
@@ -619,7 +620,7 @@ async function validateStoredSession(accessToken: string, startedAt: number): Pr
  * transport failure, and gets a generic message instead of an internal detail.
  */
 export function authErrorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Something went wrong. Please try again.";
+  return error instanceof ApiError ? error.message : t("Something went wrong. Please try again.");
 }
 
 /**
@@ -682,7 +683,7 @@ export async function resendConfirmation(email: string): Promise<void> {
     body: JSON.stringify({ type: "signup", email }),
   });
   if (!response.ok) {
-    throw new ApiError("We could not re-send the confirmation email. Try again shortly.", {
+    throw new ApiError(t("We could not re-send the confirmation email. Try again shortly."), {
       code: "resend_failed",
       status: response.status,
     });
@@ -708,7 +709,7 @@ export async function verifyEmailLink(
     body: JSON.stringify({ token_hash: tokenHash, type }),
   });
   if (!response.ok) {
-    throw new ApiError("That confirmation link is invalid or has expired. Request a new one.", {
+    throw new ApiError(t("That confirmation link is invalid or has expired. Request a new one."), {
       code: "invalid_confirmation",
       status: response.status,
     });
@@ -718,7 +719,7 @@ export async function verifyEmailLink(
     refresh_token?: string;
   };
   if (!payload.access_token || !payload.refresh_token) {
-    throw new ApiError("That confirmation link is invalid or has expired. Request a new one.", {
+    throw new ApiError(t("That confirmation link is invalid or has expired. Request a new one."), {
       code: "invalid_confirmation",
       status: 400,
     });
@@ -822,7 +823,7 @@ export async function exchangeOAuthCode(code: string): Promise<AuthSession> {
     verifier = null;
   }
   if (!verifier) {
-    throw new ApiError("That sign-in did not finish. Start again from Log in.", {
+    throw new ApiError(t("That sign-in did not finish. Start again from Log in."), {
       code: "oauth_verifier_missing",
       status: 400,
     });
@@ -836,7 +837,7 @@ export async function exchangeOAuthCode(code: string): Promise<AuthSession> {
     body: JSON.stringify({ auth_code: code, code_verifier: verifier }),
   });
   if (!response.ok) {
-    throw new ApiError("That Google sign-in did not complete. Try again.", {
+    throw new ApiError(t("That Google sign-in did not complete. Try again."), {
       code: "oauth_exchange_failed",
       status: response.status,
     });
@@ -847,7 +848,7 @@ export async function exchangeOAuthCode(code: string): Promise<AuthSession> {
     expires_in?: number;
   };
   if (!payload.access_token || !payload.refresh_token) {
-    throw new ApiError("That Google sign-in did not complete. Try again.", {
+    throw new ApiError(t("That Google sign-in did not complete. Try again."), {
       code: "oauth_exchange_failed",
       status: 400,
     });
@@ -870,13 +871,13 @@ export async function exchangeOAuthCode(code: string): Promise<AuthSession> {
 export async function changePassword(newPassword: string): Promise<void> {
   const token = getAccessToken();
   if (!token) {
-    throw new ApiError("Sign in to change your password.", {
+    throw new ApiError(t("Sign in to change your password."), {
       code: "unauthorized",
       status: 401,
     });
   }
   if (newPassword.length < 8) {
-    throw new ApiError("Use at least 8 characters for your password.", {
+    throw new ApiError(t("Use at least 8 characters for your password."), {
       code: "unprocessable_entity",
       status: 422,
     });
@@ -892,7 +893,7 @@ export async function changePassword(newPassword: string): Promise<void> {
     body: JSON.stringify({ password: newPassword }),
   });
   if (!response.ok) {
-    throw new ApiError("That password could not be saved. Try a stronger one.", {
+    throw new ApiError(t("That password could not be saved. Try a stronger one."), {
       code: "password_change_failed",
       status: response.status,
     });

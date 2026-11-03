@@ -4,6 +4,7 @@ import { getAccessToken, getAuthState, useAuth } from "@/lib/auth/session";
 import { getQueryClient } from "@/lib/query";
 import { restMutate } from "@/lib/supabase/rest";
 
+import { t } from "@/lib/settings/language";
 /**
  * Daily streaks, per game.
  *
@@ -88,14 +89,15 @@ export function useMyGameStreak(gameSlug: string, enabled = true) {
 
 /** The line that says where a streak stands, or null when there is nothing to say. */
 export function streakLine(streak: GameStreak): string | null {
-  const days = streak.streak === 1 ? "1-day streak" : `${streak.streak}-day streak`;
+  const days =
+    streak.streak === 1 ? t("1-day streak") : t("{streak}-day streak", { streak: streak.streak });
   switch (streakStatus(streak)) {
     case "done":
       return `${days}. Come back tomorrow to keep it going.`;
     case "keep":
       return `${days}. Play today to add a day.`;
     case "rest":
-      return `${days}, on a rest day. You missed yesterday, so play today to save it.`;
+      return t("{days}, on a rest day. You missed yesterday, so play today to save it.", { days });
     default:
       return null;
   }
