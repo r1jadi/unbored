@@ -83,6 +83,10 @@ export const publicConfig = {
       readEnv(import.meta.env?.["VITE_SUPABASE_PUBLISHABLE_KEY"]) ||
       readEnv(import.meta.env?.["VITE_SUPABASE_ANON_KEY"]),
   },
+  push: {
+    /** VAPID public key: the browser shows it to the push service. Empty turns push off. */
+    vapidPublicKey: readEnv(import.meta.env?.["VITE_VAPID_PUBLIC_KEY"]),
+  },
   posthog: {
     /** Project API key (`phc_...`): a public ingestion key. Empty disables analytics. */
     key: readEnv(import.meta.env?.["VITE_PUBLIC_POSTHOG_KEY"]),

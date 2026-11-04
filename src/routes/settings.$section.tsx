@@ -6,6 +6,7 @@ import { LegalBody, privacy, terms } from "@/components/legal";
 import { allSettings } from "@/components/settings/config";
 import { FeedbackForm } from "@/components/settings/FeedbackForm";
 import { ProfileForm } from "@/components/settings/ProfileForm";
+import { PushToggle } from "@/components/settings/PushToggle";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -204,9 +205,9 @@ const faq = [
     ),
   ],
   [
-    msg("How do I follow a creator?"),
+    msg("How do I follow someone?"),
     msg(
-      "Open their profile or find them in Search and use Follow. Your Following feed shows published games by creators you follow.",
+      "Open their profile or find them in Search and use Follow. Player-made games are coming later, and when they do, games from people you follow will show up in your Following feed.",
     ),
   ],
   [
@@ -318,7 +319,7 @@ function Body({ section, category }: { section: string; category?: "bug" }) {
       if (loading) return <p className="px-4 text-sm text-muted-foreground">{t("Loading…")}</p>;
       return (
         <>
-          <Group title={t("In-app")}>
+          <Group title={t("Notify me about")}>
             <Toggle
               id="n1"
               label={t("Someone beats your score")}
@@ -350,15 +351,7 @@ function Body({ section, category }: { section: string; category?: "bug" }) {
             />
           </Group>
           <Group title={t("Push")}>
-            <Row
-              label={t("Push notifications")}
-              value={t("Not available")}
-              action={
-                <span className="text-xs text-muted-foreground">
-                  {t("No push delivery is implemented")}
-                </span>
-              }
-            />
+            <PushToggle />
           </Group>
           {error && (
             <p className="mt-3 px-4 text-sm text-destructive" role="alert">

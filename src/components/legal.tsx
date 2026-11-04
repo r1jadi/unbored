@@ -70,7 +70,7 @@ export const terms = [
   [
     msg("9. Intellectual property"),
     msg(
-      "Games, artwork, branding and the app itself remain the property of their respective owners. You may not copy, redistribute or misrepresent them. Creator-published games are subject to the publishing review described in the app.",
+      "Games, artwork, branding and the app itself remain the property of their respective owners. You may not copy, redistribute or misrepresent them.",
     ),
   ],
   [

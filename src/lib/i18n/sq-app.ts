@@ -65,8 +65,8 @@ export const sqApp: Record<string, string> = {
     "Emrat e shfaqur, biografitë, ndjekjet, zgjedhjet e bllokimit dhe preferencat e njoftimeve që vendos mbeten të tuat. I jep Unbored një licencë për të shfaqur përmbajtjen e profilit dhe atë sociale brenda shërbimit, që ndjekjet, renditjet dhe njoftimet të funksionojnë. Cilësimet e llogarisë private, dukshmërisë në renditje dhe ndërveprimit te Cilësimet → Privatësia kontrollojnë kush e sheh aktivitetin tënd, aty ku janë zbatuar.",
   "Edit profile, privacy, notification, language, appearance, accessibility and blocked-user settings in Settings; each supported control persists and takes effect as described on its screen. Unsupported controls (push, email delivery, MFA, per-device session lists) are labelled unavailable rather than simulated. To request access, correction or deletion, open an issue on the project tracker from your signed-in account until a dedicated privacy contact is published.":
     "Ndrysho cilësimet e profilit, privatësisë, njoftimeve, gjuhës, pamjes, aksesueshmërisë dhe përdoruesve të bllokuar te Cilësimet; çdo kontroll i mbështetur ruhet dhe hyn në fuqi siç përshkruhet në ekranin e tij. Kontrollet e pambështetura (push, dërgimi i email-eve, MFA, listat e sesioneve për pajisje) shënohen si të padisponueshme në vend që të simulohen. Për të kërkuar qasje, korrigjim ose fshirje, hap një çështje në gjurmuesin e projektit nga llogaria jote derisa të publikohet një kontakt i dedikuar për privatësinë.",
-  "Games, artwork, branding and the app itself remain the property of their respective owners. You may not copy, redistribute or misrepresent them. Creator-published games are subject to the publishing review described in the app.":
-    "Lojërat, grafika, marka dhe vetë aplikacioni mbeten pronë e pronarëve përkatës. Nuk lejohet t'i kopjosh, rishpërndash apo paraqesësh gabim. Lojërat e publikuara nga krijuesit i nënshtrohen shqyrtimit të publikimit të përshkruar në aplikacion.",
+  "Games, artwork, branding and the app itself remain the property of their respective owners. You may not copy, redistribute or misrepresent them.":
+    "Lojërat, grafika, marka dhe vetë aplikacioni mbeten pronë e pronarëve përkatës. Nuk lejohet t'i kopjosh, rishpërndash apo paraqesësh gabim.",
   "Hosting and API: Vercel (web app, Go gateway and Go services on one domain). Identity, database and storage: Supabase (Auth, Postgres with Row Level Security, Storage). OAuth, when enabled: Google. No other processors are used by this deployment.":
     "Hostimi dhe API: Vercel (aplikacioni web, porta Go dhe shërbimet Go në një domen). Identiteti, baza e të dhënave dhe ruajtja: Supabase (Auth, Postgres me Row Level Security, Storage). OAuth, kur aktivizohet: Google. Ky vendosje nuk përdor përpunues të tjerë.",
   "How we use it": "Si i përdorim",
@@ -311,7 +311,23 @@ export const sqApp: Record<string, string> = {
   "An update about your content": "Një përditësim për përmbajtjen tënde",
   "An update from Unbored": "Një përditësim nga Unbored",
   "beat your score": "theu rezultatin tënd",
-  "commented on your score": "komentoi rezultatin tënd",
+  "beat your score on {game}": "theu rezultatin tënd te {game}",
+  "commented on your game": "komentoi lojën tënde",
+  "commented on {game}": "komentoi te {game}",
+  "replied to your comment": "iu përgjigj komentit tënd",
+  "replied to your comment on {game}": "iu përgjigj komentit tënd te {game}",
+  "Notify me about": "Më njofto për",
+  "Sign in to turn on push notifications.": "Identifikohu për të aktivizuar njoftimet push.",
+  "Couldn't turn on push notifications. Try again.":
+    "Njoftimet push nuk mund të aktivizoheshin. Provo sërish.",
+  "On iPhone and iPad, add Unbored to your Home Screen first, then open it from there.":
+    "Në iPhone dhe iPad, shto fillimisht Unbored në ekranin kryesor, pastaj hape prej andej.",
+  "This browser doesn't support push notifications.": "Ky shfletues nuk i mbështet njoftimet push.",
+  "Push notifications aren't available right now.": "Njoftimet push nuk ofrohen për momentin.",
+  "Blocked for this site. Allow notifications in your browser's settings to turn this on.":
+    "Të bllokuara për këtë sajt. Lejo njoftimet te cilësimet e shfletuesit për t'i aktivizuar.",
+  "Get what you've chosen above on this device, even when Unbored is closed.":
+    "Merr atë që zgjodhe më sipër në këtë pajisje, edhe kur Unbored është i mbyllur.",
   "Couldn't load notifications.": "Njoftimet nuk mund të ngarkoheshin.",
   "Couldn't load notifications. Try again.": "Njoftimet nuk mund të ngarkoheshin. Provo sërish.",
   "liked your score": "pëlqeu rezultatin tënd",
@@ -348,7 +364,7 @@ export const sqApp: Record<string, string> = {
   "Couldn't load follow counts.": "Numri i ndjekjeve nuk mund të ngarkohej.",
   "Couldn't read this account's follows.": "Ndjekjet e kësaj llogarie nuk mund të lexoheshin.",
   "Couldn't update the follow. Try again.": "Ndjekja nuk mund të përditësohej. Provo sërish.",
-  "Sign in to follow creators.": "Identifikohu për të ndjekur krijues.",
+  "Sign in to follow players.": "Identifikohu për të ndjekur lojtarë.",
   "You can't follow yourself.": "Nuk mund të ndjekësh veten.",
   "You're already following this account.": "E ndjek tashmë këtë llogari.",
   "The count could not be read.": "Numri nuk mund të lexohej.",
@@ -479,17 +495,15 @@ export const sqApp: Record<string, string> = {
   "Couldn't load follows.": "Ndjekjet nuk mund të ngarkoheshin.",
   "Couldn't load more games": "Nuk mund të ngarkoheshin më shumë lojëra",
   "Couldn't load the following feed": "Rrjedha e të ndjekurve nuk mund të ngarkohej",
-  "Discover creators": "Zbulo krijues",
-  "Find creators in Search or on a game page, then follow them to build this feed.":
-    "Gjej krijues te Kërko ose në faqen e një loje, pastaj ndiqi për ta ndërtuar këtë rrjedhë.",
-  "Following keeps the games of people you follow in one place.":
-    "Ndjekja i mban në një vend lojërat e njerëzve që ndjek.",
-  "Games played and made by people you follow.":
-    "Lojëra të luajtura dhe të krijuara nga njerëzit që ndjek.",
-  "No published games yet": "Ende pa lojëra të publikuara",
-  "Sign in to follow creators": "Identifikohu për të ndjekur krijues",
-  "The creators you follow haven't published any games. Check back later.":
-    "Krijuesit që ndjek nuk kanë publikuar asnjë lojë. Kthehu më vonë.",
+  "Player-made games are on the way to Unbored.":
+    "Lojërat e krijuara nga lojtarët po vijnë në Unbored.",
+  "Scroll left": "Lëviz majtas",
+  "Scroll right": "Lëviz djathtas",
+  "Coming soon": "Së shpejti",
+  "Play a game": "Luaj një lojë",
+  "Player-made games are on the way": "Lojërat e krijuara nga lojtarët po vijnë",
+  "One day you'll build your own games here, and this feed will fill up with games from the people you follow. We're still putting the workshop together, so for now every game comes from the Unbored team.":
+    "Një ditë do të krijosh lojërat e tua këtu, dhe kjo rrjedhë do të mbushet me lojëra nga njerëzit që ndjek. Ende po e ndërtojmë punishten, ndaj tani për tani çdo lojë vjen nga ekipi i Unbored.",
 
   // Passwords and login
   "Check your inbox": "Kontrollo kutinë postare",
@@ -679,7 +693,7 @@ export const sqApp: Record<string, string> = {
   "Popular searches": "Kërkimet më të shpeshta",
   "Remove {r}": "Hiq {r}",
   "Search games and people": "Kërko lojëra dhe njerëz",
-  "Search games, creators and players.": "Kërko lojëra, krijues dhe lojtarë.",
+  "Search games and players.": "Kërko lojëra dhe lojtarë.",
   Top: "Kryesoret",
   "Try a different spelling or a category name.":
     "Provo një drejtshkrim tjetër ose emrin e një kategorie.",
@@ -776,9 +790,8 @@ export const sqApp: Record<string, string> = {
   "How are scores verified?": "Si verifikohen rezultatet?",
   "How do I create an account?": "Si të krijoj një llogari?",
   "How do I delete my account?": "Si ta fshij llogarinë?",
-  "How do I follow a creator?": "Si të ndjek një krijues?",
+  "How do I follow someone?": "Si të ndjek dikë?",
   "How do I report a player?": "Si ta raportoj një lojtar?",
-  "In-app": "Në aplikacion",
   "Increase contrast": "Rrit kontrastin",
   Interactions: "Ndërveprimet",
   Language: "Gjuha",
@@ -794,7 +807,6 @@ export const sqApp: Record<string, string> = {
   Motion: "Lëvizja",
   "New followers": "Ndjekës të rinj",
   "No blocked users": "Asnjë përdorues i bllokuar",
-  "No push delivery is implemented": "Dërgimi push nuk është zbatuar",
   "Not available": "Nuk ofrohet",
   "Notification preferences belong to your account.":
     "Preferencat e njoftimeve i përkasin llogarisë tënde.",
@@ -823,8 +835,8 @@ export const sqApp: Record<string, string> = {
   "@{username} hasn't played any scored games yet.":
     "@{username} nuk ka luajtur ende asnjë lojë me rezultat.",
   "Open an issue": "Hap një çështje",
-  "Open their profile or find them in Search and use Follow. Your Following feed shows published games by creators you follow.":
-    "Hap profilin e tyre ose gjeji te Kërko dhe përdor Ndiq. Rrjedha e të ndjekurve tregon lojërat e publikuara nga krijuesit që ndjek.",
+  "Open their profile or find them in Search and use Follow. Player-made games are coming later, and when they do, games from people you follow will show up in your Following feed.":
+    "Hap profilin e tyre ose gjeji te Kërko dhe përdor Ndiq. Lojërat e krijuara nga lojtarët vijnë më vonë, dhe atëherë lojërat e njerëzve që ndjek do të shfaqen te rrjedha jote e të ndjekurve.",
   "Open their profile, tap the menu, and choose Report. Reports are reviewed by moderators.":
     "Hap profilin e tyre, prek menynë dhe zgjidh Raporto. Raportimet shqyrtohen nga moderatorët.",
   "Other sessions": "Sesionet e tjera",

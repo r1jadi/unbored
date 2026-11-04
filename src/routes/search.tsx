@@ -45,7 +45,7 @@ export const Route = createFileRoute("/search")({
       ...(tab ? { tab } : {}),
     };
   },
-  head: () => seo(t("Search"), t("Search games, creators and players.")),
+  head: () => seo(t("Search"), t("Search games and players.")),
   component: SearchPage,
 });
 

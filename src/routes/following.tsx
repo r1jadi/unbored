@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { EmptyState, ErrorState, ListSkeleton, Page } from "@/components/common";
+import { ErrorState, ListSkeleton, Page } from "@/components/common";
+import { CreatorsComingSoon } from "@/components/game/CreatorsComingSoon";
 import { FeedTabs } from "@/components/game/Feed";
 import { GameRow } from "@/components/game/GameCard";
-import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { subscribe as subscribeToAuth, useAuth } from "@/lib/auth/session";
 import { catalogErrorMessage } from "@/lib/games/catalog";
@@ -13,7 +13,7 @@ import { seo } from "@/lib/seo";
 
 import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/following")({
-  head: () => seo(t("Following"), t("Games played and made by people you follow.")),
+  head: () => seo(t("Following"), t("Player-made games are on the way to Unbored.")),
   component: Following,
 });
 
@@ -21,9 +21,11 @@ export const Route = createFileRoute("/following")({
  * The Following feed: published creator games of followed accounts, served by
  * `GET /api/v1/games/following` for the verified caller with cursor
  * pagination. It is never the For You catalogue under another heading:
- * - follows nobody → discovery empty state;
- * - follows accounts with no published creator games → accurate empty state;
+ * - signed out, follows nobody, or no creator games → coming soon, because players
+ *   can't publish games yet, so none of these is something to fix right now;
  * - follow-list failure vs feed failure → distinct errors with distinct retries.
+ *
+ * The feed itself stays wired, so games appear here as soon as they exist.
  */
 function Following() {
   const [authTick, setAuthTick] = useState(0);
@@ -61,18 +63,7 @@ function Following() {
   if (auth.status !== "authenticated") {
     return (
       <FollowingPage>
-        <EmptyState
-          icon={Users}
-          title={t("Sign in to follow creators")}
-          body={t("Following keeps the games of people you follow in one place.")}
-          action={
-            <Button asChild>
-              <Link to="/login" search={{ redirect: "/following" }}>
-                {t("Log in")}
-              </Link>
-            </Button>
-          }
-        />
+        <CreatorsComingSoon />
       </FollowingPage>
     );
   }
@@ -100,18 +91,7 @@ function Following() {
   if (followeeCount === 0) {
     return (
       <FollowingPage>
-        <EmptyState
-          icon={Users}
-          title={t("You're not following anyone yet")}
-          body={t(
-            "Find creators in Search or on a game page, then follow them to build this feed.",
-          )}
-          action={
-            <Button asChild variant="secondary">
-              <Link to="/search">{t("Discover creators")}</Link>
-            </Button>
-          }
-        />
+        <CreatorsComingSoon />
       </FollowingPage>
     );
   }
@@ -125,18 +105,7 @@ function FollowingGames() {
   if (feed.status === "anonymous") {
     return (
       <FollowingPage>
-        <EmptyState
-          icon={Users}
-          title={t("Sign in to follow creators")}
-          body={t("Following keeps the games of people you follow in one place.")}
-          action={
-            <Button asChild>
-              <Link to="/login" search={{ redirect: "/following" }}>
-                {t("Log in")}
-              </Link>
-            </Button>
-          }
-        />
+        <CreatorsComingSoon />
       </FollowingPage>
     );
   }
@@ -164,11 +133,7 @@ function FollowingGames() {
   if (feed.status === "ready" && feed.items.length === 0) {
     return (
       <FollowingPage>
-        <EmptyState
-          icon={Users}
-          title={t("No published games yet")}
-          body={t("The creators you follow haven't published any games. Check back later.")}
-        />
+        <CreatorsComingSoon />
       </FollowingPage>
     );
   }

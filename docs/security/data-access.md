@@ -90,6 +90,11 @@ moderator or admin role.
   owner-only) leave out a player who turned off "Show on leaderboards", before
   ranking. `game_standing` and `overall_standing` still answer for that player,
   and their rows stay readable in `scores`.
+- **Push subscriptions are credentials.** `push_subscriptions` has RLS with no
+  policies and no client grants: a player reaches it only through
+  `register_push_subscription` and `unregister_push_subscription`, and the outbox is
+  service-role only. Endpoints are limited to real push services, because the server
+  posts to them.
 - **Least data.** `profiles` exposes only public columns to the Data API;
   `analytics_events` is unreachable from the browser; lists are capped.
 

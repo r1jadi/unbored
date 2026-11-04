@@ -27,6 +27,7 @@ import { useConsent } from "@/lib/consent";
 import { CookieConsent } from "@/components/layout/CookieConsent";
 import { currentLanguage, LanguageProvider, t } from "@/lib/settings/language";
 import { ThemeProvider } from "@/lib/settings/theme";
+import { startPushSync } from "@/lib/notifications/push";
 import { registerServiceWorker } from "@/lib/service-worker";
 
 // Full-screen flows rendered without the main navigation.
@@ -229,6 +230,7 @@ function RootComponent() {
     if (forwardStrayAuthRedirect()) return;
     void initializeSession();
     registerServiceWorker();
+    startPushSync();
   }, []);
 
   // PostHog identity follows the session: the account id once signed in, a

@@ -341,6 +341,7 @@ func Options() servicekit.Options {
 		RegisterWith: func(router *httpx.Router, cfg *config.Config, logger *slog.Logger, _ *authn.Verifier) {
 			var backend Backend
 			var feedbackBackend FeedbackBackend
+			var pushBackend PushBackend
 			client, err := supabasedigest.New(cfg)
 			if err != nil {
 				// Booting anyway is deliberate: the service still serves its
@@ -350,11 +351,18 @@ func Options() servicekit.Options {
 			} else {
 				backend = client
 				feedbackBackend = client
+				pushBackend = client
 			}
 			mailer := email.NewFromEnv()
 			secret := os.Getenv("CRON_SECRET")
 			newService(backend, mailer, logger, secret, siteURL()).register(router)
 			newFeedbackService(feedbackBackend, mailer, logger, secret, os.Getenv("FEEDBACK_EMAIL_TO")).register(router)
+			subject := strings.TrimSpace(os.Getenv("VAPID_SUBJECT"))
+			if subject == "" {
+				subject = siteURL()
+			}
+			sender := newWebPushSender(os.Getenv("VAPID_PUBLIC_KEY"), os.Getenv("VAPID_PRIVATE_KEY"), subject)
+			newPushService(pushBackend, sender, logger, secret).register(router)
 		},
 	}
 }

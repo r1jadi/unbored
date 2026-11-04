@@ -420,7 +420,8 @@ select rls_test.ok(auth.uid() = :'alice'::uuid, 'auth.uid() resolves from the ve
 -- Visibility. Scoped to the fixture ids for the same reason as above.
 select rls_test.visible($$select id from public.games where id in ('aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', 'aaaaaaaa-2222-4222-8222-aaaaaaaaaaaa', 'aaaaaaaa-3333-4333-8333-aaaaaaaaaaaa')$$, 3, 'a creator sees published games plus own drafts');
 select rls_test.visible($$select id from public.game_sessions$$, 1, 'a player sees own sessions');
-select rls_test.visible($$select id from public.notifications$$, 1, 'a player sees only own notifications');
+select rls_test.visible($$select id from public.notifications where user_id <> '11111111-1111-4111-8111-111111111111'$$, 0, 'a player sees only own notifications');
+select rls_test.ok(rls_test.count_rows($$select id from public.notifications$$) >= 1, 'a player sees their own notifications');
 select rls_test.visible($$select user_id from public.user_roles$$, 1, 'a player sees only own role row');
 select rls_test.visible($$select id from public.comments$$, 3, 'a hidden comment stays visible to its author');
 select rls_test.visible($$select id from public.comments where id = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'$$, 1,
@@ -4907,7 +4908,9 @@ select rls_test.denied(
   'a player cannot block as another user'
 );
 
--- A genuine follow notifies the followee, and only the followee.
+-- A genuine follow notifies the followee, and only the followee. The block above
+-- comes off first: a follow across a block notifies nobody (tested further down).
+delete from public.blocked_users where blocker_id = '11111111-1111-4111-8111-111111111111';
 select rls_test.allow(
   $$insert into public.follows (follower_id, followee_id) values ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222')$$,
   'a player can follow another account'
@@ -5337,6 +5340,222 @@ select rls_test.ok(
 select rls_test.ok(
   public.login_email_for_username('nobody_here') is null,
   'a username nobody holds resolves to nothing'
+);
+reset role;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Notifications: created by triggers, and only when they are wanted
+-- ─────────────────────────────────────────────────────────────────────────────
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'note1@example.com', '{"username":"note_one"}'::jsonb),
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'note2@example.com', '{"username":"note_two"}'::jsonb),
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'note3@example.com', '{"username":"note_three"}'::jsonb);
+
+create function rls_test.record_score(p_game uuid, p_user uuid, p_score bigint) returns void
+language plpgsql as $$
+declare v_session uuid := gen_random_uuid();
+begin
+  insert into public.game_sessions (id, game_id, user_id, completed_at, verified_score, verified_digest)
+    values (v_session, p_game, p_user, now(), p_score, repeat('a', 32));
+  insert into public.scores (session_id, game_id, user_id, score) values (v_session, p_game, p_user, p_score);
+end $$;
+
+create function rls_test.notes(p_user uuid, p_kind text) returns bigint
+language sql as $$
+  select count(*) from public.notifications n where n.user_id = p_user and n.kind::text = p_kind
+$$;
+
+-- Beaten scores, on a board of their own.
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 100);
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'score') = 0,
+  'a first score that overtakes nobody notifies nobody');
+
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 200);
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'score') = 1,
+  'a player whose score is overtaken is told');
+select rls_test.ok(
+  (select n.payload->>'username' = 'note_two' and n.payload->>'game' = 'fixture-opt-out-b'
+          and n.payload->>'game_title' = 'Opt Out B' and n.payload->>'text' is null
+     from public.notifications n
+    where n.user_id = 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1' and n.kind = 'score'),
+  'the notification names the player and the game, and stores no English sentence');
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'score') = 0,
+  'a player is not told about their own score');
+
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 150);
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'score') = 1,
+  'a run below the player''s own best overtakes nobody');
+
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 250);
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'score') = 1,
+  'a new best past someone already behind tells them nothing new');
+
+-- The same player, passed again by someone else, inside the six-hour window.
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 300);
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'score') = 1,
+  'one player gets at most one beaten-score notification per game every six hours');
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'score') = 1,
+  'the player just overtaken still hears about it');
+
+-- The toggle, on the third fixture game.
+insert into public.user_preferences (user_id, notify_beats, notify_followers, notify_comments)
+  values ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', false, false, false);
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f3', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 100);
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f3', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 200);
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'score') = 1,
+  'turning off beaten-score notifications stops them');
+
+-- An opted-out player is not named on a board they left.
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f3', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 250);
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'score') = 1,
+  'the toggle only silences the player who turned it off');
+insert into public.user_preferences (user_id, show_on_leaderboards)
+  values ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', false);
+delete from public.notifications where user_id = 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3';
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f3', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 500);
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'score') = 0,
+  'a player off the leaderboards does not set off beaten-score notifications');
+
+-- Follows.
+insert into public.follows (follower_id, followee_id) values
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1');
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'follow') = 0,
+  'turning off follower notifications stops them');
+
+insert into public.follows (follower_id, followee_id) values
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2');
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'follow') = 1,
+  'a follow notifies the player followed');
+delete from public.follows where follower_id = 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3';
+insert into public.follows (follower_id, followee_id) values
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2');
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'follow') = 1,
+  'unfollowing and following again does not notify twice');
+
+insert into public.blocked_users (blocker_id, blocked_id) values
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2');
+insert into public.follows (follower_id, followee_id) values
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3');
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'follow') = 0,
+  'an account you blocked cannot notify you by following');
+delete from public.blocked_users where blocker_id = 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3';
+
+-- Comments: replies tell the author; a comment on Unbored's own game tells nobody.
+insert into public.comments (id, game_id, author_id, body) values
+  ('f7f7f7f7-2026-4120-8720-f7f7f7f7f7f1', 'f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'first'),
+  ('f7f7f7f7-2026-4120-8720-f7f7f7f7f7f2', 'f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'second');
+insert into public.comments (game_id, author_id, parent_id, body) values
+  ('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'f7f7f7f7-2026-4120-8720-f7f7f7f7f7f1', 'a reply');
+select rls_test.ok(
+  (select n.payload->>'reason' = 'reply' and n.payload->>'username' = 'note_two' and n.payload->>'body' is null
+     from public.notifications n
+    where n.user_id = 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3' and n.kind = 'comment'),
+  'a reply tells the comment''s author, without quoting it');
+insert into public.comments (game_id, author_id, parent_id, body) values
+  ('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'f7f7f7f7-2026-4120-8720-f7f7f7f7f7f1', 'to myself');
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'comment') = 1,
+  'replying to yourself notifies nobody');
+insert into public.comments (game_id, author_id, parent_id, body) values
+  ('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'f7f7f7f7-2026-4120-8720-f7f7f7f7f7f2', 'a reply');
+select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'comment') = 0,
+  'turning off comment notifications stops them');
+
+-- A notification's helper is not an API: it would say who has blocked whom.
+set local role anon;
+select rls_test.denied(
+  $$select public.notification_wanted('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'follow')$$,
+  'an anonymous caller cannot ask whether a notification would be wanted'
+);
+reset role;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Web push: subscriptions are credentials, and endpoints are real push services
+-- ─────────────────────────────────────────────────────────────────────────────
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'role', 'authenticated')::text, true);
+set local role authenticated;
+
+select rls_test.allow(
+  format($$select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/device-a', %L, %L, 'sq')$$,
+         repeat('k', 87), repeat('a', 22)),
+  'a player can register this device for push'
+);
+select rls_test.denied(
+  $$select id from public.push_subscriptions$$,
+  'a player cannot read push subscriptions directly'
+);
+select rls_test.denied(
+  $$select * from public.claim_push_batch(10)$$,
+  'a player cannot claim the push outbox'
+);
+select rls_test.denied(
+  $$select public.delete_push_subscriptions(array[gen_random_uuid()])$$,
+  'a player cannot delete other players'' subscriptions'
+);
+
+-- The server posts to this URL, so anything but a push service is refused.
+select rls_test.rejected(
+  format($$select public.register_push_subscription('http://169.254.169.254/latest/meta-data', %L, %L, 'en')$$, repeat('k', 87), repeat('a', 22)),
+  'a push endpoint cannot point at an internal address'
+);
+select rls_test.rejected(
+  format($$select public.register_push_subscription('https://fcm.googleapis.com.evil.example/x', %L, %L, 'en')$$, repeat('k', 87), repeat('a', 22)),
+  'a look-alike push host is refused'
+);
+select rls_test.rejected(
+  format($$select public.register_push_subscription('http://fcm.googleapis.com/fcm/send/x', %L, %L, 'en')$$, repeat('k', 87), repeat('a', 22)),
+  'a push endpoint must use https'
+);
+reset role;
+
+-- A shared browser moves to whoever is signed in now.
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select public.unregister_push_subscription('https://fcm.googleapis.com/fcm/send/device-a');
+reset role;
+select rls_test.ok(
+  (select user_id = 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2' from public.push_subscriptions
+    where endpoint = 'https://fcm.googleapis.com/fcm/send/device-a'),
+  'a player cannot unregister somebody else''s device');
+
+set local role anon;
+select rls_test.denied(
+  format($$select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/x', %L, %L, 'en')$$, repeat('k', 87), repeat('a', 22)),
+  'a guest cannot register for push'
+);
+select rls_test.denied(
+  $$select * from public.claim_push_batch(10)$$,
+  'a guest cannot claim the push outbox'
+);
+reset role;
+
+-- A new notification reaches the device once, in the device's language, and a
+-- database without pg_net or Vault lets the insert through untouched.
+update public.notifications set push_sent_at = now() where push_sent_at is null;
+insert into public.notifications (user_id, kind, payload) values
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'follow', '{"username":"note_three"}'::jsonb),
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'moderation', '{"text":"not for push"}'::jsonb),
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'follow', '{"username":"note_two"}'::jsonb);
+
+set local role service_role;
+select rls_test.ok(
+  (select count(*) = 1 and min(kind) = 'follow' and min(language) = 'sq'
+     from public.claim_push_batch(10)),
+  'the sender gets one row per device, only for kinds that push, in that device''s language'
+);
+select rls_test.ok(
+  (select count(*) = 0 from public.claim_push_batch(10)),
+  'a claimed notification is not sent twice'
+);
+select public.delete_push_subscriptions(array(
+  select id from public.push_subscriptions where endpoint = 'https://fcm.googleapis.com/fcm/send/device-a'
+));
+select rls_test.ok(
+  (select count(*) = 0 from public.push_subscriptions where endpoint = 'https://fcm.googleapis.com/fcm/send/device-a'),
+  'the sender can remove a subscription its push service says is gone'
 );
 reset role;
 

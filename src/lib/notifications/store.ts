@@ -293,15 +293,23 @@ export function useUnreadCount(): UnreadBadgeState & { retry: () => void } {
 export function describeNotification(item: AppNotification): string {
   const payload = item.payload;
   const text = typeof payload["text"] === "string" ? payload["text"] : "";
+  const game = typeof payload["game_title"] === "string" ? payload["game_title"] : "";
   switch (item.kind) {
+    // Worded here, not from the row: older rows hold an English sentence, and these
+    // are the same whichever language the player reads.
     case "follow":
-      return text !== "" ? text : t("started following you");
+      return t("started following you");
     case "comment":
-      return text !== "" ? text : t("commented on your score");
+      if (payload["reason"] === "reply") {
+        return game !== ""
+          ? t("replied to your comment on {game}", { game })
+          : t("replied to your comment");
+      }
+      return game !== "" ? t("commented on {game}", { game }) : t("commented on your game");
     case "like":
       return text !== "" ? text : t("liked your score");
     case "score":
-      return text !== "" ? text : t("beat your score");
+      return game !== "" ? t("beat your score on {game}", { game }) : t("beat your score");
     case "moderation":
       return text !== "" ? text : t("An update about your content");
     case "system":

@@ -1,8 +1,77 @@
 # services/notifications
 
-The game-release digest. In-app notifications and push delivery are still the
-scaffolded routes in `cmd/notifications`; the implemented piece is the email a
-player receives after five new games have been published.
+Three things reach a player outside the page they are on: the game-release digest
+email below, [in-app notifications](#in-app-notifications) and
+[web push](#web-push), which share one source.
+
+## In-app notifications
+
+Database triggers create them (`supabase/migrations/20261210120000_notification_triggers.sql`),
+so a follow, a comment or a score from any path is covered:
+
+| Happens | Who is told | Settings toggle | Limit |
+| --- | --- | --- | --- |
+| A follow | The player followed | `notify_followers` | Once a day per follower, so re-following can't spam |
+| A reply | The comment's author | `notify_comments` | None |
+| A comment on a game | Its owner, unless it is Unbored's own game | `notify_comments` | None |
+| A new personal best | The players it overtook | `notify_beats` | The ten closest, and once per game every six hours per player |
+
+Nobody is told about their own action, nothing crosses a block in either direction,
+and a player off the leaderboards neither triggers nor receives a beaten-score
+notification. The app words each row from its kind, so rows are translated.
+
+## Web push
+
+`POST /api/v1/cron/push-dispatch` (`push.go`) sends the notifications above to the
+devices that opted in. The toggles above decide what is sent; the switch in Settings
+decides whether it comes to this device.
+
+1. A browser subscribes and calls `register_push_subscription`. Its endpoint must be
+   a real push service, enforced by a constraint and again before sending: the server
+   posts to that URL, so anything else would let a player aim it at an internal address.
+2. A new notification for someone with a subscription fires `wake_push_dispatch`,
+   which calls the route through pg_net after commit.
+3. The route reads `claim_push_batch`, encrypts each message for its device and sends
+   it. A subscription the push service says is gone is deleted.
+
+Delivery is at most once: a failed send is not retried, because the notification is
+still in the inbox. A notification older than a day is not sent.
+
+**Browser support:** Chrome, Edge, Firefox and Safari on desktop; Android browsers; on
+iPhone and iPad only once Unbored is added to the Home Screen (iOS 16.4 or later). The
+native apps in `apps/` are not built yet, and this doesn't cover them.
+
+### Turning it on
+
+Nothing is sent until all of this is done, and nothing breaks before it is.
+
+1. Generate a VAPID key pair once. Changing it later stops every existing subscription.
+
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+
+2. Set these in the Vercel project, then redeploy:
+
+   | Variable | Value |
+   | --- | --- |
+   | `VITE_VAPID_PUBLIC_KEY` | The public key. It is built into the page, so a redeploy is needed |
+   | `VAPID_PUBLIC_KEY` | The same public key |
+   | `VAPID_PRIVATE_KEY` | The private key. Server-only: never `VITE_` |
+   | `VAPID_SUBJECT` | Optional: `mailto:` or `https://`. Defaults to the site URL |
+
+   `CRON_SECRET` and `SUPABASE_SECRET_KEY` are already set for the digest.
+
+3. Apply the migrations, then store the wake-up details in Supabase Vault (SQL editor).
+   Use the same value as `CRON_SECRET`, and check that the `pg_net` extension is on:
+
+   ```sql
+   select vault.create_secret('https://unbored.lol/api/v1/cron/push-dispatch', 'push_dispatch_url');
+   select vault.create_secret('<CRON_SECRET>', 'push_dispatch_secret');
+   ```
+
+To check it, turn the switch on in Settings and have another account follow you. Calls
+pg_net made are in `net._http_response`.
 
 ## What triggers it
 

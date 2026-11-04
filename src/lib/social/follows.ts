@@ -71,7 +71,7 @@ function announceFollowGraphChange(): void {
 }
 
 function unauthorised(): ApiError {
-  return new ApiError(t("Sign in to follow creators."), { code: "unauthorized", status: 401 });
+  return new ApiError(t("Sign in to follow players."), { code: "unauthorized", status: 401 });
 }
 
 /**
@@ -100,7 +100,7 @@ function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
   if (error instanceof SupabaseRestError) {
     if (error.status === 401) {
-      return new ApiError(t("Sign in to follow creators."), { code: "unauthorized", status: 401 });
+      return new ApiError(t("Sign in to follow players."), { code: "unauthorized", status: 401 });
     }
     if (error.status === 409 || error.code === "23505") {
       // The insert is idempotent, so a duplicate should never produce this; a

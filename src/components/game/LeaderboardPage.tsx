@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { LeaderboardList, OverallBoardList } from "./Leaderboard";
+import { ScrollStrip } from "./ScrollStrip";
 import { Page, PageHeader } from "@/components/common";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocumentTitle } from "@/lib/document-title";
-import { DEFAULT_PAGE_SIZE, useGames } from "@/lib/games/catalog";
+import { MAX_PAGE_SIZE, useGames } from "@/lib/games/catalog";
 import type { BoardPeriod, BoardScope } from "@/lib/games/sessions";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +29,9 @@ import { t } from "@/lib/settings/language";
 export function LeaderboardPage({ gameId }: { gameId?: string }) {
   const [scope, setScope] = useState<BoardScope>("global");
   const [period, setPeriod] = useState<BoardPeriod>("all");
-  const { status, items } = useGames({ limit: DEFAULT_PAGE_SIZE });
+  // Every game, not a first page: a game left out of this strip has no other way to
+  // reach its board, and its own board could not name it in the title.
+  const { status, items } = useGames({ limit: MAX_PAGE_SIZE });
   const game = items.find((g) => g.slug === gameId);
   useDocumentTitle(
     game
@@ -53,9 +56,12 @@ export function LeaderboardPage({ gameId }: { gameId?: string }) {
         }
         subtitle={t("Verified scores only.")}
       />
-      <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-4 md:px-0">
+      <ScrollStrip className="gap-2 px-4 pb-4 md:px-0">
         <Link
           to="/leaderboards"
+          // Exact, or every game's board would count as this chip's page too, and
+          // the strip would centre this chip instead of the selected game.
+          activeOptions={{ exact: true }}
           className={cn(
             "press shrink-0 rounded-full px-3.5 py-1.5 text-sm",
             !gameId
@@ -85,7 +91,7 @@ export function LeaderboardPage({ gameId }: { gameId?: string }) {
             {t("The catalogue is unavailable, so the game list is empty.")}
           </span>
         )}
-      </div>
+      </ScrollStrip>
       <div className="flex items-center justify-between gap-3 px-4 pb-4 md:px-0">
         <Tabs value={scope} onValueChange={(value) => setScope(value as BoardScope)}>
           <TabsList>

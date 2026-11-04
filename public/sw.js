@@ -312,6 +312,60 @@ self.addEventListener("message", (event) => {
   event.waitUntil(warm(games));
 });
 
+/**
+ * A push from `services/notifications/push.go`. Browsers require a visible
+ * notification for every push, so a message that can't be read still shows one.
+ */
+self.addEventListener("push", (event) => {
+  let message = {};
+  try {
+    message = event.data ? event.data.json() : {};
+  } catch {
+    // Fall through to the generic notification.
+  }
+  event.waitUntil(
+    self.registration.showNotification(
+      typeof message.title === "string" ? message.title : "Unbored",
+      {
+        body: typeof message.body === "string" ? message.body : undefined,
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        tag: typeof message.tag === "string" ? message.tag : undefined,
+        data: { url: safePath(message.url) },
+      },
+    ),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(openPath(safePath(event.notification.data && event.notification.data.url)));
+});
+
+/** The browser replaced the subscription. The app registers the new one on its next open. */
+self.addEventListener("pushsubscriptionchange", (event) => {
+  const options = event.oldSubscription && event.oldSubscription.options;
+  if (options) event.waitUntil(self.registration.pushManager.subscribe(options));
+});
+
+/** Only a path on this site: a notification must not be able to open another one. */
+function safePath(value) {
+  return typeof value === "string" && /^\/(?![/\\])/.test(value) ? value : "/notifications";
+}
+
+/** Reuses an open tab of the app if there is one. */
+async function openPath(path) {
+  const tabs = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  for (const tab of tabs) {
+    if (new URL(tab.url).origin === self.location.origin && "focus" in tab) {
+      await tab.focus();
+      if ("navigate" in tab) await tab.navigate(path);
+      return;
+    }
+  }
+  await self.clients.openWindow(path);
+}
+
 async function warm(games) {
   const cache = await caches.open(PAGE_CACHE);
   await cache.put(

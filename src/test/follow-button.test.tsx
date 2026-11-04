@@ -134,7 +134,7 @@ describe("FollowButton", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Follow" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Sign in to follow creators.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Sign in to follow players.");
     expect(spy).not.toHaveBeenCalled();
   });
 

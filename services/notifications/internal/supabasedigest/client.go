@@ -163,6 +163,34 @@ func (c *Client) call(ctx context.Context, function string, payload, out any) er
 	return nil
 }
 
+// PushDelivery is one notification for one device. Endpoint, P256dh and Auth are
+// credentials for sending to that device, so none of them may be logged.
+type PushDelivery struct {
+	NotificationID string          `json:"notification_id"`
+	Kind           string          `json:"kind"`
+	Payload        json.RawMessage `json:"payload"`
+	SubscriptionID string          `json:"subscription_id"`
+	Endpoint       string          `json:"endpoint"`
+	P256dh         string          `json:"p256dh"`
+	Auth           string          `json:"auth"`
+	Language       string          `json:"language"`
+}
+
+// ClaimPushBatch takes the next notifications to send. Each is claimed once, so the
+// caller must have a way to send before asking.
+func (c *Client) ClaimPushBatch(ctx context.Context, limit int) ([]PushDelivery, error) {
+	var rows []PushDelivery
+	if err := c.call(ctx, "claim_push_batch", map[string]any{"p_limit": limit}, &rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// DeletePushSubscriptions removes subscriptions a push service says are gone.
+func (c *Client) DeletePushSubscriptions(ctx context.Context, ids []string) error {
+	return c.call(ctx, "delete_push_subscriptions", map[string]any{"p_ids": ids}, nil)
+}
+
 // Feedback is one piece of player feedback waiting to be mailed to the team.
 type Feedback struct {
 	ID             string `json:"id"`
