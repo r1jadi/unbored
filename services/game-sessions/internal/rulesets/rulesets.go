@@ -84,6 +84,9 @@ var families = map[string]Ruleset{
 	"cascade": {Verifier: "complete_cascade_run", MaxActions: 4096, ActionCodes: 128},
 	// Checkmate: a move as from × 64 + to, 0 to 4095, then 4096 a skip.
 	"checkmate": {Verifier: "complete_checkmate_run", MaxActions: 2048, ActionCodes: 4097},
+	// Bolted: a move as from × 16 + to (up to 170 with eleven bolts), then 253 an
+	// extra bolt, 254 undo and 255 restart.
+	"bolted": {Verifier: "complete_bolted_run", MaxActions: 8192, ActionCodes: 256},
 }
 
 // overrides are the versions whose bounds differ from their family's: the

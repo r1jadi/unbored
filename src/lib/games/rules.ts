@@ -406,6 +406,28 @@ export const GAME_RULES = {
       },
     ],
   },
+  bolted: {
+    heading: "Sort the nuts",
+    summary: "Move coloured nuts between bolts until every bolt holds one colour.",
+    rules: [
+      {
+        lead: "Tap a bolt, then another,",
+        text: "to move its top nut there, along with every nut of the same colour right under it, as many as fit. A nut lands on an empty bolt or on the same colour.",
+      },
+      {
+        lead: "Four of a colour lock.",
+        text: "A full bolt of one colour is done and cannot be moved again. Lock every bolt to sort the board: 10 points a colour, and more time.",
+      },
+      {
+        lead: "Hidden nuts.",
+        text: "From board three, the nuts under each bolt's top start face down. Move the nuts above them off to see what is there.",
+      },
+      {
+        lead: "Stuck?",
+        text: "Undo a move, restart the board, or add one empty bolt to it for 15 seconds of clock. The clock starts at 1:15; boards gain a colour every second board, up to eight.",
+      },
+    ],
+  },
   checkmate: {
     heading: "Find the mate",
     summary: "Every position has exactly one way to checkmate. Find it before the clock runs out.",

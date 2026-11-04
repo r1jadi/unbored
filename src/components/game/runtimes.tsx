@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import { BoltedRuntime } from "@/components/game/BoltedRuntime";
 import { CascadeRuntime } from "@/components/game/CascadeRuntime";
 import { ChainRuntime } from "@/components/game/ChainRuntime";
 import { CheckmateRuntime } from "@/components/game/CheckmateRuntime";
@@ -21,6 +22,7 @@ import { SudokuRuntime } from "@/components/game/SudokuRuntime";
 import { TangoRuntime } from "@/components/game/TangoRuntime";
 import { UpdraftRuntime } from "@/components/game/UpdraftRuntime";
 import { ZipRuntime } from "@/components/game/ZipRuntime";
+import { BOLTED_RUNTIME } from "@/lib/games/bolted";
 import { CASCADE_RUNTIME } from "@/lib/games/cascade";
 import { CHAIN_RUNTIME } from "@/lib/games/chain";
 import { CHECKMATE_RUNTIME } from "@/lib/games/checkmate";
@@ -81,4 +83,5 @@ export const RUNTIMES: Readonly<Record<string, ComponentType<RuntimeProps>>> = {
   [HUEDINI_RUNTIME]: HuediniRuntime,
   [CASCADE_RUNTIME]: CascadeRuntime,
   [CHECKMATE_RUNTIME]: CheckmateRuntime,
+  [BOLTED_RUNTIME]: BoltedRuntime,
 };

@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Twenty-one games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Twenty-two games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate** and the **Daily Crossword**. Nineteen of them — all but 7 Second and the crossword, the two daily
+**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted** and the **Daily Crossword**. Twenty of them — all but 7 Second and the crossword, the two daily
 games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -2824,3 +2824,66 @@ Asserted in [`src/lib/games/checkmate.test.ts`](../../src/lib/games/checkmate.te
    `2397,3222,334,4093,1726,578,2637,3828,3332,4096`, score 90 (900 on screen).
 3. **The clock** — 108 s after one mate in one, 80 s after one wrong move and
    none solved, 70 s after one skip.
+
+
+## Bolted
+
+The nut-and-bolt sorting puzzle, as an endless run against a clock: bolts of
+stacked coloured nuts, four to a bolt, and two empty bolts. It is Decant's game
+with two rules of its own, and its own deal.
+
+| Thing   | Value                                                                     |
+| ------- | ------------------------------------------------------------------------- |
+| Bolts   | Four nuts each; one per colour, plus two empty                            |
+| Colours | 3 on boards 1–2, one more every second board, 8 from board 11             |
+| Locked  | A bolt of four nuts of one colour never moves again                       |
+| Hidden  | From board 3, nuts under each dealt bolt's top start face down (screen only) |
+| Clock   | 75 s to start, +5 s per colour of every sorted board, tapered, −15 s per extra bolt |
+| Score   | 1 a colour per sorted board (shown ×10)                                   |
+| Actions | 8192 at most: `from × 16 + to` a move, 253 extra bolt, 254 undo, 255 restart |
+| Rules   | `bolted@1`                                                               |
+| Runtime | `bolted` (the catalogue's `games.runtime` value)                         |
+
+### The rules
+
+A move takes the top nut of one bolt and every nut of its colour right under it,
+as many as fit, onto an empty bolt or a nut of the same colour. A **locked** bolt
+— four of one colour — cannot be a move's source; Decant lets a finished tube
+pour into an empty one, Bolted does not. The board is sorted when every bolt is
+empty or locked: it scores a point per colour, winds the clock back, and deals
+the next. Undo, restart and one extra bolt a board work as in Decant.
+
+**Hidden nuts** change what the screen shows, nothing else: from board three,
+every nut below the top of a dealt bolt is face down, and a nut is turned face up
+for good once it is on top. Undo puts nuts back but never hides one again. The
+verifier knows every nut, so hiding cannot change a score.
+
+### The boards
+
+Decant's deal over a seed of its own, so the two games never deal the same
+boards from the same session seed:
+
+```
+state₀ = ((seed mod 2³²) + 2³²) mod 2³² XOR 0x85EBCA6B   // 2654435769 if that is 0
+then Decant's: an outer LCG advanced once per level, an inner LCG shuffling every
+nut by Fisher–Yates, four nuts to a bolt, bottom first, two empty bolts after
+```
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261205120000_bolted_sessions.sql`. `public.bolted_board` is
+the deal (internals, not granted to a client) and `public.complete_bolted_run`
+the verifier: Decant's replay with the locked-bolt rule. The start gate learns
+Bolted from one `public.game_runtimes` row; the Go service from one
+`internal/rulesets` entry. `20261205120100_bolted_playable.sql` inserts the
+catalogue record (Puzzle).
+
+### Test vectors
+
+Asserted in [`src/lib/games/bolted.test.ts`](../../src/lib/games/bolted.test.ts),
+and against the database in `tests/security/verifier_vectors.sql`.
+
+1. **Seed 1, board 1** — `2132 3321 1321 - -` (bolts bottom to top, `-` empty).
+2. **Seed 1, board 2** — `1311 3122 3322 - -`.
+3. **Seed 1, board 13** — `8685 7421 2544 7367 8383 1146 6213 2575 - -`.

@@ -166,6 +166,18 @@ export const sqGames: Record<string, string> = {
   "You've done today's crossword": "E ke bërë fjalëkryqin e sotëm",
   "Your solve was not verified": "Zgjidhja jote nuk u verifikua",
 
+  // Bolted
+  "Add an empty bolt to this board, for {n} seconds of clock":
+    "Shto një bulon bosh në këtë tabelë, për {n} sekonda nga ora",
+  "Board {level}, {length} bolts. Number keys pick a bolt; U undoes, R restarts the board.":
+    "Tabela {level}, {length} bulona. Tastet me numra zgjedhin një bulon; U zhbën, R e rinis tabelën.",
+  Bolt: "Bulon",
+  "Bolt {n} picked up — tap a bolt to move its nuts there.":
+    "Buloni {n} u mor — prek një bulon për t'i çuar dadot aty.",
+  "Bolt {n}{n2}: {n3}{n4}{n5}{n6}": "Buloni {n}{n2}: {n3}{n4}{n5}{n6}",
+  "Tap a bolt, then the bolt to move its top nuts onto.":
+    "Prek një bulon, pastaj bulonin ku do t'i çosh dadot e sipërme.",
+
   // Decant
   "Add an empty tube to this board, for {n} seconds of clock":
     "Shto një epruvetë bosh në këtë tabelë, për {n} sekonda nga ora",

@@ -101,4 +101,35 @@ begin
   end loop;
 end $$;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Bolted: the nuts a seed deals a level, bolt by bolt and bottom first
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  got text;
+begin
+  for v in select * from (values
+    -- vectors:bolted:begin
+    ('1', '1', '213233211321'),
+    ('1', '5', '53114212355353412442'),
+    ('1', '13', '86857421254473678383114662132575'),
+    ('42', '1', '113231221332'),
+    ('42', '5', '21211224154353435345'),
+    ('42', '13', '83165831178675672561428573224344'),
+    ('9001', '1', '311313221223'),
+    ('9001', '5', '23451315124314342525'),
+    ('9001', '13', '77134742468258532568413217385616')
+    -- vectors:bolted:end
+  ) as vectors(seed, level, nuts) loop
+    got := array_to_string(public.bolted_board(v.seed::bigint, v.level::integer), '');
+    if got is distinct from v.nuts then
+      raise exception 'ASSERTION FAILED: Bolted seed % board % — the database deals %, the engine %',
+        v.seed, v.level, got, v.nuts;
+    end if;
+    raise notice 'ok   Bolted seed % board %: the verifier deals the engine''s board', v.seed, v.level;
+  end loop;
+end $$;
+
 rollback;

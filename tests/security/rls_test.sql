@@ -2466,11 +2466,11 @@ select rls_test.visible(
 );
 -- `fixture-%` are this suite's own playable games (the ones the refusal paths
 -- need), so the claim is about the catalogue: of the games this repository
--- ships, only the twenty-one with runtimes are playable.
+-- ships, only the twenty-two with runtimes are playable.
 select rls_test.visible(
   $$select 1 from public.games
-     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku', 'scatter', 'huedini', 'cascade', 'checkmate') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
-  0, 'no shipped game besides the twenty-one runtimes is marked playable'
+     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku', 'scatter', 'huedini', 'cascade', 'checkmate', 'bolted') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
+  0, 'no shipped game besides the twenty-two runtimes is marked playable'
 );
 select rls_test.says_field(
   $$public.start_game_session('stack-10', 'stack-10@1', 'test/1.0')$$,
@@ -2747,6 +2747,22 @@ select rls_test.denied($$select public.checkmate_answers(1, 1)$$,
   'a client cannot read the Checkmate answers');
 select rls_test.denied($$select public.checkmate_bank()$$,
   'a client cannot read the Checkmate bank');
+-- The shipped Bolted game, started through its registry row.
+select rls_test.visible(
+  $$select 1 from public.games where slug = 'bolted' and title = 'Bolted' and playable
+       and runtime = 'bolted' and status = 'published' and is_official$$,
+  1, 'the shipped Bolted game is published, playable and names its runtime'
+);
+select rls_test.says_field(
+  $$public.start_game_session('bolted', 'bolted@1', 'test/1.0')$$,
+  'tile_count', '8192', 'a Bolted session reports its submission bound'
+);
+select rls_test.says(
+  $$public.start_game_session('bolted', 'decant@2', 'test/1.0')$$,
+  'unsupported_runtime', 'Bolted does not accept the Decant rules'
+);
+select rls_test.denied($$select public.bolted_board(1, 1)$$,
+  'a client cannot call the Bolted deal');
 select rls_test.says(
   $$public.start_game_session('sudoku', 'mini-sudoku@1', 'test/1.0')$$,
   'unsupported_runtime', 'Sudoku does not accept the Mini Sudoku rules'

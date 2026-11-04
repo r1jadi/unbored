@@ -69,6 +69,7 @@ export function GameArt({
         {id === "mini-sudoku" && <MiniSudoku />}
         {id === "cascade" && <Cascade />}
         {id === "checkmate" && <Checkmate />}
+        {id === "bolted" && <Bolted />}
         {id === "crossword" && <Crossword />}
         {id === "gridburst" && <Gridburst />}
         {id === "updraft" && <Updraft />}
@@ -98,6 +99,7 @@ const KNOWN = new Set([
   "mini-sudoku",
   "cascade",
   "checkmate",
+  "bolted",
   "crossword",
   "gridburst",
   "updraft",
@@ -323,6 +325,40 @@ function SunAndMoon() {
                 : "bg-game-1 shadow-[inset_0.25em_-0.1em_0_0_var(--color-surface)]",
             )}
           />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Bolted() {
+  // Four bolts mid-sort: one locked, one taking a nut, two still mixed, the
+  // lowest nuts face down.
+  const bolts = [
+    ["bg-game-5", "bg-game-5", "bg-game-5", "bg-game-5"],
+    ["hidden", "bg-game-1", "bg-game-4"],
+    ["hidden", "hidden", "bg-game-4", "bg-game-1"],
+    ["bg-game-1"],
+  ];
+  return (
+    <div className="flex size-full items-end justify-center gap-[min(4cqw,4cqh,1rem)] pb-[8%]">
+      {bolts.map((nuts, b) => (
+        <div
+          key={b}
+          className="relative flex h-[76%] w-[18%] flex-col-reverse items-center gap-[min(0.8cqw,0.8cqh,0.2rem)] pb-[min(2cqw,2cqh,0.5rem)]"
+        >
+          <div className="absolute inset-y-0 left-1/2 w-[18%] -translate-x-1/2 rounded-t-full bg-foreground/35" />
+          <div className="absolute bottom-0 h-[min(1.5cqw,1.5cqh,0.375rem)] w-full rounded-full bg-foreground/25" />
+          {nuts.map((tone, n) => (
+            <div
+              key={n}
+              className={cn(
+                "relative z-10 aspect-[48/20] w-full [clip-path:polygon(14%_0,86%_0,100%_50%,86%_100%,14%_100%,0_50%)]",
+                tone === "hidden" ? "bg-surface-2" : tone,
+                b === 3 && n === 0 && "-translate-y-[40%]",
+              )}
+            />
+          ))}
         </div>
       ))}
     </div>

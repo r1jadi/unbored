@@ -8,6 +8,7 @@ func TestLookupRoutesEachFamilyToItsVerifier(t *testing.T) {
 		"fjalekryqi@1": "complete_fjalekryqi_run",
 		"checkmate@1":  "complete_checkmate_run",
 		"cascade@9":    "complete_cascade_run",
+		"bolted@1":     "complete_bolted_run",
 	} {
 		if got := Lookup(version).Verifier; got != verifier {
 			t.Errorf("Lookup(%q).Verifier = %q, want %q", version, got, verifier)

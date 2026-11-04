@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { board as boltedBoard } from "@/lib/games/bolted";
 import { createRun, findSwap, swap } from "@/lib/games/cascade";
 import { puzzleFor } from "@/lib/games/checkmate";
 
@@ -52,6 +53,17 @@ describe("the verifier vectors", () => {
         expect(findSwap(run.board)).toBe(action);
         run = swap(run, action);
       }
+    }
+  });
+
+  it("are Bolted's boards as the engine deals them", () => {
+    const cases = vectors("bolted");
+    expect(cases.length).toBeGreaterThanOrEqual(3);
+    for (const [seed, level, nuts] of cases) {
+      expect(
+        boltedBoard(seed!, Number(level)).flat().join(""),
+        `seed ${seed}, board ${level}`,
+      ).toBe(nuts);
     }
   });
 
