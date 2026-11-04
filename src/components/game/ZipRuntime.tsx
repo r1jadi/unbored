@@ -15,6 +15,7 @@ import { HintButton } from "@/components/game/Hint";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { RulesList } from "@/components/game/RulesList";
 import { RunEndActions } from "@/components/game/RunEndActions";
+import { SavedRunCard } from "@/components/game/SavedRunCard";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import {
   AlertDialog,
@@ -32,7 +33,7 @@ import { zipAgreement, zipHint } from "@/lib/games/hints";
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { useHint } from "@/lib/games/use-hint";
 import { GAME_RULES } from "@/lib/games/rules";
-import { useReportRunProgress } from "@/lib/games/run-progress";
+import { endRunMessage, useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
   useZipRun,
@@ -81,6 +82,19 @@ export function ZipRuntime({
 }) {
   // Tap to play skips the rules, on the first run and on Play again.
   const state = useZipRun(slug, autoStart);
+
+  if (state.status === "saved") {
+    return (
+      <SavedRunCard
+        score={state.run.score}
+        where={t("Board {level}", { level: state.run.level })}
+        onContinue={state.continueRun}
+        onNewRun={state.newRun}
+        slug={slug}
+        title={title}
+      />
+    );
+  }
 
   if (state.status === "intro") {
     return <Intro signedIn={state.signedIn} onBegin={state.begin} slug={slug} title={title} />;
@@ -251,7 +265,7 @@ function Board({
   const levelUp = useLevelUp(run.level, run.score, levelUpHold(grew));
   const accepting = !verifying && run.outcome === "playing" && !levelUp;
 
-  useReportRunProgress(accepting, onFinish);
+  useReportRunProgress(accepting, onFinish, session);
 
   useEffect(() => {
     firstCell.current?.focus();
@@ -539,15 +553,7 @@ function Board({
           <AlertDialogHeader>
             <AlertDialogTitle>{t("End this run?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {session.offline
-                ? t(
-                    "Your score of {score} is kept as practice: offline runs are not verified or saved.",
-                    { score: points(run.score) },
-                  )
-                : t(
-                    "Your score of {score} is kept and sent for verification. The board you are on is not scored.",
-                    { score: points(run.score) },
-                  )}
+              {endRunMessage(session, points(run.score))}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

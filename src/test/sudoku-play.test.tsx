@@ -183,6 +183,7 @@ describe("starting a run", () => {
       gameSlug: "sudoku",
       rulesVersion: "sudoku@3",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     expect(screen.getAllByRole("button", { name: CELL })).toHaveLength(81);
     expect(screen.getByText("45 cells left")).toBeInTheDocument();

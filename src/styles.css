@@ -238,6 +238,23 @@
   }
 }
 
+/* A new game in the inbox: a shine crosses it once while it's unread. */
+.new-game-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, oklch(1 0 0 / 0.14) 50%, transparent 65%);
+  transform: translateX(-100%);
+  animation: new-game-shine 1.4s var(--ease-out) 300ms both;
+}
+
+@keyframes new-game-shine {
+  to {
+    transform: translateX(100%);
+  }
+}
+
 /* The Following feed's coming-soon board: tiles settle into a play button, hold,
    and clear. Each tile's delay comes from CreatorsComingSoon. */
 .workshop-tile {

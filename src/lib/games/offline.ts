@@ -19,6 +19,7 @@
 import { ApiError } from "@/lib/api/client";
 import { t } from "@/lib/settings/language";
 
+import { localDayNumber } from "@/lib/games/crossword";
 import type { PlaySession, RunResult, RunSubmission } from "@/lib/games/sessions";
 
 const OFFLINE_PREFIX = "offline-";
@@ -48,7 +49,7 @@ export function isOfflineSession(sessionId: string): boolean {
 
 /**
  * A run issued on this device. The crossword (and Fjalekryqi) is a daily puzzle whose seed is the
- * UTC day number, so it gets today's; every other game gets a random seed.
+ * player's day number, so it gets today's; every other game gets a random seed.
  */
 export function offlineSession(gameSlug: string, rulesVersion: string): PlaySession {
   const now = Date.now();
@@ -58,7 +59,7 @@ export function offlineSession(gameSlug: string, rulesVersion: string): PlaySess
     id,
     gameSlug,
     rulesVersion,
-    seed: DAILY_CROSSWORD.test(rulesVersion) ? String(Math.floor(now / DAY_MS)) : randomSeed(),
+    seed: DAILY_CROSSWORD.test(rulesVersion) ? String(localDayNumber(now)) : randomSeed(),
     tileCount: 0,
     startedAt: new Date(now).toISOString(),
     expiresAt: new Date(now + DAY_MS).toISOString(),

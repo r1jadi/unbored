@@ -20,6 +20,7 @@ import { createContext, useContext, useEffect } from "react";
 
 import { RESUMABLE_RULES } from "@/lib/games/saved-runs";
 import type { PlaySession } from "@/lib/games/sessions";
+import { t } from "@/lib/settings/language";
 
 /**
  * The play screen's setter: `true` from the moment a run can be lost, with the
@@ -68,4 +69,16 @@ export function useReportRunProgress(
     report(active, active ? endRun : undefined, active && resumable);
     return () => report(false);
   }, [report, active, endRun, resumable]);
+}
+
+/** What the End run dialog tells the player will happen to this run. */
+export function endRunMessage(session: PlaySession, score: number): string {
+  if (session.offline) {
+    return t("Your score of {score} is kept as practice: offline runs are not verified or saved.", {
+      score,
+    });
+  }
+  return canFinishLater(session)
+    ? t("Your score of {score} is kept, and you can pick this run up again later.", { score })
+    : t("Your score of {score} is kept and sent for verification.", { score });
 }

@@ -192,6 +192,7 @@ describe("starting a run", () => {
       gameSlug: "crowns",
       rulesVersion: "queens@1",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   });
 

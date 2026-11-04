@@ -30,6 +30,7 @@
  * should not leave behind on a shared machine.
  */
 
+import { deviceTimeZone } from "@/lib/time-zone";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -43,7 +44,14 @@ import {
   offlineResult,
   offlineSession,
 } from "@/lib/games/offline";
-import { fetchSavedRun, useSaveProgress } from "@/lib/games/saved-runs";
+import {
+  fetchSavedRun,
+  forgetContinuable,
+  markRunContinuable,
+  rememberContinuable,
+  resumeRun,
+  useSaveProgress,
+} from "@/lib/games/saved-runs";
 import {
   createRun as createChainRun,
   finish as finishChainRun,
@@ -81,6 +89,7 @@ import {
   submission as decantSubmission,
   undo as undoDecant,
   type DecantRun,
+  replay as replayDecantRun,
 } from "@/lib/games/decant";
 import {
   addBolt as addBoltedBolt,
@@ -93,6 +102,7 @@ import {
   submission as boltedSubmission,
   undo as undoBolted,
   type BoltedRun,
+  replay as replayBoltedRun,
 } from "@/lib/games/bolted";
 import {
   createRun as createScatterRun,
@@ -101,6 +111,7 @@ import {
   submission as scatterSubmission,
   tap as tapScatter,
   type ScatterRun,
+  replay as replayScatterRun,
 } from "@/lib/games/scatter";
 import {
   budgetMs as huediniBudgetMs,
@@ -113,6 +124,7 @@ import {
   undo as undoHuedini,
   type Direction as HuediniDirection,
   type HuediniRun,
+  replay as replayHuediniRun,
 } from "@/lib/games/huedini";
 import {
   createRun as createUpdraftRun,
@@ -164,6 +176,7 @@ import {
   submission as zipSubmission,
   ZIP_RULES_VERSION,
   type ZipRun,
+  replay as replayZipRun,
 } from "@/lib/games/zip";
 import {
   budgetMs as eightPuzzleBudgetMs,
@@ -173,6 +186,7 @@ import {
   tap as tapEightPuzzle,
   EIGHT_PUZZLE_RULES_VERSION,
   type EightPuzzleRun,
+  replay as replayEightPuzzleRun,
 } from "@/lib/games/eight-puzzle";
 import {
   check as checkCrossword,
@@ -194,6 +208,7 @@ import {
   submission as sudokuSubmission,
   SUDOKU_RULES_VERSION,
   type SudokuRun,
+  replay as replaySudokuRun,
 } from "@/lib/games/sudoku";
 import {
   budgetMs as miniSudokuBudgetMs,
@@ -203,6 +218,7 @@ import {
   submission as miniSudokuSubmission,
   MINI_SUDOKU_RULES_VERSION,
   type MiniSudokuRun,
+  replay as replayMiniSudokuRun,
 } from "@/lib/games/mini-sudoku";
 import {
   CASCADE_RULES_VERSION,
@@ -211,6 +227,7 @@ import {
   submission as cascadeSubmission,
   swap as swapCascade,
   type CascadeRun,
+  replay as replayCascadeRun,
 } from "@/lib/games/cascade";
 import {
   budgetMs as checkmateBudgetMs,
@@ -221,6 +238,7 @@ import {
   skip as skipCheckmate,
   submission as checkmateSubmission,
   type CheckmateRun,
+  replay as replayCheckmateRun,
 } from "@/lib/games/checkmate";
 import {
   budgetMs as tangoBudgetMs,
@@ -230,6 +248,7 @@ import {
   tap as tapTango,
   TANGO_RULES_VERSION,
   type TangoRun,
+  replay as replayTangoRun,
 } from "@/lib/games/tango";
 import {
   createRun as createGridburstRun,
@@ -280,6 +299,8 @@ export type PlaySession = {
   ranked: boolean;
   /** True for a run issued on this device because the API could not be reached. */
   offline?: boolean;
+  /** A saved run the player ended: its score is already on the board. */
+  alreadyScored?: boolean;
 };
 
 /** A verified run, as `POST /sessions/{id}/complete` answers with it. */
@@ -337,7 +358,17 @@ export type RunSubmission = {
   score: number;
 };
 
-type RequestOptions = { signal?: AbortSignal; rulesVersion?: string };
+type RequestOptions = {
+  signal?: AbortSignal;
+  rulesVersion?: string;
+  /** The player ended this run themselves, rather than losing it: it can be continued. */
+  endedByPlayer?: boolean;
+};
+
+/** Whether a finished run was ended by the player: each game says so one of two ways. */
+function endedByPlayer(run: { stopped?: boolean; ending?: string | null }): boolean {
+  return run.stopped === true || run.ending === "stopped";
+}
 
 // ── Requests ────────────────────────────────────────────────────────────────
 
@@ -364,6 +395,8 @@ export function startSession(gameSlug: string, options: RequestOptions = {}): Pr
       gameSlug,
       rulesVersion,
       client: CLIENT,
+      // A daily game's day is the player's own, so it resets at their midnight.
+      timeZone: deviceTimeZone(),
     },
     token,
     signal: options.signal,
@@ -396,17 +429,43 @@ export function completeRun(
     return Promise.resolve(offlineResult(sessionId, submissionBody, durationMs));
   }
   const token = getAccessToken();
-  return postCompletion(sessionId, submissionBody, durationMs, token, options).then((result) => {
-    // A verified run changes the game's board, its play count and the player's
-    // own stats; the next visit to any of them should read them fresh.
-    const client = getQueryClient();
-    void client.invalidateQueries({ queryKey: ["leaderboard", result.gameSlug] });
-    void client.invalidateQueries({ queryKey: ["leaderboard", "all-games"] });
-    void client.invalidateQueries({ queryKey: ["games"] });
-    void client.invalidateQueries({ queryKey: ["my-game-stats", result.gameSlug] });
-    void client.invalidateQueries({ queryKey: ["my-game-streak", result.gameSlug] });
-    return result;
-  });
+  // Before the submission, which closes the session this has to be written to. A
+  // failure here only costs the chance to continue: the score still goes in.
+  const continuable =
+    options.endedByPlayer === true
+      ? markRunContinuable(sessionId, submissionBody.rulesVersion, submissionBody.actions)
+      : Promise.resolve(false);
+  return continuable.then((marked) =>
+    postCompletion(sessionId, submissionBody, durationMs, token, options).then((result) => {
+      // Whichever way this run ended is what its end screen should say, not the last one.
+      if (marked) rememberContinuable(result.gameSlug);
+      else forgetContinuable(result.gameSlug);
+      // A verified run changes the game's board, its play count and the player's
+      // own stats; the next visit to any of them should read them fresh.
+      const client = getQueryClient();
+      void client.invalidateQueries({ queryKey: ["leaderboard", result.gameSlug] });
+      void client.invalidateQueries({ queryKey: ["leaderboard", "all-games"] });
+      void client.invalidateQueries({ queryKey: ["games"] });
+      void client.invalidateQueries({ queryKey: ["my-game-stats", result.gameSlug] });
+      void client.invalidateQueries({ queryKey: ["my-game-streak", result.gameSlug] });
+      return result;
+    }),
+  );
+}
+
+/**
+ * Closes a saved run the player chose not to continue, keeping its score. A run they
+ * ended already has its score on the board, so there is nothing left to submit.
+ */
+function closeSavedRun(
+  session: PlaySession,
+  submissionBody: RunSubmission,
+  durationMs: number,
+): Promise<unknown> {
+  forgetContinuable(session.gameSlug);
+  return session.alreadyScored
+    ? Promise.resolve()
+    : completeRun(session.id, submissionBody, durationMs);
 }
 
 function postCompletion(
@@ -595,7 +654,14 @@ export function useStack10Run(gameSlug: string): Stack10RunControls {
     const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
     setState({ status: "submitting", session, run });
 
-    completeRun(session.id, { ...submission(run), rulesVersion: session.rulesVersion }, durationMs)
+    completeRun(
+      session.id,
+      { ...submission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
+    )
       .then((result) => {
         if (!mounted.current) return;
         setState({ status: "finished", session, run, result });
@@ -628,13 +694,23 @@ export function useStack10Run(gameSlug: string): Stack10RunControls {
   }, []);
 
   const continueRun = useCallback(() => {
-    setState((current) => {
-      if (current.status !== "saved") return current;
-      // The run's clock carries on from the time it had already been played.
-      startedAt.current = Date.now() - current.playedMs;
-      return { status: "playing", session: current.session, run: current.run };
-    });
-  }, []);
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The run's clock carries on from the time it had already been played.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({ status: "playing", session: resumed.session, run });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
 
   const newRun = useCallback(() => {
     if (state.status !== "saved") return;
@@ -643,8 +719,8 @@ export function useStack10Run(gameSlug: string): Stack10RunControls {
     // The saved run ends here and keeps its score, like any run the player ends:
     // it is submitted as it was left. Only then does the new run start, because
     // starting one closes the player's open session.
-    completeRun(
-      session.id,
+    closeSavedRun(
+      session,
       { ...submission(run), rulesVersion: session.rulesVersion },
       Math.max(1, playedMs),
     )
@@ -812,6 +888,9 @@ export function useChainRun(gameSlug: string): ChainRunControls {
       session.id,
       { ...chainSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -845,13 +924,23 @@ export function useChainRun(gameSlug: string): ChainRunControls {
   }, []);
 
   const continueRun = useCallback(() => {
-    setState((current) => {
-      if (current.status !== "saved") return current;
-      // The run's clock carries on from the time it had already been played.
-      startedAt.current = Date.now() - current.playedMs;
-      return { status: "playing", session: current.session, run: current.run };
-    });
-  }, []);
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The run's clock carries on from the time it had already been played.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({ status: "playing", session: resumed.session, run });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
 
   const newRun = useCallback(() => {
     if (state.status !== "saved") return;
@@ -860,8 +949,8 @@ export function useChainRun(gameSlug: string): ChainRunControls {
     // The saved run ends here and keeps its score, like any run the player ends:
     // it is submitted as it was left. Only then does the new run start, because
     // starting one closes the player's open session.
-    completeRun(
-      session.id,
+    closeSavedRun(
+      session,
       { ...chainSubmission(run), rulesVersion: session.rulesVersion },
       Math.max(1, playedMs),
     )
@@ -1029,6 +1118,9 @@ export function useMemoryFlashRun(gameSlug: string): MemoryFlashRunControls {
       session.id,
       { ...memoryFlashSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -1062,13 +1154,23 @@ export function useMemoryFlashRun(gameSlug: string): MemoryFlashRunControls {
   }, []);
 
   const continueRun = useCallback(() => {
-    setState((current) => {
-      if (current.status !== "saved") return current;
-      // The run's clock carries on from the time it had already been played.
-      startedAt.current = Date.now() - current.playedMs;
-      return { status: "playing", session: current.session, run: current.run };
-    });
-  }, []);
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The run's clock carries on from the time it had already been played.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({ status: "playing", session: resumed.session, run });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
 
   const newRun = useCallback(() => {
     if (state.status !== "saved") return;
@@ -1077,8 +1179,8 @@ export function useMemoryFlashRun(gameSlug: string): MemoryFlashRunControls {
     // The saved run ends here and keeps its score, like any run the player ends:
     // it is submitted as it was left. Only then does the new run start, because
     // starting one closes the player's open session.
-    completeRun(
-      session.id,
+    closeSavedRun(
+      session,
       { ...memoryFlashSubmission(run), rulesVersion: session.rulesVersion },
       Math.max(1, playedMs),
     )
@@ -1254,6 +1356,9 @@ export function useOneMoveRun(gameSlug: string): OneMoveRunControls {
       session.id,
       { ...oneMoveSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -1291,13 +1396,23 @@ export function useOneMoveRun(gameSlug: string): OneMoveRunControls {
   }, []);
 
   const continueRun = useCallback(() => {
-    setState((current) => {
-      if (current.status !== "saved") return current;
-      // The run's clock carries on from the time it had already been played.
-      startedAt.current = Date.now() - current.playedMs;
-      return { status: "playing", session: current.session, run: current.run };
-    });
-  }, []);
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The run's clock carries on from the time it had already been played.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({ status: "playing", session: resumed.session, run });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
 
   const newRun = useCallback(() => {
     if (state.status !== "saved") return;
@@ -1306,8 +1421,8 @@ export function useOneMoveRun(gameSlug: string): OneMoveRunControls {
     // The saved run ends here and keeps its score, like any run the player ends:
     // it is submitted as it was left. Only then does the new run start, because
     // starting one closes the player's open session.
-    completeRun(
-      session.id,
+    closeSavedRun(
+      session,
       { ...oneMoveSubmission(run), rulesVersion: session.rulesVersion },
       Math.max(1, playedMs),
     )
@@ -1483,6 +1598,9 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
       session.id,
       { ...queensSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -1520,13 +1638,23 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
   }, []);
 
   const continueRun = useCallback(() => {
-    setState((current) => {
-      if (current.status !== "saved") return current;
-      // The run's clock carries on from the time it had already been played.
-      startedAt.current = Date.now() - current.playedMs;
-      return { status: "playing", session: current.session, run: current.run };
-    });
-  }, []);
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The run's clock carries on from the time it had already been played.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({ status: "playing", session: resumed.session, run });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
 
   const newRun = useCallback(() => {
     if (state.status !== "saved") return;
@@ -1535,8 +1663,8 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
     // The saved run ends here and keeps its score, like any run the player ends:
     // it is submitted as it was left. Only then does the new run start, because
     // starting one closes the player's open session.
-    completeRun(
-      session.id,
+    closeSavedRun(
+      session,
       { ...queensSubmission(run), rulesVersion: session.rulesVersion },
       Math.max(1, playedMs),
     )
@@ -1579,6 +1707,8 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
 // ── A run of Zip, from Start to score ──────────────────────────────────────
 
 export type ZipRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: ZipRun; playedMs: number }
   /** The rules are showing. No session exists yet: it is issued on Start. */
   | { status: "intro" }
   | { status: "starting" }
@@ -1601,6 +1731,10 @@ export type ZipRunState =
     };
 
 export type ZipRunControls = ZipRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
   /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
@@ -1639,6 +1773,8 @@ export function useZipRun(gameSlug: string, autoStart = false): ZipRunControls {
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
   const signedIn = !!getAccessToken();
 
   useEffect(() => {
@@ -1650,16 +1786,47 @@ export function useZipRun(gameSlug: string, autoStart = false): ZipRunControls {
 
   // A session is requested only once Start has been pressed (`attempt` > 0).
   useEffect(() => {
-    if (attempt === 0) return;
     const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, ZIP_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayZipRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
     startedAt.current = 0;
     endedAt.current = 0;
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: ZIP_RULES_VERSION })
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, ZIP_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayZipRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: ZIP_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         const run = createZipRun(session.seed);
         startedAt.current = Date.now();
         setState({
@@ -1711,6 +1878,9 @@ export function useZipRun(gameSlug: string, autoStart = false): ZipRunControls {
       session.id,
       { ...zipSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -1757,6 +1927,54 @@ export function useZipRun(gameSlug: string, autoStart = false): ZipRunControls {
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The clock carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({
+          status: "playing",
+          session: resumed.session,
+          run,
+          deadline: startedAt.current + zipBudgetMs(run.levelsCleared),
+        });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...zipSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: zipSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
   const begin = useCallback(() => setAttempt((n) => n + 1), []);
 
   const restart = useCallback(() => {
@@ -1767,6 +1985,7 @@ export function useZipRun(gameSlug: string, autoStart = false): ZipRunControls {
       setAttempt((n) => n + 1);
     } else {
       setState({ status: "intro" });
+      setAttempt(0);
     }
   }, [autoStart]);
 
@@ -1784,12 +2003,14 @@ export function useZipRun(gameSlug: string, autoStart = false): ZipRunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, signedIn, begin, tap, finish, restart, retry };
+  return { ...state, signedIn, continueRun, newRun, begin, tap, finish, restart, retry };
 }
 
 // ── A run of 8 Puzzle, from Start to score ──────────────────────────────────────
 
 export type EightPuzzleRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: EightPuzzleRun; playedMs: number }
   /** The rules are showing. No session exists yet: it is issued on Start. */
   | { status: "intro" }
   | { status: "starting" }
@@ -1812,6 +2033,10 @@ export type EightPuzzleRunState =
     };
 
 export type EightPuzzleRunControls = EightPuzzleRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
   /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
@@ -1845,6 +2070,8 @@ export function useEightPuzzleRun(gameSlug: string, autoStart = false): EightPuz
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
   const signedIn = !!getAccessToken();
 
   useEffect(() => {
@@ -1856,16 +2083,47 @@ export function useEightPuzzleRun(gameSlug: string, autoStart = false): EightPuz
 
   // A session is requested only once Start has been pressed (`attempt` > 0).
   useEffect(() => {
-    if (attempt === 0) return;
     const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, EIGHT_PUZZLE_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayEightPuzzleRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
     startedAt.current = 0;
     endedAt.current = 0;
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: EIGHT_PUZZLE_RULES_VERSION })
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, EIGHT_PUZZLE_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayEightPuzzleRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: EIGHT_PUZZLE_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         const run = createEightPuzzleRun(session.seed);
         startedAt.current = Date.now();
         setState({
@@ -1917,6 +2175,9 @@ export function useEightPuzzleRun(gameSlug: string, autoStart = false): EightPuz
       session.id,
       { ...eightPuzzleSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -1962,6 +2223,54 @@ export function useEightPuzzleRun(gameSlug: string, autoStart = false): EightPuz
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The clock carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({
+          status: "playing",
+          session: resumed.session,
+          run,
+          deadline: startedAt.current + eightPuzzleBudgetMs(run.levelsCleared),
+        });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...eightPuzzleSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: eightPuzzleSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
   const begin = useCallback(() => setAttempt((n) => n + 1), []);
 
   const restart = useCallback(() => {
@@ -1972,6 +2281,7 @@ export function useEightPuzzleRun(gameSlug: string, autoStart = false): EightPuz
       setAttempt((n) => n + 1);
     } else {
       setState({ status: "intro" });
+      setAttempt(0);
     }
   }, [autoStart]);
 
@@ -1989,12 +2299,14 @@ export function useEightPuzzleRun(gameSlug: string, autoStart = false): EightPuz
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, signedIn, begin, tap, finish, restart, retry };
+  return { ...state, signedIn, continueRun, newRun, begin, tap, finish, restart, retry };
 }
 
 // ── A run of Tango, from Start to score ──────────────────────────────────────
 
 export type TangoRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: TangoRun; playedMs: number }
   /** The rules are showing. No session exists yet: it is issued on Start. */
   | { status: "intro" }
   | { status: "starting" }
@@ -2017,6 +2329,10 @@ export type TangoRunState =
     };
 
 export type TangoRunControls = TangoRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
   /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
@@ -2050,6 +2366,8 @@ export function useTangoRun(gameSlug: string, autoStart = false): TangoRunContro
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
   const signedIn = !!getAccessToken();
 
   useEffect(() => {
@@ -2061,16 +2379,47 @@ export function useTangoRun(gameSlug: string, autoStart = false): TangoRunContro
 
   // A session is requested only once Start has been pressed (`attempt` > 0).
   useEffect(() => {
-    if (attempt === 0) return;
     const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, TANGO_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayTangoRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
     startedAt.current = 0;
     endedAt.current = 0;
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: TANGO_RULES_VERSION })
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, TANGO_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayTangoRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: TANGO_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         const run = createTangoRun(session.seed);
         startedAt.current = Date.now();
         setState({
@@ -2122,6 +2471,9 @@ export function useTangoRun(gameSlug: string, autoStart = false): TangoRunContro
       session.id,
       { ...tangoSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -2167,6 +2519,54 @@ export function useTangoRun(gameSlug: string, autoStart = false): TangoRunContro
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The clock carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({
+          status: "playing",
+          session: resumed.session,
+          run,
+          deadline: startedAt.current + tangoBudgetMs(run.levelsCleared),
+        });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...tangoSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: tangoSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
   const begin = useCallback(() => setAttempt((n) => n + 1), []);
 
   const restart = useCallback(() => {
@@ -2177,6 +2577,7 @@ export function useTangoRun(gameSlug: string, autoStart = false): TangoRunContro
       setAttempt((n) => n + 1);
     } else {
       setState({ status: "intro" });
+      setAttempt(0);
     }
   }, [autoStart]);
 
@@ -2194,12 +2595,14 @@ export function useTangoRun(gameSlug: string, autoStart = false): TangoRunContro
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, signedIn, begin, tap, finish, restart, retry };
+  return { ...state, signedIn, continueRun, newRun, begin, tap, finish, restart, retry };
 }
 
 // ── A run of Sudoku, from Start to score ─────────────────────────────────────
 
 export type SudokuRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: SudokuRun; playedMs: number }
   /** The rules are showing. No session exists yet: it is issued on Start. */
   | { status: "intro" }
   | { status: "starting" }
@@ -2222,6 +2625,10 @@ export type SudokuRunState =
     };
 
 export type SudokuRunControls = SudokuRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
   /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
@@ -2255,6 +2662,8 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
   const signedIn = !!getAccessToken();
 
   useEffect(() => {
@@ -2266,16 +2675,47 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
 
   // A session is requested only once Start has been pressed (`attempt` > 0).
   useEffect(() => {
-    if (attempt === 0) return;
     const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, SUDOKU_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replaySudokuRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
     startedAt.current = 0;
     endedAt.current = 0;
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: SUDOKU_RULES_VERSION })
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, SUDOKU_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replaySudokuRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: SUDOKU_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         const run = createSudokuRun(session.seed);
         startedAt.current = Date.now();
         setState({
@@ -2327,6 +2767,9 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
       session.id,
       { ...sudokuSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -2372,6 +2815,54 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The clock carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({
+          status: "playing",
+          session: resumed.session,
+          run,
+          deadline: startedAt.current + sudokuBudgetMs(run.levelsCleared),
+        });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...sudokuSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: sudokuSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
   const begin = useCallback(() => setAttempt((n) => n + 1), []);
 
   const restart = useCallback(() => {
@@ -2382,6 +2873,7 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
       setAttempt((n) => n + 1);
     } else {
       setState({ status: "intro" });
+      setAttempt(0);
     }
   }, [autoStart]);
 
@@ -2399,12 +2891,14 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, signedIn, begin, place, finish, restart, retry };
+  return { ...state, signedIn, continueRun, newRun, begin, place, finish, restart, retry };
 }
 
 // ── A run of Mini Sudoku, from Start to score ─────────────────────────────────────
 
 export type MiniSudokuRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: MiniSudokuRun; playedMs: number }
   /** The rules are showing. No session exists yet: it is issued on Start. */
   | { status: "intro" }
   | { status: "starting" }
@@ -2427,6 +2921,10 @@ export type MiniSudokuRunState =
     };
 
 export type MiniSudokuRunControls = MiniSudokuRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
   /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
@@ -2460,6 +2958,8 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
   const signedIn = !!getAccessToken();
 
   useEffect(() => {
@@ -2471,16 +2971,47 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
 
   // A session is requested only once Start has been pressed (`attempt` > 0).
   useEffect(() => {
-    if (attempt === 0) return;
     const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, MINI_SUDOKU_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayMiniSudokuRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
     startedAt.current = 0;
     endedAt.current = 0;
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: MINI_SUDOKU_RULES_VERSION })
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, MINI_SUDOKU_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayMiniSudokuRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: MINI_SUDOKU_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         const run = createMiniSudokuRun(session.seed);
         startedAt.current = Date.now();
         setState({
@@ -2532,6 +3063,9 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
       session.id,
       { ...miniSudokuSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -2577,6 +3111,54 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The clock carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({
+          status: "playing",
+          session: resumed.session,
+          run,
+          deadline: startedAt.current + miniSudokuBudgetMs(run.levelsCleared),
+        });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...miniSudokuSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: miniSudokuSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
   const begin = useCallback(() => setAttempt((n) => n + 1), []);
 
   const restart = useCallback(() => {
@@ -2587,6 +3169,7 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
       setAttempt((n) => n + 1);
     } else {
       setState({ status: "intro" });
+      setAttempt(0);
     }
   }, [autoStart]);
 
@@ -2604,12 +3187,14 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, signedIn, begin, place, finish, restart, retry };
+  return { ...state, signedIn, continueRun, newRun, begin, place, finish, restart, retry };
 }
 
 // ── A run of Cascade, from Start to score ─────────────────────────────────────────
 
 export type CascadeRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: CascadeRun; playedMs: number }
   /** The rules are showing. No session exists yet: it is issued on Start. */
   | { status: "intro" }
   | { status: "starting" }
@@ -2630,6 +3215,10 @@ export type CascadeRunState =
     };
 
 export type CascadeRunControls = CascadeRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
   /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
@@ -2662,6 +3251,8 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
   const signedIn = !!getAccessToken();
 
   useEffect(() => {
@@ -2673,16 +3264,47 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
 
   // A session is requested only once Start has been pressed (`attempt` > 0).
   useEffect(() => {
-    if (attempt === 0) return;
     const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, CASCADE_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayCascadeRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
     startedAt.current = 0;
     endedAt.current = 0;
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: CASCADE_RULES_VERSION })
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, CASCADE_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayCascadeRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: CASCADE_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         const run = createCascadeRun(session.seed);
         startedAt.current = Date.now();
         setState({ status: "playing", session, run });
@@ -2711,6 +3333,9 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
       session.id,
       { ...cascadeSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -2744,6 +3369,49 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The clock carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({ status: "playing", session: resumed.session, run });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...cascadeSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: cascadeSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
   const begin = useCallback(() => setAttempt((n) => n + 1), []);
 
   const restart = useCallback(() => {
@@ -2754,6 +3422,7 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
       setAttempt((n) => n + 1);
     } else {
       setState({ status: "intro" });
+      setAttempt(0);
     }
   }, [autoStart]);
 
@@ -2770,12 +3439,14 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, signedIn, begin, swap, finish, restart, retry };
+  return { ...state, signedIn, continueRun, newRun, begin, swap, finish, restart, retry };
 }
 
 // ── A run of Checkmate, from Start to score ───────────────────────────────────────
 
 export type CheckmateRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: CheckmateRun; playedMs: number }
   /** The rules are showing. No session exists yet: it is issued on Start. */
   | { status: "intro" }
   | { status: "starting" }
@@ -2798,6 +3469,10 @@ export type CheckmateRunState =
     };
 
 export type CheckmateRunControls = CheckmateRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
   /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
@@ -2834,6 +3509,8 @@ export function useCheckmateRun(gameSlug: string, autoStart = false): CheckmateR
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
   const signedIn = !!getAccessToken();
 
   useEffect(() => {
@@ -2845,16 +3522,47 @@ export function useCheckmateRun(gameSlug: string, autoStart = false): CheckmateR
 
   // A session is requested only once Start has been pressed (`attempt` > 0).
   useEffect(() => {
-    if (attempt === 0) return;
     const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, CHECKMATE_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayCheckmateRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
     startedAt.current = 0;
     endedAt.current = 0;
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: CHECKMATE_RULES_VERSION })
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, CHECKMATE_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayCheckmateRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: CHECKMATE_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         const run = createCheckmateRun(session.seed);
         startedAt.current = Date.now();
         setState({
@@ -2906,6 +3614,9 @@ export function useCheckmateRun(gameSlug: string, autoStart = false): CheckmateR
       session.id,
       { ...checkmateSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -2951,6 +3662,54 @@ export function useCheckmateRun(gameSlug: string, autoStart = false): CheckmateR
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The clock carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({
+          status: "playing",
+          session: resumed.session,
+          run,
+          deadline: startedAt.current + checkmateBudgetMs(run),
+        });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...checkmateSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: checkmateSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
   const begin = useCallback(() => setAttempt((n) => n + 1), []);
 
   const restart = useCallback(() => {
@@ -2961,6 +3720,7 @@ export function useCheckmateRun(gameSlug: string, autoStart = false): CheckmateR
       setAttempt((n) => n + 1);
     } else {
       setState({ status: "intro" });
+      setAttempt(0);
     }
   }, [autoStart]);
 
@@ -2984,7 +3744,7 @@ export function useCheckmateRun(gameSlug: string, autoStart = false): CheckmateR
   );
   const skip = useCallback(() => act(skipCheckmate), [act]);
 
-  return { ...state, signedIn, begin, move, skip, finish, restart, retry };
+  return { ...state, signedIn, continueRun, newRun, begin, move, skip, finish, restart, retry };
 }
 
 // ── A run of the daily crossword, from Start to score ────────────────────────
@@ -3050,8 +3810,8 @@ export type CrosswordRunControls = CrosswordRunState & {
 /**
  * Plays the day's crossword against the session API.
  *
- * The session is issued when the player presses Start, carrying the UTC day as
- * its seed; the day's grid and every clue come from the bank, loaded only now so
+ * The session is issued when the player presses Start, carrying the player's day
+ * as its seed; the day's grid and every clue come from the bank, loaded only now so
  * the puzzles stay out of the main bundle. A solved grid ends the run and is
  * submitted at once: the server times the solve by its own clock, so the score on
  * screen is an estimate until the verified one arrives. A signed-in player who has
@@ -3351,6 +4111,9 @@ export function useColorMergeRun(gameSlug: string): ColorMergeRunControls {
       session.id,
       { ...colorMergeSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -3388,13 +4151,23 @@ export function useColorMergeRun(gameSlug: string): ColorMergeRunControls {
   }, []);
 
   const continueRun = useCallback(() => {
-    setState((current) => {
-      if (current.status !== "saved") return current;
-      // The run's clock carries on from the time it had already been played.
-      startedAt.current = Date.now() - current.playedMs;
-      return { status: "playing", session: current.session, run: current.run };
-    });
-  }, []);
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The run's clock carries on from the time it had already been played.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({ status: "playing", session: resumed.session, run });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
 
   const newRun = useCallback(() => {
     if (state.status !== "saved") return;
@@ -3403,8 +4176,8 @@ export function useColorMergeRun(gameSlug: string): ColorMergeRunControls {
     // The saved run ends here and keeps its score, like any run the player ends:
     // it is submitted as it was left. Only then does the new run start, because
     // starting one closes the player's open session.
-    completeRun(
-      session.id,
+    closeSavedRun(
+      session,
       { ...colorMergeSubmission(run), rulesVersion: session.rulesVersion },
       Math.max(1, playedMs),
     )
@@ -3577,6 +4350,9 @@ export function useGridburstRun(gameSlug: string): GridburstRunControls {
       session.id,
       { ...gridburstSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -3614,13 +4390,23 @@ export function useGridburstRun(gameSlug: string): GridburstRunControls {
   }, []);
 
   const continueRun = useCallback(() => {
-    setState((current) => {
-      if (current.status !== "saved") return current;
-      // The run's clock carries on from the time it had already been played.
-      startedAt.current = Date.now() - current.playedMs;
-      return { status: "playing", session: current.session, run: current.run };
-    });
-  }, []);
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The run's clock carries on from the time it had already been played.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({ status: "playing", session: resumed.session, run });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
 
   const newRun = useCallback(() => {
     if (state.status !== "saved") return;
@@ -3629,8 +4415,8 @@ export function useGridburstRun(gameSlug: string): GridburstRunControls {
     // The saved run ends here and keeps its score, like any run the player ends:
     // it is submitted as it was left. Only then does the new run start, because
     // starting one closes the player's open session.
-    completeRun(
-      session.id,
+    closeSavedRun(
+      session,
       { ...gridburstSubmission(run), rulesVersion: session.rulesVersion },
       Math.max(1, playedMs),
     )
@@ -4017,6 +4803,8 @@ export function useUpdraftRun(gameSlug: string): UpdraftRunControls {
 // ── A run of Decant, from Start to score ───────────────────────────────────
 
 export type DecantRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: DecantRun; playedMs: number }
   /** The rules are showing. No session exists yet: it is issued on Start. */
   | { status: "intro" }
   | { status: "starting" }
@@ -4039,6 +4827,10 @@ export type DecantRunState =
     };
 
 export type DecantRunControls = DecantRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
   /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
@@ -4077,6 +4869,8 @@ export function useDecantRun(gameSlug: string, autoStart = false): DecantRunCont
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
   const signedIn = !!getAccessToken();
 
   useEffect(() => {
@@ -4088,16 +4882,47 @@ export function useDecantRun(gameSlug: string, autoStart = false): DecantRunCont
 
   // A session is requested only once Start has been pressed (`attempt` > 0).
   useEffect(() => {
-    if (attempt === 0) return;
     const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, DECANT_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayDecantRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
     startedAt.current = 0;
     endedAt.current = 0;
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: DECANT_RULES_VERSION })
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, DECANT_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayDecantRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: DECANT_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         const run = createDecantRun(session.seed);
         startedAt.current = Date.now();
         setState({
@@ -4149,6 +4974,9 @@ export function useDecantRun(gameSlug: string, autoStart = false): DecantRunCont
       session.id,
       { ...decantSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -4202,6 +5030,54 @@ export function useDecantRun(gameSlug: string, autoStart = false): DecantRunCont
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The clock carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({
+          status: "playing",
+          session: resumed.session,
+          run,
+          deadline: startedAt.current + decantBudgetMs(run.levelsCleared, run.extraTubes),
+        });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...decantSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: decantSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
   const begin = useCallback(() => setAttempt((n) => n + 1), []);
 
   const restart = useCallback(() => {
@@ -4212,6 +5088,7 @@ export function useDecantRun(gameSlug: string, autoStart = false): DecantRunCont
       setAttempt((n) => n + 1);
     } else {
       setState({ status: "intro" });
+      setAttempt(0);
     }
   }, [autoStart]);
 
@@ -4229,12 +5106,27 @@ export function useDecantRun(gameSlug: string, autoStart = false): DecantRunCont
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, signedIn, begin, pour, undo, reset, addTube, finish, restart, retry };
+  return {
+    ...state,
+    signedIn,
+    continueRun,
+    newRun,
+    begin,
+    pour,
+    undo,
+    reset,
+    addTube,
+    finish,
+    restart,
+    retry,
+  };
 }
 
 // ── A run of Bolted, from Start to score ───────────────────────────────────
 
 export type BoltedRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: BoltedRun; playedMs: number }
   /** The rules are showing. No session exists yet: it is issued on Start. */
   | { status: "intro" }
   | { status: "starting" }
@@ -4257,6 +5149,10 @@ export type BoltedRunState =
     };
 
 export type BoltedRunControls = BoltedRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
   /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
@@ -4295,6 +5191,8 @@ export function useBoltedRun(gameSlug: string, autoStart = false): BoltedRunCont
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
   const signedIn = !!getAccessToken();
 
   useEffect(() => {
@@ -4306,16 +5204,47 @@ export function useBoltedRun(gameSlug: string, autoStart = false): BoltedRunCont
 
   // A session is requested only once Start has been pressed (`attempt` > 0).
   useEffect(() => {
-    if (attempt === 0) return;
     const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, BOLTED_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayBoltedRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
     startedAt.current = 0;
     endedAt.current = 0;
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: BOLTED_RULES_VERSION })
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, BOLTED_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayBoltedRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: BOLTED_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         const run = createBoltedRun(session.seed);
         startedAt.current = Date.now();
         setState({
@@ -4367,6 +5296,9 @@ export function useBoltedRun(gameSlug: string, autoStart = false): BoltedRunCont
       session.id,
       { ...boltedSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -4420,6 +5352,54 @@ export function useBoltedRun(gameSlug: string, autoStart = false): BoltedRunCont
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The clock carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({
+          status: "playing",
+          session: resumed.session,
+          run,
+          deadline: startedAt.current + boltedBudgetMs(run.levelsCleared, run.extraBolts),
+        });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...boltedSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: boltedSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
   const begin = useCallback(() => setAttempt((n) => n + 1), []);
 
   const restart = useCallback(() => {
@@ -4430,6 +5410,7 @@ export function useBoltedRun(gameSlug: string, autoStart = false): BoltedRunCont
       setAttempt((n) => n + 1);
     } else {
       setState({ status: "intro" });
+      setAttempt(0);
     }
   }, [autoStart]);
 
@@ -4447,12 +5428,27 @@ export function useBoltedRun(gameSlug: string, autoStart = false): BoltedRunCont
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, signedIn, begin, move, undo, reset, addBolt, finish, restart, retry };
+  return {
+    ...state,
+    signedIn,
+    continueRun,
+    newRun,
+    begin,
+    move,
+    undo,
+    reset,
+    addBolt,
+    finish,
+    restart,
+    retry,
+  };
 }
 
 // ── A run of Huedini, from Start to score ──────────────────────────────────
 
 export type HuediniRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: HuediniRun; playedMs: number }
   /** The rules are showing. No session exists yet: it is issued on Start. */
   | { status: "intro" }
   | { status: "starting" }
@@ -4475,6 +5471,10 @@ export type HuediniRunState =
     };
 
 export type HuediniRunControls = HuediniRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
   /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
@@ -4511,6 +5511,8 @@ export function useHuediniRun(gameSlug: string, autoStart = false): HuediniRunCo
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
   const signedIn = !!getAccessToken();
 
   useEffect(() => {
@@ -4522,16 +5524,47 @@ export function useHuediniRun(gameSlug: string, autoStart = false): HuediniRunCo
 
   // A session is requested only once Start has been pressed (`attempt` > 0).
   useEffect(() => {
-    if (attempt === 0) return;
     const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, HUEDINI_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayHuediniRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
     startedAt.current = 0;
     endedAt.current = 0;
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: HUEDINI_RULES_VERSION })
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, HUEDINI_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayHuediniRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: HUEDINI_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         const run = createHuediniRun(session.seed);
         startedAt.current = Date.now();
         setState({
@@ -4583,6 +5616,9 @@ export function useHuediniRun(gameSlug: string, autoStart = false): HuediniRunCo
       session.id,
       { ...huediniSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -4639,6 +5675,54 @@ export function useHuediniRun(gameSlug: string, autoStart = false): HuediniRunCo
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The clock carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({
+          status: "playing",
+          session: resumed.session,
+          run,
+          deadline: startedAt.current + huediniBudgetMs(run.levelsCleared),
+        });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...huediniSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: huediniSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
   const begin = useCallback(() => setAttempt((n) => n + 1), []);
 
   const restart = useCallback(() => {
@@ -4649,6 +5733,7 @@ export function useHuediniRun(gameSlug: string, autoStart = false): HuediniRunCo
       setAttempt((n) => n + 1);
     } else {
       setState({ status: "intro" });
+      setAttempt(0);
     }
   }, [autoStart]);
 
@@ -4666,12 +5751,26 @@ export function useHuediniRun(gameSlug: string, autoStart = false): HuediniRunCo
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, signedIn, begin, move, undo, reset, finish, restart, retry };
+  return {
+    ...state,
+    signedIn,
+    continueRun,
+    newRun,
+    begin,
+    move,
+    undo,
+    reset,
+    finish,
+    restart,
+    retry,
+  };
 }
 
 // ── A run of Scatter, from Start to score ──────────────────────────────────
 
 export type ScatterRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: ScatterRun; playedMs: number }
   /** The rules are showing. No session exists yet: it is issued on Start. */
   | { status: "intro" }
   | { status: "starting" }
@@ -4688,6 +5787,10 @@ export type ScatterRunState =
     };
 
 export type ScatterRunControls = ScatterRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
   /** Presses Start: asks the server for a session. */
@@ -4718,6 +5821,8 @@ export function useScatterRun(gameSlug: string, autoStart = false): ScatterRunCo
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
   const signedIn = !!getAccessToken();
 
   useEffect(() => {
@@ -4729,16 +5834,47 @@ export function useScatterRun(gameSlug: string, autoStart = false): ScatterRunCo
 
   // A session is requested only once Start has been pressed (`attempt` > 0).
   useEffect(() => {
-    if (attempt === 0) return;
     const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, SCATTER_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayScatterRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
     startedAt.current = 0;
     endedAt.current = 0;
     submitting.current = false;
     setState({ status: "starting" });
 
-    startSession(gameSlug, { signal: controller.signal, rulesVersion: SCATTER_RULES_VERSION })
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, SCATTER_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayScatterRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: SCATTER_RULES_VERSION,
+        });
+      })
       .then((session) => {
-        if (controller.signal.aborted) return;
+        if (!session || controller.signal.aborted) return;
         startedAt.current = Date.now();
         setState({ status: "playing", session, run: createScatterRun(session.seed) });
       })
@@ -4766,6 +5902,9 @@ export function useScatterRun(gameSlug: string, autoStart = false): ScatterRunCo
       session.id,
       { ...scatterSubmission(run), rulesVersion: session.rulesVersion },
       durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
     )
       .then((result) => {
         if (!mounted.current) return;
@@ -4800,6 +5939,49 @@ export function useScatterRun(gameSlug: string, autoStart = false): ScatterRunCo
     });
   }, []);
 
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The clock carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({ status: "playing", session: resumed.session, run });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...scatterSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: scatterSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
   const begin = useCallback(() => setAttempt((n) => n + 1), []);
 
   const restart = useCallback(() => {
@@ -4810,6 +5992,7 @@ export function useScatterRun(gameSlug: string, autoStart = false): ScatterRunCo
       setAttempt((n) => n + 1);
     } else {
       setState({ status: "intro" });
+      setAttempt(0);
     }
   }, [autoStart]);
 
@@ -4826,7 +6009,7 @@ export function useScatterRun(gameSlug: string, autoStart = false): ScatterRunCo
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, signedIn, begin, tap, finish, restart, retry };
+  return { ...state, signedIn, continueRun, newRun, begin, tap, finish, restart, retry };
 }
 
 // ── A run of 7 Second, from session to score ───────────────────────────────

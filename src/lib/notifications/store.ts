@@ -289,8 +289,20 @@ export function useUnreadCount(): UnreadBadgeState & { retry: () => void } {
   return { ...state, retry } as UnreadBadgeState & { retry: () => void };
 }
 
+/** The game a "new game" notification announces, or null for any other row. */
+export function newGameOf(
+  item: AppNotification,
+): { slug: string; title: string; tagline: string | null } | null {
+  const { reason, game, game_title: title, tagline } = item.payload;
+  if (item.kind !== "system" || reason !== "new_game") return null;
+  if (typeof game !== "string" || typeof title !== "string") return null;
+  return { slug: game, title, tagline: typeof tagline === "string" ? tagline : null };
+}
+
 /** Human-readable line for a notification row. Never invents actor names. */
 export function describeNotification(item: AppNotification): string {
+  const newGame = newGameOf(item);
+  if (newGame) return t("{game} just landed", { game: newGame.title });
   const payload = item.payload;
   const text = typeof payload["text"] === "string" ? payload["text"] : "";
   const game = typeof payload["game_title"] === "string" ? payload["game_title"] : "";

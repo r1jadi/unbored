@@ -321,8 +321,16 @@ function Body({ section, category }: { section: string; category?: "bug" }) {
         <>
           <Group title={t("Notify me about")}>
             <Toggle
+              id="n5"
+              label={t("A new game comes out")}
+              desc={t("Get in first, while the leaderboard is wide open")}
+              checked={prefs.notifyGameReleases}
+              onChange={(v) => void update({ ...prefs, notifyGameReleases: v })}
+            />
+            <Toggle
               id="n1"
-              label={t("Someone beats your score")}
+              label={t("A friend beats your score")}
+              desc={t("A friend is someone you follow who follows you back")}
               checked={prefs.notifyBeats}
               onChange={(v) => void update({ ...prefs, notifyBeats: v })}
             />

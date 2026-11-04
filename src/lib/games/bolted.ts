@@ -406,3 +406,8 @@ export function solve(start: readonly Bolt[], limit = 200_000): [number, number]
   const result = search(start);
   return result ? [...path] : null;
 }
+
+/** The run these moves make, from the seed: how a saved run comes back. */
+export function replay(seed: string | number | bigint, actions: readonly number[]): BoltedRun {
+  return actions.reduce((run: BoltedRun, action) => apply(run, action), createRun(seed));
+}

@@ -16,6 +16,8 @@ import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
 import { RulesList } from "@/components/game/RulesList";
 import { RunEndActions } from "@/components/game/RunEndActions";
+import { SavedRunCard } from "@/components/game/SavedRunCard";
+import { t } from "@/lib/settings/language";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,7 +52,7 @@ import {
 } from "@/lib/games/chess";
 import { formatClockGain } from "@/lib/games/clock";
 import { GAME_RULES } from "@/lib/games/rules";
-import { useReportRunProgress } from "@/lib/games/run-progress";
+import { endRunMessage, useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
   useCheckmateRun,
@@ -92,6 +94,19 @@ export function CheckmateRuntime({
   autoStart?: boolean;
 }) {
   const state = useCheckmateRun(slug, autoStart);
+
+  if (state.status === "saved") {
+    return (
+      <SavedRunCard
+        score={state.run.score}
+        where={t("Board {level}", { level: state.run.level })}
+        onContinue={state.continueRun}
+        onNewRun={state.newRun}
+        slug={slug}
+        title={title}
+      />
+    );
+  }
 
   if (state.status === "intro") {
     return <Intro signedIn={state.signedIn} onBegin={state.begin} slug={slug} title={title} />;
@@ -312,7 +327,7 @@ function Board({
 
   const accepting = !verifying && run.outcome === "playing" && (!beat || beat.wrong !== null);
 
-  useReportRunProgress(run.outcome === "playing" && !verifying, onFinish);
+  useReportRunProgress(run.outcome === "playing" && !verifying, onFinish, session);
 
   useEffect(() => {
     boardRef.current?.focus();
@@ -505,7 +520,7 @@ function Board({
           <AlertDialogHeader>
             <AlertDialogTitle>End this run?</AlertDialogTitle>
             <AlertDialogDescription>
-              {`Your score of ${points(run.score)} is kept and sent for verification. The puzzle you are on is not scored.`}
+              {endRunMessage(session, points(run.score))}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -496,3 +496,11 @@ export function submission(run: MiniSudokuRun): MiniSudokuSubmission {
     levelsCleared: run.levelsCleared,
   };
 }
+
+/** The run these moves make, from the seed: how a saved run comes back. */
+export function replay(seed: string | number | bigint, actions: readonly number[]): MiniSudokuRun {
+  return actions.reduce(
+    (run: MiniSudokuRun, action) => place(run, Math.floor(action / 10), action % 10),
+    createRun(seed),
+  );
+}

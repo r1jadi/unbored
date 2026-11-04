@@ -1636,7 +1636,7 @@ func TestStartSessionReportsTodaysAttemptAsDone(t *testing.T) {
 		t.Fatalf("code = %s, want conflict", errorCode(t, body))
 	}
 	failure := body["error"].(map[string]any)
-	if message, _ := failure["message"].(string); !strings.Contains(message, "midnight UTC") {
+	if message, _ := failure["message"].(string); !strings.Contains(message, "midnight, your time") {
 		t.Fatalf("message = %q, want the next deck's time", message)
 	}
 }

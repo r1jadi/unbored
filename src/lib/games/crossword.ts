@@ -146,6 +146,21 @@ export function dayNumber(ms: number): number {
   return Math.floor(ms / DAY_MS);
 }
 
+/**
+ * The player's day number: days since 1970-01-01 on the device's own date. This is the
+ * day the server gives them, so what the screen says about today matches the puzzle.
+ */
+export function localDayNumber(ms: number): number {
+  const date = new Date(ms);
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS;
+}
+
+/** How long until midnight on the device. Not always 24 hours away: clocks change. */
+export function msUntilLocalMidnight(ms: number): number {
+  const date = new Date(ms);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime() - ms;
+}
+
 /** The weekday of a day number: 0 Sunday … 6 Saturday. Day 0 was a Thursday. */
 export function weekdayOf(day: number): number {
   return (day + 4) % 7;

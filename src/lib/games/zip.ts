@@ -604,3 +604,8 @@ export function submission(run: ZipRun): ZipSubmission {
     levelsCleared: run.levelsCleared,
   };
 }
+
+/** The run these moves make, from the seed: how a saved run comes back. */
+export function replay(seed: string | number | bigint, actions: readonly number[]): ZipRun {
+  return actions.reduce((run: ZipRun, action) => tap(run, action), createRun(seed));
+}

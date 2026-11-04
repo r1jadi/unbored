@@ -505,3 +505,8 @@ export function submission(run: TangoRun): TangoSubmission {
     levelsCleared: run.levelsCleared,
   };
 }
+
+/** The run these moves make, from the seed: how a saved run comes back. */
+export function replay(seed: string | number | bigint, actions: readonly number[]): TangoRun {
+  return actions.reduce((run: TangoRun, action) => tap(run, action), createRun(seed));
+}

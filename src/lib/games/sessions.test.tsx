@@ -158,6 +158,7 @@ describe("startSession", () => {
       gameSlug: "stack-10",
       rulesVersion: "stack-10@2",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     // No user id, and no seed: both are the server's to choose.
     expect(Object.keys(body)).not.toContain("userId");
@@ -191,6 +192,7 @@ describe("startSession", () => {
       gameSlug: "dont-break-the-chain",
       rulesVersion: "chain@2",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     expect(session.rulesVersion).toBe("chain@2");
   });

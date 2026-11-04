@@ -2,9 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bell, Heart, MessageCircle, Settings, Trophy, UserPlus, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { EmptyState, ErrorState, ListSkeleton, Page, PageHeader } from "@/components/common";
+import { NewGameCard } from "@/components/game/NewGameCard";
 import { Button } from "@/components/ui/button";
 import {
   describeNotification,
+  newGameOf,
   openInbox,
   useNotifications,
   type AppNotification,
@@ -15,7 +17,7 @@ import { formatAgo } from "@/lib/admin/api";
 
 import { t, msg } from "@/lib/settings/language";
 export const Route = createFileRoute("/notifications")({
-  head: () => seo(t("Notifications"), t("Follows, comments, likes and score updates.")),
+  head: () => seo(t("Notifications"), t("New games, follows, comments and score updates.")),
   component: Notifications,
 });
 
@@ -28,12 +30,14 @@ const icon: Record<AppNotification["kind"], typeof Bell> = {
   system: Bell,
 };
 
-const filters = [msg("All"), msg("Scores"), msg("Social"), msg("Comments")] as const;
+const filters = [msg("All"), msg("Games"), msg("Scores"), msg("Social"), msg("Comments")] as const;
 
 function matchesFilter(item: AppNotification, filter: (typeof filters)[number]): boolean {
   switch (filter) {
     case "All":
       return true;
+    case "Games":
+      return newGameOf(item) !== null;
     case "Scores":
       return item.kind === "score";
     case "Social":
@@ -161,6 +165,7 @@ function Notifications() {
       ) : (
         <ul className="divide-y divide-border md:space-y-1 md:divide-y-0">
           {list.map((item) => {
+            if (newGameOf(item)) return <NewGameCard key={item.id} item={item} />;
             const Icon = icon[item.kind];
             const actor =
               typeof item.payload["username"] === "string"

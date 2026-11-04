@@ -414,3 +414,8 @@ export function fewestMoves(tiles: readonly number[]): number {
   }
   return -1;
 }
+
+/** The run these moves make, from the seed: how a saved run comes back. */
+export function replay(seed: string | number | bigint, actions: readonly number[]): EightPuzzleRun {
+  return actions.reduce((run: EightPuzzleRun, action) => tap(run, action), createRun(seed));
+}

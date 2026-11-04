@@ -148,6 +148,9 @@ type startSessionRequest struct {
 	GameSlug     string `json:"gameSlug"`
 	RulesVersion string `json:"rulesVersion"`
 	Client       string `json:"client"`
+	// TimeZone is the player's, so a daily game resets at their midnight. It decides
+	// nothing else, and the database falls back to UTC for one it can't use.
+	TimeZone string `json:"timeZone"`
 }
 
 func (s *service) startSession(w http.ResponseWriter, r *http.Request) {
@@ -186,10 +189,19 @@ func (s *service) startSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	timeZone := strings.TrimSpace(body.TimeZone)
+	if len(timeZone) > 64 {
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
+			"timeZone is longer than 64 characters.",
+			apierr.Detail{Field: "timeZone", Rule: "length"}))
+		return
+	}
+
 	start, err := s.backend.StartSession(r.Context(), supabaseplay.StartRequest{
 		GameSlug:     slug,
 		RulesVersion: rules,
 		Client:       client,
+		TimeZone:     timeZone,
 		AccessToken:  callerToken(r),
 	})
 	if err != nil {
@@ -224,7 +236,7 @@ func (s *service) startSession(w http.ResponseWriter, r *http.Request) {
 		// with the state of the player's day, which is exactly what happened, and
 		// the message tells them when the next attempt arrives.
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeConflict,
-			"You've already played today's challenge. The next one arrives at midnight UTC."))
+			"You've already played today's challenge. The next one arrives at midnight, your time."))
 	default:
 		s.unexpectedOutcome(w, r, "start a run", start.Outcome)
 	}

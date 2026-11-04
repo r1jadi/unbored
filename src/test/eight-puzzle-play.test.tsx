@@ -163,6 +163,7 @@ describe("starting a run", () => {
       gameSlug: "8-puzzle",
       rulesVersion: "eight-puzzle@2",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     expect(screen.getAllByRole("button", { name: TILE })).toHaveLength(8);
     expect(screen.getByText("0 moves · par 10")).toBeInTheDocument();

@@ -170,6 +170,7 @@ describe("starting a run", () => {
       gameSlug: "trail",
       rulesVersion: "zip@2",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     expect(screen.getAllByRole("button", { name: CELL })).toHaveLength(25);
     expect(screen.getByText("Board 1 — start on 1.")).toBeInTheDocument();

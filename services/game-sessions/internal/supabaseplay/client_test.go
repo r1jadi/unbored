@@ -113,6 +113,64 @@ func TestStartSessionPostsToTheFunction(t *testing.T) {
 	}
 }
 
+func TestStartSessionSendsTheTimeZoneOnlyWhenItHasOne(t *testing.T) {
+	rec := newRecorder(t, http.StatusOK, startRow)
+	if _, err := rec.client(t).StartSession(context.Background(), StartRequest{
+		GameSlug: "crossword", RulesVersion: "crossword@1", TimeZone: "Europe/Tirane",
+	}); err != nil {
+		t.Fatalf("StartSession: %v", err)
+	}
+	if got := rec.payload(t)["p_time_zone"]; got != "Europe/Tirane" {
+		t.Fatalf("p_time_zone = %v", got)
+	}
+
+	rec = newRecorder(t, http.StatusOK, startRow)
+	if _, err := rec.client(t).StartSession(context.Background(), StartRequest{
+		GameSlug: "crossword", RulesVersion: "crossword@1",
+	}); err != nil {
+		t.Fatalf("StartSession: %v", err)
+	}
+	if _, sent := rec.payload(t)["p_time_zone"]; sent {
+		t.Fatal("a request with no zone must call the three-argument function")
+	}
+}
+
+func TestStartSessionStillStartsBeforeTheMigrationIsApplied(t *testing.T) {
+	// Forgetting the migration must not stop every game from starting.
+	var bodies []map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		var body map[string]any
+		_ = json.Unmarshal(raw, &body)
+		bodies = append(bodies, body)
+		w.Header().Set("Content-Type", "application/json")
+		if _, withZone := body["p_time_zone"]; withZone {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = io.WriteString(w, `{"code":"PGRST202"}`)
+			return
+		}
+		_, _ = io.WriteString(w, startRow)
+	}))
+	t.Cleanup(server.Close)
+	cfg := &config.Config{}
+	cfg.Supabase.ProjectURL = server.URL
+	cfg.Supabase.PublishableKey = "sb_publishable_test_value"
+	client, err := New(cfg)
+	if err != nil {
+		t.Fatalf("building client: %v", err)
+	}
+
+	start, err := client.StartSession(context.Background(), StartRequest{
+		GameSlug: "crossword", RulesVersion: "crossword@1", TimeZone: "Europe/Tirane",
+	})
+	if err != nil {
+		t.Fatalf("StartSession: %v", err)
+	}
+	if start.Outcome != "started" || len(bodies) != 2 {
+		t.Fatalf("start = %+v after %d requests", start, len(bodies))
+	}
+}
+
 func TestStartSessionCarriesTheCallersToken(t *testing.T) {
 	rec := newRecorder(t, http.StatusOK, startRow)
 

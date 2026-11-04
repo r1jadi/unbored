@@ -4338,15 +4338,15 @@ select rls_test.ok(
 );
 select rls_test.ok(
   (select progress_actions = array[1,1,8] and progress_played_ms = 20000
-          and expires_at > now() + interval '11 hours'
+          and expires_at > now() + interval '29 days'
      from public.game_sessions where id = 'f3f3f3f3-1111-4111-8111-f3f3f3f3f3f3'),
-  'the saved moves and played time are on the session, which now stays open twelve hours'
+  'the saved moves and played time are on the session, which now stays open for 30 days'
 );
 select rls_test.ok(
   (select r.session_id = 'f3f3f3f3-1111-4111-8111-f3f3f3f3f3f3' and r.actions = array[1,1,8]
-          and r.played_ms = 20000 and r.seed = '1' and r.rules_version = 'queens@1'
+          and r.played_ms between 295000 and 305000 and r.seed = '1' and r.rules_version = 'queens@1'
      from public.saved_run('fixture-queens', 'queens@1') r),
-  'the saved run is found to continue, with its seed as exact text'
+  'the saved run is found to continue, with its seed as exact text and the time the server measured, not the client''s claim'
 );
 select rls_test.ok(
   rls_test.count_rows($$select 1 from public.saved_run('fixture-queens', 'queens@2')$$) = 0,
@@ -5366,7 +5366,15 @@ language sql as $$
   select count(*) from public.notifications n where n.user_id = p_user and n.kind::text = p_kind
 $$;
 
--- Beaten scores, on a board of their own.
+-- Beaten scores, on a board of their own. These three are all friends, because only
+-- a friend's score notifies; the friendship rule itself is tested after them.
+insert into public.follows (follower_id, followee_id) values
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2'),
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1'),
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3'),
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1'),
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3'),
+  ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2');
 select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 100);
 select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'score') = 0,
   'a first score that overtakes nobody notifies nobody');
@@ -5417,6 +5425,47 @@ select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f3', 'f6f6f6f6-2
 select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f3', 'score') = 0,
   'a player off the leaderboards does not set off beaten-score notifications');
 
+-- The fixtures above needed friends. The follow tests below start from none.
+delete from public.follows where follower_id::text like 'f6f6f6f6-%';
+delete from public.notifications where kind = 'follow' and user_id::text like 'f6f6f6f6-%';
+
+-- Only a friend's score notifies: a friend follows you, and you follow them back.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1', 'friend1@example.com', '{"username":"friend_one"}'::jsonb),
+  ('f8f8f8f8-2026-4120-8720-f8f8f8f8f8f2', 'friend2@example.com', '{"username":"friend_two"}'::jsonb);
+
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f1', 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1', 10);
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f1', 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f2', 20);
+select rls_test.ok(rls_test.notes('f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1', 'score') = 0,
+  'a stranger beating your score does not notify you');
+
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f1', 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1', 25);
+insert into public.follows (follower_id, followee_id) values
+  ('f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1', 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f2');
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f1', 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f2', 30);
+select rls_test.ok(rls_test.notes('f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1', 'score') = 0,
+  'someone you follow who does not follow you back is not a friend');
+
+delete from public.follows where follower_id = 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1';
+insert into public.follows (follower_id, followee_id) values
+  ('f8f8f8f8-2026-4120-8720-f8f8f8f8f8f2', 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1');
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f1', 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1', 35);
+select rls_test.ok(rls_test.notes('f8f8f8f8-2026-4120-8720-f8f8f8f8f8f2', 'score') = 0,
+  'someone who follows you but you do not follow back is not a friend');
+
+insert into public.follows (follower_id, followee_id) values
+  ('f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1', 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f2');
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f1', 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f2', 40);
+select rls_test.ok(rls_test.notes('f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1', 'score') = 1,
+  'a friend beating your score notifies you');
+
+delete from public.notifications where user_id = 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1' and kind = 'score';
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f1', 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1', 45);
+delete from public.follows where follower_id = 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1';
+select rls_test.record_score('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f1', 'f8f8f8f8-2026-4120-8720-f8f8f8f8f8f2', 50);
+select rls_test.ok(rls_test.notes('f8f8f8f8-2026-4120-8720-f8f8f8f8f8f1', 'score') = 0,
+  'unfollowing someone ends the friendship, and these notifications with it');
+
 -- Follows.
 insert into public.follows (follower_id, followee_id) values
   ('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1');
@@ -5460,6 +5509,279 @@ insert into public.comments (game_id, author_id, parent_id, body) values
   ('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', 'f6f6f6f6-2026-4120-8720-f6f6f6f6f6f2', 'f7f7f7f7-2026-4120-8720-f7f7f7f7f7f2', 'a reply');
 select rls_test.ok(rls_test.notes('f6f6f6f6-2026-4120-8720-f6f6f6f6f6f1', 'comment') = 0,
   'turning off comment notifications stops them');
+
+-- New games: everyone hears once, when a game first goes live.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('f9f9f9f9-2026-4120-8720-f9f9f9f9f9f1', 'fan1@example.com', '{"username":"fan_one"}'::jsonb),
+  ('f9f9f9f9-2026-4120-8720-f9f9f9f9f9f2', 'fan2@example.com', '{"username":"fan_two"}'::jsonb),
+  ('f9f9f9f9-2026-4120-8720-f9f9f9f9f9f3', 'fan3@example.com', '{"username":"fan_three"}'::jsonb);
+insert into public.user_preferences (user_id, notify_game_releases)
+  values ('f9f9f9f9-2026-4120-8720-f9f9f9f9f9f2', false);
+update public.profiles set is_suspended = true where id = 'f9f9f9f9-2026-4120-8720-f9f9f9f9f9f3';
+
+create function rls_test.announcements(p_user uuid, p_game text) returns bigint
+language sql as $$
+  select count(*) from public.notifications n
+   where n.user_id = p_user and n.kind = 'system'
+     and n.payload->>'reason' = 'new_game' and n.payload->>'game' = p_game
+$$;
+
+insert into public.games (id, owner_id, slug, title, tagline, status, is_official) values
+  ('fafafafa-2026-4120-8720-fafafafafaf1', '11111111-1111-4111-8111-111111111111', 'fixture-launch', 'Launch', 'A fresh one', 'draft', true);
+select rls_test.ok(rls_test.announcements('f9f9f9f9-2026-4120-8720-f9f9f9f9f9f1', 'fixture-launch') = 0,
+  'a draft game announces nothing');
+
+update public.games set status = 'published', published_at = now()
+ where id = 'fafafafa-2026-4120-8720-fafafafafaf1';
+select rls_test.ok(rls_test.announcements('f9f9f9f9-2026-4120-8720-f9f9f9f9f9f1', 'fixture-launch') = 0,
+  'a published game that cannot be played yet announces nothing');
+
+update public.games set runtime = 'stack10', playable = true
+ where id = 'fafafafa-2026-4120-8720-fafafafafaf1';
+select rls_test.ok(rls_test.announcements('f9f9f9f9-2026-4120-8720-f9f9f9f9f9f1', 'fixture-launch') = 1,
+  'every player hears when a game goes live');
+select rls_test.ok(
+  (select n.payload->>'game_title' = 'Launch' and n.payload->>'tagline' = 'A fresh one' and n.push_sent_at is not null
+     from public.notifications n
+    where n.user_id = 'f9f9f9f9-2026-4120-8720-f9f9f9f9f9f1' and n.payload->>'game' = 'fixture-launch'),
+  'the announcement names the game, and skips the push outbox');
+select rls_test.ok(rls_test.announcements('f9f9f9f9-2026-4120-8720-f9f9f9f9f9f2', 'fixture-launch') = 0,
+  'a player who turned it off is not told');
+select rls_test.ok(rls_test.announcements('f9f9f9f9-2026-4120-8720-f9f9f9f9f9f3', 'fixture-launch') = 0,
+  'a suspended account is not told');
+
+update public.games set status = 'archived' where id = 'fafafafa-2026-4120-8720-fafafafafaf1';
+update public.games set status = 'published', published_at = now() where id = 'fafafafa-2026-4120-8720-fafafafafaf1';
+update public.games set title = 'Launch Again' where id = 'fafafafa-2026-4120-8720-fafafafafaf1';
+select rls_test.ok(rls_test.announcements('f9f9f9f9-2026-4120-8720-f9f9f9f9f9f1', 'fixture-launch') = 1,
+  'archiving, republishing or editing a game does not announce it again');
+
+update public.games set announced_at = null where id = 'fafafafa-2026-4120-8720-fafafafafaf1';
+select rls_test.ok(
+  (select announced_at is not null from public.games where id = 'fafafafa-2026-4120-8720-fafafafafaf1'),
+  'an announced game cannot be made to announce again by clearing the marker');
+
+insert into public.games (owner_id, slug, title, status, published_at, announced_at) values
+  ('11111111-1111-4111-8111-111111111111', 'fixture-forged', 'Forged', 'draft', null, now());
+select rls_test.ok(
+  (select announced_at is null from public.games where slug = 'fixture-forged'),
+  'a new draft cannot claim to be already announced');
+
+-- Daily games follow the player's date. These two zones are 25 hours apart, so they
+-- are on different dates at every moment, whenever this suite runs.
+\set far_east 'Pacific/Kiritimati'
+\set far_west 'Pacific/Pago_Pago'
+
+select rls_test.ok(
+  public.player_local_day(:'far_east') = ((now() at time zone 'Pacific/Kiritimati')::date - date '1970-01-01')::bigint
+  and public.player_local_day(:'far_west') = ((now() at time zone 'Pacific/Pago_Pago')::date - date '1970-01-01')::bigint,
+  'a player''s day comes from their own date'
+);
+select rls_test.ok(
+  public.player_local_day(:'far_east') <> public.player_local_day(:'far_west'),
+  'players on different dates are on different days'
+);
+select rls_test.ok(public.player_local_day('UTC') = public.crossword_day(),
+  'the UTC day is still the UTC day');
+select rls_test.ok(public.player_local_day('Not/A_Zone') = public.crossword_day(),
+  'an unknown zone counts as UTC');
+select rls_test.ok(public.player_local_day(null) = public.crossword_day(),
+  'no zone counts as UTC');
+select rls_test.ok(public.player_local_day('abc-500') = public.crossword_day(),
+  'a made-up offset cannot reach days ahead');
+select rls_test.ok(public.player_local_day('Xyz500') = public.crossword_day(),
+  'nor can one spelled like a zone name');
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('fbfbfbfb-2026-4120-8720-fbfbfbfbfbf1', 'daily@example.com', '{"username":"daily_one"}'::jsonb);
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'fbfbfbfb-2026-4120-8720-fbfbfbfbfbf1', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.ok(
+  (select outcome = 'started' and seed = public_test_day from
+     (select (public.start_game_session('fixture-crossword', public.crossword_rules_version(), 'test', 'Pacific/Kiritimati')).*,
+             ((now() at time zone 'Pacific/Kiritimati')::date - date '1970-01-01')::bigint as public_test_day) x),
+  'a crossword session uses the player''s day'
+);
+select rls_test.ok(
+  (select outcome = 'started' and seed = (((now() at time zone 'Pacific/Pago_Pago')::date - date '1970-01-01')::bigint * 2654435761 + 7)
+     from public.start_game_session('fixture-seven-second', public.seven_second_rules_version(), 'test', 'Pacific/Pago_Pago')),
+  'a 7 Second session uses the same day, hashed as before'
+);
+select rls_test.ok(
+  (select outcome = 'started' and seed = ((now() at time zone 'utc')::date - date '1970-01-01')::bigint
+     from public.start_game_session('fixture-crossword', public.crossword_rules_version(), 'test')),
+  'the old three-argument form still starts the UTC day'
+);
+reset role;
+
+-- One ranked run per puzzle holds across zones: finishing one date's puzzle closes
+-- that date, and only that date.
+insert into public.game_sessions (game_id, user_id, rules_version, seed, completed_at, verified_score, verified_digest)
+  values (:'crossword_game', 'fbfbfbfb-2026-4120-8720-fbfbfbfbfbf1', public.crossword_rules_version(),
+          ((now() at time zone 'Pacific/Kiritimati')::date - date '1970-01-01')::bigint, now(), 10, repeat('a', 32));
+set local role authenticated;
+select rls_test.ok(
+  (select outcome = 'already_played'
+     from public.start_game_session('fixture-crossword', public.crossword_rules_version(), 'test', 'Pacific/Kiritimati')),
+  'a finished puzzle cannot be played ranked again'
+);
+select rls_test.ok(
+  (select outcome = 'started'
+     from public.start_game_session('fixture-crossword', public.crossword_rules_version(), 'test', 'Pacific/Pago_Pago')),
+  'another date''s puzzle is still open'
+);
+reset role;
+
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+set local role anon;
+select rls_test.denied(
+  $$select public.player_local_day('UTC')$$,
+  'an anonymous caller cannot call the day helper directly'
+);
+select rls_test.ok(
+  (select outcome = 'started' and not ranked
+     from public.start_game_session('fixture-crossword', public.crossword_rules_version(), 'test', 'Pacific/Kiritimati')),
+  'a guest plays the day for their zone too, unranked'
+);
+reset role;
+
+-- Continuing a run: one the player ended can be picked up, one they lost can't.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('fcfcfcfc-2026-4120-8720-fcfcfcfcfcf1', 'later1@example.com', '{"username":"later_one"}'::jsonb),
+  ('fcfcfcfc-2026-4120-8720-fcfcfcfcfcf2', 'later2@example.com', '{"username":"later_two"}'::jsonb);
+
+create function rls_test.closed_run(p_id uuid, p_user uuid) returns void
+language plpgsql as $$
+begin
+  update public.game_sessions
+     set completed_at = now(), verified_score = 100, verified_digest = repeat('a', 32)
+   where id = p_id and user_id = p_user;
+end $$;
+
+-- A clock game, started an hour ago and saved 90 seconds in.
+insert into public.games (id, owner_id, slug, title, status, published_at, runtime, playable) values
+  ('fdfdfdfd-2026-4120-8720-fdfdfdfdfdf1', '11111111-1111-4111-8111-111111111111', 'fixture-resume', 'Resume', 'published', now(), 'zip', true);
+insert into public.game_sessions (id, game_id, user_id, rules_version, seed, started_at, expires_at, progress_actions, progress_saved_at) values
+  ('fefefefe-2026-4120-8720-fefefefefef1', 'fdfdfdfd-2026-4120-8720-fdfdfdfdfdf1', 'fcfcfcfc-2026-4120-8720-fcfcfcfcfcf1', 'zip@2', 42,
+   now() - interval '1 hour', now() + interval '11 hours', array[1, 2, 3], now() - interval '1 hour' + interval '90 seconds');
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'fcfcfcfc-2026-4120-8720-fcfcfcfcfcf1', 'role', 'authenticated')::text, true);
+set local role authenticated;
+
+select rls_test.ok(
+  (select actions = array[1, 2, 3] and not already_scored and played_ms = 90000
+     from public.saved_run('fixture-resume', 'zip@2')),
+  'a left clock game is offered, with the time the server measured'
+);
+select rls_test.ok(
+  (select count(*) = 1 from public.resume_run('fefefefe-2026-4120-8720-fefefefefef1')),
+  'a player can continue their own left run'
+);
+select rls_test.ok(
+  (select session_id = 'fefefefe-2026-4120-8720-fefefefefef1'
+      and played_ms = 90000
+      and extract(epoch from (now() - started_at)) between 89 and 91
+     from public.resume_run('fefefefe-2026-4120-8720-fefefefefef1')),
+  'the hour away does not count: the clock restarts at 90 seconds'
+);
+
+-- The player ends it: the moves are kept, whatever the client claims about time.
+select rls_test.ok(
+  public.mark_run_continuable('fefefefe-2026-4120-8720-fefefefefef1', array[1, 2, 3, 4]),
+  'a player can mark their own open run as ended by them'
+);
+reset role;
+select rls_test.closed_run('fefefefe-2026-4120-8720-fefefefefef1', 'fcfcfcfc-2026-4120-8720-fcfcfcfcfcf1');
+set local role authenticated;
+
+select rls_test.ok(
+  (select actions = array[1, 2, 3, 4] and already_scored and session_id = 'fefefefe-2026-4120-8720-fefefefefef1'
+     from public.saved_run('fixture-resume', 'zip@2')),
+  'a run the player ended is still offered, and says its score is in'
+);
+select rls_test.ok(
+  (select session_id <> 'fefefefe-2026-4120-8720-fefefefefef1'
+     from public.resume_run('fefefefe-2026-4120-8720-fefefefefef1')),
+  'continuing an ended run issues a new session'
+);
+select rls_test.ok(
+  (select count(*) = 0 from public.resume_run('fefefefe-2026-4120-8720-fefefefefef1')),
+  'one ending can only be continued once'
+);
+select rls_test.ok(
+  (select actions = array[1, 2, 3, 4] and not already_scored and session_id <> 'fefefefe-2026-4120-8720-fefefefefef1'
+     from public.saved_run('fixture-resume', 'zip@2')),
+  'the continued run is now the one on offer, and is open'
+);
+select rls_test.ok(
+  (select s.seed = 42 and s.user_id = 'fcfcfcfc-2026-4120-8720-fcfcfcfcfcf1'
+          and s.expires_at > now() + interval '29 days'
+     from public.game_sessions s
+     join public.saved_run('fixture-resume', 'zip@2') r on r.session_id = s.id),
+  'it plays the same seed, and stays open for 30 days'
+);
+reset role;
+
+-- A lost run was never marked, so it is simply over.
+insert into public.game_sessions (id, game_id, user_id, rules_version, seed, started_at, expires_at, progress_actions, progress_saved_at, completed_at, verified_score, verified_digest) values
+  ('fefefefe-2026-4120-8720-fefefefefef2', 'fdfdfdfd-2026-4120-8720-fdfdfdfdfdf1', 'fcfcfcfc-2026-4120-8720-fcfcfcfcfcf2', 'zip@2', 42,
+   now() - interval '1 hour', now() + interval '11 hours', array[1, 2], now() - interval '30 minutes', now(), 50, repeat('a', 32));
+select set_config('request.jwt.claims',
+  json_build_object('sub', 'fcfcfcfc-2026-4120-8720-fcfcfcfcfcf2', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.ok(
+  (select count(*) = 0 from public.saved_run('fixture-resume', 'zip@2')),
+  'a lost run is not offered'
+);
+select rls_test.ok(
+  (select count(*) = 0 from public.resume_run('fefefefe-2026-4120-8720-fefefefefef2')),
+  'a lost run cannot be continued'
+);
+select rls_test.ok(
+  (select count(*) = 0 from public.resume_run('fefefefe-2026-4120-8720-fefefefefef1')),
+  'nor can somebody else''s run'
+);
+select rls_test.ok(
+  not public.mark_run_continuable('fefefefe-2026-4120-8720-fefefefefef2', array[1, 2]),
+  'a finished run cannot be marked afterwards'
+);
+reset role;
+
+-- Starting something newer means the player moved on.
+insert into public.game_sessions (id, game_id, user_id, rules_version, seed, started_at, expires_at, progress_actions, progress_saved_at, completed_at, verified_score, verified_digest, continuable) values
+  ('fefefefe-2026-4120-8720-fefefefefef3', 'fdfdfdfd-2026-4120-8720-fdfdfdfdfdf1', 'fcfcfcfc-2026-4120-8720-fcfcfcfcfcf2', 'zip@2', 43,
+   now() - interval '2 hours', now() + interval '10 hours', array[5], now() - interval '100 minutes', now() - interval '90 minutes', 50, repeat('a', 32), true);
+set local role authenticated;
+select rls_test.ok(
+  (select count(*) = 0 from public.saved_run('fixture-resume', 'zip@2')),
+  'a run the player moved on from is not offered'
+);
+reset role;
+
+-- Real-time and once-a-day games stay out.
+select rls_test.ok(
+  not public.run_resumable('dont-touch@2') and not public.run_resumable('updraft@1')
+  and not public.run_resumable('seven-second@1') and not public.run_resumable('crossword@1'),
+  'real-time and one-attempt-a-day games cannot be continued'
+);
+select rls_test.ok(
+  public.run_resumable('zip@2') and public.run_resumable('sudoku@3') and public.run_resumable('checkmate@1'),
+  'clock games can'
+);
+
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+set local role anon;
+select rls_test.denied(
+  $$select * from public.resume_run('fefefefe-2026-4120-8720-fefefefefef1')$$,
+  'a guest cannot continue anyone''s run'
+);
+select rls_test.denied(
+  $$select public.mark_run_continuable('fefefefe-2026-4120-8720-fefefefefef1', array[1])$$,
+  'a guest cannot mark anyone''s run'
+);
+reset role;
 
 -- A notification's helper is not an API: it would say who has blocked whom.
 set local role anon;

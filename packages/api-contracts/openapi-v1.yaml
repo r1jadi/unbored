@@ -891,6 +891,13 @@ paths:
                     The rules the client will play. The server issues a session
                     pinned to a version it can verify, and refuses one it cannot.
                 client: { type: string, maxLength: 40, example: web/1.0 }
+                timeZone:
+                  type: string
+                  maxLength: 64
+                  example: Europe/Tirane
+                  description: |
+                    The player's time zone, so a daily game resets at their midnight.
+                    Anything the server can't use counts as UTC.
       responses:
         "201":
           description: The open session.

@@ -54,6 +54,7 @@ type StartRequest struct {
 	GameSlug     string
 	RulesVersion string
 	Client       string
+	TimeZone     string
 	AccessToken  string
 }
 
@@ -152,8 +153,20 @@ func (c *Client) StartSession(ctx context.Context, request StartRequest) (Start,
 		"p_client":        nullable(request.Client),
 	}
 
+	if request.TimeZone != "" {
+		payload["p_time_zone"] = request.TimeZone
+	}
+
 	var row sessionStartRow
-	if err := c.rpc(ctx, "start-session", "start_game_session", payload, request.AccessToken, &row); err != nil {
+	err := c.rpc(ctx, "start-session", "start_game_session", payload, request.AccessToken, &row)
+	// A database that hasn't had the migration yet has no such function. Starting a
+	// game matters more than which midnight it follows, so it plays on the UTC day.
+	var missing *Error
+	if errors.As(err, &missing) && missing.Code == "PGRST202" && request.TimeZone != "" {
+		delete(payload, "p_time_zone")
+		err = c.rpc(ctx, "start-session", "start_game_session", payload, request.AccessToken, &row)
+	}
+	if err != nil {
 		return Start{}, err
 	}
 	if row.Outcome != "started" {

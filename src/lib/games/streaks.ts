@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getAccessToken, getAuthState, useAuth } from "@/lib/auth/session";
 import { getQueryClient } from "@/lib/query";
 import { restMutate } from "@/lib/supabase/rest";
+import { deviceTimeZone } from "@/lib/time-zone";
 
 import { t } from "@/lib/settings/language";
 /**
@@ -49,15 +50,6 @@ function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / day);
 }
 
-/** The player's time zone, as the database's zone names spell it. */
-function timeZone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  } catch {
-    return "UTC";
-  }
-}
-
 type StreakRow = { streak: number; last_played_on: string | null; today: string };
 
 export async function fetchMyGameStreak(gameSlug: string): Promise<GameStreak | null> {
@@ -65,7 +57,7 @@ export async function fetchMyGameStreak(gameSlug: string): Promise<GameStreak | 
   if (!token || getAuthState().status !== "authenticated") return null;
   const response = await restMutate("rpc/my_game_streak", "POST", token, {
     p_game_slug: gameSlug,
-    p_time_zone: timeZone(),
+    p_time_zone: deviceTimeZone(),
   });
   const row = ((await response.json()) as StreakRow[])[0];
   if (!row) return null;

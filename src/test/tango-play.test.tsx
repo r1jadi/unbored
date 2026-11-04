@@ -172,6 +172,7 @@ describe("starting a run", () => {
       gameSlug: "sun-and-moon",
       rulesVersion: "tango@2",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     expect(screen.getAllByRole("button", { name: CELL })).toHaveLength(36);
     expect(screen.getByText("27 cells left")).toBeInTheDocument();

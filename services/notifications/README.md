@@ -14,7 +14,9 @@ so a follow, a comment or a score from any path is covered:
 | A follow | The player followed | `notify_followers` | Once a day per follower, so re-following can't spam |
 | A reply | The comment's author | `notify_comments` | None |
 | A comment on a game | Its owner, unless it is Unbored's own game | `notify_comments` | None |
-| A new personal best | The players it overtook | `notify_beats` | The ten closest, and once per game every six hours per player |
+| A new personal best | The friends it overtook: players who follow each other | `notify_beats` | The ten closest friends, and once per game every six hours per player |
+
+A new game tells every player once, when it first goes live (published and playable), unless they turned off `notify_game_releases`. It stays in the app: these rows skip the push outbox, because thousands at once would hold up real follows and replies behind them.
 
 Nobody is told about their own action, nothing crosses a block in either direction,
 and a player off the leaderboards neither triggers nor receives a beaten-score

@@ -6,7 +6,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
@@ -39,10 +39,22 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-type Options = { saved?: number[] | null; stats?: object };
+type Options = {
+  saved?: number[] | null;
+  stats?: object;
+  alreadyScored?: boolean;
+  canResume?: boolean;
+};
+
+const RESUMED_SESSION = "dddddddd-1111-4111-8111-dddddddddddd";
 
 /** The gateway and the Supabase Data API, with the progress functions. */
-function stubBackend({ saved = null, stats }: Options = {}) {
+function stubBackend({
+  saved = null,
+  stats,
+  alreadyScored = false,
+  canResume = true,
+}: Options = {}) {
   const spy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url.includes("/api/v1/auth/sign-in")) {
@@ -71,6 +83,7 @@ function stubBackend({ saved = null, stats }: Options = {}) {
                 actions: saved,
                 played_ms: 42_000,
                 saved_at: "2026-10-26T11:05:00.000Z",
+                already_scored: alreadyScored,
               },
             ]
           : [],
@@ -78,6 +91,26 @@ function stubBackend({ saved = null, stats }: Options = {}) {
     }
     if (url.startsWith(`${supabaseBase}/rest/v1/rpc/save_run_progress`)) {
       return jsonResponse("saved");
+    }
+    if (url.startsWith(`${supabaseBase}/rest/v1/rpc/mark_run_continuable`)) {
+      return jsonResponse(true);
+    }
+    if (url.startsWith(`${supabaseBase}/rest/v1/rpc/resume_run`)) {
+      return jsonResponse(
+        canResume
+          ? [
+              {
+                session_id: RESUMED_SESSION,
+                game_slug: "one-move",
+                rules_version: "one-move@2",
+                seed: "1",
+                started_at: "2026-10-26T12:00:00.000Z",
+                expires_at: "2026-11-26T12:00:00.000Z",
+                played_ms: 42_000,
+              },
+            ]
+          : [],
+      );
     }
     if (url.startsWith(`${supabaseBase}/rest/v1/rpc/my_game_stats`)) {
       return jsonResponse(stats ? [stats] : []);
@@ -184,6 +217,92 @@ describe("an unfinished run", () => {
     expect(await screen.findByRole("group", { name: "Board 2, 3 by 3" })).toBeInTheDocument();
     expect(screen.getByText("Score").closest("dl")?.querySelector("dd")?.textContent).toBe("100");
     expect(calls(spy, "/api/v1/sessions")).toHaveLength(0);
+    // Continuing goes through the server: that is what stops the clock for the time away.
+    const resume = JSON.parse(String(calls(spy, "rpc/resume_run")[0]?.[1]?.body ?? "{}"));
+    expect(resume).toEqual({ p_session_id: SAVED_SESSION });
+  });
+
+  it("says so, and starts over, when the run can no longer be continued", async () => {
+    stubBackend({ saved: [7], canResume: false });
+    await signIn("player@example.com", "correct-horse");
+    await renderAt(<OneMoveRuntime slug="one-move" title="One Move" autoStart />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Continue run/ }));
+
+    expect(await screen.findByText(/can no longer be continued/)).toBeInTheDocument();
+  });
+
+  it("plays on as the new session the server issued, and submits to that one", async () => {
+    const spy = stubBackend({ saved: [7], alreadyScored: true });
+    await signIn("player@example.com", "correct-horse");
+    await renderAt(<OneMoveRuntime slug="one-move" title="One Move" autoStart />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Continue run/ }));
+    await screen.findByRole("group", { name: "Board 2, 3 by 3" });
+    fireEvent.click(screen.getByRole("button", { name: "End run" }));
+    fireEvent.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", { name: "End run" }),
+    );
+
+    await waitFor(() =>
+      expect(calls(spy, `/sessions/${RESUMED_SESSION}/complete`)).toHaveLength(1),
+    );
+    expect(calls(spy, `/sessions/${SAVED_SESSION}/complete`)).toHaveLength(0);
+  });
+
+  it("isn't submitted again when its score is already in and the player starts over", async () => {
+    const spy = stubBackend({ saved: [7], alreadyScored: true });
+    await signIn("player@example.com", "correct-horse");
+    await renderAt(<OneMoveRuntime slug="one-move" title="One Move" autoStart />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /New run/ }));
+
+    await screen.findByRole("group", { name: "Board 1, 3 by 3" });
+    expect(calls(spy, "/complete")).toHaveLength(0);
+    expect(calls(spy, "/api/v1/sessions")).toHaveLength(1);
+  });
+
+  it("stays continuable when the player ends it: marked first, then submitted", async () => {
+    const spy = stubBackend();
+    await signIn("player@example.com", "correct-horse");
+    await renderAt(<OneMoveRuntime slug="one-move" title="One Move" autoStart />);
+    await screen.findByRole("group", { name: "Board 1, 3 by 3" });
+    fireEvent.click(cell(7, 3));
+    await screen.findByRole("group", { name: "Board 2, 3 by 3" });
+
+    fireEvent.click(screen.getByRole("button", { name: "End run" }));
+    fireEvent.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", { name: "End run" }),
+    );
+
+    await waitFor(() => expect(calls(spy, "/complete")).toHaveLength(1));
+    const mark = JSON.parse(String(calls(spy, "rpc/mark_run_continuable")[0]?.[1]?.body ?? "{}"));
+    expect(mark).toEqual({ p_session_id: NEW_SESSION, p_actions: [7] });
+    // The submission closes the session, so the mark has to arrive first.
+    const order = spy.mock.calls.map((call) => String(call[0]));
+    expect(order.findIndex((u) => u.includes("mark_run_continuable"))).toBeLessThan(
+      order.findIndex((u) => u.includes("/complete")),
+    );
+    // And the end screen says what happens next.
+    expect(
+      await screen.findByRole("button", { name: /Continue or start over/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("is not marked when the player lost: a lost run is over", async () => {
+    const spy = stubBackend();
+    await signIn("player@example.com", "correct-horse");
+    await renderAt(<OneMoveRuntime slug="one-move" title="One Move" autoStart />);
+    await screen.findByRole("group", { name: "Board 1, 3 by 3" });
+
+    // Board one wins on cell 7, so anything else loses the run.
+    fireEvent.click(cell(0, 3));
+
+    await waitFor(() => expect(calls(spy, "/complete")).toHaveLength(1));
+    expect(calls(spy, "rpc/mark_run_continuable")).toHaveLength(0);
+    // The end screen offers a fresh run, not this one.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByRole("button", { name: /Continue or start over/ })).toBeNull();
   });
 
   it("is submitted as it was left when the player starts a new run, keeping its score", async () => {

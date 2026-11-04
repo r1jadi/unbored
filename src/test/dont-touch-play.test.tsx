@@ -186,6 +186,7 @@ describe("starting a run", () => {
       gameSlug: "dont-touch-the-black",
       rulesVersion: "dont-touch@2",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   });
 

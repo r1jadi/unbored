@@ -259,6 +259,7 @@ describe("starting a run", () => {
       gameSlug: "color-merge",
       rulesVersion: "color-merge@2",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   });
 

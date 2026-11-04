@@ -185,6 +185,7 @@ describe("starting a run", () => {
       gameSlug: "one-move",
       rulesVersion: "one-move@2",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   });
 

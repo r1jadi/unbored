@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { RunLeaveContext } from "@/lib/games/run-progress";
 import { points } from "@/lib/format";
 
@@ -19,9 +19,9 @@ import { t } from "@/lib/settings/language";
  * End run, with a confirmation.
  *
  * Ending a run saves it: the runtime submits the run as it stands and shows the
- * score the server verified. The confirmation is there because it also ends the
- * run for good, and a mis-tap next to the board should not. A run that is saved
- * as it is played can instead be left to finish later, from the same dialog.
+ * score the server verified. For a signed-in player the run can then be picked up
+ * again later. The confirmation is there so a mis-tap next to the board doesn't
+ * interrupt the run.
  */
 export function EndRunButton({
   score,
@@ -58,10 +58,9 @@ export function EndRunButton({
                     { score: points(score) },
                   )
                 : later
-                  ? t(
-                      "Finish later and the run is waiting for you next time — or end it now and your score of {score} is kept and sent for verification.",
-                      { score: points(score) },
-                    )
+                  ? t("Your score of {score} is kept, and you can pick this run up again later.", {
+                      score: points(score),
+                    })
                   : t("Your score of {score} is kept and sent for verification.", {
                       score: points(score),
                     })}
@@ -69,14 +68,6 @@ export function EndRunButton({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("Keep playing")}</AlertDialogCancel>
-            {later && (
-              <AlertDialogAction
-                className={buttonVariants({ variant: "secondary" })}
-                onClick={leave.leave}
-              >
-                {t("Finish later")}
-              </AlertDialogAction>
-            )}
             <AlertDialogAction onClick={onEnd}>{t("End run")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

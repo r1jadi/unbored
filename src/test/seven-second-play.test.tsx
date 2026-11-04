@@ -189,6 +189,7 @@ describe("starting a run", () => {
       gameSlug: "7-second",
       rulesVersion: "seven-second@1",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   });
 
@@ -539,7 +540,7 @@ describe("the end of a run", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    expect(screen.getByText(/next daily deck arrives at midnight UTC/i)).toBeInTheDocument();
+    expect(screen.getByText(/next daily deck arrives at midnight, your time/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /play again/i })).not.toBeInTheDocument();
     expect(screen.getByText("#2")).toBeInTheDocument();
   });

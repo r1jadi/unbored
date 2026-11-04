@@ -159,6 +159,7 @@ describe("Flutter", () => {
       gameSlug: "updraft",
       rulesVersion: "updraft@1",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   });
 

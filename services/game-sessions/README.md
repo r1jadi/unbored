@@ -76,7 +76,7 @@ bypasses every policy in the project; there is none to be wrong with. See
 
 Starting a run has one outcome of its own: `already_played` answers `409`. A
 signed-in player has already completed today's 7 Second deck, and the next one is
-issued at midnight UTC. That is the game's daily rule, not a service failure; the
+issued at their own midnight (the client sends its time zone with `POST /sessions`). That is the game's daily rule, not a service failure; the
 client renders it as "today's attempt is done" with a route to the board, and does
 not offer a retry that could only fail again. Guests are not gated — their runs are
 unranked, so practice cannot change a board.

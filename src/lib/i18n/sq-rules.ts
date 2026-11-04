@@ -151,8 +151,8 @@ export const sqRules: Record<string, string> = {
   "adds 1.5 seconds and scores 100 points.": "shton 1.5 sekonda dhe jep 100 pikë.",
   "costs 2 seconds. Three of them can empty a fresh clock.":
     "kushton 2 sekonda. Tri të tilla mund ta zbrazin një orë të re.",
-  "per UTC day. Everyone plays the same deck; the next one arrives at midnight UTC.":
-    "për çdo ditë UTC. Të gjithë luajnë të njëjtën pako; tjetra vjen në mesnatë UTC.",
+  "per day. Everyone on your date plays the same deck; the next one arrives at midnight, your time.":
+    "në ditë. Të gjithë në datën tënde luajnë të njëjtën pako; tjetra vjen në mesnatë, sipas orës sate.",
   "is exactly one crown in every row, every column and every colour region. Two crowns can never touch, not even diagonally.":
     "është saktësisht një kurorë në çdo rresht, çdo kolonë dhe çdo zonë ngjyre. Dy kurora nuk mund të prekin kurrë njëra-tjetrën, as diagonalisht.",
   "Every board is split into coloured regions, one for each row.":
@@ -201,8 +201,8 @@ export const sqRules: Record<string, string> = {
     "dhe shkruaj. Zgjidhe sërish, ose prek përkufizimin, për të kaluar mes horizontales dhe vertikales; shigjetat kalojnë nëpër përkufizime.",
   "A mini is worth 10,000 if you solve it within 30 seconds, a midi 20,000 within a minute; after that it slips 40 points a second.":
     "Një mini vlen 10 000 nëse e zgjidh brenda 30 sekondave, një midi 20 000 brenda një minute; pas kësaj bie 40 pikë në sekondë.",
-  "Check the grid (−50) to see which letters are wrong, or reveal a letter (−100 each). One ranked solve a day; a new crossword arrives at midnight UTC.":
-    "Kontrollo rrjetën (−50) për të parë cilat shkronja janë gabim, ose zbulo një shkronjë (−100 secila). Një zgjidhje në renditje në ditë; një fjalëkryq i ri vjen në mesnatë UTC.",
+  "Check the grid (−50) to see which letters are wrong, or reveal a letter (−100 each). One ranked solve a day; a new crossword arrives at midnight, your time.":
+    "Kontrollo rrjetën (−50) për të parë cilat shkronja janë gabim, ose zbulo një shkronjë (−100 secila). Një zgjidhje në renditje në ditë; një fjalëkryq i ri vjen në mesnatë, sipas orës sate.",
   "from the tray onto the grid — or tap a piece, then a square for its top-left corner. Pieces don't rotate.":
     "nga grupi i copave në rrjetë — ose prek një copë, pastaj një katror për këndin e saj të sipërm majtas. Copat nuk rrotullohen.",
   "and it bursts. Every square placed is 10 points; bursting L lines at once scores 100 × L², times your combo.":

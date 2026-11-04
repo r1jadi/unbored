@@ -15,6 +15,8 @@ import { GameExits } from "@/components/game/GameExits";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import { RulesList } from "@/components/game/RulesList";
 import { RunEndActions } from "@/components/game/RunEndActions";
+import { SavedRunCard } from "@/components/game/SavedRunCard";
+import { t } from "@/lib/settings/language";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,7 +46,7 @@ import {
 } from "@/lib/games/cascade";
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { GAME_RULES } from "@/lib/games/rules";
-import { useReportRunProgress } from "@/lib/games/run-progress";
+import { endRunMessage, useReportRunProgress } from "@/lib/games/run-progress";
 import {
   playErrorMessage,
   useCascadeRun,
@@ -87,6 +89,19 @@ export function CascadeRuntime({
   autoStart?: boolean;
 }) {
   const state = useCascadeRun(slug, autoStart);
+
+  if (state.status === "saved") {
+    return (
+      <SavedRunCard
+        score={state.run.score}
+        where={t("Board {level}", { level: state.run.level })}
+        onContinue={state.continueRun}
+        onNewRun={state.newRun}
+        slug={slug}
+        title={title}
+      />
+    );
+  }
 
   if (state.status === "intro") {
     return <Intro signedIn={state.signedIn} onBegin={state.begin} slug={slug} title={title} />;
@@ -315,7 +330,7 @@ function Board({
   const levelUp = useLevelUp(shown.level, shown.score, levelUpHold(false));
   const accepting = !verifying && run.outcome === "playing" && !levelUp && !animating;
 
-  useReportRunProgress(run.outcome === "playing" && !verifying, onFinish);
+  useReportRunProgress(run.outcome === "playing" && !verifying, onFinish, session);
 
   // The board takes focus so the arrow keys work straight away.
   useEffect(() => {
@@ -559,7 +574,7 @@ function Board({
           <AlertDialogHeader>
             <AlertDialogTitle>End this run?</AlertDialogTitle>
             <AlertDialogDescription>
-              {`Your score of ${points(run.score)} is kept and sent for verification.`}
+              {endRunMessage(session, points(run.score))}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

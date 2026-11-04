@@ -316,6 +316,26 @@ export const sqApp: Record<string, string> = {
   "commented on {game}": "komentoi te {game}",
   "replied to your comment": "iu përgjigj komentit tënd",
   "replied to your comment on {game}": "iu përgjigj komentit tënd te {game}",
+  "New games, follows, comments and score updates.":
+    "Lojëra të reja, ndjekje, komente dhe përditësime rezultatesh.",
+  "A new game comes out": "Del një lojë e re",
+  "Get in first, while the leaderboard is wide open": "Hyr i pari, sa renditja është ende e hapur",
+  "Clear your schedule. {game} just landed.": "Liroje orarin. {game} sapo mbërriti.",
+  "Fresh out of the oven: {game}.": "Sapo doli nga furra: {game}.",
+  "Your next high score starts here: {game}.": "Rezultati yt i radhës fillon këtu: {game}.",
+  "New game, wide-open leaderboard. {game} is up for grabs.":
+    "Lojë e re, renditje e hapur. {game} të pret.",
+  "{game} just landed": "{game} sapo mbërriti",
+  "New game": "Lojë e re",
+  recently: "së fundmi",
+  "Play {game}": "Luaj {game}",
+  Play: "Luaj",
+  "Your score of {score} is kept, and you can pick this run up again later.":
+    "Rezultati yt prej {score} ruhet, dhe mund ta vazhdosh këtë lojë më vonë.",
+  "Continue or start over": "Vazhdo ose fillo nga e para",
+  "Sign in to continue this run.": "Identifikohu për të vazhduar këtë lojë.",
+  "This run can no longer be continued.": "Kjo lojë nuk mund të vazhdohet më.",
+  "Board {level}": "Tabela {level}",
   "Notify me about": "Më njofto për",
   "Sign in to turn on push notifications.": "Identifikohu për të aktivizuar njoftimet push.",
   "Couldn't turn on push notifications. Try again.":
@@ -865,7 +885,9 @@ export const sqApp: Record<string, string> = {
     "Çaktivizoje për të dalë nga renditja e çdo loje. Rezultatet e tua ruhen",
   "Show recently played": "Shfaq të luajturat së fundmi",
   "Sign in to manage settings": "Identifikohu për të menaxhuar cilësimet",
-  "Someone beats your score": "Dikush thyen rezultatin tënd",
+  "A friend beats your score": "Një mik thyen rezultatin tënd",
+  "A friend is someone you follow who follows you back":
+    "Mik është dikush që ndjek dhe që të ndjek edhe ty",
   Sound: "Zëri",
   Source: "Burimi",
   "Still stuck, or found a bug? Send us an issue report and we'll take a look.":

@@ -546,3 +546,8 @@ export type CascadeSubmission = {
 export function submission(run: CascadeRun): CascadeSubmission {
   return { rulesVersion: run.rulesVersion, actions: run.actions, score: run.score };
 }
+
+/** The run these moves make, from the seed: how a saved run comes back. */
+export function replay(seed: string | number | bigint, actions: readonly number[]): CascadeRun {
+  return actions.reduce((run: CascadeRun, action) => apply(run, action), createRun(seed));
+}

@@ -192,6 +192,7 @@ describe("starting a run", () => {
       gameSlug: "dont-break-the-chain",
       rulesVersion: "chain@2",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   });
 

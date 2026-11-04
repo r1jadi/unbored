@@ -36,7 +36,8 @@ import {
   alphabetFor,
   CHECK_PENALTY,
   keyboardFor,
-  dayNumber,
+  localDayNumber,
+  msUntilLocalMidnight,
   entriesAt,
   estimate,
   isWeekend,
@@ -207,7 +208,7 @@ function Intro({
   title: string;
 }) {
   // Display only: the server's day decides the puzzle.
-  const today = dayNumber(Date.now());
+  const today = localDayNumber(Date.now());
   return (
     <div className="flex flex-1 flex-col justify-center px-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="enter mx-auto flex w-full max-w-sm flex-col items-center gap-4 text-center">
@@ -948,13 +949,12 @@ function AnswerReview({
   );
 }
 
-/** "The next crossword arrives in 5 h 12 min", counting to midnight UTC. */
+/** "The next crossword arrives in 5 h 12 min", counting to the player's midnight. */
 function nextPuzzleIn(): string {
-  const now = Date.now();
-  const left = Math.max(0, (dayNumber(now) + 1) * 86_400_000 - now);
+  const left = Math.max(0, msUntilLocalMidnight(Date.now()));
   const hours = Math.floor(left / 3_600_000);
   const minutes = Math.floor((left % 3_600_000) / 60_000);
-  return t("The next crossword arrives in {n}{minutes} min (midnight UTC).", {
+  return t("The next crossword arrives in {n}{minutes} min.", {
     n: hours ? `${hours} h ` : "",
     minutes,
   });

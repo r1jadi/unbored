@@ -9,8 +9,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("Finish later", () => {
-  it("is offered for a run that is saved as it is played, and leaves without ending it", async () => {
+describe("End run", () => {
+  it("is the one choice: the score is kept and the run can be continued", async () => {
     const leave = vi.fn();
     const end = vi.fn();
     render(
@@ -20,13 +20,16 @@ describe("Finish later", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "End run" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Finish later" }));
+    await screen.findByText("Your score of 420 is kept, and you can pick this run up again later.");
+    expect(screen.queryByRole("button", { name: "Finish later" })).toBeNull();
 
-    expect(leave).toHaveBeenCalledOnce();
-    expect(end).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("alertdialog").querySelectorAll("button")[1]!);
+
+    expect(end).toHaveBeenCalledOnce();
+    expect(leave).not.toHaveBeenCalled();
   });
 
-  it("is not offered when the run cannot be continued", async () => {
+  it("doesn't promise a continue when the run can't be continued", async () => {
     render(
       <RunLeaveContext.Provider value={{ resumable: false, leave: vi.fn() }}>
         <EndRunButton score={42} disabled={false} onEnd={vi.fn()} />
@@ -35,7 +38,6 @@ describe("Finish later", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "End run" }));
     await screen.findByText("Your score of 420 is kept and sent for verification.");
-    expect(screen.queryByRole("button", { name: "Finish later" })).toBeNull();
   });
 });
 

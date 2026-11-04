@@ -148,6 +148,7 @@ describe("starting a run", () => {
       gameSlug: "crossword",
       rulesVersion: "crossword@1",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     expect(screen.getAllByRole("button", { name: /^Row \d column \d/ })).toHaveLength(WHITE.length);
     const first = PUZZLE.entries[0];

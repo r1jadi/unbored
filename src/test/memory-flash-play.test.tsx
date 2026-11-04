@@ -188,6 +188,7 @@ describe("starting a run", () => {
       gameSlug: "memory-flash",
       rulesVersion: "memory-flash@2",
       client: "web/1.0",
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
   });
 

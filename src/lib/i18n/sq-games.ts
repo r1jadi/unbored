@@ -149,8 +149,7 @@ export const sqGames: Record<string, string> = {
   "Solved · {day}": "I zgjidhur · {day}",
   "Start today's crossword": "Nis fjalëkryqin e sotëm",
   "The answers": "Përgjigjet",
-  "The next crossword arrives in {n}{minutes} min (midnight UTC).":
-    "Fjalëkryqi tjetër vjen pas {n}{minutes} min (mesnatë UTC).",
+  "The next crossword arrives in {n}{minutes} min.": "Fjalëkryqi tjetër vjen pas {n}{minutes} min.",
   "The solved grid: {join}": "Rrjeta e zgjidhur: {join}",
   Time: "Koha",
   "Time {formatSeconds}": "Koha {formatSeconds}",
@@ -572,14 +571,15 @@ export const sqGames: Record<string, string> = {
     "Lojë si mysafir: e verifikuar, por jo në renditje — ushtrohu sa herë të duash",
   "Offline practice: not verified or ranked — practise as often as you like":
     "Ushtrim pa internet: as i verifikuar, as në renditje — ushtrohu sa herë të duash",
-  "One ranked run a day keeps the daily board a comparison of the same deck. The next one arrives at midnight UTC.":
-    "Një lojë në renditje në ditë e mban renditjen ditore një krahasim të së njëjtës pako. Tjetra vjen në mesnatë UTC.",
+  "One ranked run a day keeps the daily board a comparison of the same deck. The next one arrives at midnight, your time.":
+    "Një lojë në renditje në ditë e mban renditjen ditore një krahasim të së njëjtës pako. Tjetra vjen në mesnatë, sipas orës sate.",
   "Pick the right answer.": "Zgjidh përgjigjen e saktë.",
   Press: "Shtyp",
   "Signed in: this is today's ranked attempt":
     "I identifikuar: kjo është përpjekja jote e sotme në renditje",
   "Sixty answers — the deck is done": "Gjashtëdhjetë përgjigje — pakoja mbaroi",
-  "The next daily deck arrives at midnight UTC.": "Pakoja e radhës ditore vjen në mesnatë UTC.",
+  "The next daily deck arrives at midnight, your time.":
+    "Pakoja e radhës ditore vjen në mesnatë, sipas orës sate.",
   "The score is the server's replay, not the number on this screen.":
     "Rezultati është riluajtja e serverit, jo numri në këtë ekran.",
   "Time remaining": "Koha e mbetur",

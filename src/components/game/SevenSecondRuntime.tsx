@@ -541,7 +541,7 @@ function Finished({
         {result.ranked && (
           <p className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-surface px-3 py-2 text-xs text-muted-foreground">
             <Clock className="size-3.5" />
-            {t("The next daily deck arrives at midnight UTC.")}
+            {t("The next daily deck arrives at midnight, your time.")}
           </p>
         )}
       </RunEndActions>
@@ -560,7 +560,7 @@ function DailyDone({ slug, title, message }: { slug: string; title: string; mess
       <p className="mx-auto max-w-sm text-sm text-muted-foreground">{message}</p>
       <p className="mx-auto max-w-sm text-xs text-muted-foreground">
         {t(
-          "One ranked run a day keeps the daily board a comparison of the same deck. The next one arrives at midnight UTC.",
+          "One ranked run a day keeps the daily board a comparison of the same deck. The next one arrives at midnight, your time.",
         )}
       </p>
       <div className="mx-auto flex w-full max-w-xs flex-col gap-2">

@@ -24,6 +24,8 @@ export type UserPreferences = {
   notifyFollowers: boolean;
   notifyComments: boolean;
   notifyNewGames: boolean;
+  /** In the app, for each new game. `notifyNewGames` is the email digest. */
+  notifyGameReleases: boolean;
   language: string | null;
   appearance: string | null;
 };
@@ -41,6 +43,7 @@ export const defaultPreferences: UserPreferences = {
   notifyComments: true,
   // Email is opt-in: the sign-up form and Settings both collect explicit consent.
   notifyNewGames: false,
+  notifyGameReleases: true,
   language: null,
   appearance: null,
 };
@@ -58,6 +61,7 @@ type Row = {
   notify_followers: boolean;
   notify_comments: boolean;
   notify_new_games: boolean;
+  notify_game_releases: boolean;
   language: string | null;
   appearance: string | null;
 };
@@ -75,6 +79,7 @@ function toPreferences(row: Row): UserPreferences {
     notifyFollowers: row.notify_followers,
     notifyComments: row.notify_comments,
     notifyNewGames: row.notify_new_games,
+    notifyGameReleases: row.notify_game_releases,
     language: row.language,
     appearance: row.appearance,
   };
@@ -94,6 +99,7 @@ function toRow(prefs: UserPreferences, userId: string): Row {
     notify_followers: prefs.notifyFollowers,
     notify_comments: prefs.notifyComments,
     notify_new_games: prefs.notifyNewGames,
+    notify_game_releases: prefs.notifyGameReleases,
     language: prefs.language,
     appearance: prefs.appearance,
   };

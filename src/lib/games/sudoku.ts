@@ -469,3 +469,11 @@ export function submission(run: SudokuRun): SudokuSubmission {
     levelsCleared: run.levelsCleared,
   };
 }
+
+/** The run these moves make, from the seed: how a saved run comes back. */
+export function replay(seed: string | number | bigint, actions: readonly number[]): SudokuRun {
+  return actions.reduce(
+    (run: SudokuRun, action) => place(run, Math.floor(action / 10), action % 10),
+    createRun(seed),
+  );
+}

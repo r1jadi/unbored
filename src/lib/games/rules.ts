@@ -183,7 +183,7 @@ export const GAME_RULES = {
       {
         lead: msg("One ranked attempt"),
         text: msg(
-          "per UTC day. Everyone plays the same deck; the next one arrives at midnight UTC.",
+          "per day. Everyone on your date plays the same deck; the next one arrives at midnight, your time.",
         ),
       },
     ],
@@ -371,7 +371,7 @@ export const GAME_RULES = {
       {
         lead: msg("Stuck?"),
         text: msg(
-          "Check the grid (−50) to see which letters are wrong, or reveal a letter (−100 each). One ranked solve a day; a new crossword arrives at midnight UTC.",
+          "Check the grid (−50) to see which letters are wrong, or reveal a letter (−100 each). One ranked solve a day; a new crossword arrives at midnight, your time.",
         ),
       },
     ],

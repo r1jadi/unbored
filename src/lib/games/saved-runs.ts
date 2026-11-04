@@ -1,7 +1,7 @@
 /**
  * Saved progress for signed-in players: an unfinished run, and stats per game.
  *
- * While a signed-in player plays an untimed game, the run's moves are saved to
+ * While a signed-in player plays, the run's moves are saved to
  * its session through the Supabase Data API (`save_run_progress`), with the
  * player's own token as the credential. Opening the game again finds the saved
  * run (`saved_run`) and offers to continue it; continuing replays the saved
@@ -12,18 +12,27 @@
  * Saving is best effort. A save that fails is retried with the next move, and a
  * check for a saved run that fails simply starts a new run — neither ever stands
  * between the player and the game.
+ *
+ * A run the player ends themselves keeps its score and can still be continued: see
+ * `markRunContinuable` and `resumeRun`. A run they lost is over. Continuing goes through
+ * the server, which restarts a clock game's clock where it stopped, by its own measure.
  */
 
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, type RefObject } from "react";
 
+import { ApiError } from "@/lib/api/client";
 import { getAccessToken, getAuthState, useAuth } from "@/lib/auth/session";
 import { browserOffline } from "@/lib/games/offline";
+import { t } from "@/lib/settings/language";
 import { restMutate, supabaseBase, supabaseHeaders } from "@/lib/supabase/rest";
 
 import type { PlaySession } from "@/lib/games/sessions";
 
-/** The untimed games' current rules: the runs that can be saved and continued. */
+/**
+ * The runs that can be saved and continued: every game but the real-time ones (Don't
+ * Touch the Black, Flutter) and the one-attempt-a-day ones (7 Second, the crossword).
+ */
 export const RESUMABLE_RULES: ReadonlySet<string> = new Set([
   "stack-10@2",
   "chain@2",
@@ -32,6 +41,17 @@ export const RESUMABLE_RULES: ReadonlySet<string> = new Set([
   "color-merge@2",
   "queens@1",
   "gridburst@1",
+  "zip@2",
+  "eight-puzzle@2",
+  "tango@2",
+  "sudoku@3",
+  "mini-sudoku@1",
+  "decant@2",
+  "bolted@1",
+  "huedini@1",
+  "scatter@1",
+  "cascade@1",
+  "checkmate@1",
 ]);
 
 /** How long after the last move a run is saved. */
@@ -57,6 +77,7 @@ type SavedRunRow = {
   actions: number[];
   played_ms: number;
   saved_at: string;
+  already_scored?: boolean;
 };
 
 function signedInToken(): string | null {
@@ -93,6 +114,7 @@ export async function fetchSavedRun(
         startedAt: row.started_at,
         expiresAt: row.expires_at,
         ranked: true,
+        alreadyScored: row.already_scored === true,
       },
       actions: row.actions,
       playedMs: Math.max(0, row.played_ms),
@@ -101,6 +123,89 @@ export async function fetchSavedRun(
     // A check that fails must not keep the player from playing: start fresh.
     return null;
   }
+}
+
+/** Games whose last run the player ended themselves, so its end screen can say so. */
+const continuableGames = new Set<string>();
+
+export function rememberContinuable(gameSlug: string): void {
+  continuableGames.add(gameSlug);
+}
+
+export function forgetContinuable(gameSlug: string): void {
+  continuableGames.delete(gameSlug);
+}
+
+/** Whether the run that just ended in this game can be picked up again. */
+export function hasContinuableRun(gameSlug: string): boolean {
+  return continuableGames.has(gameSlug);
+}
+
+/**
+ * Records that the player ended this run themselves, with the moves it ended on, so it
+ * can be continued. Called before the run is submitted, which closes its session. It
+ * never fails the caller: the score matters more than being able to continue.
+ */
+export async function markRunContinuable(
+  sessionId: string,
+  rulesVersion: string,
+  actions: readonly number[],
+): Promise<boolean> {
+  const token = signedInToken();
+  if (!token || !RESUMABLE_RULES.has(rulesVersion) || sessionId.startsWith("offline-")) {
+    return false;
+  }
+  try {
+    const response = await restMutate("rpc/mark_run_continuable", "POST", token, {
+      p_session_id: sessionId,
+      p_actions: [...actions],
+    });
+    return (await response.json()) === true;
+  } catch {
+    return false;
+  }
+}
+
+type ResumedRow = {
+  session_id: string;
+  game_slug: string;
+  rules_version: string;
+  seed: string;
+  started_at: string;
+  expires_at: string;
+  played_ms: number;
+};
+
+/**
+ * Continues a saved run on the server: this is what stops its clock for the time away.
+ * A run the player ended comes back as a new session, so the one to play is the answer.
+ */
+export async function resumeRun(
+  saved: PlaySession,
+): Promise<{ session: PlaySession; playedMs: number }> {
+  const token = signedInToken();
+  if (!token) throw new ApiError(t("Sign in to continue this run."), { code: "unauthorized" });
+  const response = await restMutate("rpc/resume_run", "POST", token, {
+    p_session_id: saved.id,
+  });
+  const row = ((await response.json()) as ResumedRow[])[0];
+  if (!row) {
+    throw new ApiError(t("This run can no longer be continued."), { code: "run_not_resumable" });
+  }
+  forgetContinuable(row.game_slug);
+  return {
+    session: {
+      id: row.session_id,
+      gameSlug: row.game_slug,
+      rulesVersion: row.rules_version,
+      seed: row.seed,
+      tileCount: saved.tileCount,
+      startedAt: row.started_at,
+      expiresAt: row.expires_at,
+      ranked: true,
+    },
+    playedMs: Math.max(0, row.played_ms),
+  };
 }
 
 /**
