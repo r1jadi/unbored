@@ -267,12 +267,14 @@ paths:
     post:
       operationId: signIn
       tags: [auth]
-      summary: Sign in with an email and password
+      summary: Sign in with an email or username, and a password
       description: |
-        Verifies the credential against Supabase Auth and returns the session.
+        Verifies the credential against Supabase Auth and returns the session. The
+        body names either an email or a username; if it has both, the email is used.
 
-        A wrong password and an unknown address answer identically, and the reason
-        is never echoed: nothing here reveals whether an account exists.
+        A wrong password, an unknown address and an unknown username answer
+        identically, and the reason is never echoed: nothing here reveals whether an
+        account exists. The address behind a username is never returned.
       security: []
       x-status: available
       requestBody:
@@ -282,9 +284,13 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [email, password]
+              required: [password]
+              anyOf:
+                - required: [email]
+                - required: [username]
               properties:
                 email: { type: string, format: email, minLength: 3, maxLength: 254 }
+                username: { type: string, minLength: 1, maxLength: 254 }
                 password: { type: string, minLength: 1, maxLength: 72 }
       responses:
         "200":

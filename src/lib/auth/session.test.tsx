@@ -137,6 +137,15 @@ describe("signIn", () => {
     expect(getAccessToken()).toBe("access-token-1");
   });
 
+  it("sends a username as a username, and never as an email", async () => {
+    const spy = mockFetch(() => jsonResponse(sessionPayload()));
+
+    await signIn("player_one", "correct-horse");
+
+    expect(requestOf(spy).body).toEqual({ username: "player_one", password: "correct-horse" });
+    expect(getAuthState().status).toBe("authenticated");
+  });
+
   it("stays anonymous and surfaces the envelope when the credential is wrong", async () => {
     mockFetch(() => errorResponse(401, "unauthorized", "That email and password do not match."));
 

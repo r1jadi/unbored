@@ -1507,7 +1507,7 @@ reset role;
 \set chain_session       'dddddddd-1111-4111-8111-dddddddddddd'
 \set chain_loss_session  'dddddddd-2222-4222-8222-dddddddddddd'
 \set chain_guest_session 'dddddddd-4444-4444-8444-dddddddddddd'
-\set chain_old_session   'dddddddd-5555-4555-8555-dddddddddddd'
+\set chain_old_session   'fafafafa-7777-4777-8777-fafafafafafa'
 \set chain_endless_session      'dddddddd-3333-4333-8333-dddddddddddd'
 \set chain_endless_open_session 'dddddddd-6666-4666-8666-dddddddddddd'
 \set memory_session       'eeeeeeee-1111-4111-8111-eeeeeeeeeeee'
@@ -3398,7 +3398,7 @@ select rls_test.raises(
   '22023', 'a ragged Chain action list is a request error, not a scored run'
 );
 select rls_test.says(
-  $$public.complete_chain_run('dddddddd-5555-4555-8555-dddddddddddd'::uuid, array[0], 0, 45000)$$,
+  $$public.complete_chain_run('fafafafa-7777-4777-8777-fafafafafafa'::uuid, array[0], 0, 45000)$$,
   'wrong_rules', 'a Chain session pinned to other rules is refused by its own verifier'
 );
 -- The loss is a recorded run, not a discarded one: three correct taps, two
@@ -5126,6 +5126,219 @@ select rls_test.ok(
 
 delete from auth.users
  where id in ('bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb', 'cccccccc-1111-4111-8111-cccccccccccc');
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Profile privacy: profile_showcase applies the player's own choices
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Dave's fixture: one verified score on a published game, and no preference row.
+insert into public.game_sessions (id, game_id, user_id, completed_at, verified_score, verified_digest) values
+  ('f1f1f1f1-2026-4120-8720-f1f1f1f1f1f1', 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', '44444444-4444-4444-8444-444444444444', now(), 77, repeat('a', 32));
+insert into public.scores (session_id, game_id, user_id, score) values
+  ('f1f1f1f1-2026-4120-8720-f1f1f1f1f1f1', 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', '44444444-4444-4444-8444-444444444444', 77);
+
+create function rls_test.showcase(p_user_id uuid) returns jsonb
+language sql as $$ select public.profile_showcase(p_user_id) $$;
+grant execute on function rls_test.showcase(uuid) to anon, authenticated;
+
+set local role anon;
+select set_config('request.jwt.claims', '', true);
+select rls_test.ok(
+  (select s->>'private' = 'false' and s->>'scores_visible' = 'true' and s->>'recent_visible' = 'true'
+      and s->'scores'->0->>'score' = '77' and jsonb_array_length(s->'recent') = 1
+     from rls_test.showcase('44444444-4444-4444-8444-444444444444') s),
+  'a player with no preference row shows a public profile with scores and recent games'
+);
+reset role;
+
+insert into public.user_preferences (user_id, private_account)
+  values ('44444444-4444-4444-8444-444444444444', true);
+
+set local role anon;
+select rls_test.ok(
+  (select s->>'private' = 'true' and s->>'scores_visible' = 'true' and s->>'recent_visible' = 'false'
+      and s->'scores'->0->>'score' = '77' and jsonb_array_length(s->'recent') = 0
+     from rls_test.showcase('44444444-4444-4444-8444-444444444444') s),
+  'a private profile can still show its scores, and keeps its recent games'
+);
+reset role;
+
+update public.user_preferences set show_profile_scores = false
+ where user_id = '44444444-4444-4444-8444-444444444444';
+
+set local role anon;
+select rls_test.ok(
+  (select s->>'scores_visible' = 'false' and jsonb_array_length(s->'scores') = 0
+     from rls_test.showcase('44444444-4444-4444-8444-444444444444') s),
+  'a player who hides their scores returns none to a visitor'
+);
+reset role;
+
+update public.user_preferences set private_account = false
+ where user_id = '44444444-4444-4444-8444-444444444444';
+
+set local role anon;
+select rls_test.ok(
+  (select s->>'private' = 'false' and s->>'scores_visible' = 'false' and jsonb_array_length(s->'scores') = 0
+      and jsonb_array_length(s->'recent') = 1
+     from rls_test.showcase('44444444-4444-4444-8444-444444444444') s),
+  'a public profile can hide its scores and still show recent games'
+);
+reset role;
+
+-- The owner always sees their own, whatever they show others.
+select set_config('request.jwt.claims',
+  json_build_object('sub', '44444444-4444-4444-8444-444444444444', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.ok(
+  (select s->>'scores_visible' = 'true' and jsonb_array_length(s->'scores') = 1
+     from rls_test.showcase('44444444-4444-4444-8444-444444444444') s),
+  'a player always sees their own scores in their showcase'
+);
+reset role;
+
+-- A blocked viewer gets nothing, in the same shape as a private profile.
+update public.user_preferences set show_profile_scores = true
+ where user_id = '44444444-4444-4444-8444-444444444444';
+insert into public.blocked_users (blocker_id, blocked_id)
+  values ('44444444-4444-4444-8444-444444444444', '55555555-5555-4555-8555-555555555555');
+select set_config('request.jwt.claims',
+  json_build_object('sub', '55555555-5555-4555-8555-555555555555', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.ok(
+  (select s->>'private' = 'true' and jsonb_array_length(s->'scores') = 0 and jsonb_array_length(s->'recent') = 0
+     from rls_test.showcase('44444444-4444-4444-8444-444444444444') s),
+  'a viewer the player blocked sees none of their showcase'
+);
+select rls_test.visible(
+  $$select user_id from public.user_preferences where user_id = '44444444-4444-4444-8444-444444444444'$$, 0,
+  'the showcase does not open up another player''s preference row'
+);
+reset role;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- "Show on leaderboards": an opted-out player leaves the boards
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- A board of its own, so nothing above decides the ranks: Carol on top with 900,
+-- Bob behind her with 500. Carol also has scores in three games for the all-games
+-- board, which is what puts her on it.
+insert into public.games (id, owner_id, slug, title, status, published_at) values
+  ('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f1', '11111111-1111-4111-8111-111111111111', 'fixture-opt-out-a', 'Opt Out A', 'published', now()),
+  ('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', '11111111-1111-4111-8111-111111111111', 'fixture-opt-out-b', 'Opt Out B', 'published', now()),
+  ('f2f2f2f2-2026-4120-8720-f2f2f2f2f2f3', '11111111-1111-4111-8111-111111111111', 'fixture-opt-out-c', 'Opt Out C', 'published', now());
+insert into public.game_sessions (id, game_id, user_id, completed_at, verified_score, verified_digest) values
+  ('f3f3f3f3-2026-4120-8720-f3f3f3f3f3f1', 'f2f2f2f2-2026-4120-8720-f2f2f2f2f2f1', '33333333-3333-4333-8333-333333333333', now(), 900, repeat('a', 32)),
+  ('f3f3f3f3-2026-4120-8720-f3f3f3f3f3f2', 'f2f2f2f2-2026-4120-8720-f2f2f2f2f2f2', '33333333-3333-4333-8333-333333333333', now(), 900, repeat('a', 32)),
+  ('f3f3f3f3-2026-4120-8720-f3f3f3f3f3f3', 'f2f2f2f2-2026-4120-8720-f2f2f2f2f2f3', '33333333-3333-4333-8333-333333333333', now(), 900, repeat('a', 32)),
+  ('f3f3f3f3-2026-4120-8720-f3f3f3f3f3f4', 'f2f2f2f2-2026-4120-8720-f2f2f2f2f2f1', '22222222-2222-4222-8222-222222222222', now(), 500, repeat('a', 32));
+insert into public.scores (session_id, game_id, user_id, score)
+  select id, game_id, user_id, verified_score from public.game_sessions
+   where game_id::text like 'f2f2f2f2-2026-%';
+
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+set local role anon;
+select rls_test.ok(
+  (select array_agg(score order by rank) = array[900, 500]::bigint[]
+     from public.game_leaderboard('fixture-opt-out-a', null, 10, 0)),
+  'with nobody opted out, the board lists every player'
+);
+select rls_test.visible(
+  $$select * from public.overall_leaderboard(null, 100, 0) where user_id = '33333333-3333-4333-8333-333333333333'$$, 1,
+  'with nobody opted out, the all-games board lists a player rated in three games'
+);
+reset role;
+
+insert into public.user_preferences (user_id, show_on_leaderboards)
+  values ('33333333-3333-4333-8333-333333333333', false)
+  on conflict (user_id) do update set show_on_leaderboards = excluded.show_on_leaderboards;
+
+set local role anon;
+select rls_test.ok(
+  (select count(*) = 1 and min(rank) = 1 and min(score) = 500
+     from public.game_leaderboard('fixture-opt-out-a', null, 10, 0)),
+  'a player who opts out leaves the board, and the player behind them moves up'
+);
+select rls_test.ok(
+  (select rank = 1 and score = 500
+     from public.game_standing('fixture-opt-out-a', '22222222-2222-4222-8222-222222222222', null)),
+  'another player''s standing no longer counts the player who opted out'
+);
+select rls_test.ok(
+  (select rank = 1 and score = 900
+     from public.game_standing('fixture-opt-out-a', '33333333-3333-4333-8333-333333333333', null)),
+  'a player who opted out keeps their own standing'
+);
+select rls_test.visible(
+  $$select * from public.overall_leaderboard(null, 100, 0) where user_id = '33333333-3333-4333-8333-333333333333'$$, 0,
+  'a player who opts out leaves the all-games board'
+);
+select rls_test.ok(
+  (select games = 3 and rank is not null
+     from public.overall_standing('33333333-3333-4333-8333-333333333333', null)),
+  'a player who opted out keeps their own all-games standing'
+);
+select rls_test.denied(
+  $$select user_id from public.user_preferences$$,
+  'reading the boards does not open up anyone''s preferences'
+);
+reset role;
+
+-- Secret and draft games stay off the boards now the functions run as definer.
+set local role anon;
+select rls_test.visible($$select * from public.game_leaderboard('fixture-draft', null, 10, 0)$$, 0,
+  'a draft game still has no public board'
+);
+reset role;
+
+-- Turning it back on restores the player, in their old place.
+update public.user_preferences set show_on_leaderboards = true
+ where user_id = '33333333-3333-4333-8333-333333333333';
+set local role anon;
+select rls_test.ok(
+  (select array_agg(score order by rank) = array[900, 500]::bigint[]
+     from public.game_leaderboard('fixture-opt-out-a', null, 10, 0)),
+  'opting back in restores the player and their scores'
+);
+reset role;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Username sign-in: a public name must never turn into a private address
+-- ─────────────────────────────────────────────────────────────────────────────
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('f4f4f4f4-2026-4120-8720-f4f4f4f4f4f4', 'named@example.com', '{"username":"named_player"}'::jsonb);
+
+set local role anon;
+select rls_test.denied(
+  $$select public.login_email_for_username('named_player')$$,
+  'an anonymous caller cannot turn a username into an email'
+);
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', :'alice', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.denied(
+  $$select public.login_email_for_username('named_player')$$,
+  'a signed-in player cannot turn a username into an email'
+);
+reset role;
+
+set local role service_role;
+select rls_test.ok(
+  public.login_email_for_username('named_player') = 'named@example.com',
+  'the service role can resolve a username to its email'
+);
+select rls_test.ok(
+  public.login_email_for_username('NAMED_Player') = 'named@example.com',
+  'the lookup is case-insensitive, like the username itself'
+);
+select rls_test.ok(
+  public.login_email_for_username('nobody_here') is null,
+  'a username nobody holds resolves to nothing'
+);
+reset role;
 
 rollback;
 

@@ -104,6 +104,10 @@ type Result struct {
 
 // ── Transport ───────────────────────────────────────────────────────────────
 
+// rankReadTimeout bounds the read that follows a saved run, so it can never hold
+// up the result the player is waiting for.
+const rankReadTimeout = 2 * time.Second
+
 // Client calls the play functions through Supabase's Data API.
 type Client struct {
 	baseURL string
@@ -228,7 +232,35 @@ func (c *Client) CompleteRun(ctx context.Context, request CompleteRequest) (Resu
 		recorded := row.RecordedAt.UTC()
 		result.RecordedAt = &recorded
 	}
+	if result.Rank != nil && result.GameSlug != "" && request.AccessToken != "" {
+		if rank, ok := c.boardRank(ctx, result.GameSlug, request.AccessToken); ok {
+			result.Rank = &rank
+		}
+	}
 	return result, nil
+}
+
+// boardRank reads the caller's rank as the board itself ranks them. Each verifier
+// counts every score, but the board leaves out players who opted out of
+// leaderboards, so the verifier's number can disagree with the page it links to.
+//
+// The run is already saved by now, so this is best effort: a slow or failed read
+// keeps the verifier's rank rather than failing a run that was recorded.
+func (c *Client) boardRank(ctx context.Context, gameSlug, accessToken string) (int64, bool) {
+	ctx, cancel := context.WithTimeout(ctx, rankReadTimeout)
+	defer cancel()
+
+	var rows []struct {
+		Rank *int64 `json:"rank"`
+	}
+	payload := map[string]any{"p_game_slug": gameSlug}
+	if err := c.rpc(ctx, "board-rank", "my_game_stats", payload, accessToken, &rows); err != nil {
+		return 0, false
+	}
+	if len(rows) == 0 || rows[0].Rank == nil {
+		return 0, false
+	}
+	return *rows[0].Rank, true
 }
 
 // completeFunction names the verifier for a pinned rules version. The version

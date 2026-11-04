@@ -74,14 +74,19 @@ export function Field({
   id,
   label,
   hint,
+  description,
   error,
   ...props
 }: React.ComponentProps<typeof Input> & {
   id: string;
   label: string;
+  /** Something short beside the label, like a link. It shares the label's row. */
   hint?: ReactNode;
+  /** A sentence about the field, drawn under the input. */
+  description?: string;
   error?: string;
 }) {
+  const describedBy = [description && `${id}-desc`, error && `${id}-err`].filter(Boolean).join(" ");
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
@@ -91,10 +96,15 @@ export function Field({
       <Input
         id={id}
         aria-invalid={!!error}
-        aria-describedby={error ? `${id}-err` : undefined}
+        aria-describedby={describedBy || undefined}
         className="h-12 rounded-lg bg-surface text-base md:text-sm"
         {...props}
       />
+      {description && (
+        <p id={`${id}-desc`} className="text-xs text-muted-foreground">
+          {description}
+        </p>
+      )}
       {error && (
         <p id={`${id}-err`} className="text-xs text-destructive">
           {error}
@@ -104,7 +114,10 @@ export function Field({
   );
 }
 
-export function SocialButtons({ next }: { next?: string } = {}) {
+export function SocialButtons({
+  next,
+  divider = t("or with email"),
+}: { next?: string; divider?: string } = {}) {
   return (
     <>
       <div className="grid gap-2">
@@ -125,7 +138,7 @@ export function SocialButtons({ next }: { next?: string } = {}) {
       </div>
       <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
-        {t("or with email")}
+        {divider}
         <span className="h-px flex-1 bg-border" />
       </div>
     </>

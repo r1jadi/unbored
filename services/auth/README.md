@@ -24,7 +24,7 @@ is authoritative and marks every one of these `x-status: available`.
 | ------ | -------------------------- | --------------------------------------- | ------- | ---------------------------------------------- |
 | `POST` | `/auth/sign-up`            | public                                  | `201`   | `POST /auth/v1/signup`                         |
 | `GET`  | `/auth/username-available` | public                                  | `200`   | `GET /rest/v1/profiles` (availability)         |
-| `POST` | `/auth/sign-in`            | public                                  | `200`   | `POST /auth/v1/token?grant_type=password`      |
+| `POST` | `/auth/sign-in`            | public                                  | `200`   | `POST /auth/v1/token?grant_type=password`, after `login_email_for_username` when the body names a username |
 | `POST` | `/auth/refresh`            | public                                  | `200`   | `POST /auth/v1/token?grant_type=refresh_token` |
 | `POST` | `/auth/session`            | public (verifies the token in the body) | `200`   | `GET /rest/v1/profiles` (onboarding state)     |
 | `GET`  | `/auth/session`            | authenticated                           | `200`   | `GET /rest/v1/profiles` (onboarding state)     |
@@ -67,11 +67,25 @@ token.
 | `SUPABASE_PUBLISHABLE_KEY`                                     | yes      | Presented to the Auth and Data APIs to identify the project. Not a secret — the browser is given the same value — but only the server needs this copy |
 | `SUPABASE_JWT_AUDIENCE`                                        | no       | Defaults to `authenticated`                                                                                                                           |
 | `AUTH_RATE_LIMIT_REQUESTS_PER_MINUTE`, `AUTH_RATE_LIMIT_BURST` | no       | Credential budget, per client and per account. Defaults `10` and `5`                                                                                  |
+| `SUPABASE_SECRET_KEY` (`SUPABASE_SERVICE_ROLE_KEY` legacy)     | no       | Signing in with a username. Used for that one lookup and nothing else. Without it a username sign-in answers `503`, and email sign-in still works     |
 
-Not needed, and deliberately not read: `SUPABASE_SECRET_KEY`,
-`SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_JWT_SECRET`. If no publishable key is
-configured the service still boots, serves its probes, and answers `503` on the
-credential endpoints — a diagnosable state rather than a crash loop.
+Not needed, and deliberately not read: `SUPABASE_JWT_SECRET`. If no publishable
+key is configured the service still boots, serves its probes, and answers `503`
+on the credential endpoints — a diagnosable state rather than a crash loop.
+
+### Signing in with a username
+
+Supabase Auth only checks a password against an email, so `POST /auth/sign-in`
+with `{ username, password }` first resolves the address through
+`login_email_for_username`, which only the service role can call. A username is
+public and an address is not, so:
+
+- The address goes no further than the password grant. It is never logged, and it
+  is never in a response to anyone who has not proved the password.
+- A name nobody holds gets the same `401` as a wrong password. How long the answer
+  takes can still differ, which gives nothing away: usernames are public anyway.
+- An attempt spends the client's bucket, the username's bucket and the account's
+  email bucket, so switching between the two buys no extra guesses.
 
 ## Running it
 

@@ -56,6 +56,10 @@ type fakeBackend struct {
 	userErr          error
 	markOnboardedErr error
 
+	emailForUsername map[string]string
+	emailLookupErr   error
+	emailLookups     []string
+
 	signInEmail       string
 	signUpUsername    string
 	signUpDisplayName string
@@ -78,6 +82,13 @@ func (f *fakeBackend) SignUp(_ context.Context, _, _, username, displayName stri
 	f.signUpDisplayName = displayName
 	f.signUpMarketing = len(marketing) > 0 && marketing[0]
 	return f.signUpResult, f.signUpErr
+}
+
+func (f *fakeBackend) EmailForUsername(_ context.Context, username string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.emailLookups = append(f.emailLookups, username)
+	return f.emailForUsername[username], f.emailLookupErr
 }
 
 func (f *fakeBackend) UsernameAvailable(_ context.Context, username string) (bool, error) {
@@ -568,6 +579,124 @@ func TestSignInWithInvalidCredentialsIsUnauthorized(t *testing.T) {
 	}
 	if code := errorCode(t, response); code != "unauthorized" {
 		t.Errorf("error code = %q, want unauthorized", code)
+	}
+}
+
+func TestSignInWithAUsernameChecksThePasswordAgainstItsEmail(t *testing.T) {
+	backend := &fakeBackend{
+		emailForUsername: map[string]string{"rijad": "owner@example.com"},
+		signInResult:     supabaseauth.Result{},
+	}
+	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
+
+	// Uppercase is not an error: the name is normalized, as it was at sign-up.
+	response := h.do(t, http.MethodPost, SignInPath, `{"username":" Rijad ","password":"a-password"}`, nil)
+	response.Body.Close()
+
+	if len(backend.emailLookups) != 1 || backend.emailLookups[0] != "rijad" {
+		t.Fatalf("lookups = %v, want the normalized name once", backend.emailLookups)
+	}
+	if backend.signInEmail != "owner@example.com" {
+		t.Fatalf("password checked against %q, want the account's address", backend.signInEmail)
+	}
+}
+
+func TestSignInAnswersAnUnknownUsernameLikeAWrongPassword(t *testing.T) {
+	wrongPassword := &fakeBackend{
+		emailForUsername: map[string]string{"rijad": "owner@example.com"},
+		signInErr:        &supabaseauth.Error{Op: "sign-in", Status: 400, Code: supabaseauth.CodeInvalidCredentials},
+	}
+	unknownName := &fakeBackend{}
+
+	answers := make([]string, 0, 3)
+	for _, tc := range []struct {
+		backend *fakeBackend
+		body    string
+	}{
+		{wrongPassword, `{"username":"rijad","password":"wrong"}`},
+		{unknownName, `{"username":"nobody_here","password":"wrong"}`},
+		{unknownName, `{"username":"not a valid name!","password":"wrong"}`},
+	} {
+		h := newHarness(t, harnessOptions{backend: tc.backend, withAuth: true})
+		response := h.do(t, http.MethodPost, SignInPath, tc.body, nil)
+		raw, _ := io.ReadAll(response.Body)
+		response.Body.Close()
+		if response.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("%s: status = %d, want 401", tc.body, response.StatusCode)
+		}
+		var decoded struct {
+			Error struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal(raw, &decoded); err != nil {
+			t.Fatalf("decoding %s: %v", raw, err)
+		}
+		answers = append(answers, decoded.Error.Code+"|"+decoded.Error.Message)
+		// The address must never reach a caller who has not proved the password.
+		if strings.Contains(string(raw), "owner@example.com") {
+			t.Fatalf("the response gave away the address: %s", raw)
+		}
+	}
+	if answers[0] != answers[1] || answers[0] != answers[2] {
+		t.Fatalf("answers differ, which reveals whether an account exists: %q", answers)
+	}
+	if unknownName.signInEmail != "" {
+		t.Fatalf("a password was checked against %q for an unknown name", unknownName.signInEmail)
+	}
+	if len(unknownName.emailLookups) != 1 {
+		t.Fatalf("lookups = %v, want none for a name that cannot exist", unknownName.emailLookups)
+	}
+}
+
+func TestSignInWithAUsernameWithoutTheSecretKeyPointsAtEmail(t *testing.T) {
+	backend := &fakeBackend{emailLookupErr: supabaseauth.ErrUsernameLookupUnavailable}
+	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
+
+	response := h.do(t, http.MethodPost, SignInPath, `{"username":"rijad","password":"a-password"}`, nil)
+	if response.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", response.StatusCode)
+	}
+	response.Body.Close()
+	if backend.signInEmail != "" {
+		t.Fatal("no password should be checked when the lookup cannot run")
+	}
+}
+
+func TestSignInPrefersAnEmailAndDoesNotLookUpAUsername(t *testing.T) {
+	backend := &fakeBackend{}
+	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
+
+	response := h.do(t, http.MethodPost, SignInPath, `{"email":"player@example.com","password":"a-password"}`, nil)
+	response.Body.Close()
+
+	if len(backend.emailLookups) != 0 || backend.signInEmail != "player@example.com" {
+		t.Fatalf("lookups = %v, signed in as %q", backend.emailLookups, backend.signInEmail)
+	}
+}
+
+func TestSignInNeedsAnEmailOrAUsername(t *testing.T) {
+	h := newHarness(t, harnessOptions{backend: &fakeBackend{}, withAuth: true})
+
+	response := h.do(t, http.MethodPost, SignInPath, `{"password":"a-password"}`, nil)
+	if response.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", response.StatusCode)
+	}
+	response.Body.Close()
+}
+
+func TestSignUpStillRequiresAnEmailWhenAUsernameIsGiven(t *testing.T) {
+	backend := &fakeBackend{usernameAvailable: true}
+	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
+
+	response := h.do(t, http.MethodPost, SignUpPath, `{"username":"rijad","password":"a-long-password"}`, nil)
+	if response.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", response.StatusCode)
+	}
+	response.Body.Close()
+	if backend.signUpHits != 0 {
+		t.Fatal("an account was created with no email")
 	}
 }
 

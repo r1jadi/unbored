@@ -54,6 +54,78 @@ func stubServer(t *testing.T, handler http.HandlerFunc) (*Client, *[]recorded) {
 	return client, requests
 }
 
+func TestEmailForUsernameIsTheOnlyCallThatUsesTheSecretKey(t *testing.T) {
+	var seen http.Header
+	var path string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = r.Header.Clone()
+		path = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`"owner@example.com"`))
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := New(&config.Config{Supabase: config.Supabase{
+		ProjectURL: server.URL, PublishableKey: testPublishableKey, SecretKey: " sb_secret_test ",
+	}})
+	if err != nil {
+		t.Fatalf("building client: %v", err)
+	}
+
+	email, err := client.EmailForUsername(context.Background(), "rijad")
+	if err != nil || email != "owner@example.com" {
+		t.Fatalf("email = %q, err = %v", email, err)
+	}
+	if path != "/rest/v1/rpc/login_email_for_username" {
+		t.Fatalf("path = %s, want the lookup function", path)
+	}
+	if seen.Get("apikey") != "sb_secret_test" || seen.Get("Authorization") != "Bearer sb_secret_test" {
+		t.Fatalf("headers = %v, want the secret key", seen)
+	}
+
+	// Everything else keeps the publishable key, with the same client.
+	if _, err := client.UsernameAvailable(context.Background(), "rijad"); err == nil || seen.Get("apikey") != testPublishableKey {
+		// The stub's bare string cannot decode as rows, so an error is expected here;
+		// the point of this call is the key it was sent with.
+		t.Fatalf("apikey = %q, err = %v, want the publishable key", seen.Get("apikey"), err)
+	}
+	if seen.Get("Authorization") != "" {
+		t.Fatalf("Authorization = %q, want none", seen.Get("Authorization"))
+	}
+}
+
+func TestEmailForUsernameReportsNoMatchAsEmpty(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`null`))
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := New(&config.Config{Supabase: config.Supabase{
+		ProjectURL: server.URL, PublishableKey: testPublishableKey, SecretKey: "sb_secret_test",
+	}})
+	if err != nil {
+		t.Fatalf("building client: %v", err)
+	}
+
+	email, err := client.EmailForUsername(context.Background(), "nobody_here")
+	if err != nil || email != "" {
+		t.Fatalf("email = %q, err = %v, want no match", email, err)
+	}
+}
+
+func TestEmailForUsernameMakesNoCallWithoutTheSecretKey(t *testing.T) {
+	client, requests := stubServer(t, func(http.ResponseWriter, *http.Request) {})
+
+	_, err := client.EmailForUsername(context.Background(), "rijad")
+	if !errors.Is(err, ErrUsernameLookupUnavailable) {
+		t.Fatalf("err = %v, want ErrUsernameLookupUnavailable", err)
+	}
+	if len(*requests) != 0 {
+		t.Fatalf("requests = %d, want none", len(*requests))
+	}
+}
+
 func writeJSON(t *testing.T, w http.ResponseWriter, status int, payload string) {
 	t.Helper()
 	w.Header().Set("Content-Type", "application/json")

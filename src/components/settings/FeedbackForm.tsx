@@ -62,10 +62,10 @@ const CATEGORIES: {
  * `public.feedback` as the signed-in player; guests are asked to sign in so
  * the form cannot be used to flood the table.
  */
-export function FeedbackForm() {
+export function FeedbackForm({ initialCategory = "idea" }: { initialCategory?: FeedbackCategory }) {
   const auth = useAuth();
   const [mood, setMood] = useState<number | null>(null);
-  const [category, setCategory] = useState<FeedbackCategory>("idea");
+  const [category, setCategory] = useState<FeedbackCategory>(initialCategory);
   const [message, setMessage] = useState("");
   const [includeDevice, setIncludeDevice] = useState(true);
   const [sending, setSending] = useState(false);

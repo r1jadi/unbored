@@ -99,7 +99,10 @@ func (e *Error) Unwrap() error { return e.cause }
 type Client struct {
 	baseURL string
 	apiKey  string
-	http    *http.Client
+	// secret is used by EmailForUsername and nothing else. Every other call runs
+	// with the publishable key, as the caller or anonymously.
+	secret string
+	http   *http.Client
 }
 
 // New builds the client. It refuses to start without the project URL and the
@@ -112,6 +115,7 @@ func New(cfg *config.Config) (*Client, error) {
 	return &Client{
 		baseURL: strings.TrimRight(cfg.Supabase.ProjectURL, "/"),
 		apiKey:  cfg.Supabase.PublishableKey,
+		secret:  strings.TrimSpace(cfg.Supabase.SecretKey),
 		// Bounded so a slow Supabase never holds a request (and a Vercel
 		// function) open.
 		http: &http.Client{Timeout: 10 * time.Second},
@@ -299,6 +303,10 @@ func (e sessionEnvelope) result() Result {
 }
 
 func (c *Client) do(ctx context.Context, op, method, path string, payload any, accessToken string) (*http.Response, error) {
+	return c.send(ctx, op, method, path, payload, c.apiKey, accessToken)
+}
+
+func (c *Client) send(ctx context.Context, op, method, path string, payload any, apiKey, accessToken string) (*http.Response, error) {
 	var body io.Reader
 	if payload != nil {
 		encoded, err := json.Marshal(payload)
@@ -313,7 +321,7 @@ func (c *Client) do(ctx context.Context, op, method, path string, payload any, a
 	if err != nil {
 		return nil, &Error{Op: op, cause: err}
 	}
-	request.Header.Set("apikey", c.apiKey)
+	request.Header.Set("apikey", apiKey)
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("X-Client-Info", "unbored-auth-service")
 	if payload != nil {

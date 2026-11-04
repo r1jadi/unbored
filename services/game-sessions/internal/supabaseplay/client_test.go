@@ -31,10 +31,13 @@ func newRecorder(t *testing.T, status int, body string) *recorder {
 	rec := &recorder{status: status, body: body}
 	rec.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, _ := io.ReadAll(r.Body)
-		rec.path = r.URL.Path
-		rec.method = r.Method
-		rec.header = r.Header.Clone()
-		rec.raw = string(raw)
+		// The first request is the one under test; a saved run's rank read follows it.
+		if rec.path == "" {
+			rec.path = r.URL.Path
+			rec.method = r.Method
+			rec.header = r.Header.Clone()
+			rec.raw = string(raw)
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(rec.status)
@@ -193,6 +196,86 @@ func TestCompleteRunPostsTheRun(t *testing.T) {
 	}
 	if result.RecordedAt == nil {
 		t.Fatal("result carries no recorded time")
+	}
+}
+
+// rankServer answers the verifier with a rank of 5, and the board's own rank read
+// with whatever the test gives it.
+func rankServer(t *testing.T, status int, rankBody string) (*Client, *[]string) {
+	t.Helper()
+	var paths []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/rest/v1/rpc/my_game_stats" {
+			w.WriteHeader(status)
+			_, _ = io.WriteString(w, rankBody)
+			return
+		}
+		_, _ = io.WriteString(w, strings.Replace(resultRow, `"board_rank":1`, `"board_rank":5`, 1))
+	}))
+	t.Cleanup(server.Close)
+	cfg := &config.Config{}
+	cfg.Supabase.ProjectURL = server.URL
+	cfg.Supabase.PublishableKey = "sb_publishable_test_value"
+	client, err := New(cfg)
+	if err != nil {
+		t.Fatalf("building client: %v", err)
+	}
+	return client, &paths
+}
+
+func TestCompleteRunReportsTheBoardsOwnRank(t *testing.T) {
+	// Two players above this one opted out of leaderboards: the verifier counts
+	// them, the board does not, and the result has to match the board.
+	client, _ := rankServer(t, http.StatusOK, `[{"rank":3}]`)
+
+	result, err := client.CompleteRun(context.Background(), CompleteRequest{
+		SessionID: "s", Actions: []int32{0}, AccessToken: "caller-token-1",
+	})
+	if err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+	if result.Rank == nil || *result.Rank != 3 {
+		t.Fatalf("rank = %v, want the board's 3", result.Rank)
+	}
+}
+
+func TestCompleteRunKeepsTheVerifiersRankWhenTheReadFails(t *testing.T) {
+	// The run is saved by then, so a failed read must not fail the submission.
+	for name, tc := range map[string]struct {
+		status int
+		body   string
+	}{
+		"an error":  {http.StatusInternalServerError, `{"code":"XX000"}`},
+		"no rows":   {http.StatusOK, `[]`},
+		"null rank": {http.StatusOK, `[{"rank":null}]`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, _ := rankServer(t, tc.status, tc.body)
+			result, err := client.CompleteRun(context.Background(), CompleteRequest{
+				SessionID: "s", Actions: []int32{0}, AccessToken: "caller-token-1",
+			})
+			if err != nil {
+				t.Fatalf("CompleteRun: %v", err)
+			}
+			if result.Rank == nil || *result.Rank != 5 {
+				t.Fatalf("rank = %v, want the verifier's 5", result.Rank)
+			}
+		})
+	}
+}
+
+func TestCompleteRunMakesNoRankReadForAGuest(t *testing.T) {
+	client, paths := rankServer(t, http.StatusOK, `[{"rank":3}]`)
+
+	if _, err := client.CompleteRun(context.Background(), CompleteRequest{
+		SessionID: "s", Actions: []int32{0},
+	}); err != nil {
+		t.Fatalf("CompleteRun: %v", err)
+	}
+	if len(*paths) != 1 {
+		t.Fatalf("requests = %v, want only the verifier", *paths)
 	}
 }
 

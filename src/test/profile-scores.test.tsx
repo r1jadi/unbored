@@ -6,6 +6,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { act, render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it } from "vitest";
 
 import { ProfileView } from "@/components/social/ProfileView";
@@ -33,7 +34,14 @@ const chain: Game = {
   runtime: "chain",
 };
 
-async function renderProfile() {
+async function renderProfile(
+  view: ComponentProps<typeof ProfileView> = {
+    self: true,
+    user: { username: "player", name: "Player" },
+    bestScores: { status: "ready", entries: [{ game: stack10, score: 55 }] },
+    recentlyPlayed: { status: "ready", games: [stack10, chain] },
+  },
+) {
   const root = createRootRoute();
   const paths = ["/", "/activity", "/saved", "/recent", "/login"];
   const router = createRouter({
@@ -41,14 +49,7 @@ async function renderProfile() {
       createRoute({
         getParentRoute: () => root,
         path: "/profile",
-        component: () => (
-          <ProfileView
-            self
-            user={{ username: "player", name: "Player" }}
-            bestScores={{ status: "ready", entries: [{ game: stack10, score: 55 }] }}
-            recentlyPlayed={{ status: "ready", games: [stack10, chain] }}
-          />
-        ),
+        component: () => <ProfileView {...view} />,
       }),
       ...paths.map((path) =>
         createRoute({ getParentRoute: () => root, path, component: () => <p>{path}</p> }),
@@ -91,5 +92,85 @@ describe("profile score tabs", () => {
     expect(screen.getByRole("link", { name: "Stack 10" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Don't Break the Chain" })).toBeInTheDocument();
     expect(screen.queryByText("No games played yet")).toBeNull();
+  });
+
+  it("lays the tabs out as a fixed grid, not a scroller", async () => {
+    await renderProfile();
+
+    const bar = screen.getByRole("tablist");
+    expect(bar.className).not.toMatch(/overflow/);
+    expect(bar.style.gridTemplateColumns).toContain("repeat(5");
+  });
+
+  it("tells the owner who can see the profile, with a link to change it", async () => {
+    await renderProfile({
+      self: true,
+      user: { username: "player", name: "Player", bio: "Still mine" },
+      visibility: { isPrivate: true, showScores: true },
+    });
+
+    expect(screen.getByRole("link", { name: /Private profile · Scores shown/ })).toHaveAttribute(
+      "href",
+      "/settings/privacy",
+    );
+    // A private profile hides things from visitors, never from its owner.
+    expect(screen.getByText("Still mine")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Recent" })).toBeInTheDocument();
+  });
+});
+
+describe("a visitor's view of a profile", () => {
+  const visitor = {
+    user: {
+      username: "player",
+      name: "Player",
+      bio: "A private bio",
+      stats: { followers: 3, following: 4 },
+    },
+    bestScores: { status: "ready", entries: [{ game: stack10, score: 55 }] },
+    recentlyPlayed: { status: "ready", games: [stack10] },
+  } satisfies ComponentProps<typeof ProfileView>;
+
+  it("shows a public profile's scores, without the viewer's own tabs", async () => {
+    await renderProfile({ ...visitor, visibility: { isPrivate: false, showScores: true } });
+
+    expect(screen.getByText("550")).toBeInTheDocument();
+    expect(screen.getByText("A private bio")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Activity" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Saved" })).toBeNull();
+  });
+
+  it("shows scores on a private profile when the player chose to", async () => {
+    await renderProfile({ ...visitor, visibility: { isPrivate: true, showScores: true } });
+
+    expect(screen.getByText("550")).toBeInTheDocument();
+    expect(screen.getByText("Private profile")).toBeInTheDocument();
+    expect(screen.queryByText("A private bio")).toBeNull();
+    expect(screen.queryByText("Followers")).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Recent" })).toBeNull();
+  });
+
+  it("shows nothing but the private notice when scores are hidden too", async () => {
+    await renderProfile({
+      ...visitor,
+      bestScores: { status: "hidden" },
+      recentlyPlayed: { status: "hidden" },
+      visibility: { isPrivate: true, showScores: false },
+    });
+
+    expect(screen.getByText("This profile is private")).toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByText("550")).toBeNull();
+  });
+
+  it("says scores are hidden on a public profile that hides them", async () => {
+    await renderProfile({
+      ...visitor,
+      bestScores: { status: "hidden" },
+      visibility: { isPrivate: false, showScores: false },
+    });
+
+    expect(screen.getByText("Scores are hidden")).toBeInTheDocument();
+    expect(screen.getByText("A private bio")).toBeInTheDocument();
   });
 });

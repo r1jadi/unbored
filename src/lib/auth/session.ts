@@ -979,11 +979,16 @@ export async function fetchLinkedProviders(): Promise<Array<{ provider: string }
     .filter((entry) => entry.provider !== "");
 }
 
-/** Exchanges an email and password for a session. */
-export function signIn(email: string, password: string): Promise<AuthSession> {
+/**
+ * Exchanges an email or username, and a password, for a session. A username can
+ * never contain an `@`, so that is what tells them apart.
+ */
+export function signIn(identifier: string, password: string): Promise<AuthSession> {
   return apiFetch<AuthSession>(Routes.signIn, {
     method: "POST",
-    body: { email, password },
+    body: identifier.includes("@")
+      ? { email: identifier, password }
+      : { username: identifier, password },
   }).then(adopt);
 }
 

@@ -3,7 +3,9 @@ export const sqApp: Record<string, string> = {
   // Shell and common
   "Continue with Google": "Vazhdo me Google",
   "Go back": "Kthehu",
+  "View profile picture": "Shiko foton e profilit",
   "or with email": "ose me email",
+  "or with your details": "ose me të dhënat e tua",
   "Short games. Real scores. Stay unbored.":
     "Lojëra të shkurtra. Rezultate të vërteta. Mos u mërzit.",
   "Unbored home": "Kreu i Unbored",
@@ -543,6 +545,9 @@ export const sqApp: Record<string, string> = {
     "Serveri nuk u arrit. Kontrollo lidhjen dhe provo sërish.",
   "Create account": "Krijo llogari",
   "Enter your email and password.": "Shkruaj email-in dhe fjalëkalimin.",
+  "Email or username": "Email ose emri i përdoruesit",
+  "Enter your email or username and password.":
+    "Shkruaj email-in ose emrin e përdoruesit dhe fjalëkalimin.",
   "Forgot password?": "Harrove fjalëkalimin?",
   "Hide password": "Fshih fjalëkalimin",
   "Log in to keep your scores and streaks.": "Hyr për të ruajtur rezultatet dhe seritë.",
@@ -795,8 +800,28 @@ export const sqApp: Record<string, string> = {
     "Preferencat e njoftimeve i përkasin llogarisë tënde.",
   "One email after every five new games, with how to play. Turn it off any time.":
     "Një email pas çdo pesë lojërash të reja, me mënyrën si luhen. Çaktivizoje kur të duash.",
-  "Only approved followers see your activity":
-    "Vetëm ndjekësit e miratuar e shohin aktivitetin tënd",
+  "Visitors only see your name and picture": "Vizitorët shohin vetëm emrin dhe foton tënde",
+  "Show my scores on my profile": "Shfaq rezultatet në profilin tim",
+  "Visitors see your best scores, even if your profile is private":
+    "Vizitorët shohin rezultatet e tua më të mira, edhe nëse profili është privat",
+  "Visitors see your recent games, unless your profile is private":
+    "Vizitorët shohin lojërat e tua të fundit, përveç nëse profili është privat",
+  "Public profile": "Profil publik",
+  "Scores shown": "Rezultatet të dukshme",
+  "Scores hidden": "Rezultatet të fshehura",
+  "This profile is private": "Ky profil është privat",
+  "@{username} has chosen to keep this profile private.":
+    "@{username} ka zgjedhur ta mbajë këtë profil privat.",
+  "Scores are hidden": "Rezultatet janë të fshehura",
+  "@{username} doesn't show scores on this profile.":
+    "@{username} nuk i shfaq rezultatet në këtë profil.",
+  "Recent games are hidden": "Lojërat e fundit janë të fshehura",
+  "@{username} doesn't show recently played games.":
+    "@{username} nuk i shfaq lojërat e luajtura së fundmi.",
+  "Couldn't load these scores": "Këto rezultate nuk mund të ngarkoheshin",
+  "@{username} has no verified scores yet.": "@{username} nuk ka ende rezultate të verifikuara.",
+  "@{username} hasn't played any scored games yet.":
+    "@{username} nuk ka luajtur ende asnjë lojë me rezultat.",
   "Open an issue": "Hap një çështje",
   "Open their profile or find them in Search and use Follow. Your Following feed shows published games by creators you follow.":
     "Hap profilin e tyre ose gjeji te Kërko dhe përdor Ndiq. Rrjedha e të ndjekurve tregon lojërat e publikuara nga krijuesit që ndjek.",
@@ -812,7 +837,7 @@ export const sqApp: Record<string, string> = {
   "Play sounds for moves, clears and the end of a run":
     "Luaj tinguj për lëvizjet, pastrimet dhe mbarimin e lojës",
   "Privacy choices belong to your account.": "Zgjedhjet e privatësisë i përkasin llogarisë tënde.",
-  "Private account": "Llogari private",
+  "Private profile": "Profil privat",
   Push: "Push",
   "Push notifications": "Njoftimet push",
   "Reduce motion": "Pakëso lëvizjen",
@@ -824,13 +849,15 @@ export const sqApp: Record<string, string> = {
   "Settings → Delete account explains the current process. Deletion removes your profile and social relationships; scores on public leaderboards are retained without attribution where required.":
     "Cilësimet → Fshi llogarinë shpjegon procesin aktual. Fshirja heq profilin dhe lidhjet sociale; rezultatet në renditjet publike ruhen pa emër aty ku kërkohet.",
   "Show on leaderboards": "Shfaq në renditje",
+  "Turn off to leave every game's board. Your scores are kept":
+    "Çaktivizoje për të dalë nga renditja e çdo loje. Rezultatet e tua ruhen",
   "Show recently played": "Shfaq të luajturat së fundmi",
   "Sign in to manage settings": "Identifikohu për të menaxhuar cilësimet",
   "Someone beats your score": "Dikush thyen rezultatin tënd",
   Sound: "Zëri",
   Source: "Burimi",
-  "Still stuck, or found a bug? Tell us on our issue tracker and we'll take a look.":
-    "Ende ke ngecur, apo gjete një gabim? Na thuaj te gjurmuesi i çështjeve dhe do t'i hedhim një sy.",
+  "Still stuck, or found a bug? Send us an issue report and we'll take a look.":
+    "Ende ke ngecur, apo gjete një gabim? Na dërgo një raport dhe do t'i hedhim një sy.",
   "This device": "Kjo pajisje",
   "Two-step verification is not implemented — it is not offered here rather than shown as a toggle that does nothing.":
     "Verifikimi me dy hapa nuk është zbatuar — nuk ofrohet këtu në vend që të shfaqet si çelës që s'bën asgjë.",

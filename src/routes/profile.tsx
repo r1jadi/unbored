@@ -1,8 +1,10 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { EmptyState, ErrorState } from "@/components/common";
 import { ProfileView, type ProfileHeader } from "@/components/social/ProfileView";
 import { Button } from "@/components/ui/button";
 import { seo } from "@/lib/seo";
+import { loadPreferences } from "@/lib/settings/preferences";
 import { useBestScores, useRecentlyPlayed } from "@/lib/social/engagement";
 import { useFollowCounts, type FollowCountsState } from "@/lib/social/follows";
 import {
@@ -36,6 +38,13 @@ function OwnProfile() {
   // from a hard-coded empty state that would contradict the leaderboard.
   const best = useBestScores();
   const recent = useRecentlyPlayed();
+  // Read fresh on every visit, so a change in Settings shows on returning here.
+  const preferences = useQuery({
+    queryKey: ["preferences", profile?.id],
+    queryFn: loadPreferences,
+    enabled: profile !== undefined,
+    staleTime: 0,
+  });
 
   return (
     <ProfileView
@@ -43,6 +52,12 @@ function OwnProfile() {
       loading={!profile && (state.status === "idle" || state.status === "loading")}
       user={profile ? header(profile, counts) : { username: "", name: "" }}
       fallback={profile ? undefined : absent(state)}
+      visibility={
+        preferences.data && {
+          isPrivate: preferences.data.privateAccount,
+          showScores: preferences.data.showProfileScores,
+        }
+      }
       bestScores={best}
       recentlyPlayed={recent}
     />

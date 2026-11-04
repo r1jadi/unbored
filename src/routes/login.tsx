@@ -35,13 +35,13 @@ function Login() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const email = String(form.get("email") ?? "").trim();
+    const identifier = String(form.get("identifier") ?? "").trim();
     const password = String(form.get("password") ?? "");
-    if (!email || !password) return setErr(t("Enter your email and password."));
+    if (!identifier || !password) return setErr(t("Enter your email or username and password."));
     setErr(undefined);
     setBusy(true);
     try {
-      await signIn(email, password);
+      await signIn(identifier, password);
       const destination = sanitizeNext(search.redirect);
       nav({ to: destination });
     } catch (error) {
@@ -64,14 +64,17 @@ function Login() {
         </>
       }
     >
-      <SocialButtons next={sanitizeNext(search.redirect)} />
+      <SocialButtons next={sanitizeNext(search.redirect)} divider={t("or with your details")} />
       <form className="space-y-4" onSubmit={submit}>
         <Field
-          id="email"
-          name="email"
-          type="email"
-          label={t("Email")}
-          autoComplete="email"
+          id="identifier"
+          name="identifier"
+          type="text"
+          label={t("Email or username")}
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           defaultValue={search.email ?? ""}
         />
         <div className="relative">

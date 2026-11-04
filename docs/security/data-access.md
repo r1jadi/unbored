@@ -79,6 +79,17 @@ moderator or admin role.
 - **Stamped facts.** `games.published_at` and `reports.resolved_by`/`resolved_at`
   are written by database triggers from the database clock and `auth.uid()`, so
   they cannot be forged by a request body.
+- **Profile privacy is a page rule, not a data rule.** `profile_showcase` (security
+  definer, callable by anon and authenticated) applies a player's private-profile,
+  scores and recent-games choices to their profile page, and returns nothing to a
+  viewer they blocked. It does not hide data: `scores`, `profiles` and `follows`
+  stay publicly readable through the Data API, because profile pages, follow lists
+  and direct reads are served from them.
+- **Leaderboard opt-out applies to the boards, not the rows.** `game_leaderboard`
+  and `overall_leaderboard` (security definer, because `user_preferences` is
+  owner-only) leave out a player who turned off "Show on leaderboards", before
+  ranking. `game_standing` and `overall_standing` still answer for that player,
+  and their rows stay readable in `scores`.
 - **Least data.** `profiles` exposes only public columns to the Data API;
   `analytics_events` is unreachable from the browser; lists are capped.
 

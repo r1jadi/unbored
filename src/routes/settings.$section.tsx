@@ -27,6 +27,9 @@ import { cn } from "@/lib/utils";
 import { resetConsent, setConsent, useConsent } from "@/lib/consent";
 
 export const Route = createFileRoute("/settings/$section")({
+  // `?category=bug` opens the feedback form on "Something broke" (Help → Open an issue).
+  validateSearch: (search: Record<string, unknown>): { category?: "bug" } =>
+    search["category"] === "bug" ? { category: "bug" } : {},
   head: ({ params }) => {
     const item = allSettings.find((s) => s.slug === params.section);
     const name = item ? t(item.title) : undefined;
@@ -218,7 +221,7 @@ const faq = [
   ],
 ];
 
-function Body({ section }: { section: string }) {
+function Body({ section, category }: { section: string; category?: "bug" }) {
   const auth = useAuth();
   const signedIn = auth.status === "authenticated";
   const { prefs, loading, error, update } = usePrefs();
@@ -255,20 +258,29 @@ function Body({ section }: { section: string }) {
           <Group title={t("Visibility")}>
             <Toggle
               id="p1"
-              label={t("Private account")}
-              desc={t("Only approved followers see your activity")}
+              label={t("Private profile")}
+              desc={t("Visitors only see your name and picture")}
               checked={prefs.privateAccount}
               onChange={(v) => void update({ ...prefs, privateAccount: v })}
             />
             <Toggle
+              id="p7"
+              label={t("Show my scores on my profile")}
+              desc={t("Visitors see your best scores, even if your profile is private")}
+              checked={prefs.showProfileScores}
+              onChange={(v) => void update({ ...prefs, showProfileScores: v })}
+            />
+            <Toggle
               id="p2"
               label={t("Show on leaderboards")}
+              desc={t("Turn off to leave every game's board. Your scores are kept")}
               checked={prefs.showOnLeaderboards}
               onChange={(v) => void update({ ...prefs, showOnLeaderboards: v })}
             />
             <Toggle
               id="p3"
               label={t("Show recently played")}
+              desc={t("Visitors see your recent games, unless your profile is private")}
               checked={prefs.showRecentlyPlayed}
               onChange={(v) => void update({ ...prefs, showRecentlyPlayed: v })}
             />
@@ -463,7 +475,7 @@ function Body({ section }: { section: string }) {
     case "blocked":
       return <BlockedSection signedIn={signedIn} />;
     case "feedback":
-      return <FeedbackForm />;
+      return <FeedbackForm initialCategory={category} />;
     case "help":
       return (
         <>
@@ -480,14 +492,16 @@ function Body({ section }: { section: string }) {
           </Group>
           <div className="mt-4 px-4 md:px-0">
             <p className="text-sm text-muted-foreground">
-              {t(
-                "Still stuck, or found a bug? Tell us on our issue tracker and we'll take a look.",
-              )}
+              {t("Still stuck, or found a bug? Send us an issue report and we'll take a look.")}
             </p>
             <Button asChild size="lg" className="mt-3 w-full md:w-auto">
-              <a href="https://github.com/r1jadi/unbored/issues" target="_blank" rel="noreferrer">
+              <Link
+                to="/settings/$section"
+                params={{ section: "feedback" }}
+                search={{ category: "bug" }}
+              >
                 {t("Open an issue")}
-              </a>
+              </Link>
             </Button>
           </div>
         </>
@@ -508,16 +522,6 @@ function Body({ section }: { section: string }) {
       return (
         <Group>
           <Row label={t("Version")} value={import.meta.env?.["VITE_APP_VERSION"] || "0.1.0"} />
-          <Row
-            label={t("Source")}
-            action={
-              <Button asChild size="sm" variant="ghost">
-                <a href="https://github.com/r1jadi/unbored" target="_blank" rel="noreferrer">
-                  {t("View")}
-                </a>
-              </Button>
-            }
-          />
           <Row label={t("Website")} value="unbored.lol" />
         </Group>
       );
@@ -834,12 +838,13 @@ function BlockedSection({ signedIn }: { signedIn: boolean }) {
 
 function Section() {
   const { section } = Route.useParams();
+  const { category } = Route.useSearch();
   const meta = allSettings.find((s) => s.slug === section);
   return (
     <Page>
       <PageHeader back title={meta ? t(meta.title) : t("Settings")} />
       <div className="enter">
-        <Body section={section} />
+        <Body section={section} category={category} />
       </div>
     </Page>
   );

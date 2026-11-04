@@ -13,6 +13,8 @@ import { restGet, restMutate } from "@/lib/supabase/rest";
 import { t } from "@/lib/settings/language";
 export type UserPreferences = {
   privateAccount: boolean;
+  /** Visitors see best scores on the profile. Independent of `privateAccount`. */
+  showProfileScores: boolean;
   showOnLeaderboards: boolean;
   showRecentlyPlayed: boolean;
   allowComments: boolean;
@@ -28,6 +30,7 @@ export type UserPreferences = {
 
 export const defaultPreferences: UserPreferences = {
   privateAccount: false,
+  showProfileScores: true,
   showOnLeaderboards: true,
   showRecentlyPlayed: true,
   allowComments: true,
@@ -45,6 +48,7 @@ export const defaultPreferences: UserPreferences = {
 type Row = {
   user_id: string;
   private_account: boolean;
+  show_profile_scores: boolean;
   show_on_leaderboards: boolean;
   show_recently_played: boolean;
   allow_comments: boolean;
@@ -61,6 +65,7 @@ type Row = {
 function toPreferences(row: Row): UserPreferences {
   return {
     privateAccount: row.private_account,
+    showProfileScores: row.show_profile_scores,
     showOnLeaderboards: row.show_on_leaderboards,
     showRecentlyPlayed: row.show_recently_played,
     allowComments: row.allow_comments,
@@ -79,6 +84,7 @@ function toRow(prefs: UserPreferences, userId: string): Row {
   return {
     user_id: userId,
     private_account: prefs.privateAccount,
+    show_profile_scores: prefs.showProfileScores,
     show_on_leaderboards: prefs.showOnLeaderboards,
     show_recently_played: prefs.showRecentlyPlayed,
     allow_comments: prefs.allowComments,

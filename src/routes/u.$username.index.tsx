@@ -5,6 +5,7 @@ import { ProfileView } from "@/components/social/ProfileView";
 import { useAuth } from "@/lib/auth/session";
 import { listBlockedIds } from "@/lib/settings/blocked";
 import { fetchProfileByUsername, useFollowCounts } from "@/lib/social/follows";
+import { useProfileShowcase } from "@/lib/social/showcase";
 import { Button } from "@/components/ui/button";
 import { avatarUrlFromPath } from "@/lib/users/profile";
 
@@ -46,6 +47,16 @@ function UserProfile() {
   // and re-read after every follow or unfollow (see `useFollowCounts`), so the
   // numbers on screen always describe the same account as the header.
   const counts = useFollowCounts(state.status === "ready" ? state.userId : undefined);
+  // What this player has chosen to show, decided by the database for this viewer.
+  const showcase = useProfileShowcase(state.status === "ready" ? state.userId : undefined);
+  const shown = showcase.data;
+  const failure = showcase.isError
+    ? {
+        status: "error" as const,
+        error: showcase.error.message,
+        retry: () => void showcase.refetch(),
+      }
+    : undefined;
 
   // A link to your own username (a leaderboard row, a comment) opens your own
   // profile, with its settings and saved games, not the public view of it.
@@ -147,8 +158,24 @@ function UserProfile() {
         statsLoading: counts.status === "loading" || counts.status === "idle",
         statsError: counts.error,
         onRetryStats: counts.reload,
-        hidePlayed: true,
       }}
+      visibility={shown && { isPrivate: shown.isPrivate, showScores: shown.scoresVisible }}
+      bestScores={
+        failure ??
+        (shown
+          ? shown.scoresVisible
+            ? { status: "ready", entries: [...shown.scores] }
+            : { status: "hidden" }
+          : { status: "loading" })
+      }
+      recentlyPlayed={
+        failure ??
+        (shown
+          ? shown.recentVisible
+            ? { status: "ready", games: [...shown.recent] }
+            : { status: "hidden" }
+          : { status: "loading" })
+      }
     />
   );
 }

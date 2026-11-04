@@ -108,6 +108,10 @@ type Backend interface {
 	// consent.
 	SignUp(ctx context.Context, email, password, username, displayName string, marketing ...bool) (supabaseauth.Result, error)
 	SignInWithPassword(ctx context.Context, email, password string) (supabaseauth.Result, error)
+	// EmailForUsername returns the address behind a normalized username, or "" when
+	// no account holds it. The address is private: it only ever reaches the password
+	// grant, never a response or a log.
+	EmailForUsername(ctx context.Context, username string) (string, error)
 	// UsernameAvailable answers whether a normalized username is unclaimed. It
 	// runs anonymously and reads only the public profile row.
 	UsernameAvailable(ctx context.Context, username string) (bool, error)
@@ -167,10 +171,10 @@ type authSession struct {
 
 // credentialsRequest is the body of sign-up and sign-in.
 //
-// `username` is only meaningful for sign-up. It is optional so a client built
-// before the field existed can still register (the database trigger then uses a
-// generated name), but whenever it is present it is validated, checked for
-// availability and persisted as the account's username.
+// On sign-up `username` is optional so a client built before the field existed
+// can still register (the database trigger then uses a generated name), but
+// whenever it is present it is validated, checked for availability and persisted
+// as the account's username. On sign-in it stands in for an absent `email`.
 type credentialsRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -360,7 +364,12 @@ func (s *service) signIn(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if s.throttled(w, r, limitKey{"ip", httpx.ClientKey(r)}, limitKey{"account", supabaseauth.EscapeEmail(email)}) {
+	if email == "" {
+		// The body named a username instead; credentialsBody allows nothing else.
+		if email, ok = s.emailForUsername(w, r, request.Username); !ok {
+			return
+		}
+	} else if s.throttled(w, r, limitKey{"ip", httpx.ClientKey(r)}, limitKey{"account", supabaseauth.EscapeEmail(email)}) {
 		return
 	}
 	if s.backend == nil {
@@ -374,6 +383,57 @@ func (s *service) signIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, r, http.StatusOK, s.newAuthSession(r.Context(), result))
+}
+
+// emailForUsername resolves the username a sign-in named, writing the response
+// itself when it cannot. A name nobody holds gets the same answer as a wrong
+// password, and the attempt is also charged to the account's email bucket, so
+// switching between a username and an address buys no extra guesses.
+func (s *service) emailForUsername(w http.ResponseWriter, r *http.Request, raw string) (string, bool) {
+	if s.throttled(w, r, limitKey{"ip", httpx.ClientKey(r)}) {
+		return "", false
+	}
+	// Checked before the name keys a bucket, so a bucket key is always a short,
+	// valid username. The shape is not worth a database call when it cannot match.
+	username := strings.ToLower(strings.TrimSpace(raw))
+	if !usernamePattern.MatchString(username) {
+		writeInvalidCredentials(w, r)
+		return "", false
+	}
+	if s.throttled(w, r, limitKey{"account", username}) {
+		return "", false
+	}
+	if s.backend == nil {
+		s.notConfigured(w, r, "sign-in")
+		return "", false
+	}
+
+	email, err := s.backend.EmailForUsername(r.Context(), username)
+	switch {
+	case errors.Is(err, supabaseauth.ErrUsernameLookupUnavailable):
+		s.logger.WarnContext(r.Context(), "username sign-in is not configured")
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnavailable,
+			"Signing in with a username isn't available right now. Use your email."))
+		return "", false
+	case err != nil:
+		s.supabaseFailure(w, r, "username-lookup", err)
+		return "", false
+	case email == "":
+		s.logger.InfoContext(r.Context(), "credential attempt rejected", slog.String("operation", "sign-in"))
+		writeInvalidCredentials(w, r)
+		return "", false
+	}
+	if s.throttled(w, r, limitKey{"account", supabaseauth.EscapeEmail(email)}) {
+		return "", false
+	}
+	return email, true
+}
+
+// writeInvalidCredentials is the one answer for a failed sign-in, whichever part
+// was wrong: nothing in it says whether the account exists.
+func writeInvalidCredentials(w http.ResponseWriter, r *http.Request) {
+	httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnauthorized,
+		"That email or username and password do not match."))
 }
 
 func (s *service) refresh(w http.ResponseWriter, r *http.Request) {
@@ -651,8 +711,9 @@ func (s *service) usernameCheckFailure(w http.ResponseWriter, r *http.Request, o
 // ── Request handling ────────────────────────────────────────────────────────
 
 // credentialsBody decodes and validates a credential body, writing the response
-// itself when it cannot. The returned email is trimmed; the password is never
-// copied anywhere it could be logged.
+// itself when it cannot. The returned email is trimmed, and empty only for a
+// sign-in that names a username instead; the password is never copied anywhere it
+// could be logged.
 func (s *service) credentialsBody(w http.ResponseWriter, r *http.Request, mode credentialMode) (credentialsRequest, string, bool) {
 	var request credentialsRequest
 	if !s.decode(w, r, &request) {
@@ -660,7 +721,8 @@ func (s *service) credentialsBody(w http.ResponseWriter, r *http.Request, mode c
 	}
 
 	email := strings.TrimSpace(request.Email)
-	if email == "" || len(email) > maxEmailBytes || !validEmail(email) {
+	byUsername := mode == modeSignIn && email == "" && strings.TrimSpace(request.Username) != ""
+	if !byUsername && (email == "" || len(email) > maxEmailBytes || !validEmail(email)) {
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnprocessable,
 			"Enter a valid email address.",
 			apierr.Detail{Field: "email", Rule: "format"}))
@@ -749,7 +811,7 @@ func (s *service) supabaseFailure(w http.ResponseWriter, r *http.Request, operat
 			// `invalid_grant`, the code the modern API reserves for a stale
 			// refresh token, so the operation decides the meaning.
 			s.logger.InfoContext(r.Context(), "credential attempt rejected", slog.String("operation", operation))
-			httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnauthorized, "That email and password do not match."))
+			writeInvalidCredentials(w, r)
 			return
 		case apiErr.Code == supabaseauth.CodeEmailNotConfirmed:
 			httpx.WriteError(w, r, httpx.NewError(httpx.CodeForbidden, "Confirm your email address, then sign in."))

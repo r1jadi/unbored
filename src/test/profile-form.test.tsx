@@ -141,9 +141,17 @@ describe("ProfileForm", () => {
     );
     expect((screen.getByLabelText("Username") as HTMLInputElement).value).toBe("player_one");
     expect((screen.getByLabelText("Username") as HTMLInputElement).readOnly).toBe(false);
+    // The rule sits under the input and describes it: in the label's row it ran
+    // straight into the word "Username".
+    const usernameRule = screen.getByText(
+      "3–24 characters: lowercase letters, numbers, underscores.",
+    );
+    const usernameInput = screen.getByLabelText("Username");
+    expect(usernameInput).toHaveAccessibleDescription(usernameRule.textContent ?? "");
     expect(
-      screen.getByText("3–24 characters: lowercase letters, numbers, underscores."),
-    ).toBeInTheDocument();
+      usernameInput.compareDocumentPosition(usernameRule) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByText("Username").parentElement).not.toContainElement(usernameRule);
     expect(screen.queryByDisplayValue("Rijad Halili")).toBeNull();
     expect(screen.queryByDisplayValue("rijad")).toBeNull();
 

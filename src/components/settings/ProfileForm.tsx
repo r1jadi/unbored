@@ -258,7 +258,7 @@ function Editor({ profile }: { profile: Profile }) {
         value={value.username}
         maxLength={24}
         required
-        hint={t("3–24 characters: lowercase letters, numbers, underscores.")}
+        description={t("3–24 characters: lowercase letters, numbers, underscores.")}
         error={errors.username}
         onChange={(event) => setDraft({ ...value, username: event.target.value })}
       />
