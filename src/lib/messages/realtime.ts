@@ -63,7 +63,11 @@ function loadClient(): Promise<RealtimeClient | undefined> {
     const { url, publishableKey } = publicConfig.supabase;
     if (!url || !publishableKey) return undefined;
     const { RealtimeClient: Client } = await import("@supabase/realtime-js");
-    client = new Client(`${url.replace(/\/+$/, "")}/realtime/v1`, {
+    // The configured Supabase URL is an HTTP(S) Data API origin; RealtimeClient
+    // needs the matching WebSocket endpoint instead.
+    const endpoint = new URL("/realtime/v1", url);
+    endpoint.protocol = endpoint.protocol === "https:" ? "wss:" : "ws:";
+    client = new Client(endpoint.toString(), {
       params: { apikey: publishableKey },
       accessToken: async () => getAccessToken() ?? null,
     });
