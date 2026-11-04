@@ -26,7 +26,7 @@ export const sqApp: Record<string, string> = {
   Home: "Kreu",
   Explore: "Eksploro",
   Ranks: "Renditja",
-  Inbox: "Njoftimet",
+  Inbox: "Kutia",
   Profile: "Profili",
   Search: "Kërko",
   Leaderboards: "Renditjet",
@@ -208,9 +208,15 @@ export const sqApp: Record<string, string> = {
   "Couldn't load follower counts.": "Numri i ndjekësve nuk mund të ngarkohej.",
   "Couldn't load recently played games": "Lojërat e luajtura së fundmi nuk mund të ngarkoheshin",
   "Couldn't load your scores": "Rezultatet e tua nuk mund të ngarkoheshin",
+  // Inbox
+  Chats: "Bisedat",
+  "Follows, comments and new games": "Ndjekje, komente dhe lojëra të reja",
+  "Hey! 👋": "Hej! 👋",
+  "Up for a game? 🎮": "Luajmë një lojë? 🎮",
+  "Call them out": "Sfidoje",
+  VS: "VS",
   // Sharing
-  "Send it to a friend, or share it somewhere else.":
-    "Dërgoja një miku, ose ndaje diku tjetër.",
+  "Send it to a friend, or share it somewhere else.": "Dërgoja një miku, ose ndaje diku tjetër.",
   "Send to": "Dërgo te",
   "Send to @{username}": "Dërgo te @{username}",
   "Share to": "Ndaj te",
@@ -294,11 +300,10 @@ export const sqApp: Record<string, string> = {
   "Refresh the app to play this callout: the game has been updated.":
     "Rifresko aplikacionin për ta luajtur këtë sfidë: loja është përditësuar.",
   "This game can't be played right now.": "Kjo lojë nuk mund të luhet tani.",
-  "This callout isn't open for you to play right now.":
-    "Kjo sfidë nuk është e hapur për ty tani.",
+  "This callout isn't open for you to play right now.": "Kjo sfidë nuk është e hapur për ty tani.",
   "Score locked in: {score}": "Rezultati u regjistrua: {score}",
   "Callout with @{username} · one attempt": "Sfidë me @{username} · një provë",
-  "You {mine} – {theirs} @{username}": "Ti {mine} – {theirs} @{username}",
+  "You {mine} – {theirs}": "Ti {mine} – {theirs}",
   "Lost a callout to @{username} on {game}": "Humbi një sfidë me @{username} te {game}",
   // Direct messages
   Unsend: "Tërhiqe",

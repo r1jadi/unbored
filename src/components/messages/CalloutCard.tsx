@@ -118,11 +118,11 @@ export function CalloutCard({
     <li className="my-2 flex justify-center">
       <div
         className={cn(
-          "w-full max-w-sm rounded-2xl border p-4",
-          won ? "border-primary/60 bg-primary/10" : "border-border bg-surface",
+          "enter w-full max-w-sm rounded-3xl border p-4 shadow-lg",
+          won ? "dm-card-glow border-primary/60" : "border-border bg-surface",
         )}
       >
-        <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-xs font-bold tracking-wide text-primary uppercase">
           <Swords className="size-3.5" aria-hidden />
           {callout.isDouble ? t("Double or nothing") : t("Callout")}
         </p>
@@ -258,10 +258,21 @@ export function CalloutCard({
                 })}
               </p>
             ) : (
-              <p className="mt-1 text-sm tabular">
-                {t("You")} {callout.myScore === null ? "—" : points(callout.myScore)}
-                {" · "}@{username} {callout.theirScore === null ? "—" : points(callout.theirScore)}
-              </p>
+              <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl bg-background/50 px-3 py-2.5 text-center tabular">
+                <span className="min-w-0">
+                  <span className={cn("block text-2xl font-black", won && "text-primary")}>
+                    {callout.myScore === null ? "—" : points(callout.myScore)}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">{t("You")}</span>
+                </span>
+                <span className="text-xs font-black text-muted-foreground">{t("VS")}</span>
+                <span className="min-w-0">
+                  <span className={cn("block text-2xl font-black", lost && "text-primary")}>
+                    {callout.theirScore === null ? "—" : points(callout.theirScore)}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">@{username}</span>
+                </span>
+              </div>
             )}
             {!callout.rematchTaken && (
               <div className="mt-3 flex gap-2">

@@ -416,6 +416,14 @@ function timeOf(message: ChatMessage): number {
   return new Date(message.createdAt).getTime();
 }
 
+const RUN_GAP_MS = 3 * 60_000;
+
+/** Whether two neighbouring messages read as one run: same sender, same moment, both text. */
+export function sameRun(a: ChatMessage | undefined, b: ChatMessage | undefined): boolean {
+  if (!a || !b || a.senderId !== b.senderId || a.calloutId || b.calloutId) return false;
+  return Math.abs(timeOf(b) - timeOf(a)) <= RUN_GAP_MS;
+}
+
 /** Merges by id, oldest first. Ties on time fall back to the id, as the database orders them. */
 export function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] {
   const byId = new Map(current.map((message) => [message.id, message]));

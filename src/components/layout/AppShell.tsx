@@ -1,11 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  Bell,
   Bookmark,
   Clock,
   Compass,
   Home,
-  MessageCircle,
+  Inbox,
   Search,
   Settings,
   Shield,
@@ -27,7 +26,7 @@ const mobile: Array<{ to: string; key: string; icon: typeof Home }> = [
   { to: "/", key: msg("Home"), icon: Home },
   { to: "/explore", key: msg("Explore"), icon: Compass },
   { to: "/leaderboards", key: msg("Ranks"), icon: Trophy },
-  { to: "/notifications", key: msg("Inbox"), icon: Bell },
+  { to: "/messages", key: msg("Inbox"), icon: Inbox },
   { to: "/profile", key: msg("Profile"), icon: User },
 ];
 
@@ -37,8 +36,7 @@ const desktop: Array<{ to: string; key: string; icon: typeof Home }> = [
   { to: "/explore", key: msg("Explore"), icon: Compass },
   { to: "/search", key: msg("Search"), icon: Search },
   { to: "/leaderboards", key: msg("Leaderboards"), icon: Trophy },
-  { to: "/notifications", key: msg("Notifications"), icon: Bell },
-  { to: "/messages", key: msg("Messages"), icon: MessageCircle },
+  { to: "/messages", key: msg("Inbox"), icon: Inbox },
   { to: "/saved", key: msg("Saved"), icon: Bookmark },
   { to: "/recent", key: msg("Recently played"), icon: Clock },
   { to: "/profile", key: msg("Profile"), icon: User },
@@ -68,12 +66,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   // case is retryable via `unread.retry` without breaking navigation.
   const showBadge = unread.status === "ready" && unread.count > 0;
   const unreadChats = useUnreadChats() ?? 0;
-  // A phone has no room for a sixth tab: Messages opens from the Inbox tab, which
-  // lights up and stays active for both.
+  // One Inbox holds chats and notifications, so it lights up and stays active for both.
   const inboxCount = (showBadge ? unread.count : 0) + unreadChats;
-  const isActive = (to: string) => (to === "/" ? path === "/" : path.startsWith(to));
-  const isMobileActive = (to: string) =>
-    isActive(to) || (to === "/notifications" && path.startsWith("/messages"));
+  const isActive = (to: string) =>
+    to === "/"
+      ? path === "/"
+      : path.startsWith(to) || (to === "/messages" && path.startsWith("/notifications"));
   const feed = path === "/" || path === "/following";
   // Home while already on the feed refreshes it instead of navigating nowhere.
   const onNavClick = (to: string) => (event: MouseEvent) => {
@@ -101,14 +99,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               <Icon className="size-[18px]" strokeWidth={1.75} />
               <span className="flex-1">{t(key)}</span>
-              {to === "/notifications" && showBadge && (
+              {to === "/messages" && inboxCount > 0 && (
                 <span className="rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground tabular">
-                  {unread.count}
-                </span>
-              )}
-              {to === "/messages" && unreadChats > 0 && (
-                <span className="rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground tabular">
-                  {unreadChats}
+                  {inboxCount}
                 </span>
               )}
             </Link>
@@ -185,12 +178,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                 onClick={onNavClick(to)}
                 className={cn(
                   "press relative flex h-full flex-col items-center justify-center gap-1 text-[11px] text-muted-foreground",
-                  isMobileActive(to) && "text-foreground",
+                  isActive(to) && "text-foreground",
                 )}
               >
-                <Icon className="size-[22px]" strokeWidth={isMobileActive(to) ? 2.1 : 1.75} />
+                <Icon className="size-[22px]" strokeWidth={isActive(to) ? 2.1 : 1.75} />
                 {t(key)}
-                {to === "/notifications" && inboxCount > 0 && (
+                {to === "/messages" && inboxCount > 0 && (
                   <span
                     className="absolute top-2.5 left-1/2 ml-2 size-2 rounded-full bg-primary"
                     aria-label={t("{count} unread", { count: inboxCount })}

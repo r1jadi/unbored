@@ -11,7 +11,6 @@ import {
   useNotifications,
   type AppNotification,
 } from "@/lib/notifications/store";
-import { useUnreadChats } from "@/lib/messages/store";
 import { seo } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import { formatAgo } from "@/lib/admin/api";
@@ -48,27 +47,6 @@ function matchesFilter(item: AppNotification, filter: (typeof filters)[number]):
     default:
       return true;
   }
-}
-
-/** How a phone reaches Messages: it has no tab of its own. */
-function MessagesLink() {
-  const unread = useUnreadChats() ?? 0;
-  return (
-    <Button
-      asChild
-      variant="ghost"
-      size="icon"
-      className="relative"
-      aria-label={unread > 0 ? t("Messages, {count} unread", { count: unread }) : t("Messages")}
-    >
-      <Link to="/messages">
-        <MessageCircle />
-        {unread > 0 && (
-          <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary" aria-hidden />
-        )}
-      </Link>
-    </Button>
-  );
 }
 
 /**
@@ -147,15 +125,13 @@ function Notifications() {
       <PageHeader
         title={t("Notifications")}
         subtitle={fresh > 0 ? t("{fresh} new", { fresh }) : undefined}
+        back
         actions={
-          <div className="flex">
-            <MessagesLink />
-            <Button asChild variant="ghost" size="icon" aria-label={t("Notification settings")}>
-              <Link to="/settings/$section" params={{ section: "notifications" }}>
-                <Settings />
-              </Link>
-            </Button>
-          </div>
+          <Button asChild variant="ghost" size="icon" aria-label={t("Notification settings")}>
+            <Link to="/settings/$section" params={{ section: "notifications" }}>
+              <Settings />
+            </Link>
+          </Button>
         }
       />
       <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-4 md:px-0">

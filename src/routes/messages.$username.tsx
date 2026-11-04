@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  CheckCheck,
+  Hand,
   Loader2,
   MessageCircle,
   MoreHorizontal,
@@ -38,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CalloutCard } from "@/components/messages/CalloutCard";
 import { CalloutDialog } from "@/components/messages/CalloutDialog";
+import { ChatWallpaper } from "@/components/messages/ChatWallpaper";
 import { SharedGameCard } from "@/components/messages/SharedGameCard";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,6 +56,7 @@ import {
   clearConversation,
   MAX_MESSAGE_LENGTH,
   reportConversationPartner,
+  sameRun,
   useThread,
   type ChatMessage,
 } from "@/lib/messages/store";
@@ -238,6 +242,8 @@ function Thread({ other }: { other: PublicProfile }) {
     }
   }
 
+  const hasRivalry = rivalry !== null && rivalry.myWins + rivalry.theirWins + rivalry.draws > 0;
+
   // The last of my messages the other player has reached.
   const seenId =
     state.theirLastReadAt === null
@@ -253,7 +259,7 @@ function Thread({ other }: { other: PublicProfile }) {
 
   return (
     <div className={FRAME}>
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-2 pt-[env(safe-area-inset-top)] box-content md:mt-4 md:px-0">
+      <header className="z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/80 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-xl box-content md:mt-4 md:rounded-t-2xl md:border md:px-2">
         <Button asChild variant="ghost" size="icon" aria-label={t("Back to messages")}>
           <Link to="/messages">
             <ArrowLeft />
@@ -264,10 +270,26 @@ function Thread({ other }: { other: PublicProfile }) {
           params={{ username: other.username }}
           className="flex min-w-0 flex-1 items-center gap-2.5"
         >
-          <UserAvatar username={other.username} path={other.avatar_path} size="sm" />
+          <span className="dm-gradient inline-flex shrink-0 rounded-full p-[2px]">
+            <span className="inline-flex rounded-full bg-background p-[1px]">
+              <UserAvatar username={other.username} path={other.avatar_path} size="sm" />
+            </span>
+          </span>
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold">{other.display_name}</span>
-            <span className="block truncate text-xs text-muted-foreground">@{other.username}</span>
+            {hasRivalry ? (
+              <span className="flex items-center gap-1 text-xs font-medium tabular text-primary">
+                <Swords className="size-3" aria-hidden />
+                {t("You {mine} – {theirs}", {
+                  mine: rivalry!.myWins,
+                  theirs: rivalry!.theirWins,
+                })}
+              </span>
+            ) : (
+              <span className="block truncate text-xs text-muted-foreground">
+                @{other.username}
+              </span>
+            )}
           </span>
         </Link>
         <DropdownMenu>
@@ -290,119 +312,165 @@ function Thread({ other }: { other: PublicProfile }) {
         </DropdownMenu>
       </header>
 
-      {rivalry && rivalry.myWins + rivalry.theirWins + rivalry.draws > 0 && (
-        <p className="flex shrink-0 items-center justify-center gap-1.5 border-b border-border py-1.5 text-xs font-medium tabular">
-          <Swords className="size-3 text-muted-foreground" aria-hidden />
-          {t("You {mine} – {theirs} @{username}", {
-            mine: rivalry.myWins,
-            theirs: rivalry.theirWins,
-            username: other.username,
-          })}
-        </p>
-      )}
-
-      <div
-        ref={scroller}
-        onScroll={onScroll}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 md:px-1"
-        role="log"
-        aria-label={t("Messages")}
-      >
-        {state.status === "loading" && <ListSkeleton rows={4} />}
-        {state.status === "error" && (
-          <ErrorState title={t("Couldn't load this chat")} body={state.error} onRetry={retry} />
-        )}
-        {state.status === "ready" && state.canSend && itemCount === 0 && (
-          <EmptyState
-            icon={MessageCircle}
-            title={t("Say hello to @{username}", { username: other.username })}
-            body={t("Your messages are private to the two of you.")}
-          />
-        )}
-        {state.status === "ready" && state.hasMore && (
-          <div className="flex justify-center pb-4">
-            <Button variant="secondary" size="sm" disabled={state.loadingOlder} onClick={older}>
-              {state.loadingOlder && <Loader2 className="animate-spin" />}
-              {t("Load earlier messages")}
-            </Button>
-          </div>
-        )}
-        <ol className="flex flex-col gap-1">
-          {state.messages.map((message, index) => (
-            <Fragment key={message.id}>
-              <DayLine message={message} previous={state.messages[index - 1]} />
-              {message.calloutId ? (
-                callouts.get(message.calloutId) && (
-                  <CalloutCard
-                    callout={callouts.get(message.calloutId)!}
-                    me={account}
-                    username={other.username}
-                    otherId={other.id}
-                    onChanged={() => void refreshCallouts()}
-                  />
-                )
-              ) : (
-                <Bubble
-                  mine={message.senderId === account}
-                  body={message.body}
-                  onUnsend={
-                    message.senderId === account ? () => setConfirmUnsend(message.id) : undefined
-                  }
-                  caption={
-                    <>
-                      {clock(message.createdAt)}
-                      {message.id === seenId && ` · ${t("Seen")}`}
-                    </>
-                  }
-                />
-              )}
-            </Fragment>
-          ))}
-          {state.pending.map((item) => (
-            <Bubble
-              key={item.clientId}
-              mine
-              faded={item.status === "sending"}
-              body={item.body}
-              caption={
-                item.status === "sending" ? (
-                  t("Sending…")
-                ) : (
-                  <span className="text-destructive">
-                    {t("Not sent.")}{" "}
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 font-medium underline underline-offset-2"
-                      onClick={() => retrySend(item.clientId)}
-                    >
-                      <RotateCw className="size-3" aria-hidden />
-                      {t("Retry")}
-                    </button>{" "}
-                    <button
-                      type="button"
-                      className="font-medium underline underline-offset-2"
-                      onClick={() => discard(item.clientId)}
-                    >
-                      {t("Discard")}
-                    </button>
-                  </span>
-                )
-              }
-            />
-          ))}
-          {state.otherTyping && (
-            <li className="flex flex-col items-start" role="status">
-              <span
-                className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-surface-2 px-3.5 py-3"
-                aria-label={t("@{username} is typing", { username: other.username })}
-              >
-                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" />
-                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:150ms]" />
-                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground [animation-delay:300ms]" />
-              </span>
-            </li>
+      <div className="relative min-h-0 flex-1 overflow-hidden md:border-x md:border-border">
+        <ChatWallpaper ids={[account ?? "", other.id]} />
+        <div
+          ref={scroller}
+          onScroll={onScroll}
+          className="relative h-full overflow-y-auto overscroll-contain px-3 py-4 md:px-4"
+          role="log"
+          aria-label={t("Messages")}
+        >
+          {state.status === "loading" && <ListSkeleton rows={4} />}
+          {state.status === "error" && (
+            <ErrorState title={t("Couldn't load this chat")} body={state.error} onRetry={retry} />
           )}
-        </ol>
+          {state.status === "ready" && state.canSend && itemCount === 0 && (
+            <div className="enter flex flex-col items-center px-4 py-14 text-center">
+              <span className="dm-gradient flex size-16 items-center justify-center rounded-3xl text-primary-foreground">
+                <Hand className="size-7" aria-hidden />
+              </span>
+              <p className="mt-4 text-lg font-bold">
+                {t("Say hello to @{username}", { username: other.username })}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("Your messages are private to the two of you.")}
+              </p>
+              <div className="mt-5 flex flex-wrap justify-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => onSend(t("Hey! 👋"))}
+                >
+                  {t("Hey! 👋")}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => onSend(t("Up for a game? 🎮"))}
+                >
+                  {t("Up for a game? 🎮")}
+                </Button>
+                <Button
+                  size="sm"
+                  className="dm-gradient rounded-full"
+                  onClick={() => setCallingOut(true)}
+                >
+                  <Swords /> {t("Call them out")}
+                </Button>
+              </div>
+            </div>
+          )}
+          {state.status === "ready" && state.hasMore && (
+            <div className="flex justify-center pb-4">
+              <Button variant="secondary" size="sm" disabled={state.loadingOlder} onClick={older}>
+                {state.loadingOlder && <Loader2 className="animate-spin" />}
+                {t("Load earlier messages")}
+              </Button>
+            </div>
+          )}
+          <ol className="flex flex-col">
+            {state.messages.map((message, index) => (
+              <Fragment key={message.id}>
+                <DayLine message={message} previous={state.messages[index - 1]} />
+                {message.calloutId ? (
+                  callouts.get(message.calloutId) && (
+                    <CalloutCard
+                      callout={callouts.get(message.calloutId)!}
+                      me={account}
+                      username={other.username}
+                      otherId={other.id}
+                      onChanged={() => void refreshCallouts()}
+                    />
+                  )
+                ) : (
+                  <Bubble
+                    mine={message.senderId === account}
+                    body={message.body}
+                    first={!sameRun(state.messages[index - 1], message)}
+                    last={!sameRun(message, state.messages[index + 1]) || message.id === seenId}
+                    avatar={
+                      <UserAvatar
+                        username={other.username}
+                        path={other.avatar_path}
+                        size="sm"
+                        className="size-6 text-[9px]"
+                      />
+                    }
+                    onUnsend={
+                      message.senderId === account ? () => setConfirmUnsend(message.id) : undefined
+                    }
+                    caption={
+                      <>
+                        {clock(message.createdAt)}
+                        {message.id === seenId && (
+                          <span className="ml-1 inline-flex items-center gap-0.5 font-medium text-primary">
+                            <CheckCheck className="size-3" aria-hidden />
+                            {t("Seen")}
+                          </span>
+                        )}
+                      </>
+                    }
+                  />
+                )}
+              </Fragment>
+            ))}
+            {state.pending.map((item) => (
+              <Bubble
+                key={item.clientId}
+                mine
+                first
+                last
+                faded={item.status === "sending"}
+                body={item.body}
+                caption={
+                  item.status === "sending" ? (
+                    t("Sending…")
+                  ) : (
+                    <span className="text-destructive">
+                      {t("Not sent.")}{" "}
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 font-medium underline underline-offset-2"
+                        onClick={() => retrySend(item.clientId)}
+                      >
+                        <RotateCw className="size-3" aria-hidden />
+                        {t("Retry")}
+                      </button>{" "}
+                      <button
+                        type="button"
+                        className="font-medium underline underline-offset-2"
+                        onClick={() => discard(item.clientId)}
+                      >
+                        {t("Discard")}
+                      </button>
+                    </span>
+                  )
+                }
+              />
+            ))}
+            {state.otherTyping && (
+              <li className="mt-1 flex items-end gap-1.5" role="status">
+                <UserAvatar
+                  username={other.username}
+                  path={other.avatar_path}
+                  size="sm"
+                  className="size-6 text-[9px]"
+                />
+                <span
+                  className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-surface-2 px-3.5 py-3"
+                  aria-label={t("@{username} is typing", { username: other.username })}
+                >
+                  <span className="dm-typing-dot size-1.5 rounded-full bg-muted-foreground" />
+                  <span className="dm-typing-dot size-1.5 rounded-full bg-muted-foreground [animation-delay:150ms]" />
+                  <span className="dm-typing-dot size-1.5 rounded-full bg-muted-foreground [animation-delay:300ms]" />
+                </span>
+              </li>
+            )}
+          </ol>
+        </div>
       </div>
 
       {state.notice && (
@@ -491,7 +559,13 @@ function DayLine({ message, previous }: { message: ChatMessage; previous?: ChatM
     day === now.toDateString()
       ? t("Today")
       : shortDate(date, date.getFullYear() !== now.getFullYear());
-  return <li className="py-3 text-center text-xs text-muted-foreground">{label}</li>;
+  return (
+    <li className="flex justify-center py-3">
+      <span className="rounded-full border border-border bg-background/80 px-3 py-0.5 text-[11px] font-medium text-muted-foreground backdrop-blur">
+        {label}
+      </span>
+    </li>
+  );
 }
 
 function Bubble({
@@ -500,12 +574,20 @@ function Bubble({
   caption,
   faded,
   onUnsend,
+  first,
+  last,
+  avatar,
 }: {
   mine: boolean;
   body: string;
   caption: ReactNode;
   faded?: boolean;
   onUnsend?: () => void;
+  /** Where this sits in a run from one sender: the corners and the gaps follow from it. */
+  first: boolean;
+  last: boolean;
+  /** Beside the last message of the other player's run. */
+  avatar?: ReactNode;
 }) {
   const gameSlug = sharedGameSlug(body);
   const text = (
@@ -513,8 +595,8 @@ function Bubble({
       className={cn(
         "min-w-0 rounded-2xl px-3.5 py-2 text-sm break-words whitespace-pre-wrap [overflow-wrap:anywhere]",
         mine
-          ? "rounded-br-md bg-primary text-primary-foreground"
-          : "rounded-bl-md bg-surface-2 text-foreground",
+          ? cn("dm-gradient text-primary-foreground", !first && "rounded-tr-md", "rounded-br-md")
+          : cn("bg-surface-2 text-foreground", !first && "rounded-tl-md", "rounded-bl-md"),
         faded && "opacity-60",
       )}
     >
@@ -522,8 +604,19 @@ function Bubble({
     </p>
   );
   return (
-    <li className={cn("flex flex-col", mine ? "items-end" : "items-start")}>
-      <div className="group flex max-w-[85%] items-center gap-1">
+    <li
+      className={cn(
+        "flex flex-col",
+        mine ? "items-end" : "enter items-start",
+        first ? "mt-2" : "mt-0.5",
+      )}
+    >
+      {/* Focusable so a tap on a phone, which has no hover, brings up the options. */}
+      <div
+        tabIndex={onUnsend ? -1 : undefined}
+        className="group flex max-w-[85%] items-end gap-1.5 outline-none"
+      >
+        {!mine && <span className="size-6 shrink-0">{last && avatar}</span>}
         {onUnsend && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -531,7 +624,7 @@ function Bubble({
                 variant="ghost"
                 size="icon"
                 aria-label={t("Message options")}
-                className="size-7 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 data-[state=open]:opacity-100"
+                className="size-7 shrink-0 self-center text-muted-foreground opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
               >
                 <MoreHorizontal />
               </Button>
@@ -545,7 +638,16 @@ function Bubble({
         )}
         {gameSlug ? <SharedGameCard slug={gameSlug} fallback={text} /> : text}
       </div>
-      <span className="mt-0.5 mb-1 px-1 text-[11px] text-muted-foreground">{caption}</span>
+      {last && (
+        <span
+          className={cn(
+            "mt-0.5 flex items-center px-1 text-[11px] text-muted-foreground",
+            !mine && "ml-7",
+          )}
+        >
+          {caption}
+        </span>
+      )}
     </li>
   );
 }
@@ -612,23 +714,24 @@ function Composer({
 
   return (
     <form
-      className="flex shrink-0 items-end gap-2 border-t border-border px-4 py-3 md:px-1"
+      className="shrink-0 bg-background px-3 py-2.5 md:rounded-b-2xl md:border md:border-border"
       onSubmit={(event) => {
         event.preventDefault();
         submit();
       }}
     >
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={t("Call out")}
-        title={t("Call out")}
-        onClick={onCallOut}
-      >
-        <Swords />
-      </Button>
-      <div className="min-w-0 flex-1">
+      <div className="flex items-end gap-1 rounded-3xl border border-border bg-surface p-1 transition-colors focus-within:border-primary/60">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-9 shrink-0 rounded-full text-primary"
+          aria-label={t("Call out")}
+          title={t("Call out")}
+          onClick={onCallOut}
+        >
+          <Swords />
+        </Button>
         <Textarea
           ref={input}
           rows={1}
@@ -641,22 +744,31 @@ function Composer({
           placeholder={t("Write a message")}
           aria-label={t("Write a message")}
           aria-invalid={tooLong || undefined}
-          className="max-h-36 min-h-10 resize-none py-2"
+          className="max-h-36 min-h-9 min-w-0 flex-1 resize-none border-0 bg-transparent px-1 py-1.5 shadow-none focus-visible:ring-0 dark:bg-transparent"
         />
-        {text.length > MAX_MESSAGE_LENGTH - 200 && (
-          <p
-            className={cn(
-              "mt-1 text-right text-xs tabular",
-              tooLong ? "text-destructive" : "text-muted-foreground",
-            )}
-          >
-            {text.trim().length} / {MAX_MESSAGE_LENGTH}
-          </p>
-        )}
+        <Button
+          type="submit"
+          size="icon"
+          disabled={!canSubmit}
+          aria-label={t("Send")}
+          className={cn(
+            "size-9 shrink-0 rounded-full transition-transform",
+            canSubmit ? "dm-gradient scale-100" : "scale-90 bg-surface-2 text-muted-foreground",
+          )}
+        >
+          <Send />
+        </Button>
       </div>
-      <Button type="submit" size="icon" disabled={!canSubmit} aria-label={t("Send")}>
-        <Send />
-      </Button>
+      {text.length > MAX_MESSAGE_LENGTH - 200 && (
+        <p
+          className={cn(
+            "mt-1 px-3 text-right text-xs tabular",
+            tooLong ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          {text.trim().length} / {MAX_MESSAGE_LENGTH}
+        </p>
+      )}
     </form>
   );
 }

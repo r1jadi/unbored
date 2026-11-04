@@ -50,6 +50,7 @@ import {
   applyNewestPage,
   fetchMessages,
   mergeMessages,
+  sameRun,
   useThread,
   useUnreadChats,
   type ChatMessage,
@@ -134,6 +135,23 @@ describe("merging messages", () => {
     const { messages, truncated } = applyNewestPage([message("old", 1)], page);
     expect(messages.map((m) => m.id)).not.toContain("old");
     expect(truncated).toBe(true);
+  });
+});
+
+describe("runs of messages", () => {
+  it("groups one sender's messages from the same moment", () => {
+    expect(sameRun(message("a", 1), message("b", 30))).toBe(true);
+  });
+
+  it("splits on a different sender, a long gap, a callout, or nothing to compare", () => {
+    expect(sameRun(message("a", 1), message("b", 2, "me"))).toBe(false);
+    const later = {
+      ...message("b", 1),
+      createdAt: new Date(Date.UTC(2026, 0, 1, 0, 10)).toISOString(),
+    };
+    expect(sameRun(message("a", 1), later)).toBe(false);
+    expect(sameRun(message("a", 1), { ...message("b", 2), calloutId: "c" })).toBe(false);
+    expect(sameRun(undefined, message("b", 2))).toBe(false);
   });
 });
 
