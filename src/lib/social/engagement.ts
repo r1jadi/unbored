@@ -454,6 +454,43 @@ export async function listMyBestScores(
   }
 }
 
+/** The signed-in caller's best verified score in one game, or null when they have none. */
+export async function getMyBestScoreFor(slug: string): Promise<number | null> {
+  const { token, userId } = requireCaller();
+  try {
+    const gameId = await resolveGameId(slug);
+    if (!gameId) return null;
+    const rows = await restGet<Array<{ score: number }>>(
+      `scores?user_id=eq.${userId}&game_id=eq.${gameId}&select=score&order=score.desc&limit=1`,
+      token,
+    );
+    return rows[0]?.score ?? null;
+  } catch (error) {
+    throw toApiError(error, "score");
+  }
+}
+
+/**
+ * The caller's best score in a game, loaded once when play starts. Null for a
+ * guest, for a first run, or when it can't be loaded: the header just omits it.
+ */
+export function useMyBestScore(slug: string): number | null {
+  const [best, setBest] = useState<number | null>(null);
+  useEffect(() => {
+    if (getAuthState().status !== "authenticated") return;
+    let cancelled = false;
+    getMyBestScoreFor(slug)
+      .then((score) => {
+        if (!cancelled) setBest(score);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+  return best;
+}
+
 export type ScoreEntry = { game: Game | null; score: number };
 
 type ScoreListState = {

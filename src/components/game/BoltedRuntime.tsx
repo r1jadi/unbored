@@ -12,6 +12,7 @@ import {
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { ErrorState } from "@/components/common";
+import { BestScore } from "@/components/game/BestScore";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
@@ -339,6 +340,7 @@ function Board({
         <dl className="flex items-baseline gap-1">
           <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
           <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
+          <BestScore slug={session.gameSlug} score={run.score} />
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="tabular">{t("Board {level}", { level: run.level })}</span>

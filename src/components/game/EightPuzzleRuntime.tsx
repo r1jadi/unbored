@@ -2,6 +2,7 @@ import { Grid3x3, Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } from 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { ErrorState } from "@/components/common";
+import { BestScore } from "@/components/game/BestScore";
 import { GameExits } from "@/components/game/GameExits";
 import { HintButton, HintNote } from "@/components/game/Hint";
 import { useHint } from "@/lib/games/use-hint";
@@ -288,6 +289,7 @@ function Board({
         <dl className="flex items-baseline gap-1">
           <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
           <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
+          <BestScore slug={session.gameSlug} score={run.score} />
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="tabular">{t("Board {level}", { level: run.level })}</span>

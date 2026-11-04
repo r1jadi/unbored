@@ -2,6 +2,7 @@ import { Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } from "lucide-r
 import { useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
+import { BestScore } from "@/components/game/BestScore";
 import { GameExits } from "@/components/game/GameExits";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { SavedRunCard } from "@/components/game/SavedRunCard";
@@ -226,6 +227,7 @@ function Board({
         <dl className="flex items-baseline gap-1">
           <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
           <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
+          <BestScore slug={session.gameSlug} score={run.score} />
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="tabular">{t("Round {round}", { round })}</span>

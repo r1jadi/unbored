@@ -28,7 +28,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { points } from "@/lib/format";
 import {
-  budgetMs,
   canSwap,
   CASCADE_SIZE,
   colourOf,
@@ -43,7 +42,6 @@ import {
   type CascadeMove,
   type CascadeRun,
 } from "@/lib/games/cascade";
-import { formatClockGain } from "@/lib/games/clock";
 import { levelUpHold, useLevelUp } from "@/lib/games/level-up";
 import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
@@ -54,6 +52,7 @@ import {
   type RunResult,
 } from "@/lib/games/sessions";
 import { playSound, useGameSounds } from "@/lib/sound";
+import { useMyBestScore } from "@/lib/social/engagement";
 import { cn } from "@/lib/utils";
 
 /** This game's rules, shared with the feed's How to play sheet. */
@@ -124,7 +123,7 @@ export function CascadeRuntime({
         <h2 className="text-xl font-semibold">Your run was not verified</h2>
         <p className="mx-auto max-w-sm text-sm text-muted-foreground">
           {playErrorMessage(state.error)} Nothing was saved. Sending the same run again is safe, but
-          a timed run has to reach the server soon after its clock runs out.
+          Submit it again, or start over.
         </p>
         <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
           <Button variant="play" size="lg" onClick={state.retry}>
@@ -146,7 +145,6 @@ export function CascadeRuntime({
         key={state.session.id}
         run={state.run}
         session={state.session}
-        deadline={state.deadline}
         verifying={state.status === "submitting"}
         onSwap={state.swap}
         onFinish={state.finish}
@@ -155,14 +153,7 @@ export function CascadeRuntime({
   }
 
   if (state.status === "finished") {
-    return (
-      <Finished
-        slug={slug}
-        result={state.result}
-        outOfTime={state.run.ending === "time"}
-        onRestart={state.restart}
-      />
-    );
+    return <Finished slug={slug} result={state.result} onRestart={state.restart} />;
   }
 
   return (
@@ -265,14 +256,12 @@ const prefersReducedMotion = () =>
 function Board({
   run,
   session,
-  deadline,
   verifying,
   onSwap,
   onFinish,
 }: {
   run: CascadeRun;
   session: PlaySession;
-  deadline: number;
   verifying: boolean;
   onSwap: (action: number) => void;
   onFinish: () => void;
@@ -282,8 +271,9 @@ function Board({
     score: run.score,
     cleared: run.levelsCleared,
     over: run.outcome === "over",
-    ending: run.ending === "time" ? "lose" : "stop",
+    ending: "stop",
   });
+  const best = useMyBestScore(session.gameSlug);
   const [confirming, setConfirming] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [selected, setSelected] = useState<number | null>(null);
@@ -332,6 +322,7 @@ function Board({
     boardRef.current?.focus();
   }, []);
 
+  // The hint's wait needs a clock to compare against `idleSince`.
   useEffect(() => {
     if (verifying || run.outcome !== "playing") return;
     const timer = setInterval(() => setNow(Date.now()), 250);
@@ -352,8 +343,6 @@ function Board({
     return () => clearTimeout(timer);
   }, [nope]);
 
-  const remaining = Math.max(0, deadline - now);
-  const earned = Math.max(1, budgetMs(run.levelsCleared));
   const hintAction = accepting && now - idleSince >= HINT_AFTER_MS ? findSwap(run.board) : null;
   const hint = hintAction !== null ? swapCells(hintAction) : null;
 
@@ -464,6 +453,9 @@ function Board({
           <dd className="text-2xl font-semibold tabular">{points(shown.score)}</dd>
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          {best !== null && (
+            <span className="tabular">Best {points(Math.max(best, shown.score))}</span>
+          )}
           <span className="tabular">Level {shown.level}</span>
           {session.ranked ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-1">
@@ -497,28 +489,6 @@ function Board({
             style={{ width: `${Math.min(100, (shown.progress / goal) * 100)}%` }}
           />
         </div>
-      </div>
-      <div className="mx-auto flex w-full max-w-md items-center gap-3 pb-1 text-xs text-muted-foreground">
-        <span className="w-24 shrink-0">Time</span>
-        <div
-          className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2"
-          role="progressbar"
-          aria-label="Time left"
-          aria-valuemin={0}
-          aria-valuemax={Math.round(earned / 1000)}
-          aria-valuenow={Math.ceil(remaining / 1000)}
-        >
-          <div
-            className={cn(
-              "h-full rounded-full transition-[width] duration-200 motion-reduce:transition-none",
-              remaining < 10_000 ? "bg-destructive" : "bg-primary",
-            )}
-            style={{ width: `${Math.min(100, (remaining / earned) * 100)}%` }}
-          />
-        </div>
-        <span className={cn("tabular", remaining < 10_000 && "text-destructive")}>
-          {formatSeconds(remaining)}
-        </span>
       </div>
 
       <div className="flex min-h-0 flex-1 items-center justify-center py-3">
@@ -567,9 +537,7 @@ function Board({
             <LevelUpOverlay
               levelUp={levelUp}
               unit="Level"
-              next={`Level ${shown.level} · ${goalFor(shown.level)} tiles · clock +${formatClockGain(
-                budgetMs(shown.levelsCleared) - budgetMs(shown.levelsCleared - 1),
-              )}`}
+              next={`Level ${shown.level} · ${goalFor(shown.level)} tiles`}
             />
           )}
         </div>
@@ -579,9 +547,7 @@ function Board({
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
             ? "The swaps you made are your score if the server agrees."
-            : `Clearing this level adds ${formatClockGain(
-                budgetMs(run.levelsCleared + 1) - budgetMs(run.levelsCleared),
-              )}.`}
+            : "No clock: play as long as you like, then end the run."}
         </p>
         <Button variant="ghost" size="sm" disabled={!accepting} onClick={() => setConfirming(true)}>
           End run
@@ -718,7 +684,7 @@ function statusLine(
   frame: Frame | undefined,
 ): string {
   if (verifying) return "Verifying your run with the server…";
-  if (run.outcome === "over") return run.ending === "time" ? "Time's up." : "Run ended.";
+  if (run.outcome === "over") return "Run ended.";
   if (frame?.kind === "deal") return "No swaps left: a fresh board.";
   if (wave > 1) return `Cascade ×${wave}!`;
   if (selected !== null) return "Now tap a neighbour to swap with it.";
@@ -729,12 +695,10 @@ function statusLine(
 function Finished({
   slug,
   result,
-  outOfTime,
   onRestart,
 }: {
   slug: string;
   result: RunResult;
-  outOfTime: boolean;
   onRestart: () => void;
 }) {
   return (
@@ -747,7 +711,7 @@ function Finished({
             <ShieldCheck className="size-5 text-muted-foreground" />
           )}
         </div>
-        <p className="text-sm text-muted-foreground">{outOfTime ? "Time's up" : "Run ended"}</p>
+        <p className="text-sm text-muted-foreground">Run ended</p>
         <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
           {`${result.clearedColumns} ${result.clearedColumns === 1 ? "level" : "levels"} cleared, ${

@@ -2,6 +2,7 @@ import { LayoutGrid, Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert } fr
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
+import { BestScore } from "@/components/game/BestScore";
 import { EndRunButton } from "@/components/game/EndRunButton";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
@@ -483,6 +484,7 @@ function Board({
         <dl className="flex items-baseline gap-1">
           <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
           <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
+          <BestScore slug={session.gameSlug} score={run.score} />
         </dl>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {run.combo > 0 && (

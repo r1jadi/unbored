@@ -2,6 +2,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { AlertTriangle, ArrowLeft, BadgeCheck, Inbox, RotateCw } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { followUser, resolveUserId, useFollowState } from "@/lib/social/follows";
 import { useAvatarPath } from "@/lib/users/avatars";
@@ -68,13 +69,17 @@ export function Avatar({
   src,
   size = "md",
   className,
+  zoomable = false,
 }: {
   name: string;
   src?: string;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
+  /** Tapping the picture opens it large, like a profile photo on TikTok. */
+  zoomable?: boolean;
 }) {
   const [broken, setBroken] = useState(false);
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     setBroken(false);
   }, [src]);
@@ -85,7 +90,7 @@ export function Avatar({
     xl: "size-24 text-2xl",
   }[size];
   if (src && !broken) {
-    return (
+    const image = (
       <img
         src={src}
         alt=""
@@ -97,6 +102,29 @@ export function Avatar({
           className,
         )}
       />
+    );
+    if (!zoomable) return image;
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label={t("View profile picture")}
+          className="shrink-0 cursor-zoom-in rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          {image}
+        </button>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="w-[min(90vw,28rem)] max-w-none border-0 bg-transparent p-0 shadow-none sm:rounded-none">
+            <DialogTitle className="sr-only">{name}</DialogTitle>
+            <img
+              src={src}
+              alt={name}
+              className="aspect-square w-full rounded-2xl bg-surface-2 object-cover"
+            />
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
   return (

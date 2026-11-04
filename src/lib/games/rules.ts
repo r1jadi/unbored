@@ -467,8 +467,8 @@ export const GAME_RULES = {
         text: "leave a special tile behind. Four makes a line tile that clears its whole row or column when it goes; five, or an L or T, makes a burst that clears the 3×3 around it.",
       },
       {
-        lead: "The clock",
-        text: "starts at one minute. Each level asks for more tiles cleared (30, then 40, 50, …) and adds time: 24 seconds for the first, less with each level after. The run ends when the clock does.",
+        lead: "No clock.",
+        text: "Each level asks for more tiles cleared (30, then 40, 50, …). Take your time: the run ends when you end it.",
       },
     ],
   },

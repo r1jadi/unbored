@@ -264,7 +264,7 @@ export function ProfileView({
               </div>
             ) : (
               <div className="enter flex flex-col items-center text-center md:flex-row md:items-start md:gap-6 md:text-left">
-                <Avatar name={user.username} src={user.avatarSrc} size="xl" />
+                <Avatar name={user.username} src={user.avatarSrc} size="xl" zoomable />
                 <div className="mt-3 flex-1 md:mt-1">
                   <p className="text-lg font-semibold">{user.name}</p>
                   <p className="text-sm text-muted-foreground">

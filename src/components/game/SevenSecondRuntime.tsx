@@ -12,6 +12,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
+import { BestScore } from "@/components/game/BestScore";
 import { GameExits } from "@/components/game/GameExits";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { RunEndActions } from "@/components/game/RunEndActions";
@@ -365,6 +366,7 @@ function Table({
           <div>
             <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
             <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
+            <BestScore slug={session.gameSlug} score={run.score} />
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">{t("Correct")}</dt>

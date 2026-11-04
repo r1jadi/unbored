@@ -205,7 +205,6 @@ import {
   type MiniSudokuRun,
 } from "@/lib/games/mini-sudoku";
 import {
-  budgetMs as cascadeBudgetMs,
   CASCADE_RULES_VERSION,
   createRun as createCascadeRun,
   finish as finishCascadeRun,
@@ -2618,11 +2617,9 @@ export type CascadeRunState =
       status: "playing";
       session: PlaySession;
       run: CascadeRun;
-      /** When the clock runs out, as a `Date.now()` timestamp. */
-      deadline: number;
     }
   /** A finished run is being verified. No score is shown yet. */
-  | { status: "submitting"; session: PlaySession; run: CascadeRun; deadline: number }
+  | { status: "submitting"; session: PlaySession; run: CascadeRun }
   | { status: "finished"; session: PlaySession; run: CascadeRun; result: RunResult }
   | {
       status: "error";
@@ -2650,11 +2647,9 @@ export type CascadeRunControls = CascadeRunState & {
 /**
  * Plays one run of Cascade against the session API.
  *
- * The same lifecycle as Zip, 8 Puzzle and Mini Sudoku, for the same reason: the run is against
- * a clock the verifier times from the session's start (`out_of_time`), so the
- * session is issued when the player presses Start, the clock starts when it
- * arrives, and the run ends by itself when the clock reaches zero. A cleared level
- * moves the deadline: the clock follows the levels cleared.
+ * An untimed run: the session is issued when the player presses Start, and the run
+ * goes on until the player ends it. The elapsed time is only reported as the run's
+ * duration.
  */
 export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunControls {
   // Tap to play skips the rules: the first render is already "starting", so the
@@ -2690,12 +2685,7 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
         if (controller.signal.aborted) return;
         const run = createCascadeRun(session.seed);
         startedAt.current = Date.now();
-        setState({
-          status: "playing",
-          session,
-          run,
-          deadline: startedAt.current + cascadeBudgetMs(0),
-        });
+        setState({ status: "playing", session, run });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -2705,35 +2695,17 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
     return () => controller.abort();
   }, [gameSlug, attempt]);
 
-  // The clock. When it reaches zero the run is over, and verification follows.
-  useEffect(() => {
-    if (state.status !== "playing" || state.run.outcome !== "playing") return;
-    const remaining = state.deadline - Date.now();
-    const timer = setTimeout(
-      () => {
-        setState((current) => {
-          if (current.status !== "playing" || current.run.outcome !== "playing") return current;
-          if (Date.now() < current.deadline) return { ...current };
-          endedAt.current = current.deadline;
-          return { ...current, run: finishCascadeRun(current.run, "time") };
-        });
-      },
-      Math.max(0, remaining),
-    );
-    return () => clearTimeout(timer);
-  }, [state]);
-
   // Verification: once, when a run has ended.
   useEffect(() => {
     if (state.status !== "playing" || state.run.outcome === "playing") return;
     if (submitting.current) return;
     submitting.current = true;
 
-    const { session, run, deadline } = state;
+    const { session, run } = state;
     if (startedAt.current === 0) startedAt.current = Date.now();
     if (endedAt.current === 0) endedAt.current = Date.now();
     const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
-    setState({ status: "submitting", session, run, deadline });
+    setState({ status: "submitting", session, run });
 
     completeRun(
       session.id,
@@ -2756,21 +2728,9 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
   const swap = useCallback((action: number) => {
     setState((current) => {
       if (current.status !== "playing") return current;
-      // A move after the deadline — a backgrounded tab can hold its timer back —
-      // ends the run instead of moving: the clock has already run out.
-      if (Date.now() >= current.deadline) {
-        if (current.run.outcome !== "playing") return current;
-        endedAt.current = current.deadline;
-        return { ...current, run: finishCascadeRun(current.run, "time") };
-      }
       const next = swapCascade(current.run, action);
       if (next === current.run) return current;
-      // A cleared level buys time: the deadline follows the levels cleared.
-      return {
-        ...current,
-        run: next,
-        deadline: startedAt.current + cascadeBudgetMs(next.levelsCleared),
-      };
+      return { ...current, run: next };
     });
   }, []);
 
@@ -2801,10 +2761,9 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
     if (state.status !== "error") return;
 
     if (state.stage === "submit" && state.session && state.run) {
-      // The identical submission, sent again. The clock is already over, so the
-      // deadline only has to exist; it no longer moves.
+      // The identical submission, sent again.
       submitting.current = false;
-      setState({ status: "playing", session: state.session, run: state.run, deadline: 0 });
+      setState({ status: "playing", session: state.session, run: state.run });
       return;
     }
 
