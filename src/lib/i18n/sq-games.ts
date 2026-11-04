@@ -509,6 +509,10 @@ export const sqGames: Record<string, string> = {
   "Three mistakes. The run is over.": "Tre gabime. Loja mbaroi.",
   "Play again": "Luaj sërish",
   "Sign in to rank your scores": "Identifikohu për t'i futur rezultatet në renditje",
+  "Guest runs aren't ranked": "Lojërat si mysafir nuk renditen",
+  "Make a free account and your next score goes on the leaderboard, with a streak to keep.":
+    "Krijo një llogari falas dhe rezultati yt i radhës del në renditje, me një seri ditësh për ta mbajtur.",
+  "Create a free account": "Krijo një llogari falas",
 
   // Saved runs
   "Continue run": "Vazhdo lojën",

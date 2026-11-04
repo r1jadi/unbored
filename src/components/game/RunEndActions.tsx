@@ -55,12 +55,28 @@ export function RunEndActions({
           </Link>
         </Button>
       </div>
+      {/* A guest's run is over and was not ranked: the moment an account means
+          most. This run cannot be claimed afterwards (a guest session has no
+          owner), so the offer is about the next one, said plainly. */}
       {!ranked && (
-        <Button asChild variant="link" size="sm" className="text-muted-foreground">
-          <Link to="/login" search={{ redirect: `/games/${slug}` }}>
-            {t("Sign in to rank your scores")}
-          </Link>
-        </Button>
+        <div className="mt-2 rounded-xl bg-surface p-3 text-left">
+          <p className="text-sm font-medium">{t("Guest runs aren't ranked")}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {t(
+              "Make a free account and your next score goes on the leaderboard, with a streak to keep.",
+            )}
+          </p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Button asChild variant="secondary" size="sm">
+              <Link to="/signup">{t("Create a free account")}</Link>
+            </Button>
+            <Button asChild variant="link" size="sm" className="px-1 text-muted-foreground">
+              <Link to="/login" search={{ redirect: `/games/${slug}` }}>
+                {t("Sign in to rank your scores")}
+              </Link>
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

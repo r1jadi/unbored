@@ -94,4 +94,10 @@ fi
 log "Running RLS and authorization suite"
 run_file "$ROOT_DIR/tests/security/rls_test.sql"
 
+# The verifiers are SQL copies of each game's rules; these are the engines' own
+# results, which the database must reproduce (src/test/verifier-vectors.test.ts
+# checks the same rows against the engines).
+log "Checking the game verifiers against the engines' vectors"
+run_file "$ROOT_DIR/tests/security/verifier_vectors.sql"
+
 log "Database security suite passed."

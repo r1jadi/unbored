@@ -48,6 +48,7 @@ import (
 	"github.com/r1jadi/unbored/packages/go/platform/authn"
 	"github.com/r1jadi/unbored/packages/go/platform/config"
 	"github.com/r1jadi/unbored/packages/go/platform/httpx"
+	"github.com/r1jadi/unbored/services/game-sessions/internal/rulesets"
 	"github.com/r1jadi/unbored/services/game-sessions/internal/supabaseplay"
 	"github.com/r1jadi/unbored/services/internal/servicekit"
 )
@@ -61,119 +62,7 @@ const (
 	// may carry 8192 cell taps of at most two digits, about 25 KiB, so the
 	// ceiling has room without inviting an absurd body.
 	maxBodyBytes = 64 * 1024
-	// maxActions bounds the moves in an ordinary run: sixty tiles for Stack 10,
-	// fifty-five taps for a perfect Memory Flash or legacy Chain run, twelve taps
-	// for a perfect One Move run, forty-eight slides for Color Merge, sixty cell
-	// taps for a complete legacy Don't Touch the Black deck, and sixty answers for
-	// 7 Second. The verifier enforces its own game's bound too; this only keeps an
-	// absurd body from reaching the database at all.
-	maxActions = 60
-	// The endless games' submission bounds. These are request ceilings rather than
-	// complete-run lengths: stack-10@2, chain@2, color-merge@2, memory-flash@2 and
-	// one-move@2 carry at most 4096 moves, and dont-touch@2 at most 4095 cell taps
-	// (a cell can be tapped once). Every other runtime keeps the bound its own
-	// verifier owns.
-	stack10MaxActions     = 4096
-	chainMaxActions       = 4096
-	colorMergeMaxActions  = 4096
-	memoryFlashMaxActions = 4096
-	oneMoveMaxActions     = 4096
-	dontTouchMaxActions   = 4095
-	// queens@1 carries at most 8192 taps: notes (Xs) are taps too, so a long run
-	// spends more of them per board than the other endless games do.
-	queensMaxActions = 8192
-	// zip@1 carries at most 8192 cells: every cell a drawn path enters is one.
-	zipMaxActions = 8192
-	// eight-puzzle@1 carries at most 8192 slides.
-	eightPuzzleMaxActions = 8192
-	// tango@1 carries at most 8192 taps.
-	tangoMaxActions = 8192
-	// sudoku@1 carries at most 8192 moves.
-	sudokuMaxActions = 8192
-	// crossword@1 and fjalekryqi@1 (the Albanian crossword) carry at most 2048
-	// moves: a day's solve, letters and help.
-	crosswordMaxActions = 2048
-	// gridburst@1 carries at most 4096 placements.
-	gridburstMaxActions = 4096
-	// updraft@1 carries at most 8192 actions: flaps, and the stop that ends a run
-	// the player ended.
-	updraftMaxActions = 8192
-	// decant@1 carries at most 8192 actions: pours, undos, restarts and extra tubes.
-	decantMaxActions = 8192
-	// mini-sudoku@1 carries at most 8192 moves.
-	miniSudokuMaxActions = 8192
-	// scatter@1 carries at most 4096 taps.
-	scatterMaxActions = 4096
-	// huedini@1 carries at most 8192 actions: slides, undos and restarts.
-	huediniMaxActions = 8192
-	// cascade@1 carries at most 4096 swaps.
-	cascadeMaxActions = 4096
-	// checkmate@1 carries at most 2048 actions: moves and skips.
-	checkmateMaxActions = 2048
-	// The bounds a move has to fit. Stack 10 addresses a column and Chain a pad,
-	// both 0 to 3; Color Merge addresses one of its four directions, also 0 to 3;
-	// Memory Flash addresses a cell of its board — sixteen for the retired 4×4
-	// rules, the largest board the endless rules can reach for memory-flash@2
-	// (fifteen by fifteen at the submission bound); One Move addresses a cell of
-	// its board — twenty-five cells for the retired 5×5 maximum, and for
-	// one-move@2 the 1026×1026 board the submission bound can reach; Don't Touch
-	// the Black addresses its deck's cells — sixty for the legacy rules, 4095 for
-	// the endless conveyor. The pinned rules version picks the bound, because the
-	// games live behind one endpoint.
-	stackChainPositions     = 4
-	colorMergeDirections    = 4
-	memoryFlashCells        = 16
-	memoryFlashEndlessCells = 225
-	oneMoveCells            = 25
-	// 1026², the side of the board at level 4096: one correct tap per level is
-	// the only way to reach the bound, and the level's side is 3 + (level-1)/4.
-	oneMoveEndlessCells = 1026 * 1026
-	// dontTouchCells is the legacy dont-touch@1 deck; dont-touch@2 addresses the
-	// endless conveyor's 4095 cells.
-	dontTouchCells     = 60
-	dontTouchMaxCells  = 4095
-	sevenSecondChoices = 3
-	// queensCells is the largest Queens board, 9×9: boards grow from 5×5 and stop
-	// there.
-	queensCells = 81
-	// zipCells is the largest Zip board, 7×7.
-	zipCells = 49
-	// eightPuzzleCells is the 3×3 board.
-	eightPuzzleCells = 9
-	// tangoCells is the 6×6 board.
-	tangoCells = 36
-	// sudokuMoves is every move on the 9×9 board: cell × 10 + digit, from 0
-	// (cell 0 cleared) to 809 (a 9 in cell 80).
-	sudokuMoves = 810
-	// miniSudokuMoves is every move on the 6×6 board: cell × 10 + digit, from 0
-	// (cell 0 cleared) to 356 (a 6 in cell 35).
-	miniSudokuMoves = 360
-	// crosswordMoves is every crossword move: a letter as cell × 32 + code (up to
-	// 48 × 32 + 26 on the 7×7 midi, or + 28 for Fjalekryqi's Ç and Ë), a check
-	// (1600) and a reveal (1700 + cell, up to 1748). The verifiers refuse the codes
-	// in between.
-	crosswordMoves = 1749
-	// gridburstMoves is every Gridburst placement: tray slot × 64 + the cell the
-	// piece's corner lands on, from 0 to 191.
-	gridburstMoves = 3 * 64
-	// updraftActions is every Updraft action: 2 × tick for a flap and
-	// 2 × tick + 1 for a stop, over the 108 000 ticks (thirty minutes at sixty a
-	// second) a run may last.
-	updraftActions = 2*108000 + 2
-	// decantActions is every Decant action: a pour as from × 16 + to (up to 187
-	// with twelve tubes), then 253 an extra tube, 254 undo and 255 restart.
-	decantActions = 256
-	// scatterCells is the largest Scatter board, 7×7: a tap addresses a cell.
-	scatterCells = 49
-	// huediniActions is every Huedini action: a slide as top-left cell × 4 +
-	// direction (up to 195 on the 7×7 board), then 254 undo and 255 restart.
-	huediniActions = 256
-	// cascadeSwaps is every Cascade swap on the 8×8 board: cell × 2 + direction,
-	// 0 right and 1 down, from 0 to 127. The verifier refuses a swap off the edge.
-	cascadeSwaps = 128
-	// checkmateActions is every Checkmate action: a move as from × 64 + to, from 0
-	// to 4095, then 4096 a skip.
-	checkmateActions = 4097
+	// Each game's submission bound and action codes live in internal/rulesets.
 )
 
 // Patterns mirror the database constraints, so a bad request is a 400 that names
@@ -401,49 +290,8 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	actions := body.Progress.Actions
-	limit := maxActions
-	switch {
-	case rules == "stack-10@2":
-		limit = stack10MaxActions
-	case rules == "chain@2":
-		limit = chainMaxActions
-	case rules == "color-merge@2":
-		limit = colorMergeMaxActions
-	case rules == "memory-flash@2":
-		limit = memoryFlashMaxActions
-	case rules == "one-move@2":
-		limit = oneMoveMaxActions
-	case strings.HasPrefix(rules, "dont-touch@") && rules != "dont-touch@1":
-		limit = dontTouchMaxActions
-	case strings.HasPrefix(rules, "queens@"):
-		limit = queensMaxActions
-	case strings.HasPrefix(rules, "zip@"):
-		limit = zipMaxActions
-	case strings.HasPrefix(rules, "eight-puzzle@"):
-		limit = eightPuzzleMaxActions
-	case strings.HasPrefix(rules, "tango@"):
-		limit = tangoMaxActions
-	case strings.HasPrefix(rules, "sudoku@"):
-		limit = sudokuMaxActions
-	case strings.HasPrefix(rules, "mini-sudoku@"):
-		limit = miniSudokuMaxActions
-	case strings.HasPrefix(rules, "crossword@"), strings.HasPrefix(rules, "fjalekryqi@"):
-		limit = crosswordMaxActions
-	case strings.HasPrefix(rules, "gridburst@"):
-		limit = gridburstMaxActions
-	case strings.HasPrefix(rules, "updraft@"):
-		limit = updraftMaxActions
-	case strings.HasPrefix(rules, "decant@"):
-		limit = decantMaxActions
-	case strings.HasPrefix(rules, "scatter@"):
-		limit = scatterMaxActions
-	case strings.HasPrefix(rules, "huedini@"):
-		limit = huediniMaxActions
-	case strings.HasPrefix(rules, "cascade@"):
-		limit = cascadeMaxActions
-	case strings.HasPrefix(rules, "checkmate@"):
-		limit = checkmateMaxActions
-	}
+	ruleset := rulesets.Lookup(rules)
+	limit := ruleset.MaxActions
 	if len(actions) > limit {
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
 			"That run has more moves than a submission can carry.",
@@ -454,7 +302,7 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 	// whether the *sequence* is possible is the verifier's call, not this one's.
 	// The board the pinned rules play on decides the bound: One Move has up to
 	// twenty-five cells, Memory Flash sixteen, Stack 10 and Chain four positions.
-	positions := boardSize(rules)
+	positions := ruleset.ActionCodes
 	for _, action := range actions {
 		if action < 0 || int(action) >= positions {
 			httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
@@ -537,57 +385,6 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 // is what selects a replay in the database, so it is also what selects the board
 // here; an unknown version keeps the smallest bound, and the verifier refuses the
 // run as `wrong_rules` rather than this layer guessing.
-func boardSize(rulesVersion string) int {
-	switch {
-	case rulesVersion == "memory-flash@1":
-		return memoryFlashCells
-	case strings.HasPrefix(rulesVersion, "memory-flash@"):
-		return memoryFlashEndlessCells
-	case rulesVersion == "one-move@1":
-		return oneMoveCells
-	case strings.HasPrefix(rulesVersion, "one-move@"):
-		return oneMoveEndlessCells
-	case strings.HasPrefix(rulesVersion, "color-merge@"):
-		return colorMergeDirections
-	case rulesVersion == "dont-touch@1":
-		return dontTouchCells
-	case strings.HasPrefix(rulesVersion, "dont-touch@"):
-		return dontTouchMaxCells
-	case strings.HasPrefix(rulesVersion, "seven-second@"):
-		return sevenSecondChoices
-	case strings.HasPrefix(rulesVersion, "queens@"):
-		return queensCells
-	case strings.HasPrefix(rulesVersion, "zip@"):
-		return zipCells
-	case strings.HasPrefix(rulesVersion, "eight-puzzle@"):
-		return eightPuzzleCells
-	case strings.HasPrefix(rulesVersion, "tango@"):
-		return tangoCells
-	case strings.HasPrefix(rulesVersion, "sudoku@"):
-		return sudokuMoves
-	case strings.HasPrefix(rulesVersion, "mini-sudoku@"):
-		return miniSudokuMoves
-	case strings.HasPrefix(rulesVersion, "crossword@"), strings.HasPrefix(rulesVersion, "fjalekryqi@"):
-		return crosswordMoves
-	case strings.HasPrefix(rulesVersion, "gridburst@"):
-		return gridburstMoves
-	case strings.HasPrefix(rulesVersion, "updraft@"):
-		return updraftActions
-	case strings.HasPrefix(rulesVersion, "decant@"):
-		return decantActions
-	case strings.HasPrefix(rulesVersion, "scatter@"):
-		return scatterCells
-	case strings.HasPrefix(rulesVersion, "huedini@"):
-		return huediniActions
-	case strings.HasPrefix(rulesVersion, "cascade@"):
-		return cascadeSwaps
-	case strings.HasPrefix(rulesVersion, "checkmate@"):
-		return checkmateActions
-	default:
-		return stackChainPositions
-	}
-}
-
 func deref[T any](value *T) T {
 	if value == nil {
 		return *new(T)

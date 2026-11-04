@@ -1018,63 +1018,57 @@ export type ForYouSignalsState = {
   signals: ForYouSignals | null;
 };
 
+/** Three small reads, then one lookup of every id they name. */
+async function loadForYouSignals(viewer: string): Promise<ForYouSignals> {
+  const [scores, liked, saved] = await Promise.all([
+    listMyRecentScores(50),
+    listLikedGameIds(),
+    listSavedGameIds(),
+  ]);
+  const records = await fetchGameRecords([...scores.map((row) => row.gameId), ...liked, ...saved]);
+  const slugOf = new Map(records.map((record) => [record.id, record.game.slug]));
+  const slugs = (ids: string[]) =>
+    ids.map((id) => slugOf.get(id)).filter((slug): slug is string => Boolean(slug));
+  return {
+    viewer,
+    played: scores
+      .filter((row) => slugOf.has(row.gameId))
+      .map((row) => ({ slug: slugOf.get(row.gameId)!, at: row.createdAt })),
+    liked: slugs(liked),
+    saved: slugs(saved),
+  };
+}
+
+/** One viewer's For You signals as a cacheable query, kept per viewer. */
+export function forYouSignalsQuery(viewer: string) {
+  return queryOptions({
+    queryKey: ["for-you-signals", viewer] as const,
+    queryFn: () => loadForYouSignals(viewer),
+    // A return visit orders the feed from the cache at once and refreshes behind
+    // it; a minute is short enough that a game just played steps back soon.
+    staleTime: 60_000,
+  });
+}
+
 /**
  * What the personal For You order knows about the signed-in caller: the games
  * they finished lately, with when, and the games they liked and saved, as slugs.
  *
- * Three small reads, then one lookup of every id they name. A guest needs none;
- * a failed read is a guest's feed, never an empty one.
+ * Cached per viewer, so only the first feed of a visit waits for it. A guest
+ * needs none; a failed read is a guest's feed, never an empty one.
  */
 export function useForYouSignals(): ForYouSignalsState {
-  const [state, setState] = useState<ForYouSignalsState>(() =>
-    getAuthState().status === "authenticated"
-      ? { status: "loading", signals: null }
-      : { status: "anonymous", signals: null },
+  const auth = useAuth();
+  const viewer = auth.status === "authenticated" ? auth.session.userId : null;
+  const query = useQuery(
+    { ...forYouSignalsQuery(viewer ?? ""), enabled: viewer !== null },
+    getQueryClient(),
   );
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    const auth = getAuthState();
-    if (auth.status !== "authenticated") {
-      setState({ status: "anonymous", signals: null });
-      return subscribeToAuth(() => setTick((n) => n + 1));
-    }
-    let cancelled = false;
-    setState({ status: "loading", signals: null });
-    Promise.all([listMyRecentScores(50), listLikedGameIds(), listSavedGameIds()])
-      .then(async ([scores, liked, saved]) => {
-        const records = await fetchGameRecords([
-          ...scores.map((row) => row.gameId),
-          ...liked,
-          ...saved,
-        ]);
-        const slugOf = new Map(records.map((record) => [record.id, record.game.slug]));
-        const slugs = (ids: string[]) =>
-          ids.map((id) => slugOf.get(id)).filter((slug): slug is string => Boolean(slug));
-        if (cancelled) return;
-        setState({
-          status: "ready",
-          signals: {
-            viewer: auth.session.userId,
-            played: scores
-              .filter((row) => slugOf.has(row.gameId))
-              .map((row) => ({ slug: slugOf.get(row.gameId)!, at: row.createdAt })),
-            liked: slugs(liked),
-            saved: slugs(saved),
-          },
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setState({ status: "error", signals: null });
-      });
-    const unsubscribe = subscribeToAuth(() => setTick((n) => n + 1));
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, [tick]);
-
-  return state;
+  if (auth.status === "restoring") return { status: "loading", signals: null };
+  if (viewer === null) return { status: "anonymous", signals: null };
+  if (query.data) return { status: "ready", signals: query.data };
+  if (query.isError) return { status: "error", signals: null };
+  return { status: "loading", signals: null };
 }
 
 /** Games the signed-in caller liked, newest first. */

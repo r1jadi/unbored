@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Feed } from "@/components/game/Feed";
 import { WelcomeMoment } from "@/components/layout/WelcomeMoment";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { FEED_QUERY, useGames } from "@/lib/games/catalog";
 import { personalOrder } from "@/lib/games/for-you-personal";
 import { prefetchFeed } from "@/lib/prefetch";
@@ -31,15 +31,26 @@ export const Route = createFileRoute("/")({
  * is a guest's.
  */
 function ForYou() {
-  const { status, items, error, retry } = useGames(FEED_QUERY);
+  const { status, items, error, retry, nextCursor, loadingMore, loadMore } = useGames(FEED_QUERY);
   const viewer = useForYouSignals();
-  const ranked = useMemo(() => personalOrder(items, viewer.signals), [items, viewer.signals]);
+  // The order ranks the whole catalogue, so every page is read before it is
+  // laid out: a game on page two must be able to win the first card.
+  const complete = status === "ready" && nextCursor === null;
+  useEffect(() => {
+    if (status === "ready" && nextCursor !== null && !loadingMore) loadMore();
+  }, [status, nextCursor, loadingMore, loadMore]);
+  const ranked = useMemo(
+    () => (complete ? personalOrder(items, viewer.signals) : []),
+    [complete, items, viewer.signals],
+  );
   return (
     <>
       <Feed
         tab="for-you"
         items={ranked}
-        loading={status === "loading" || viewer.status === "loading"}
+        loading={
+          status === "loading" || (status === "ready" && !complete) || viewer.status === "loading"
+        }
         error={status === "error" ? error : undefined}
         onRetry={retry}
         onRefresh={retry}

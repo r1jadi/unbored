@@ -139,8 +139,9 @@ export function forYouOrder(games: readonly Game[], now: number = Date.now()): G
 }
 
 /**
- * The For You feed's query: the whole catalogue in one read, so that ordering it
- * by plays ranks every game rather than only the newest page.
+ * The For You feed's query: the largest pages the API serves. The feed reads
+ * every page before it orders them (`routes/index.tsx`), so the order ranks the
+ * whole catalogue rather than only the newest page, at any catalogue size.
  */
 export const FEED_QUERY = { limit: MAX_PAGE_SIZE } as const;
 

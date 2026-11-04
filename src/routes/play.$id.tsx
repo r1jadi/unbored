@@ -2,28 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Clock, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
-import { ChainRuntime } from "@/components/game/ChainRuntime";
-import { ColorMergeRuntime } from "@/components/game/ColorMergeRuntime";
-import { GridburstRuntime } from "@/components/game/GridburstRuntime";
-import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
-import { TangoRuntime } from "@/components/game/TangoRuntime";
-import { SudokuRuntime } from "@/components/game/SudokuRuntime";
-import { CrosswordRuntime } from "@/components/game/CrosswordRuntime";
-import { DecantRuntime } from "@/components/game/DecantRuntime";
-import { MiniSudokuRuntime } from "@/components/game/MiniSudokuRuntime";
-import { ScatterRuntime } from "@/components/game/ScatterRuntime";
-import { HuediniRuntime } from "@/components/game/HuediniRuntime";
-import { CascadeRuntime } from "@/components/game/CascadeRuntime";
-import { CheckmateRuntime } from "@/components/game/CheckmateRuntime";
-import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
 import { GameExits } from "@/components/game/GameExits";
-import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
-import { OneMoveRuntime } from "@/components/game/OneMoveRuntime";
-import { QueensRuntime } from "@/components/game/QueensRuntime";
-import { ZipRuntime } from "@/components/game/ZipRuntime";
-import { SevenSecondRuntime } from "@/components/game/SevenSecondRuntime";
-import { Stack10Runtime } from "@/components/game/Stack10Runtime";
-import { UpdraftRuntime } from "@/components/game/UpdraftRuntime";
+import { RUNTIMES } from "@/components/game/runtimes";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,30 +18,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { useDocumentTitle } from "@/lib/document-title";
 import { useSoundEnabled } from "@/lib/sound";
 import { titleFromSlug, useGame } from "@/lib/games/catalog";
-import { CHAIN_RUNTIME } from "@/lib/games/chain";
-import { COLOR_MERGE_RUNTIME } from "@/lib/games/color-merge";
-import { DECANT_RUNTIME } from "@/lib/games/decant";
-import { MINI_SUDOKU_RUNTIME } from "@/lib/games/mini-sudoku";
-import { SCATTER_RUNTIME } from "@/lib/games/scatter";
-import { HUEDINI_RUNTIME } from "@/lib/games/huedini";
-import { CASCADE_RUNTIME } from "@/lib/games/cascade";
-import { CHECKMATE_RUNTIME } from "@/lib/games/checkmate";
-import { DONT_TOUCH_RUNTIME } from "@/lib/games/dont-touch";
-import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
-import { ONE_MOVE_RUNTIME } from "@/lib/games/one-move";
 import { RunLeaveContext, RunProgressContext } from "@/lib/games/run-progress";
 import { prefetchPlay } from "@/lib/prefetch";
 import { useOnline } from "@/lib/service-worker";
-import { QUEENS_RUNTIME } from "@/lib/games/queens";
-import { ZIP_RUNTIME } from "@/lib/games/zip";
-import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
-import { TANGO_RUNTIME } from "@/lib/games/tango";
-import { SUDOKU_RUNTIME } from "@/lib/games/sudoku";
-import { CROSSWORD_RUNTIME } from "@/lib/games/crossword";
-import { GRIDBURST_RUNTIME } from "@/lib/games/gridburst";
-import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
-import { STACK10_RUNTIME } from "@/lib/games/stack10";
-import { UPDRAFT_RUNTIME } from "@/lib/games/updraft";
 
 import { t } from "@/lib/settings/language";
 /**
@@ -189,29 +148,9 @@ export function PlaySurface({
   const playable = state.status === "ready" && state.game.playable && !!state.game.runtime;
   // A runtime this bundle ships: anything else renders the honest
   // "no runtime yet" screen below rather than a board with foreign rules.
-  const hasShippedRuntime =
-    state.status === "ready" &&
-    (state.game.runtime === STACK10_RUNTIME ||
-      state.game.runtime === CHAIN_RUNTIME ||
-      state.game.runtime === MEMORY_FLASH_RUNTIME ||
-      state.game.runtime === ONE_MOVE_RUNTIME ||
-      state.game.runtime === COLOR_MERGE_RUNTIME ||
-      state.game.runtime === DONT_TOUCH_RUNTIME ||
-      state.game.runtime === SEVEN_SECOND_RUNTIME ||
-      state.game.runtime === QUEENS_RUNTIME ||
-      state.game.runtime === ZIP_RUNTIME ||
-      state.game.runtime === EIGHT_PUZZLE_RUNTIME ||
-      state.game.runtime === TANGO_RUNTIME ||
-      state.game.runtime === SUDOKU_RUNTIME ||
-      state.game.runtime === CROSSWORD_RUNTIME ||
-      state.game.runtime === GRIDBURST_RUNTIME ||
-      state.game.runtime === UPDRAFT_RUNTIME ||
-      state.game.runtime === DECANT_RUNTIME ||
-      state.game.runtime === MINI_SUDOKU_RUNTIME ||
-      state.game.runtime === SCATTER_RUNTIME ||
-      state.game.runtime === HUEDINI_RUNTIME ||
-      state.game.runtime === CASCADE_RUNTIME ||
-      state.game.runtime === CHECKMATE_RUNTIME);
+  const Runtime =
+    state.status === "ready" && state.game.runtime ? RUNTIMES[state.game.runtime] : undefined;
+  const hasShippedRuntime = Runtime !== undefined;
 
   const nav = useNavigate();
   const online = useOnline();
@@ -253,177 +192,8 @@ export function PlaySurface({
           </div>
         )}
 
-        {state.status === "ready" && state.game.runtime === STACK10_RUNTIME && playable && (
-          <Stack10Runtime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
-        )}
-
-        {state.status === "ready" && state.game.runtime === CHAIN_RUNTIME && playable && (
-          <ChainRuntime key={state.game.slug} slug={state.game.slug} title={state.game.title} />
-        )}
-
-        {state.status === "ready" && state.game.runtime === MEMORY_FLASH_RUNTIME && playable && (
-          <MemoryFlashRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === ONE_MOVE_RUNTIME && playable && (
-          <OneMoveRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === COLOR_MERGE_RUNTIME && playable && (
-          <ColorMergeRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === DONT_TOUCH_RUNTIME && playable && (
-          <DontTouchRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === SEVEN_SECOND_RUNTIME && playable && (
-          <SevenSecondRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === QUEENS_RUNTIME && playable && (
-          <QueensRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === ZIP_RUNTIME && playable && (
-          <ZipRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === EIGHT_PUZZLE_RUNTIME && playable && (
-          <EightPuzzleRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === TANGO_RUNTIME && playable && (
-          <TangoRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === SUDOKU_RUNTIME && playable && (
-          <SudokuRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === CROSSWORD_RUNTIME && playable && (
-          <CrosswordRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === GRIDBURST_RUNTIME && playable && (
-          <GridburstRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === UPDRAFT_RUNTIME && playable && (
-          <UpdraftRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === DECANT_RUNTIME && playable && (
-          <DecantRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === MINI_SUDOKU_RUNTIME && playable && (
-          <MiniSudokuRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === SCATTER_RUNTIME && playable && (
-          <ScatterRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === HUEDINI_RUNTIME && playable && (
-          <HuediniRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === CASCADE_RUNTIME && playable && (
-          <CascadeRuntime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
-        )}
-
-        {state.status === "ready" && state.game.runtime === CHECKMATE_RUNTIME && playable && (
-          <CheckmateRuntime
+        {state.status === "ready" && Runtime && playable && (
+          <Runtime
             key={state.game.slug}
             slug={state.game.slug}
             title={state.game.title}

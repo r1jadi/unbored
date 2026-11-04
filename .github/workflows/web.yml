@@ -11,6 +11,7 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "tests/security/verifier_vectors.sql"
       - "public/**"
       - "scripts/generate-sitemap.mjs"
       - "package.json"
@@ -23,6 +24,7 @@ on:
   pull_request:
     paths:
       - "src/**"
+      - "tests/security/verifier_vectors.sql"
       - "public/**"
       - "package.json"
       - "bun.lock"

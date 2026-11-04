@@ -27,6 +27,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/r1jadi/unbored/services/game-sessions/internal/rulesets"
 	"io"
 	"net/http"
 	"strings"
@@ -248,52 +249,7 @@ func (c *Client) CompleteRun(ctx context.Context, request CompleteRequest) (Resu
 // answers wrong_rules for a version it does not implement, so an unknown version
 // is still a refusal, never a pass.
 func completeFunction(rulesVersion string) string {
-	switch {
-	case strings.HasPrefix(rulesVersion, "chain@"):
-		return "complete_chain_run"
-	case strings.HasPrefix(rulesVersion, "memory-flash@"):
-		return "complete_memory_flash_run"
-	case strings.HasPrefix(rulesVersion, "one-move@"):
-		return "complete_one_move_run"
-	case strings.HasPrefix(rulesVersion, "color-merge@"):
-		return "complete_color_merge_run"
-	case strings.HasPrefix(rulesVersion, "dont-touch@"):
-		return "complete_dont_touch_run"
-	case strings.HasPrefix(rulesVersion, "seven-second@"):
-		return "complete_seven_second_run"
-	case strings.HasPrefix(rulesVersion, "queens@"):
-		return "complete_queens_run"
-	case strings.HasPrefix(rulesVersion, "zip@"):
-		return "complete_zip_run"
-	case strings.HasPrefix(rulesVersion, "eight-puzzle@"):
-		return "complete_eight_puzzle_run"
-	case strings.HasPrefix(rulesVersion, "tango@"):
-		return "complete_tango_run"
-	case strings.HasPrefix(rulesVersion, "sudoku@"):
-		return "complete_sudoku_run"
-	case strings.HasPrefix(rulesVersion, "mini-sudoku@"):
-		return "complete_mini_sudoku_run"
-	case strings.HasPrefix(rulesVersion, "crossword@"):
-		return "complete_crossword_run"
-	case strings.HasPrefix(rulesVersion, "fjalekryqi@"):
-		return "complete_fjalekryqi_run"
-	case strings.HasPrefix(rulesVersion, "gridburst@"):
-		return "complete_gridburst_run"
-	case strings.HasPrefix(rulesVersion, "updraft@"):
-		return "complete_updraft_run"
-	case strings.HasPrefix(rulesVersion, "decant@"):
-		return "complete_decant_run"
-	case strings.HasPrefix(rulesVersion, "scatter@"):
-		return "complete_scatter_run"
-	case strings.HasPrefix(rulesVersion, "huedini@"):
-		return "complete_huedini_run"
-	case strings.HasPrefix(rulesVersion, "cascade@"):
-		return "complete_cascade_run"
-	case strings.HasPrefix(rulesVersion, "checkmate@"):
-		return "complete_checkmate_run"
-	default:
-		return "complete_stack10_run"
-	}
+	return rulesets.Lookup(rulesVersion).Verifier
 }
 
 // rpc posts to one Data API function and decodes its single-object answer.
