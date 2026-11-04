@@ -52,6 +52,8 @@ import { Route as CategoriesSlugRouteImport } from './routes/categories.$slug'
 import { Route as GamesIdRouteImport } from './routes/games.$id'
 import { Route as LeaderboardsIndexRouteImport } from './routes/leaderboards.index'
 import { Route as LeaderboardsIdRouteImport } from './routes/leaderboards.$id'
+import { Route as MessagesIndexRouteImport } from './routes/messages.index'
+import { Route as MessagesUsernameRouteImport } from './routes/messages.$username'
 import { Route as PlayIdRouteImport } from './routes/play.$id'
 import { Route as ResultsIdRouteImport } from './routes/results.$id'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
@@ -274,6 +276,16 @@ const LeaderboardsIdRoute = LeaderboardsIdRouteImport.update({
   path: '/leaderboards/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MessagesIndexRoute = MessagesIndexRouteImport.update({
+  id: '/messages/',
+  path: '/messages/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MessagesUsernameRoute = MessagesUsernameRouteImport.update({
+  id: '/messages/$username',
+  path: '/messages/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlayIdRoute = PlayIdRouteImport.update({
   id: '/play/$id',
   path: '/play/$id',
@@ -346,12 +358,14 @@ export interface FileRoutesByFullPath {
   '/categories/$slug': typeof CategoriesSlugRoute
   '/games/$id': typeof GamesIdRoute
   '/leaderboards/$id': typeof LeaderboardsIdRoute
+  '/messages/$username': typeof MessagesUsernameRoute
   '/play/$id': typeof PlayIdRoute
   '/results/$id': typeof ResultsIdRoute
   '/settings/$section': typeof SettingsSectionRoute
   '/admin/': typeof AdminIndexRoute
   '/categories/': typeof CategoriesIndexRoute
   '/leaderboards/': typeof LeaderboardsIndexRoute
+  '/messages/': typeof MessagesIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/u/$username/connections': typeof UUsernameConnectionsRoute
   '/u/$username/': typeof UUsernameIndexRoute
@@ -396,12 +410,14 @@ export interface FileRoutesByTo {
   '/categories/$slug': typeof CategoriesSlugRoute
   '/games/$id': typeof GamesIdRoute
   '/leaderboards/$id': typeof LeaderboardsIdRoute
+  '/messages/$username': typeof MessagesUsernameRoute
   '/play/$id': typeof PlayIdRoute
   '/results/$id': typeof ResultsIdRoute
   '/settings/$section': typeof SettingsSectionRoute
   '/admin': typeof AdminIndexRoute
   '/categories': typeof CategoriesIndexRoute
   '/leaderboards': typeof LeaderboardsIndexRoute
+  '/messages': typeof MessagesIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/u/$username/connections': typeof UUsernameConnectionsRoute
   '/u/$username': typeof UUsernameIndexRoute
@@ -448,12 +464,14 @@ export interface FileRoutesById {
   '/categories/$slug': typeof CategoriesSlugRoute
   '/games/$id': typeof GamesIdRoute
   '/leaderboards/$id': typeof LeaderboardsIdRoute
+  '/messages/$username': typeof MessagesUsernameRoute
   '/play/$id': typeof PlayIdRoute
   '/results/$id': typeof ResultsIdRoute
   '/settings/$section': typeof SettingsSectionRoute
   '/admin/': typeof AdminIndexRoute
   '/categories/': typeof CategoriesIndexRoute
   '/leaderboards/': typeof LeaderboardsIndexRoute
+  '/messages/': typeof MessagesIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/u/$username/connections': typeof UUsernameConnectionsRoute
   '/u/$username/': typeof UUsernameIndexRoute
@@ -501,12 +519,14 @@ export interface FileRouteTypes {
     | '/categories/$slug'
     | '/games/$id'
     | '/leaderboards/$id'
+    | '/messages/$username'
     | '/play/$id'
     | '/results/$id'
     | '/settings/$section'
     | '/admin/'
     | '/categories/'
     | '/leaderboards/'
+    | '/messages/'
     | '/settings/'
     | '/u/$username/connections'
     | '/u/$username/'
@@ -551,12 +571,14 @@ export interface FileRouteTypes {
     | '/categories/$slug'
     | '/games/$id'
     | '/leaderboards/$id'
+    | '/messages/$username'
     | '/play/$id'
     | '/results/$id'
     | '/settings/$section'
     | '/admin'
     | '/categories'
     | '/leaderboards'
+    | '/messages'
     | '/settings'
     | '/u/$username/connections'
     | '/u/$username'
@@ -602,12 +624,14 @@ export interface FileRouteTypes {
     | '/categories/$slug'
     | '/games/$id'
     | '/leaderboards/$id'
+    | '/messages/$username'
     | '/play/$id'
     | '/results/$id'
     | '/settings/$section'
     | '/admin/'
     | '/categories/'
     | '/leaderboards/'
+    | '/messages/'
     | '/settings/'
     | '/u/$username/connections'
     | '/u/$username/'
@@ -642,11 +666,13 @@ export interface RootRouteChildren {
   CategoriesSlugRoute: typeof CategoriesSlugRoute
   GamesIdRoute: typeof GamesIdRoute
   LeaderboardsIdRoute: typeof LeaderboardsIdRoute
+  MessagesUsernameRoute: typeof MessagesUsernameRoute
   PlayIdRoute: typeof PlayIdRoute
   ResultsIdRoute: typeof ResultsIdRoute
   SettingsSectionRoute: typeof SettingsSectionRoute
   CategoriesIndexRoute: typeof CategoriesIndexRoute
   LeaderboardsIndexRoute: typeof LeaderboardsIndexRoute
+  MessagesIndexRoute: typeof MessagesIndexRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
   UUsernameConnectionsRoute: typeof UUsernameConnectionsRoute
   UUsernameIndexRoute: typeof UUsernameIndexRoute
@@ -955,6 +981,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeaderboardsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/messages/': {
+      id: '/messages/'
+      path: '/messages'
+      fullPath: '/messages/'
+      preLoaderRoute: typeof MessagesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/messages/$username': {
+      id: '/messages/$username'
+      path: '/messages/$username'
+      fullPath: '/messages/$username'
+      preLoaderRoute: typeof MessagesUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/play/$id': {
       id: '/play/$id'
       path: '/play/$id'
@@ -1063,11 +1103,13 @@ const rootRouteChildren: RootRouteChildren = {
   CategoriesSlugRoute: CategoriesSlugRoute,
   GamesIdRoute: GamesIdRoute,
   LeaderboardsIdRoute: LeaderboardsIdRoute,
+  MessagesUsernameRoute: MessagesUsernameRoute,
   PlayIdRoute: PlayIdRoute,
   ResultsIdRoute: ResultsIdRoute,
   SettingsSectionRoute: SettingsSectionRoute,
   CategoriesIndexRoute: CategoriesIndexRoute,
   LeaderboardsIndexRoute: LeaderboardsIndexRoute,
+  MessagesIndexRoute: MessagesIndexRoute,
   SettingsIndexRoute: SettingsIndexRoute,
   UUsernameConnectionsRoute: UUsernameConnectionsRoute,
   UUsernameIndexRoute: UUsernameIndexRoute,

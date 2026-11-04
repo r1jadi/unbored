@@ -15,8 +15,12 @@ so a follow, a comment or a score from any path is covered:
 | A reply | The comment's author | `notify_comments` | None |
 | A comment on a game | Its owner, unless it is Unbored's own game | `notify_comments` | None |
 | A new personal best | The friends it overtook: players who follow each other | `notify_beats` | The ten closest friends, and once per game every six hours per player |
+| A direct message | Its recipient | `notify_messages` | One per chat until it is read, with no message text |
+| A callout, and its result | The other player | `notify_messages` | Ten new callouts a day per player |
 
 A new game tells every player once, when it first goes live (published and playable), unless they turned off `notify_game_releases`. It stays in the app: these rows skip the push outbox, because thousands at once would hold up real follows and replies behind them.
+
+Direct messages are the exception to "database triggers": `send_direct_message` creates the row. It is there to carry a push, so the Notifications list and its badge leave it out, and Messages has its own.
 
 Nobody is told about their own action, nothing crosses a block in either direction,
 and a player off the leaderboards neither triggers nor receives a beaten-score

@@ -130,3 +130,36 @@ $$;
 grant select, insert, update, delete on storage.objects to authenticated;
 grant select on storage.objects to anon;
 grant select on storage.buckets to anon, authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Realtime: the table its private channels are authorized against, and send()
+-- ─────────────────────────────────────────────────────────────────────────────
+
+create schema if not exists realtime;
+grant usage on schema realtime to anon, authenticated, service_role;
+
+create table if not exists realtime.messages (
+  id        bigint generated always as identity primary key,
+  topic     text not null,
+  extension text not null default 'broadcast',
+  event     text,
+  payload   jsonb,
+  private   boolean default true
+);
+alter table realtime.messages enable row level security;
+grant select, insert on realtime.messages to authenticated;
+
+-- The channel being joined, which Realtime sets before it checks the policies.
+create or replace function realtime.topic()
+returns text
+language sql
+stable
+as $$ select nullif(current_setting('realtime.topic', true), '') $$;
+
+create or replace function realtime.send(payload jsonb, event text, topic text, private boolean default true)
+returns void
+language sql
+as $$
+  insert into realtime.messages (topic, event, payload, private)
+  values (send.topic, send.event, send.payload, send.private);
+$$;

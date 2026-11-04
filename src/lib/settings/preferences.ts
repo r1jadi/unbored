@@ -26,9 +26,16 @@ export type UserPreferences = {
   notifyNewGames: boolean;
   /** In the app, for each new game. `notifyNewGames` is the email digest. */
   notifyGameReleases: boolean;
+  notifyMessages: boolean;
+  /** Who can start a chat. Someone this player has already written to can always reply. */
+  allowMessagesFrom: MessagePrivacy;
+  /** "Seen" in chats. It goes both ways: off, this player neither shows nor sees it. */
+  showReadReceipts: boolean;
   language: string | null;
   appearance: string | null;
 };
+
+export type MessagePrivacy = "everyone" | "friends" | "nobody";
 
 export const defaultPreferences: UserPreferences = {
   privateAccount: false,
@@ -44,6 +51,9 @@ export const defaultPreferences: UserPreferences = {
   // Email is opt-in: the sign-up form and Settings both collect explicit consent.
   notifyNewGames: false,
   notifyGameReleases: true,
+  notifyMessages: true,
+  allowMessagesFrom: "friends",
+  showReadReceipts: true,
   language: null,
   appearance: null,
 };
@@ -62,6 +72,9 @@ type Row = {
   notify_comments: boolean;
   notify_new_games: boolean;
   notify_game_releases: boolean;
+  notify_messages: boolean;
+  allow_messages_from: MessagePrivacy;
+  show_read_receipts: boolean;
   language: string | null;
   appearance: string | null;
 };
@@ -80,6 +93,9 @@ function toPreferences(row: Row): UserPreferences {
     notifyComments: row.notify_comments,
     notifyNewGames: row.notify_new_games,
     notifyGameReleases: row.notify_game_releases,
+    notifyMessages: row.notify_messages,
+    allowMessagesFrom: row.allow_messages_from,
+    showReadReceipts: row.show_read_receipts,
     language: row.language,
     appearance: row.appearance,
   };
@@ -100,6 +116,9 @@ function toRow(prefs: UserPreferences, userId: string): Row {
     notify_comments: prefs.notifyComments,
     notify_new_games: prefs.notifyNewGames,
     notify_game_releases: prefs.notifyGameReleases,
+    notify_messages: prefs.notifyMessages,
+    allow_messages_from: prefs.allowMessagesFrom,
+    show_read_receipts: prefs.showReadReceipts,
     language: prefs.language,
     appearance: prefs.appearance,
   };

@@ -8,6 +8,7 @@ import {
   MoreHorizontal,
   Settings,
   Share2,
+  Swords,
   Trophy,
   type LucideIcon,
 } from "lucide-react";
@@ -34,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCalloutBadge } from "@/lib/messages/callouts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { points } from "@/lib/format";
@@ -434,6 +436,7 @@ export function ProfileView({
       : tabs.filter((name) => name !== "Activity" && name !== "Saved");
   const active = visible.includes(tab) ? tab : (visible[0] ?? "Best scores");
   const gamesScored = bestScores?.status === "ready" ? bestScores.entries?.length : undefined;
+  const calloutBadge = useCalloutBadge(user.userId, self);
 
   async function block() {
     try {
@@ -545,12 +548,10 @@ export function ProfileView({
                           initial={user.isFollowing}
                           size="sm"
                         />
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => toast(t("Direct messages are not implemented."))}
-                        >
-                          {t("Message")}
+                        <Button asChild variant="secondary" size="sm">
+                          <Link to="/messages/$username" params={{ username: user.username }}>
+                            {t("Message")}
+                          </Link>
                         </Button>
                       </>
                     )}
@@ -564,6 +565,16 @@ export function ProfileView({
 
                 {visibility && (self || restricted) && (
                   <VisibilityChip self={self} visibility={visibility} />
+                )}
+
+                {calloutBadge && (
+                  <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-destructive/15 px-2.5 py-1 text-xs font-medium">
+                    <Swords className="size-3" aria-hidden />
+                    {t("Lost a callout to @{username} on {game}", {
+                      username: calloutBadge.winnerUsername,
+                      game: calloutBadge.gameTitle,
+                    })}
+                  </p>
                 )}
 
                 {!restricted && user.bio && <p className="mt-2 max-w-md text-sm">{user.bio}</p>}

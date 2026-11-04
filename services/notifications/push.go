@@ -185,12 +185,15 @@ type pushMessage struct {
 // pushCopy holds the wording for one language. `%[1]s` is the player and `%[2]s` the
 // game. It is written here because a service worker has no app to translate with.
 type pushCopy struct {
-	followTitle, followBody           string
-	replyTitle, replyBody             string
-	gameCommentTitle, gameCommentBody string
-	scoreTitle, scoreBody             string
-	someone                           string
-	aGame                             string
+	followTitle, followBody               string
+	replyTitle, replyBody                 string
+	gameCommentTitle, gameCommentBody     string
+	scoreTitle, scoreBody                 string
+	messageTitle, messageBody             string
+	calloutTitle, calloutBody             string
+	calloutResultTitle, calloutResultBody string
+	someone                               string
+	aGame                                 string
 }
 
 var pushCopies = map[string]pushCopy{
@@ -199,6 +202,9 @@ var pushCopies = map[string]pushCopy{
 		replyTitle: "New reply", replyBody: "@%[1]s replied to your comment on %[2]s",
 		gameCommentTitle: "New comment", gameCommentBody: "@%[1]s commented on %[2]s",
 		scoreTitle: "Your score was beaten", scoreBody: "@%[1]s beat your score on %[2]s",
+		messageTitle: "New message", messageBody: "@%[1]s sent you a message",
+		calloutTitle: "You got called out", calloutBody: "@%[1]s called you out on %[2]s",
+		calloutResultTitle: "Callout settled", calloutResultBody: "Your callout with @%[1]s on %[2]s is settled",
 		someone: "someone", aGame: "a game",
 	},
 	"sq": {
@@ -206,6 +212,9 @@ var pushCopies = map[string]pushCopy{
 		replyTitle: "Përgjigje e re", replyBody: "@%[1]s iu përgjigj komentit tënd te %[2]s",
 		gameCommentTitle: "Koment i ri", gameCommentBody: "@%[1]s komentoi te %[2]s",
 		scoreTitle: "Rezultati yt u thye", scoreBody: "@%[1]s theu rezultatin tënd te %[2]s",
+		messageTitle: "Mesazh i ri", messageBody: "@%[1]s të dërgoi një mesazh",
+		calloutTitle: "Të sfiduan", calloutBody: "@%[1]s të sfidoi te %[2]s",
+		calloutResultTitle: "Sfida u mbyll", calloutResultBody: "Sfida jote me @%[1]s te %[2]s u mbyll",
 		someone: "dikush", aGame: "një lojë",
 	},
 }
@@ -271,6 +280,27 @@ func renderPush(row supabasedigest.PushDelivery) ([]byte, bool) {
 		}
 		if payload.Game != "" {
 			message.URL = "/leaderboards/" + payload.Game
+		}
+	case "message":
+		// The sender's name only. The row holds no text, because a push is shown on a
+		// lock screen.
+		message = pushMessage{
+			Title: words.messageTitle,
+			Body:  fmt.Sprintf(words.messageBody, player),
+			URL:   "/messages",
+			Tag:   "message",
+		}
+		switch payload.Reason {
+		case "challenge":
+			message.Title = words.calloutTitle
+			message.Body = fmt.Sprintf(words.calloutBody, player, game)
+		case "challenge_result":
+			message.Title = words.calloutResultTitle
+			message.Body = fmt.Sprintf(words.calloutResultBody, player, game)
+		}
+		if payload.Username != "" {
+			message.URL = "/messages/" + payload.Username
+			message.Tag = "message:" + payload.Username
 		}
 	default:
 		return nil, false

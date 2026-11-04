@@ -33,7 +33,11 @@ All tables live in `public` and are reachable only through the Data API roles
 | `follows` | `follower_id` | Directed follow edges; self-follow is a constraint violation. |
 | `reports` | `reporter_id` | User reports with a status workflow. |
 | `moderation_actions` | `moderator_id` | Append-only record of moderator decisions. |
-| `notifications` | `user_id` | Per-user inbox. |
+| `notifications` | `user_id` | Per-user inbox. `message` rows only carry a push; Messages has its own list and badge. |
+| `conversations` | `user_low`, `user_high` | One direct-message conversation per pair of players; the ordered pair is unique. |
+| `conversation_participants` | `user_id` | Each player's view of a conversation: read position and "deleted up to". |
+| `messages` | `sender_id` | Direct messages, 1–2000 characters, one per `(sender_id, client_id)` so a retry can't send twice. |
+| `challenges` | `challenger_id`, `opponent_id` | Callouts: two friends, one shared seed, one attempt each, and a claim (beat, beat by a margin, or hit a score). No client grant. |
 | `game_release_digests` | — | One five-new-games email batch, its games and one delivery row per recipient. Service-owned; no client grant at all. |
 | `analytics_events` | `user_id` (nullable) | Append-only product events; no Data API grant at all. |
 
@@ -82,6 +86,7 @@ The full matrix, including the denied cases, is in
 | `likes`, `follows` | select | select, insert/delete own | all |
 | `reports` | — | insert own, select own, staff select/update | all |
 | `notifications` | — | select/update own `read_at` | all |
+| `conversations`, `conversation_participants`, `messages` | — | select own; writes through functions only | all |
 | `game_release_digests` (+ games, deliveries) | — | — (no grant) | all |
 | `analytics_events` | — | — (no grant) | all |
 

@@ -45,6 +45,9 @@ moderator or admin role.
 | `reports`            | —                                                                                 | insert own, select own, select/update staff                                                                              | all                   |
 | `moderation_actions` | —                                                                                 | select staff, insert staff (as `auth.uid()`)                                                                             | all                   |
 | `notifications`      | —                                                                                 | select own, update own `read_at`                                                                                         | all                   |
+| `conversations`, `conversation_participants`, `messages` | —                                                                                 | select own conversations (a deleted chat's earlier messages are hidden); **no write grant**, functions only; `messages.client_id` not readable | all                   |
+| `challenges` (Callouts) | —                                                                                 | — (no grant: the shared seed and sealed scores live here); functions only                                                 | all                   |
+| `realtime.messages`  | —                                                                                 | select own `dm:user:` topic and own `dm:conv:` topics; insert own `dm:conv:` topics (typing)                              | all                   |
 | `game_release_digests` (+ games, deliveries) | —                                                                      | — (no grant at all)                                                                                                      | all (service RPCs only) |
 | `analytics_events`   | —                                                                                 | — (no grant at all)                                                                                                      | all                   |
 | `storage.objects`    | select public buckets                                                             | select, insert/update/delete under `<own-user-id>/` in a writable bucket                                                 | all                   |
@@ -95,6 +98,31 @@ moderator or admin role.
   `register_push_subscription` and `unregister_push_subscription`, and the outbox is
   service-role only. Endpoints are limited to real push services, because the server
   posts to them.
+- **No client-written messages.** `conversations`, `conversation_participants` and
+  `messages` have no write grant. `send_direct_message` takes the sender from
+  `auth.uid()` and applies blocks in either direction, suspension, the recipient's
+  `allow_messages_from` (friends by default) and the rate limits. `unsend_direct_message`
+  deletes the row, and only for its sender. A block, a setting and a missing account
+  all answer `not_allowed`, so a sender can't tell them apart.
+- **Direct messages have no staff path.** No policy or admin function lets a moderator
+  read them. A report names the account (`target_kind = 'profile'`), not the
+  conversation. The `service_role` key can read them, like everything else.
+- **Message text stays out of notifications and Realtime.** A `message` notification
+  holds the sender's name and the conversation id, because a push is shown on a lock
+  screen. A Realtime signal holds the conversation id and a kind, because Realtime keeps
+  what it sends for days. See [0014](../decisions/0014-realtime-direct-messages.md).
+- **Callouts can't be claimed.** A callout's score comes only from the ordinary verifier
+  replaying a run. `start_challenge_run` is the only thing that hands out the shared seed,
+  and only to a player whose turn it is. `conversation_challenges` leaves out the other
+  player's score until it is settled, unless it is the score to beat. Those scores stay off
+  the boards (a trigger on `scores`), and those runs can't be saved or continued (a trigger
+  on `game_sessions`). Friends only.
+- **Realtime topics are private.** Policies on `realtime.messages` let a player listen on
+  `dm:user:<own id>` and write nowhere on it, and let only a conversation's two players,
+  with no block between them, use `dm:conv:<id>`.
+- **"Seen" is decided by the database.** `direct_thread` withholds the other player's read
+  position, and `mark_conversation_read` withholds its signal, when either player has
+  `show_read_receipts` off.
 - **Least data.** `profiles` exposes only public columns to the Data API;
   `analytics_events` is unreachable from the browser; lists are capped.
 

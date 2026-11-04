@@ -23,6 +23,7 @@ import { useEffect, useRef, type RefObject } from "react";
 
 import { ApiError } from "@/lib/api/client";
 import { getAccessToken, getAuthState, useAuth } from "@/lib/auth/session";
+import { getActiveChallenge } from "@/lib/games/challenge-run";
 import { browserOffline } from "@/lib/games/offline";
 import { t } from "@/lib/settings/language";
 import { restMutate, supabaseBase, supabaseHeaders } from "@/lib/supabase/rest";
@@ -93,6 +94,8 @@ export async function fetchSavedRun(
   gameSlug: string,
   rulesVersion: string,
 ): Promise<SavedRun | null> {
+  // A callout is one fresh attempt: no saved run is ever offered in its place.
+  if (getActiveChallenge()) return null;
   const token = signedInToken();
   // Offline there is no account to read it from: start an offline run instead.
   if (!token || !RESUMABLE_RULES.has(rulesVersion) || browserOffline()) return null;

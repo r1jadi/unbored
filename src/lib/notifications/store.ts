@@ -14,6 +14,13 @@ import { getAccessToken, getAuthState, subscribe as subscribeToAuth } from "@/li
 import { restGet, restMutate, SupabaseRestError } from "@/lib/supabase/rest";
 
 import { t } from "@/lib/settings/language";
+/**
+ * Not `message`: those rows exist to carry a push (see `send_direct_message`), and
+ * Messages has its own list and badge. Every read and write here leaves them out, so a
+ * chat isn't announced twice and marking this inbox read can't re-arm the next push.
+ */
+const NOT_MESSAGES = "kind=neq.message";
+
 export type NotificationKind = "follow" | "comment" | "like" | "score" | "moderation" | "system";
 
 export type AppNotification = {
@@ -60,7 +67,7 @@ export async function fetchNotifications(limit = 50): Promise<AppNotification[]>
   }
   try {
     const rows = await restGet<Row[]>(
-      `notifications?select=id,kind,payload,read_at,created_at&order=created_at.desc&limit=${limit}`,
+      `notifications?${NOT_MESSAGES}&select=id,kind,payload,read_at,created_at&order=created_at.desc&limit=${limit}`,
       token,
     );
     return rows.map(toNotification);
@@ -77,7 +84,7 @@ export async function fetchUnreadCount(): Promise<number> {
   }
   try {
     const rows = await restGet<Array<{ id: string }>>(
-      "notifications?select=id&read_at=is.null&limit=100",
+      `notifications?${NOT_MESSAGES}&select=id&read_at=is.null&limit=100`,
       token,
     );
     return rows.length;
@@ -95,7 +102,7 @@ export async function markAllRead(): Promise<void> {
     throw new ApiError(t("Sign in to view notifications."), { code: "unauthorized", status: 401 });
   }
   try {
-    await restMutate("notifications?read_at=is.null", "PATCH", token, {
+    await restMutate(`notifications?${NOT_MESSAGES}&read_at=is.null`, "PATCH", token, {
       read_at: new Date().toISOString(),
     });
   } catch (error) {

@@ -12,6 +12,7 @@ Disallow: /play
 Disallow: /results
 Disallow: /onboarding
 Disallow: /notifications
+Disallow: /messages
 Disallow: /activity
 Disallow: /following
 Disallow: /likes

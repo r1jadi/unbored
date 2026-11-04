@@ -36,6 +36,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiError, apiFetch } from "@/lib/api/client";
 import { getAccessToken, getSessionUserId } from "@/lib/auth/session";
+import {
+  announceChallengeRunDone,
+  getActiveChallenge,
+  startChallengeRun,
+} from "@/lib/games/challenge-run";
 import { getQueryClient } from "@/lib/query";
 import {
   browserOffline,
@@ -387,6 +392,10 @@ function endedByPlayer(run: { stopped?: boolean; ending?: string | null }): bool
  */
 export function startSession(gameSlug: string, options: RequestOptions = {}): Promise<PlaySession> {
   const rulesVersion = options.rulesVersion ?? STACK10_RULES_VERSION;
+  // A callout's run is the shared board and has to reach the server: there is no
+  // offline practice in its place.
+  const challenge = getActiveChallenge();
+  if (challenge) return startChallengeRun(challenge, rulesVersion, CLIENT, options.signal);
   if (browserOffline()) return Promise.resolve(offlineSession(gameSlug, rulesVersion));
   const token = getAccessToken();
   return apiFetch<PlaySession>(Routes.sessions, {
@@ -431,8 +440,9 @@ export function completeRun(
   const token = getAccessToken();
   // Before the submission, which closes the session this has to be written to. A
   // failure here only costs the chance to continue: the score still goes in.
+  const challenge = getActiveChallenge();
   const continuable =
-    options.endedByPlayer === true
+    options.endedByPlayer === true && !challenge
       ? markRunContinuable(sessionId, submissionBody.rulesVersion, submissionBody.actions)
       : Promise.resolve(false);
   return continuable.then((marked) =>
@@ -448,6 +458,7 @@ export function completeRun(
       void client.invalidateQueries({ queryKey: ["games"] });
       void client.invalidateQueries({ queryKey: ["my-game-stats", result.gameSlug] });
       void client.invalidateQueries({ queryKey: ["my-game-streak", result.gameSlug] });
+      if (challenge) announceChallengeRunDone(result.score);
       return result;
     }),
   );

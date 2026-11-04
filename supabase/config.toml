@@ -31,7 +31,7 @@ major_version = 17
 enabled = false
 
 [realtime]
-enabled = false
+enabled = true
 
 [studio]
 enabled = true

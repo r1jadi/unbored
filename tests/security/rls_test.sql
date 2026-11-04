@@ -5881,6 +5881,831 @@ select rls_test.ok(
 );
 reset role;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Direct messages
+-- ─────────────────────────────────────────────────────────────────────────────
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1', 'dm_one@example.com', '{"username":"dm_one"}'::jsonb),
+  ('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'dm_two@example.com', '{"username":"dm_two"}'::jsonb),
+  ('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3', 'dm_three@example.com', '{"username":"dm_three"}'::jsonb),
+  ('d4d4d4d4-2026-4120-8720-d4d4d4d4d4d4', 'dm_four@example.com', '{"username":"dm_four"}'::jsonb);
+
+create function rls_test.dm_as(p_user text) returns void
+language sql as $$
+  select set_config('request.jwt.claims',
+    json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
+$$;
+
+set local role anon;
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+select rls_test.denied($$select 1 from public.messages$$, 'a visitor cannot read messages');
+select rls_test.denied($$select 1 from public.conversations$$, 'a visitor cannot read conversations');
+select rls_test.denied(
+  $$select public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'hi', gen_random_uuid())$$,
+  'a visitor cannot send a message');
+select rls_test.denied($$select public.direct_inbox()$$, 'a visitor has no inbox');
+reset role;
+
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+
+-- No write path but the functions.
+select rls_test.denied(
+  $$insert into public.conversations (user_low, user_high, created_by) values
+    ('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1', 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'd1d1d1d1-2026-4120-8720-d1d1d1d1d1d1')$$,
+  'a player cannot create a conversation row directly');
+select rls_test.denied(
+  $$insert into public.messages (conversation_id, sender_id, body, client_id) values
+    (gen_random_uuid(), 'd1d1d1d1-2026-4120-8720-d1d1d1d1d1d1', 'forged', gen_random_uuid())$$,
+  'a player cannot insert a message directly');
+select rls_test.denied($$select client_id from public.messages$$,
+  'the sending device''s id is not readable');
+select rls_test.denied(
+  $$select public.messaging_allowed('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1', 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2')$$,
+  'nobody can probe another pair''s messaging rules');
+
+-- Bad input.
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', E'  \n\t ', gen_random_uuid())$$,
+  'invalid', 'a blank message is refused');
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', repeat('x', 2001), gen_random_uuid())$$,
+  'invalid', 'an over-long message is refused');
+select rls_test.says(
+  $$public.send_direct_message('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1', 'me', gen_random_uuid())$$,
+  'invalid', 'a player cannot message themselves');
+select rls_test.says(
+  $$public.send_direct_message('deadbeef-2026-4120-8720-deadbeefdead', 'anyone?', gen_random_uuid())$$,
+  'not_allowed', 'an account that does not exist answers like any refusal');
+
+-- The default is friends only, and one follow doesn't make a friend.
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'hello', gen_random_uuid())$$,
+  'not_allowed', 'a stranger cannot start a chat by default');
+reset role;
+insert into public.follows (follower_id, followee_id) values ('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1', 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2');
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'hello', gen_random_uuid())$$,
+  'not_allowed', 'following someone is not being friends');
+reset role;
+insert into public.follows (follower_id, followee_id) values ('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'd1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+
+-- A first message creates the conversation, stored once however often it is retried.
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', '  hello  ', 'aaaaaaaa-2026-4120-8720-aaaaaaaaaaaa')$$,
+  'sent', 'friends can start a conversation');
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'hello', 'aaaaaaaa-2026-4120-8720-aaaaaaaaaaaa')$$,
+  'sent', 'a retry with the same client id is the same success');
+select rls_test.ok((select count(*) = 1 and min(body) = 'hello' from public.messages),
+  'the retry stored nothing new, and the body was trimmed');
+select rls_test.ok(
+  (select sender_id = 'd1d1d1d1-2026-4120-8720-d1d1d1d1d1d1' from public.messages limit 1),
+  'the sender is the token''s subject');
+select rls_test.ok((select unread_count = 0 from public.direct_inbox()),
+  'your own message is not unread');
+
+-- A third player sees nothing, even by id.
+select rls_test.dm_as('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3');
+select rls_test.visible($$select 1 from public.messages$$, 0, 'a stranger cannot read the messages');
+select rls_test.visible($$select 1 from public.conversations$$, 0, 'a stranger cannot see the conversation');
+select rls_test.visible($$select 1 from public.conversation_participants$$, 0, 'a stranger cannot see who is in it');
+select public.mark_conversation_read((select id from public.conversations limit 1));
+reset role;
+select rls_test.ok(
+  (select count(*) = 0 from public.conversation_participants where user_id = 'd3d3d3d3-2026-4120-8720-d3d3d3d3d3d3'),
+  'a stranger cannot join by marking a conversation read');
+select rls_test.ok(rls_test.notes('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'message') = 1,
+  'the first message tells the recipient');
+select rls_test.ok(
+  (select payload ? 'username' and not payload ? 'body'
+     from public.notifications
+    where user_id = 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2' and kind = 'message'),
+  'the notification names the sender and holds no message text');
+
+-- The recipient reads and replies.
+set local role authenticated;
+select rls_test.dm_as('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2');
+select rls_test.ok((select unread_count = 1 and username = 'dm_one' from public.direct_inbox()),
+  'the recipient''s inbox shows the sender and one unread');
+select rls_test.ok((select public.direct_unread_total() = 1), 'the badge counts one unread chat');
+select rls_test.ok(
+  (select can_send and their_last_read_at is not null
+     from public.direct_thread('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1')),
+  'the recipient can answer and sees how far the sender has read');
+select public.mark_conversation_read((select id from public.conversations));
+select rls_test.ok((select public.direct_unread_total() = 0), 'reading the chat clears the badge');
+select rls_test.denied(
+  $$update public.conversation_participants set last_read_at = null$$,
+  'read state is not directly writable');
+select rls_test.visible(
+  $$select 1 from public.notifications where kind = 'message' and read_at is null$$, 0,
+  'reading the chat reads its notification');
+reset role;
+
+-- A burst notifies once; reading the chat re-arms it.
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'one', gen_random_uuid())$$,
+  'sent', 'another message');
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'two', gen_random_uuid())$$,
+  'sent', 'and another');
+reset role;
+select rls_test.ok(rls_test.notes('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'message') = 2,
+  'an unread stretch notifies once, and a new stretch notifies again');
+
+-- The toggle stops the notification but not the message.
+insert into public.user_preferences (user_id, notify_messages)
+  values ('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', false);
+update public.notifications set read_at = now()
+ where user_id = 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2' and kind = 'message';
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'quiet', gen_random_uuid())$$,
+  'sent', 'a message to someone with notifications off still arrives');
+reset role;
+select rls_test.ok(rls_test.notes('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'message') = 2,
+  'turning off message notifications stops them');
+delete from public.user_preferences where user_id = 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2';
+
+-- Who may start a chat.
+insert into public.follows (follower_id, followee_id) values
+  ('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3', 'd4d4d4d4-2026-4120-8720-d4d4d4d4d4d4'), ('d4d4d4d4-2026-4120-8720-d4d4d4d4d4d4', 'd3d3d3d3-2026-4120-8720-d3d3d3d3d3d3');
+insert into public.user_preferences (user_id, allow_messages_from)
+  values ('d4d4d4d4-2026-4120-8720-d4d4d4d4d4d4', 'nobody');
+set local role authenticated;
+select rls_test.dm_as('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3');
+select rls_test.says(
+  $$public.send_direct_message('d4d4d4d4-2026-4120-8720-d4d4d4d4d4d4', 'hey', gen_random_uuid())$$,
+  'not_allowed', '"nobody" refuses a new chat, even from a friend');
+select rls_test.ok(
+  (select not can_send from public.direct_thread('d4d4d4d4-2026-4120-8720-d4d4d4d4d4d4')),
+  'the chat screen knows before anyone types');
+select rls_test.visible($$select 1 from public.conversations$$, 0, 'a refused message leaves no conversation');
+reset role;
+
+update public.user_preferences set allow_messages_from = 'everyone'
+ where user_id = 'd4d4d4d4-2026-4120-8720-d4d4d4d4d4d4';
+delete from public.follows where follower_id in ('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3', 'd4d4d4d4-2026-4120-8720-d4d4d4d4d4d4') and followee_id in ('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3', 'd4d4d4d4-2026-4120-8720-d4d4d4d4d4d4');
+set local role authenticated;
+select rls_test.dm_as('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3');
+select rls_test.says(
+  $$public.send_direct_message('d4d4d4d4-2026-4120-8720-d4d4d4d4d4d4', 'hey', gen_random_uuid())$$,
+  'sent', '"everyone" lets a stranger in');
+select rls_test.dm_as('d4d4d4d4-2026-4120-8720-d4d4d4d4d4d4');
+select rls_test.says(
+  $$public.send_direct_message('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3', 'hi back', gen_random_uuid())$$,
+  'sent', 'they can answer, whatever the other player''s own setting says');
+reset role;
+update public.user_preferences set allow_messages_from = 'nobody'
+ where user_id = 'd4d4d4d4-2026-4120-8720-d4d4d4d4d4d4';
+set local role authenticated;
+select rls_test.dm_as('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3');
+select rls_test.says(
+  $$public.send_direct_message('d4d4d4d4-2026-4120-8720-d4d4d4d4d4d4', 'still here', gen_random_uuid())$$,
+  'sent', 'someone they already wrote to can still reply');
+reset role;
+
+-- Blocks, in either direction, end it with the same answer as a setting.
+insert into public.blocked_users (blocker_id, blocked_id)
+  values ('d4d4d4d4-2026-4120-8720-d4d4d4d4d4d4', 'd3d3d3d3-2026-4120-8720-d3d3d3d3d3d3');
+set local role authenticated;
+select rls_test.dm_as('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3');
+select rls_test.says(
+  $$public.send_direct_message('d4d4d4d4-2026-4120-8720-d4d4d4d4d4d4', 'hello?', gen_random_uuid())$$,
+  'not_allowed', 'a blocked player cannot send');
+select rls_test.visible($$select 1 from public.direct_inbox()$$, 1,
+  'the blocked player keeps the chat, so the block is not announced');
+select rls_test.dm_as('d4d4d4d4-2026-4120-8720-d4d4d4d4d4d4');
+select rls_test.says(
+  $$public.send_direct_message('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3', 'hello?', gen_random_uuid())$$,
+  'not_allowed', 'the blocker cannot send either');
+select rls_test.visible($$select 1 from public.direct_inbox()$$, 0,
+  'a chat with someone you blocked leaves your inbox');
+select rls_test.ok((select public.direct_unread_total() = 0), 'and it never lights the badge');
+reset role;
+delete from public.blocked_users where blocker_id = 'd4d4d4d4-2026-4120-8720-d4d4d4d4d4d4';
+
+-- Suspension.
+update public.profiles set is_suspended = true where id = 'd3d3d3d3-2026-4120-8720-d3d3d3d3d3d3';
+set local role authenticated;
+select rls_test.dm_as('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3');
+select rls_test.says(
+  $$public.send_direct_message('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1', 'hi', gen_random_uuid())$$,
+  'suspended', 'a suspended account cannot send');
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.says(
+  $$public.send_direct_message('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3', 'hi', gen_random_uuid())$$,
+  'not_allowed', 'nor can a suspended account be messaged');
+reset role;
+update public.profiles set is_suspended = false where id = 'd3d3d3d3-2026-4120-8720-d3d3d3d3d3d3';
+
+-- Deleting a chat is one-sided, and a later message starts it afresh.
+set local role authenticated;
+select rls_test.dm_as('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2');
+select public.clear_conversation((select id from public.conversations));
+select rls_test.visible($$select 1 from public.messages$$, 0, 'a deleted chat''s messages are gone for that player');
+select rls_test.visible($$select 1 from public.direct_inbox()$$, 0, 'and it leaves their inbox');
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.ok(
+  rls_test.count_rows($$select 1 from public.messages where conversation_id in (select id from public.conversations where user_high = 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2' or user_low = 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2')$$) = 4,
+  'the other player keeps their copy');
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'still there?', gen_random_uuid())$$,
+  'sent', 'a new message after a deleted chat');
+select rls_test.dm_as('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2');
+select rls_test.visible($$select 1 from public.messages$$, 1, 'only the new message reappears');
+select rls_test.ok((select unread_count = 1 and last_body = 'still there?' from public.direct_inbox()),
+  'and the chat is back in the inbox, unread');
+reset role;
+
+-- "Seen" goes both ways, and the switch hides it from the signals too.
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.ok(
+  (select their_last_read_at is not null from public.direct_thread('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2')),
+  'with "Seen" on, a player can see how far the other has read');
+reset role;
+insert into public.user_preferences (user_id, show_read_receipts)
+  values ('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', false);
+delete from realtime.messages;
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.ok(
+  (select their_last_read_at is null from public.direct_thread('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2')),
+  'a player who turned off "Seen" doesn''t show it');
+select rls_test.dm_as('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2');
+select rls_test.ok(
+  (select their_last_read_at is null from public.direct_thread('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1')),
+  'and doesn''t see it for others');
+select public.mark_conversation_read((select id from public.conversations));
+reset role;
+select rls_test.ok(
+  (select count(*) = 0 from realtime.messages where topic = 'dm:user:d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1'),
+  'reading with "Seen" off sends the other player no signal, so timing doesn''t give it away');
+select rls_test.ok(
+  (select count(*) = 1 from realtime.messages where topic = 'dm:user:d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2' and payload->>'kind' = 'read'),
+  'the reader''s own devices still hear, to clear their badge');
+delete from public.user_preferences where user_id = 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2';
+
+-- Unsending.
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'take this back', 'bbbbbbbb-2026-4120-8720-bbbbbbbbbbbb')$$,
+  'sent', 'a message to unsend');
+reset role;
+create temp table dm_unsend on commit drop as
+  select id from public.messages where client_id = 'bbbbbbbb-2026-4120-8720-bbbbbbbbbbbb';
+grant select on dm_unsend to authenticated;
+set local role authenticated;
+select rls_test.denied(
+  $$delete from public.messages$$,
+  'a message cannot be deleted directly');
+select rls_test.dm_as('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2');
+select rls_test.ok(
+  (select public.unsend_direct_message((select id from dm_unsend)) = false),
+  'the recipient cannot unsend someone else''s message');
+select rls_test.visible($$select 1 from public.messages where body = 'take this back'$$, 1,
+  'so it is still there');
+select rls_test.dm_as('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3');
+select rls_test.ok(
+  (select public.unsend_direct_message((select id from dm_unsend)) = false),
+  'nor can a stranger');
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.ok(
+  (select public.unsend_direct_message((select id from dm_unsend)) = true),
+  'the sender can');
+select rls_test.visible($$select 1 from public.messages where body = 'take this back'$$, 0,
+  'it is gone for the sender');
+select rls_test.dm_as('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2');
+select rls_test.visible($$select 1 from public.messages where body = 'take this back'$$, 0,
+  'and for the recipient');
+select rls_test.ok((select last_body <> 'take this back' from public.direct_inbox()),
+  'the inbox falls back to the message before it');
+reset role;
+select rls_test.ok(
+  (select count(*) = 0 from public.messages where body = 'take this back'),
+  'no copy is kept');
+
+-- Realtime carries signals only, to the right people.
+select rls_test.ok(
+  (select count(*) > 0 from realtime.messages),
+  'writes signal the players');
+select rls_test.ok(
+  (select count(*) = 0 from realtime.messages
+    where payload::text like '%take this back%' or payload ? 'body'),
+  'no message text ever goes through Realtime');
+
+select set_config('realtime.topic', 'dm:user:d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1', true);
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.ok(
+  rls_test.count_rows($$select 1 from realtime.messages where topic = realtime.topic()$$) > 0,
+  'a player can listen on their own topic');
+select rls_test.denied(
+  $$insert into realtime.messages (topic, event, payload) values (realtime.topic(), 'changed', '{}')$$,
+  'a player cannot write to their own signal topic');
+select rls_test.dm_as('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2');
+select rls_test.visible($$select 1 from realtime.messages$$, 0,
+  'nobody can listen on someone else''s topic');
+select rls_test.denied(
+  $$insert into realtime.messages (topic, event, payload) values (realtime.topic(), 'changed', '{}')$$,
+  'nor poke their devices');
+reset role;
+
+select set_config('realtime.topic',
+  'dm:conv:' || (select c.id::text from public.conversations c where c.user_low = least('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1'::uuid, 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2'::uuid) and c.user_high = greatest('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1'::uuid, 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2'::uuid)),
+  true);
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.allow(
+  $$insert into realtime.messages (topic, event, payload) values (realtime.topic(), 'typing', '{}')$$,
+  'a participant can send a typing signal');
+select rls_test.dm_as('d3d3d3d3-2026-4120-8720-d3d3d3d3d3d3');
+select rls_test.denied(
+  $$insert into realtime.messages (topic, event, payload) values (realtime.topic(), 'typing', '{}')$$,
+  'a stranger cannot join a conversation''s topic');
+select rls_test.visible($$select 1 from realtime.messages$$, 0, 'or listen on it');
+reset role;
+insert into public.blocked_users (blocker_id, blocked_id) values ('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'd1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.denied(
+  $$insert into realtime.messages (topic, event, payload) values (realtime.topic(), 'typing', '{}')$$,
+  'a block closes the conversation''s topic');
+reset role;
+delete from public.blocked_users where blocker_id = 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2';
+
+-- Limits.
+insert into public.messages (conversation_id, sender_id, body, client_id)
+select c.id, 'd1d1d1d1-2026-4120-8720-d1d1d1d1d1d1', 'flood', gen_random_uuid()
+  from public.conversations c, generate_series(1, 30)
+ where c.user_low = least('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1'::uuid, 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2'::uuid)
+   and c.user_high = greatest('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1'::uuid, 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2'::uuid);
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'more', gen_random_uuid())$$,
+  'rate_limited', 'thirty messages a minute is the limit');
+reset role;
+delete from public.messages where body = 'flood';
+
+-- Push wording happens in the sender; the outbox only has to let the kind through.
+delete from public.push_subscriptions;
+update public.notifications set push_sent_at = now() where push_sent_at is null;
+insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
+  values ('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'https://fcm.googleapis.com/fcm/send/dm-device',
+          repeat('a', 87), repeat('b', 22));
+update public.notifications set read_at = now()
+ where user_id = 'd2d2d2d2-2026-4120-8720-d2d2d2d2d2d2' and kind = 'message';
+set local role authenticated;
+select rls_test.dm_as('d1d1d1d1-2026-4120-8720-d1d1d1d1d1d1');
+select rls_test.says(
+  $$public.send_direct_message('d2d2d2d2-2026-4120-8720-d2d2d2d2d2d2', 'buzz', gen_random_uuid())$$,
+  'sent', 'a message to someone with a device');
+reset role;
+set local role service_role;
+select rls_test.ok(
+  (select count(*) = 1 and min(kind) = 'message' and bool_and(not payload ? 'body')
+     from public.claim_push_batch(10)),
+  'a message reaches the push outbox, with no text in it');
+reset role;
+
+-- Deleting an account takes its chats with it.
+delete from auth.users where id = 'd1d1d1d1-2026-4120-8720-d1d1d1d1d1d1';
+select rls_test.ok(
+  (select count(*) = 0 from public.conversations
+    where 'd1d1d1d1-2026-4120-8720-d1d1d1d1d1d1' in (user_low, user_high)),
+  'deleting an account deletes its conversations, not refused by any reference');
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Challenges
+-- ─────────────────────────────────────────────────────────────────────────────
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1', 'ch_one@example.com', '{"username":"ch_one"}'::jsonb),
+  ('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'ch_two@example.com', '{"username":"ch_two"}'::jsonb),
+  ('e3e3e3e3-2026-4120-8720-e3e3e3e3e3e3', 'ch_three@example.com', '{"username":"ch_three"}'::jsonb);
+
+-- What a verifier does at the end of a run, with the score given: the verifiers' own
+-- replay is tested above, and one real run through one of them is below.
+create function rls_test.finish_run(p_session uuid, p_score bigint) returns void
+language plpgsql as $$
+begin
+  update public.game_sessions
+     set completed_at = now(), verified_score = p_score, verified_digest = repeat('a', 32)
+   where id = p_session;
+  insert into public.scores (session_id, game_id, user_id, score, duration_ms)
+  select s.id, s.game_id, s.user_id, p_score, 1000 from public.game_sessions s where s.id = p_session;
+end $$;
+
+-- A place for values one step hands to the next, readable under any role.
+create table rls_test.ch_vars (name text primary key, value text);
+grant all on rls_test.ch_vars to authenticated, anon;
+create function rls_test.ch_get(p_name text) returns uuid language sql as $$
+  select value::uuid from rls_test.ch_vars where name = p_name
+$$;
+
+-- Visitors and strangers.
+set local role anon;
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+select rls_test.denied($$select 1 from public.challenges$$, 'a visitor cannot read challenges');
+select rls_test.denied(
+  $$select public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'stack-10', 'sealed', null, null, false)$$,
+  'a visitor cannot create one');
+reset role;
+
+set local role authenticated;
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+select rls_test.denied($$select 1 from public.challenges$$, 'a player cannot read the table: the seed is in it');
+select rls_test.denied(
+  $$insert into public.challenges (conversation_id, challenger_id, opponent_id, user_low, user_high, game_id, format, status)
+    values (gen_random_uuid(), 'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1', 'e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2',
+            'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1', 'e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', gen_random_uuid(), 'sealed', 'finished')$$,
+  'a player cannot write a challenge, or its result, directly');
+select rls_test.says(
+  $$public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'stack-10', 'sealed', null, null, false)$$,
+  'not_friends', 'only friends can challenge');
+reset role;
+
+insert into public.follows (follower_id, followee_id) values
+  ('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1', 'e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2'),
+  ('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+
+set local role authenticated;
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+select rls_test.says(
+  $$public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'stack-10', 'winner_takes_all', null, null, false)$$,
+  'invalid', 'an unknown format is refused');
+select rls_test.says(
+  $$public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'stack-10', 'sealed', repeat('x', 81), null, false)$$,
+  'invalid', 'a stake is short');
+select rls_test.says(
+  $$public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'crossword', 'sealed', null, null, false)$$,
+  'not_available', 'a daily game cannot be challenged');
+select rls_test.says(
+  $$public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'stack-10', 'sealed', null, null, true)$$,
+  'invalid', 'a double or nothing needs a result to stake');
+
+-- Sealed, from the start.
+insert into rls_test.ch_vars
+select 'sealed', challenge_id::text
+  from public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'stack-10', 'sealed', '  loser buys coffee  ', null, false);
+select rls_test.ok(rls_test.ch_get('sealed') is not null, 'friends can challenge each other');
+select rls_test.says(
+  $$public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'stack-10', 'sealed', null, null, false)$$,
+  'already_open', 'one at a time per game');
+select rls_test.ok(
+  (select count(*) = 1 from public.messages where challenge_id = rls_test.ch_get('sealed')),
+  'the card is in the chat');
+select rls_test.says(
+  format($$public.start_challenge_run(%L, public.stack10_rules_version(), 'test')$$, rls_test.ch_get('sealed')),
+  'not_your_turn', 'nobody plays before the friend accepts');
+select rls_test.ok(
+  (select public.respond_to_challenge(rls_test.ch_get('sealed'), true) = 'closed'),
+  'the challenger cannot accept their own challenge');
+select rls_test.ok(
+  (select public.unsend_direct_message((select id from public.messages where challenge_id = rls_test.ch_get('sealed'))) = false),
+  'a challenge card cannot be unsent');
+
+select rls_test.dm_as('e3e3e3e3-2026-4120-8720-e3e3e3e3e3e3');
+select rls_test.ok(
+  (select public.respond_to_challenge(rls_test.ch_get('sealed'), true) = 'closed'),
+  'a stranger cannot accept it');
+select rls_test.says(
+  format($$public.start_challenge_run(%L, public.stack10_rules_version(), 'test')$$, rls_test.ch_get('sealed')),
+  'not_your_turn', 'and a stranger never gets the board');
+
+select rls_test.dm_as('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2');
+select rls_test.ok(
+  (select stake = 'loser buys coffee' and status = 'pending' and my_score is null and their_score is null
+     from public.conversation_challenges(
+       (select conversation_id from public.messages where challenge_id = rls_test.ch_get('sealed')))
+    where id = rls_test.ch_get('sealed')),
+  'the friend sees the card, with the stake');
+select rls_test.ok(
+  (select public.respond_to_challenge(rls_test.ch_get('sealed'), true) = 'accepted'),
+  'the friend can accept');
+
+-- The same board, one attempt each.
+insert into rls_test.ch_vars
+select 'run_two', session_id::text
+  from public.start_challenge_run(rls_test.ch_get('sealed'), public.stack10_rules_version(), 'test');
+select rls_test.says(
+  format($$public.start_challenge_run(%L, public.stack10_rules_version(), 'test')$$, rls_test.ch_get('sealed')),
+  'already_played', 'one attempt: asking again gets nothing');
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+insert into rls_test.ch_vars
+select 'run_one', session_id::text
+  from public.start_challenge_run(rls_test.ch_get('sealed'), public.stack10_rules_version(), 'test');
+reset role;
+select rls_test.ok(
+  (select count(distinct seed) = 1 and count(*) = 2 from public.game_sessions
+    where id in (rls_test.ch_get('run_one'), rls_test.ch_get('run_two'))),
+  'both players get the exact same board');
+
+-- A challenge run can't be saved, continued, or thrown away by another run.
+set local role authenticated;
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+select public.save_run_progress(rls_test.ch_get('run_one'), array[1, 2, 3], 1000);
+select rls_test.ok(
+  (select count(*) = 0 from public.saved_run('stack-10', public.stack10_rules_version())),
+  'a challenge run is never offered to continue');
+select public.start_game_session('stack-10', public.stack10_rules_version(), 'test');
+reset role;
+select rls_test.ok(
+  (select abandoned_at is null and progress_actions is null from public.game_sessions where id = rls_test.ch_get('run_one')),
+  'an ordinary run of the same game does not cost the attempt, and no moves are kept');
+
+-- Sealed means sealed.
+select rls_test.finish_run(rls_test.ch_get('run_one'), 340);
+set local role authenticated;
+select rls_test.dm_as('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2');
+select rls_test.ok(
+  (select their_score is null and they_finished and status = 'active'
+     from public.conversation_challenges(
+       (select conversation_id from public.messages where challenge_id = rls_test.ch_get('sealed')))
+    where id = rls_test.ch_get('sealed')),
+  'the friend sees that the other has played, and not the score');
+reset role;
+select rls_test.ok(
+  (select count(*) = 0 from public.scores where session_id = rls_test.ch_get('run_one')),
+  'a challenge score stays off the boards');
+
+select rls_test.finish_run(rls_test.ch_get('run_two'), 295);
+set local role authenticated;
+select rls_test.dm_as('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2');
+select rls_test.ok(
+  (select status = 'finished' and my_score = 295 and their_score = 340
+          and winner_id = 'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1'
+     from public.conversation_challenges(
+       (select conversation_id from public.messages where challenge_id = rls_test.ch_get('sealed')))
+    where id = rls_test.ch_get('sealed')),
+  'both scores are revealed once both have played, and the higher one wins');
+select rls_test.ok(
+  (select my_wins = 0 and their_wins = 1 and draws = 0
+     from public.rivalry_record('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1')),
+  'the rivalry record counts it');
+select rls_test.ok(
+  (select winner_username = 'ch_one' from public.challenge_badge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2')),
+  'the loser wears the badge');
+select rls_test.ok(
+  (select count(*) = 0 from public.challenge_badge('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1')),
+  'the winner does not');
+
+-- Double or nothing.
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+select rls_test.says(
+  format($$public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'stack-10', 'sealed', null, %L, true)$$, rls_test.ch_get('sealed')),
+  'rematch_closed', 'the winner has no loss to stake');
+select rls_test.dm_as('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2');
+insert into rls_test.ch_vars
+select 'double', challenge_id::text
+  from public.create_challenge('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1', 'stack-10', 'sealed', null, rls_test.ch_get('sealed'), true);
+select rls_test.ok(rls_test.ch_get('double') is not null, 'the loser can go double or nothing');
+select rls_test.says(
+  format($$public.create_challenge('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1', 'stack-10', 'sealed', null, %L, false)$$, rls_test.ch_get('sealed')),
+  'rematch_closed', 'one rematch per result');
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+select public.respond_to_challenge(rls_test.ch_get('double'), true);
+insert into rls_test.ch_vars
+select 'double_one', session_id::text
+  from public.start_challenge_run(rls_test.ch_get('double'), public.stack10_rules_version(), 'test');
+select rls_test.dm_as('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2');
+insert into rls_test.ch_vars
+select 'double_two', session_id::text
+  from public.start_challenge_run(rls_test.ch_get('double'), public.stack10_rules_version(), 'test');
+reset role;
+select rls_test.ok(
+  (select count(distinct seed) = 2 from public.challenges
+    where id in (rls_test.ch_get('sealed'), rls_test.ch_get('double'))),
+  'a rematch is a new board');
+select rls_test.finish_run(rls_test.ch_get('double_one'), 100);
+select rls_test.finish_run(rls_test.ch_get('double_two'), 500);
+set local role authenticated;
+select rls_test.dm_as('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2');
+select rls_test.ok(
+  (select my_wins = 0 and their_wins = 0 from public.rivalry_record('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1')),
+  'winning a double or nothing wipes the loss: back to level');
+select rls_test.ok(
+  (select count(*) = 0 from public.challenge_badge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2')),
+  'and the badge comes off');
+select rls_test.ok(
+  (select winner_username = 'ch_two' and until > now() + interval '47 hours'
+     from public.challenge_badge('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1')),
+  'whoever loses a double wears it for two days');
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+select rls_test.says(
+  format($$public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'stack-10', 'sealed', null, %L, true)$$, rls_test.ch_get('double')),
+  'rematch_closed', 'a double cannot be doubled');
+reset role;
+
+-- Beat my score: nothing shows until the challenger has played.
+set local role authenticated;
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+insert into rls_test.ch_vars
+select 'beat', challenge_id::text
+  from public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'dont-break-the-chain', 'beat_my_score', null, null, false);
+select rls_test.ok(rls_test.ch_get('beat') is not null, 'a beat-my-score can be created');
+insert into rls_test.ch_vars
+select 'beat_one', session_id::text
+  from public.start_challenge_run(rls_test.ch_get('beat'), public.chain_rules_version(), 'test');
+select rls_test.dm_as('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2');
+select rls_test.ok(
+  (select count(*) = 0 from public.conversation_challenges(
+     (select conversation_id from public.messages where challenge_id = rls_test.ch_get('sealed')))
+    where id = rls_test.ch_get('beat')) ,
+  'the friend does not see a beat-my-score before it is played');
+select rls_test.ok(
+  (select public.respond_to_challenge(rls_test.ch_get('beat'), true) = 'closed'),
+  'and cannot accept it yet');
+select rls_test.says(
+  format($$public.start_challenge_run(%L, public.chain_rules_version(), 'test')$$, rls_test.ch_get('beat')),
+  'not_your_turn', 'or get the board');
+reset role;
+select rls_test.finish_run(rls_test.ch_get('beat_one'), 200);
+set local role authenticated;
+select rls_test.dm_as('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2');
+select rls_test.ok(
+  (select status = 'pending' and their_score = 200 and my_score is null
+     from public.conversation_challenges(
+       (select conversation_id from public.messages where challenge_id = rls_test.ch_get('sealed')))
+    where id = rls_test.ch_get('beat')),
+  'once played, the friend sees the card and the score to beat');
+select public.respond_to_challenge(rls_test.ch_get('beat'), true);
+reset role;
+
+-- Time limits, settled when someone next looks.
+update public.challenges set play_by = now() - interval '1 hour' where id = rls_test.ch_get('beat');
+set local role authenticated;
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+select rls_test.ok(
+  (select status = 'finished' and winner_id = 'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1' and their_score is null
+     from public.conversation_challenges(
+       (select conversation_id from public.messages where challenge_id = rls_test.ch_get('sealed')))
+    where id = rls_test.ch_get('beat')),
+  'not playing in time is a loss');
+reset role;
+
+-- The call: a margin that has to be won by, and a target only the caller plays for.
+set local role authenticated;
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+select rls_test.says(
+  $$public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'stack-10', 'sealed', null, null, false, -5)$$,
+  'invalid', 'a margin cannot be negative');
+select rls_test.says(
+  $$public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'stack-10', 'score_target', null, null, false)$$,
+  'invalid', 'a score target needs a target');
+select rls_test.says(
+  $$public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'stack-10', 'sealed', null, null, false, 0, 500)$$,
+  'invalid', 'and only a score target has one');
+insert into rls_test.ch_vars
+select 'margin', challenge_id::text
+  from public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'gridburst', 'sealed', null, null, false, 100);
+select rls_test.ok(rls_test.ch_get('margin') is not null, 'a player can call a win by a margin');
+insert into rls_test.ch_vars
+select 'target', challenge_id::text
+  from public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'cascade', 'score_target', null, null, false, 0, 1000);
+select rls_test.ok(rls_test.ch_get('target') is not null, 'a player can call a score');
+select rls_test.dm_as('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2');
+select public.respond_to_challenge(rls_test.ch_get('margin'), true);
+select public.respond_to_challenge(rls_test.ch_get('target'), true);
+insert into rls_test.ch_vars
+select 'margin_two', session_id::text
+  from public.start_challenge_run(rls_test.ch_get('margin'), public.gridburst_rules_version(), 'test');
+select rls_test.says(
+  format($$public.start_challenge_run(%L, public.cascade_rules_version(), 'test')$$, rls_test.ch_get('target')),
+  'not_your_turn', 'the friend does not play on a score target');
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+insert into rls_test.ch_vars
+select 'margin_one', session_id::text
+  from public.start_challenge_run(rls_test.ch_get('margin'), public.gridburst_rules_version(), 'test');
+insert into rls_test.ch_vars
+select 'target_one', session_id::text
+  from public.start_challenge_run(rls_test.ch_get('target'), public.cascade_rules_version(), 'test');
+reset role;
+select rls_test.finish_run(rls_test.ch_get('margin_one'), 150);
+select rls_test.finish_run(rls_test.ch_get('margin_two'), 100);
+select rls_test.ok(
+  (select winner_id = 'e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2' from public.challenges where id = rls_test.ch_get('margin')),
+  'winning by less than the margin loses the call');
+select rls_test.finish_run(rls_test.ch_get('target_one'), 1000);
+select rls_test.ok(
+  (select status = 'finished' and winner_id = 'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1' from public.challenges where id = rls_test.ch_get('target')),
+  'hitting the target exactly wins, as soon as the caller has played');
+
+set local role authenticated;
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+insert into rls_test.ch_vars
+select 'margin2', challenge_id::text
+  from public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'gridburst', 'sealed', null, null, false, 100);
+insert into rls_test.ch_vars
+select 'target2', challenge_id::text
+  from public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'cascade', 'score_target', null, null, false, 0, 1000);
+select rls_test.dm_as('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2');
+select public.respond_to_challenge(rls_test.ch_get('margin2'), true);
+select public.respond_to_challenge(rls_test.ch_get('target2'), true);
+insert into rls_test.ch_vars
+select 'margin2_two', session_id::text
+  from public.start_challenge_run(rls_test.ch_get('margin2'), public.gridburst_rules_version(), 'test');
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+insert into rls_test.ch_vars
+select 'margin2_one', session_id::text
+  from public.start_challenge_run(rls_test.ch_get('margin2'), public.gridburst_rules_version(), 'test');
+insert into rls_test.ch_vars
+select 'target2_one', session_id::text
+  from public.start_challenge_run(rls_test.ch_get('target2'), public.cascade_rules_version(), 'test');
+reset role;
+select rls_test.finish_run(rls_test.ch_get('margin2_one'), 200);
+select rls_test.finish_run(rls_test.ch_get('margin2_two'), 100);
+select rls_test.ok(
+  (select winner_id = 'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1' from public.challenges where id = rls_test.ch_get('margin2')),
+  'winning by the margin or more makes the call good');
+select rls_test.finish_run(rls_test.ch_get('target2_one'), 999);
+select rls_test.ok(
+  (select winner_id = 'e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2' from public.challenges where id = rls_test.ch_get('target2')),
+  'missing the target loses');
+
+set local role authenticated;
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+insert into rls_test.ch_vars
+select 'target3', challenge_id::text
+  from public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'scatter', 'score_target', null, null, false, 0, 50);
+select rls_test.dm_as('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2');
+select public.respond_to_challenge(rls_test.ch_get('target3'), true);
+reset role;
+update public.challenges set play_by = now() - interval '1 hour' where id = rls_test.ch_get('target3');
+set local role authenticated;
+select rls_test.dm_as('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2');
+select rls_test.ok(
+  (select status = 'finished' and winner_id = 'e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2'
+     from public.conversation_challenges(
+       (select conversation_id from public.messages where challenge_id = rls_test.ch_get('sealed')))
+    where id = rls_test.ch_get('target3')),
+  'a caller who never plays loses their call');
+reset role;
+
+-- A block ends what is open, with no result. Unfollowing does not.
+set local role authenticated;
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+insert into rls_test.ch_vars
+select 'blocked', challenge_id::text
+  from public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'memory-flash', 'sealed', null, null, false);
+select rls_test.ok(rls_test.ch_get('blocked') is not null, 'a challenge to block out of');
+reset role;
+delete from public.follows where follower_id = 'e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2'
+   and followee_id = 'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1';
+select rls_test.ok(
+  (select status = 'pending' from public.challenges where id = rls_test.ch_get('blocked')),
+  'unfollowing is no way out of a challenge');
+insert into public.blocked_users (blocker_id, blocked_id)
+  values ('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+select rls_test.ok(
+  (select status = 'cancelled' and winner_id is null from public.challenges where id = rls_test.ch_get('blocked')),
+  'a block cancels it, with no result');
+delete from public.blocked_users where blocker_id = 'e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2';
+insert into public.follows (follower_id, followee_id)
+  values ('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+
+-- One real run, through a real verifier: an endless Stack 10 stopped before it began.
+set local role authenticated;
+select rls_test.dm_as('e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1');
+insert into rls_test.ch_vars
+select 'real', challenge_id::text
+  from public.create_challenge('e2e2e2e2-2026-4120-8720-e2e2e2e2e2e2', 'decant', 'beat_my_score', null, null, false);
+select rls_test.ok(rls_test.ch_get('real') is not null, 'a real run to verify');
+insert into rls_test.ch_vars
+select 'real_run', session_id::text
+  from public.start_challenge_run(rls_test.ch_get('real'), public.decant_rules_version(), 'test');
+reset role;
+update public.game_sessions set started_at = now() - interval '1 minute' where id = rls_test.ch_get('real_run');
+set local role authenticated;
+select rls_test.ok(
+  (select (public.complete_decant_run(rls_test.ch_get('real_run'), '{}'::integer[], 0, 1000)).outcome = 'recorded'),
+  'the real verifier accepts a challenge run');
+reset role;
+select rls_test.ok(
+  (select challenger_score = 0 and status = 'pending' from public.challenges where id = rls_test.ch_get('real')),
+  'and its score lands on the challenge');
+select rls_test.ok(
+  (select count(*) = 0 from public.scores where session_id = rls_test.ch_get('real_run')),
+  'and not on the boards');
+
+-- Deleting an account takes its challenges with it.
+delete from auth.users where id = 'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1';
+select rls_test.ok(
+  (select count(*) = 0 from public.challenges where 'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1' in (challenger_id, opponent_id)),
+  'deleting an account deletes its challenges');
+
 rollback;
 
 \echo 'RLS suite passed.'

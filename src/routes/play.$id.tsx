@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Clock, Volume2, VolumeX, X } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { GameExits } from "@/components/game/GameExits";
 import { RUNTIMES } from "@/components/game/runtimes";
@@ -17,7 +18,13 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useDocumentTitle } from "@/lib/document-title";
 import { useSoundEnabled } from "@/lib/sound";
+import {
+  releaseActiveChallenge,
+  setActiveChallenge,
+  subscribeChallengeRunDone,
+} from "@/lib/games/challenge-run";
 import { titleFromSlug, useGame } from "@/lib/games/catalog";
+import { points } from "@/lib/format";
 import { RunLeaveContext, RunProgressContext } from "@/lib/games/run-progress";
 import { prefetchPlay } from "@/lib/prefetch";
 import { useOnline } from "@/lib/service-worker";
@@ -28,13 +35,31 @@ import { t } from "@/lib/settings/language";
  * first: the feed's Tap to play sends it, because a player who tapped Play has
  * already chosen to play. A link without it shows the rules, as before.
  */
-type PlaySearch = { start?: boolean };
+type PlaySearch = {
+  start?: boolean;
+  /** A callout this run belongs to, and the friend's username to go back to. */
+  challenge?: string;
+  with?: string;
+};
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const USERNAME = /^[a-z0-9_.-]{1,64}$/i;
 
 export const Route = createFileRoute("/play/$id")({
-  validateSearch: (search: Record<string, unknown>): PlaySearch =>
-    search["start"] === 1 || search["start"] === "1" || search["start"] === true
-      ? { start: true }
-      : {},
+  validateSearch: (search: Record<string, unknown>): PlaySearch => {
+    const start = search["start"] === 1 || search["start"] === "1" || search["start"] === true;
+    const challenge = search["challenge"];
+    const rival = search["with"];
+    return {
+      ...(start ? { start: true } : {}),
+      ...(typeof challenge === "string" &&
+      UUID.test(challenge) &&
+      typeof rival === "string" &&
+      USERNAME.test(rival)
+        ? { challenge, with: rival }
+        : {}),
+    };
+  },
   loader: ({ context, params }) => prefetchPlay(context.queryClient, params.id),
   head: ({ params }) => {
     const title = titleFromSlug(params.id);
@@ -73,8 +98,32 @@ export const Route = createFileRoute("/play/$id")({
  */
 function PlayScreen() {
   const { id } = Route.useParams();
-  const { start } = Route.useSearch();
-  return <Play id={id} autoStart={start === true} />;
+  const { start, challenge, with: rival } = Route.useSearch();
+  const nav = useNavigate();
+  // Set while rendering: a runtime's first effect starts its run, and children's effects
+  // run before this component's. The server has no runs to start and shares this module.
+  if (typeof window !== "undefined") setActiveChallenge(challenge ?? null);
+  useEffect(() => {
+    if (!challenge || !rival) return;
+    setActiveChallenge(challenge);
+    const backToChat = () =>
+      void nav({ to: "/messages/$username", params: { username: rival }, replace: true });
+    const unsubscribe = subscribeChallengeRunDone((score) => {
+      toast.success(t("Score locked in: {score}", { score: points(score) }));
+      backToChat();
+    });
+    return () => {
+      unsubscribe();
+      releaseActiveChallenge();
+    };
+  }, [challenge, rival, nav]);
+  return (
+    <Play
+      id={id}
+      autoStart={start === true || challenge !== undefined}
+      calloutWith={challenge ? rival : undefined}
+    />
+  );
 }
 
 /**
@@ -82,7 +131,16 @@ function PlayScreen() {
  * whether leaving would cost the player a run. Exported so the navigation tests
  * can mount the real composition without the generated route tree.
  */
-export function Play({ id, autoStart = false }: { id: string; autoStart?: boolean }) {
+export function Play({
+  id,
+  autoStart = false,
+  calloutWith,
+}: {
+  id: string;
+  autoStart?: boolean;
+  /** This run is a callout against this username: quitting goes back to the chat. */
+  calloutWith?: string;
+}) {
   // Whether a run is live, and how to end it, reported by the runtime below.
   const [progress, setProgress] = useState<{
     active: boolean;
@@ -103,8 +161,9 @@ export function Play({ id, autoStart = false }: { id: string; autoStart?: boolea
         id={id}
         progress={progress.active}
         endRun={progress.endRun}
-        resumable={progress.resumable === true}
+        resumable={progress.resumable === true && !calloutWith}
         autoStart={autoStart}
+        calloutWith={calloutWith}
       />
     </RunProgressContext.Provider>
   );
@@ -127,6 +186,7 @@ export function PlaySurface({
   endRun,
   resumable = false,
   autoStart = false,
+  calloutWith,
 }: {
   id: string;
   progress: boolean;
@@ -135,6 +195,7 @@ export function PlaySurface({
   resumable?: boolean;
   /** Start the run without the rules screen (`?start=1`). */
   autoStart?: boolean;
+  calloutWith?: string;
 }) {
   const state = useGame(id);
   const title = state.status === "ready" ? state.game.title : titleFromSlug(id);
@@ -160,6 +221,10 @@ export function PlaySurface({
   // where the player asked to be, and Back from it must not land back in the
   // game they just quit.
   function quit() {
+    if (calloutWith) {
+      void nav({ to: "/messages/$username", params: { username: calloutWith }, replace: true });
+      return;
+    }
     void nav({ to: "/", replace: true });
   }
 
@@ -179,6 +244,11 @@ export function PlaySurface({
           </Button>
           <div className="flex-1 text-center">
             <p className="text-xs text-muted-foreground">{title}</p>
+            {calloutWith && (
+              <p className="text-[11px] font-medium text-primary">
+                {t("Callout with @{username} · one attempt", { username: calloutWith })}
+              </p>
+            )}
             {!online && (
               <p className="text-[11px] text-muted-foreground/80">{t("Offline · practice only")}</p>
             )}

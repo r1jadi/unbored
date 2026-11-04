@@ -1,10 +1,12 @@
-import { Link2, Mail, MessageCircle, Reply, Send, Trash2, X } from "lucide-react";
+import { Check, Link2, Loader2, Mail, Reply, Search, Send, Share2, Trash2, X } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Avatar, ErrorState, UserAvatar } from "@/components/common";
+import { PlayerPicker } from "@/components/social/PlayerPicker";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
   SheetContent,
@@ -12,11 +14,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useAuth } from "@/lib/auth/session";
+import { getSessionUserId, useAuth } from "@/lib/auth/session";
 import { ApiError } from "@/lib/api/client";
 import { fmt, fmtDate } from "@/lib/format";
+import { useShareTargets, type ShareTarget } from "@/lib/messages/share";
+import { refusal, sendMessage } from "@/lib/messages/store";
 import { absoluteUrl } from "@/lib/seo";
 import { MAX_COMMENT_LENGTH, useComments, type GameComment } from "@/lib/social/engagement";
+import type { PublicProfile } from "@/lib/social/follows";
 import { avatarUrl, getProfileState } from "@/lib/users/profile";
 
 import { t } from "@/lib/settings/language";
@@ -361,11 +366,78 @@ function CommentRow({
   );
 }
 
+/** One person in the share sheet's row: a tap sends straight away, as on TikTok. */
+function ShareTargetButton({
+  target,
+  state,
+  onSend,
+}: {
+  target: Pick<ShareTarget, "username" | "displayName" | "avatarPath">;
+  state: "idle" | "sending" | "sent";
+  onSend: () => void;
+}) {
+  const name = target.displayName || target.username;
+  return (
+    <button
+      type="button"
+      disabled={state !== "idle"}
+      onClick={onSend}
+      aria-label={
+        state === "sent"
+          ? t("Sent to @{username}", { username: target.username })
+          : t("Send to @{username}", { username: target.username })
+      }
+      className="press flex w-16 shrink-0 flex-col items-center gap-1.5"
+    >
+      <span className="relative">
+        <UserAvatar username={target.username} path={target.avatarPath} size="lg" />
+        {state !== "idle" && (
+          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-background/70">
+            {state === "sending" ? (
+              <Loader2 className="size-5 animate-spin" aria-hidden />
+            ) : (
+              <Check className="size-6 text-primary" aria-hidden />
+            )}
+          </span>
+        )}
+      </span>
+      <span className="w-full truncate text-center text-xs">
+        {state === "sent" ? t("Sent") : name}
+      </span>
+    </button>
+  );
+}
+
+/** A round option under the row of people. */
+function ShareOption({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: typeof Link2;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="press flex w-16 shrink-0 flex-col items-center gap-1.5"
+    >
+      <span className="flex size-14 items-center justify-center rounded-full bg-surface-2">
+        <Icon className="size-5" aria-hidden />
+      </span>
+      <span className="w-full text-center text-xs">{label}</span>
+    </button>
+  );
+}
+
 /**
- * Sharing is a link, not a backend write: the canonical game URL, built from
- * the stable slug through the same helper the metadata uses. Copying reports
- * success only when the clipboard write actually succeeded, and the native
- * sheet is used where the platform offers one.
+ * Sharing is a link: the canonical URL, built from the stable slug through the same
+ * helper the metadata uses. Sending it to someone is an ordinary direct message, which a
+ * chat draws as a card when it is a game. Copying reports success only when the
+ * clipboard write actually succeeded, and the native sheet is used where the platform
+ * offers one.
  */
 export function ShareSheet({
   open,
@@ -381,6 +453,64 @@ export function ShareSheet({
   path: string;
 }) {
   const url = absoluteUrl(path);
+  const currentPath = useRouterState({ select: (s) => s.location.pathname });
+  const auth = useAuth();
+  const signedIn = auth.status === "authenticated";
+  const [picking, setPicking] = useState(false);
+  const { targets, loading } = useShareTargets(open && signedIn);
+  // Who it has gone to, by account, while this sheet is open. Sending twice is a tap away
+  // otherwise, and a friend doesn't need the same game twice.
+  const [sends, setSends] = useState<Record<string, "sending" | "sent">>({});
+  // Someone found through search isn't in the row yet, and should appear there as sent.
+  const [picked, setPicked] = useState<ShareTarget[]>([]);
+  const people = [...picked, ...targets.filter((t) => !picked.some((p) => p.id === t.id))];
+
+  useEffect(() => {
+    if (open) return;
+    setSends({});
+    setPicked([]);
+  }, [open]);
+
+  async function sendTo(id: string, username: string): Promise<void> {
+    setSends((current) => ({ ...current, [id]: "sending" }));
+    const forget = () =>
+      setSends((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+    try {
+      const { outcome } = await sendMessage(id, url, crypto.randomUUID());
+      if (outcome === "sent") {
+        setSends((current) => ({ ...current, [id]: "sent" }));
+        toast.success(t("Sent to @{username}", { username }));
+      } else {
+        forget();
+        toast.error(refusal(outcome));
+      }
+    } catch (error) {
+      forget();
+      toast.error(error instanceof ApiError ? error.message : t("Couldn't send your message."));
+    }
+  }
+
+  function pick(profile: PublicProfile): void {
+    setPicking(false);
+    setPicked((current) =>
+      current.some((p) => p.id === profile.id)
+        ? current
+        : [
+            {
+              id: profile.id,
+              username: profile.username,
+              displayName: profile.display_name,
+              avatarPath: profile.avatar_path,
+            },
+            ...current,
+          ],
+    );
+    if (!sends[profile.id]) void sendTo(profile.id, profile.username);
+  }
 
   async function copyLink(): Promise<void> {
     try {
@@ -408,49 +538,86 @@ export function ShareSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="mx-auto max-w-xl rounded-t-2xl border-glass-border pb-8"
-      >
-        <SheetHeader>
-          <SheetTitle>{t("Share {title}", { title })}</SheetTitle>
-          <SheetDescription>{t("Copy a link or use your device share sheet.")}</SheetDescription>
-        </SheetHeader>
-        <div className="grid grid-cols-3 gap-2 px-4 pt-2">
-          <Button
-            variant="secondary"
-            className="h-16 flex-col gap-1 text-xs"
-            onClick={() => void copyLink()}
-          >
-            <Link2 />
-            {t("Copy link")}
-          </Button>
-          <Button
-            variant="secondary"
-            className="h-16 flex-col gap-1 text-xs"
-            onClick={() => toast(t("Direct messages are not implemented."))}
-          >
-            <MessageCircle />
-            {t("Message")}
-          </Button>
-          <Button
-            variant="secondary"
-            className="h-16 flex-col gap-1 text-xs"
-            onClick={() => {
-              window.location.href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}`;
-            }}
-          >
-            <Mail />
-            {t("Email")}
-          </Button>
-        </div>
-        <div className="px-4 pt-3">
-          <Button className="w-full" variant="outline" onClick={() => void systemShare()}>
-            {t("More options")}
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="bottom"
+          className="mx-auto max-w-xl rounded-t-2xl border-glass-border pb-8"
+        >
+          <SheetHeader>
+            <SheetTitle>{t("Share {title}", { title })}</SheetTitle>
+            <SheetDescription>
+              {t("Send it to a friend, or share it somewhere else.")}
+            </SheetDescription>
+          </SheetHeader>
+
+          <section aria-label={t("Send to")} className="px-6 pt-2">
+            <h3 className="pb-2 text-xs font-medium text-muted-foreground">{t("Send to")}</h3>
+            {signedIn ? (
+              <div className="no-scrollbar -mx-6 flex gap-3 overflow-x-auto px-6 py-1">
+                <ShareOption icon={Search} label={t("Search")} onClick={() => setPicking(true)} />
+                {loading &&
+                  people.length === 0 &&
+                  [0, 1, 2].map((key) => (
+                    <span key={key} className="flex w-16 shrink-0 flex-col items-center gap-1.5">
+                      <Skeleton className="size-14 rounded-full" />
+                      <Skeleton className="h-3 w-12" />
+                    </span>
+                  ))}
+                {people.map((target) => (
+                  <ShareTargetButton
+                    key={target.id}
+                    target={target}
+                    state={sends[target.id] ?? "idle"}
+                    onSend={() => void sendTo(target.id, target.username)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                <Link
+                  to="/login"
+                  search={{ redirect: currentPath }}
+                  className="font-medium text-foreground underline underline-offset-4"
+                >
+                  {t("Log in")}
+                </Link>{" "}
+                {t("to send this to a friend.")}
+              </p>
+            )}
+            {signedIn && !loading && people.length === 0 && (
+              <p className="pt-2 text-xs text-muted-foreground">
+                {t("Friends you follow back show up here. Search to find someone.")}
+              </p>
+            )}
+          </section>
+
+          <section aria-label={t("Share to")} className="px-6 pt-4">
+            <h3 className="pb-2 text-xs font-medium text-muted-foreground">{t("Share to")}</h3>
+            <div className="no-scrollbar -mx-6 flex gap-3 overflow-x-auto px-6 py-1">
+              <ShareOption icon={Link2} label={t("Copy link")} onClick={() => void copyLink()} />
+              <ShareOption
+                icon={Mail}
+                label={t("Email")}
+                onClick={() => {
+                  window.location.href = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}`;
+                }}
+              />
+              <ShareOption
+                icon={Share2}
+                label={t("More options")}
+                onClick={() => void systemShare()}
+              />
+            </div>
+          </section>
+        </SheetContent>
+      </Sheet>
+      <PlayerPicker
+        open={picking}
+        onOpenChange={setPicking}
+        title={t("Send to a player")}
+        onPick={pick}
+      />
+    </>
   );
 }

@@ -20,6 +20,7 @@ import {
   defaultPreferences,
   loadPreferences,
   savePreferences,
+  type MessagePrivacy,
   type UserPreferences,
 } from "@/lib/settings/preferences";
 import { listBlocked, unblockUser } from "@/lib/settings/blocked";
@@ -56,6 +57,12 @@ export const Route = createFileRoute("/settings/$section")({
   },
   component: Section,
 });
+
+const messagePrivacyOptions: Array<{ value: MessagePrivacy; label: string }> = [
+  { value: "everyone", label: msg("Everyone") },
+  { value: "friends", label: msg("Friends (you follow each other)") },
+  { value: "nobody", label: msg("Nobody") },
+];
 
 function Group({ title, children }: { title?: string; children: ReactNode }) {
   return (
@@ -306,6 +313,37 @@ function Body({ section, category }: { section: string; category?: "bug" }) {
               onChange={(v) => void update({ ...prefs, personalisedRecommendations: v })}
             />
           </Group>
+          <Group title={t("Who can start a chat with you")}>
+            <div role="radiogroup" aria-label={t("Who can start a chat with you")}>
+              {messagePrivacyOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={prefs.allowMessagesFrom === option.value}
+                  onClick={() => void update({ ...prefs, allowMessagesFrom: option.value })}
+                  className="press flex min-h-14 w-full items-center gap-3 border-b border-border px-4 py-3 text-left last:border-b-0"
+                >
+                  <span className="flex-1 text-sm">{t(option.label)}</span>
+                  {prefs.allowMessagesFrom === option.value && (
+                    <Check className="size-4 text-primary" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </Group>
+          <p className="mt-2 px-4 text-xs text-muted-foreground md:px-0">
+            {t("Someone you've already written to can still reply. Block them to stop that.")}
+          </p>
+          <Group title={t("Messages")}>
+            <Toggle
+              id="p8"
+              label={t("Show when I've seen messages")}
+              desc={t('Turned off, nobody sees "Seen" from you, and you don\'t see it from them')}
+              checked={prefs.showReadReceipts}
+              onChange={(v) => void update({ ...prefs, showReadReceipts: v })}
+            />
+          </Group>
           {error && (
             <p className="mt-3 px-4 text-sm text-destructive" role="alert">
               {error}
@@ -345,6 +383,13 @@ function Body({ section, category }: { section: string; category?: "bug" }) {
               label={t("Comments and replies")}
               checked={prefs.notifyComments}
               onChange={(v) => void update({ ...prefs, notifyComments: v })}
+            />
+            <Toggle
+              id="n5"
+              label={t("New messages")}
+              desc={t("Once per chat until you've read it, without the message's text")}
+              checked={prefs.notifyMessages}
+              onChange={(v) => void update({ ...prefs, notifyMessages: v })}
             />
           </Group>
           <Group title={t("Email")}>
