@@ -10,14 +10,15 @@ import { t } from "@/lib/settings/language";
  * attempt already used, a run that could not be verified, a game that cannot
  * start: back to the For You feed, or back to the game's page. They share one
  * row at equal weight, under whatever the screen's own main action is, so
- * leaving is always visible without stacking another full-width button.
+ * leaving is always visible without stacking another full-width button. For You
+ * lands on this game's card rather than the top of the feed.
  *
  * `title` omitted (a screen with no game to go back to) leaves For You alone.
  */
 export function GameExits({ slug, title }: { slug?: string; title?: string }) {
   const feed = (
     <Button asChild variant="secondary" size="lg" className="px-3">
-      <Link to="/">
+      <Link to="/" search={slug ? { game: slug } : {}}>
         <Home />
         {t("For You")}
       </Link>

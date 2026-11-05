@@ -9,6 +9,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CheckmateRuntime } from "@/components/game/CheckmateRuntime";
+import { buttonNamed } from "@/test/queries";
 import { clearSession } from "@/lib/auth/session";
 import { CHECKMATE_SKIP, puzzleFor } from "@/lib/games/checkmate";
 import { legalMoves, parseFen, squareName } from "@/lib/games/chess";
@@ -104,8 +105,7 @@ async function renderRuntime() {
   return router;
 }
 
-const square = (index: number) =>
-  screen.getByRole("button", { name: new RegExp(`^${squareName(index)}(,|$)`) });
+const square = (index: number) => buttonNamed(new RegExp(`^${squareName(index)}(,|$)`));
 
 /** Taps a piece, then where it goes. */
 function moveBy(from: number, to: number) {

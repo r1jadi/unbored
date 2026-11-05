@@ -177,7 +177,7 @@ export function moveAmount(bolts: readonly Bolt[], from: number, to: number): nu
   return Math.min(topRun(source), BOLTED_DEPTH - target.length);
 }
 
-function moved(bolts: readonly Bolt[], from: number, to: number): Bolt[] {
+export function moved(bolts: readonly Bolt[], from: number, to: number): Bolt[] {
   const amount = moveAmount(bolts, from, to);
   const colour = topColour(bolts[from]);
   return bolts.map((bolt, index) =>

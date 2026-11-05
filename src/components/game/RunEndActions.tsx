@@ -13,7 +13,8 @@ import { t } from "@/lib/settings/language";
  * Play again is the one big button. The two ways out — back to the For You feed
  * and the leaderboard — sit side by side under it at equal weight, so leaving is
  * as easy to find as the leaderboard without stacking a third full-width button.
- * A guest's sign-in prompt is a plain text link: an offer, not another choice.
+ * For You lands on this game's card, so the player carries on from where they
+ * were in the feed rather than from the top. A guest's sign-in prompt is a plain text link: an offer, not another choice.
  *
  * `children` replaces Play again when a run cannot be replayed (7 Second's daily
  * ranked attempt shows when the next deck arrives instead).
@@ -46,7 +47,7 @@ export function RunEndActions({
         ))}
       <div className="grid grid-cols-2 gap-2">
         <Button asChild variant="secondary" size="lg" className="px-3">
-          <Link to="/">
+          <Link to="/" search={{ game: slug }}>
             <Home />
             {t("For You")}
           </Link>

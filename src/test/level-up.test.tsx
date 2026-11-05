@@ -90,6 +90,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   clearSession();
@@ -105,7 +106,9 @@ describe("a solved level", () => {
     // Board one wins on cell 7.
     fireEvent.click(oneMoveCell(7, 3));
 
-    const beat = await screen.findByRole("status");
+    // Looked for at once rather than waited for: the beat is already up, and a
+    // wait on a busy machine could outlast it.
+    const beat = screen.getByRole("status");
     expect(beat).toHaveTextContent("Board 1 solved");
     expect(beat).toHaveTextContent("+10");
     expect(beat).toHaveTextContent("Next: Board 2 · 3×3");
@@ -128,15 +131,19 @@ describe("a solved level", () => {
       expect(screen.getByRole("status")).not.toHaveTextContent("from here");
       await beatOver();
     }
+    // A controlled clock from here: on real time, a busy machine could sleep past
+    // the note's whole length and find it gone.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     fireEvent.click(oneMoveCell(7, 3));
 
     const beat = screen.getByRole("status");
     expect(beat).toHaveTextContent("Next: Board 5 · 4×4");
     expect(beat).toHaveTextContent("Boards are 4×4 from here.");
-    await new Promise((resolve) => setTimeout(resolve, BEAT_MS + 40));
+    act(() => void vi.advanceTimersByTime(BEAT_MS + 40));
     // Past the ordinary beat, the note is still up to be read.
     expect(screen.getByRole("status")).toBeInTheDocument();
-    await beatOver();
+    act(() => void vi.advanceTimersByTime(NOTE_MS - BEAT_MS - 40));
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("holds Memory Flash's next pattern until the beat is over", async () => {
@@ -148,7 +155,7 @@ describe("a solved level", () => {
 
     // Round one lights cell 9 (index 8); rebuilding it solves the round.
     fireEvent.click(screen.getByRole("button", { name: /^Cell 9,/ }));
-    await screen.findByRole("status");
+    expect(screen.getByRole("status")).toBeInTheDocument();
 
     // Nothing of round two's pattern is lit under the beat: its exposure would be
     // spent where the player cannot see it.

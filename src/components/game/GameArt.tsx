@@ -1,3 +1,5 @@
+import type { ReactNode, Ref } from "react";
+
 import { CascadeTile } from "@/components/game/CascadeTile";
 import { ChessPiece } from "@/components/game/ChessPiece";
 import { cn } from "@/lib/utils";
@@ -44,39 +46,67 @@ export function GameArt({
   live?: boolean;
 }) {
   return (
+    <GameStage className={className}>
+      {id === "stack-10" && <Stack10 />}
+      {id === "color-merge" && <ColorMerge />}
+      {id === "dont-touch-the-black" && <BlackTiles live={live} />}
+      {id === "one-move" && <OneMove />}
+      {id === "dont-break-the-chain" && <Chain />}
+      {id === "memory-flash" && <MemoryFlash />}
+      {id === "7-second" && <Seven />}
+      {id === "crowns" && <Crowns />}
+      {id === "trail" && <Trail />}
+      {id === "8-puzzle" && <EightPuzzle />}
+      {id === "sun-and-moon" && <SunAndMoon />}
+      {id === "sudoku" && <Sudoku />}
+      {id === "mini-sudoku" && <MiniSudoku />}
+      {id === "cascade" && <Cascade />}
+      {id === "checkmate" && <Checkmate />}
+      {id === "bolted" && <Bolted />}
+      {id === "crossword" && <Crossword />}
+      {id === "gridburst" && <Gridburst />}
+      {id === "updraft" && <Updraft />}
+      {id === "decant" && <Decant />}
+      {id === "scatter" && <Scatter />}
+      {id === "huedini" && <Huedini />}
+      {!KNOWN.has(id) && <Generated seed={id} />}
+    </GameStage>
+  );
+}
+
+/**
+ * The box every game's picture sits in: a size container with a centred square
+ * stage. A still picture takes 70% of the shorter side, never larger than 18rem;
+ * a `large` stage, for a moving preview, takes the whole of it up to 22rem,
+ * because a game's motion needs to be seen at a size it can be read.
+ */
+export function GameStage({
+  className,
+  rootRef,
+  large = false,
+  children,
+}: {
+  className?: string;
+  rootRef?: Ref<HTMLDivElement>;
+  large?: boolean;
+  children: ReactNode;
+}) {
+  return (
     <div
+      ref={rootRef}
       className={cn(
         "relative flex items-center justify-center overflow-hidden bg-surface [container-type:size]",
         className,
       )}
       aria-hidden
     >
-      {/* One stage for every game: a centred square, 70% of the shorter side,
-          never larger than 18rem. Each picture fills it. */}
-      <div className="flex aspect-square w-[min(70cqw,70cqh)] max-w-72 items-center justify-center">
-        {id === "stack-10" && <Stack10 />}
-        {id === "color-merge" && <ColorMerge />}
-        {id === "dont-touch-the-black" && <BlackTiles live={live} />}
-        {id === "one-move" && <OneMove />}
-        {id === "dont-break-the-chain" && <Chain />}
-        {id === "memory-flash" && <MemoryFlash />}
-        {id === "7-second" && <Seven />}
-        {id === "crowns" && <Crowns />}
-        {id === "trail" && <Trail />}
-        {id === "8-puzzle" && <EightPuzzle />}
-        {id === "sun-and-moon" && <SunAndMoon />}
-        {id === "sudoku" && <Sudoku />}
-        {id === "mini-sudoku" && <MiniSudoku />}
-        {id === "cascade" && <Cascade />}
-        {id === "checkmate" && <Checkmate />}
-        {id === "bolted" && <Bolted />}
-        {id === "crossword" && <Crossword />}
-        {id === "gridburst" && <Gridburst />}
-        {id === "updraft" && <Updraft />}
-        {id === "decant" && <Decant />}
-        {id === "scatter" && <Scatter />}
-        {id === "huedini" && <Huedini />}
-        {!KNOWN.has(id) && <Generated seed={id} />}
+      <div
+        className={cn(
+          "flex aspect-square items-center justify-center",
+          large ? "w-[min(100cqw,100cqh)] max-w-[22rem]" : "w-[min(70cqw,70cqh)] max-w-72",
+        )}
+      >
+        {children}
       </div>
     </div>
   );

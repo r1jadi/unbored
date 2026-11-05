@@ -38,6 +38,45 @@ function readStored(): AccessibilityPrefs {
   }
 }
 
+/**
+ * The preferences in force: what the player saved, or until they have chosen, the
+ * defaults with the OS's reduce-motion setting respected. A choice saved before
+ * the rename counts as a choice, so it is read (and moved forward) by `readStored`
+ * rather than mistaken for "never chose".
+ */
+function currentPrefs(): AccessibilityPrefs {
+  if (typeof window === "undefined") return defaults;
+  if (readWithLegacy(safeLocalStorage(), STORAGE_KEY, LEGACY_STORAGE_KEY)) return readStored();
+  try {
+    return {
+      ...defaults,
+      reduceMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+/** Whether motion should be held still right now. */
+export function motionIsReduced(): boolean {
+  return currentPrefs().reduceMotion;
+}
+
+/**
+ * Sets the preferences on the document before the first paint, so a saved larger
+ * text size never shows the page at the smaller one first. It runs ahead of the
+ * app, so it cannot import anything and repeats `currentPrefs` by hand;
+ * `accessibility.test.ts` holds the two to the same answers. If it cannot run or
+ * trips over something unusual, `restoreAccessibility` still applies them once
+ * the app starts.
+ */
+export const ACCESSIBILITY_BOOT_SCRIPT = `(function(){try{var s=localStorage,r=s.getItem(${JSON.stringify(STORAGE_KEY)})||s.getItem(${JSON.stringify(LEGACY_STORAGE_KEY)}),p=r?JSON.parse(r):{reduceMotion:matchMedia("(prefers-reduced-motion: reduce)").matches},c=document.documentElement.classList;c.toggle("a11y-reduce-motion",p.reduceMotion===true);c.toggle("a11y-larger-text",p.largerText===true);c.toggle("a11y-contrast",p.increaseContrast===true)}catch(e){}})()`;
+
+/** Applies the preferences in force to the document. Called once as the app starts. */
+export function restoreAccessibility(): void {
+  apply(currentPrefs());
+}
+
 function apply(prefs: AccessibilityPrefs): void {
   const root = document.documentElement;
   root.classList.toggle("a11y-reduce-motion", prefs.reduceMotion);
@@ -49,26 +88,12 @@ export function useAccessibility(): {
   prefs: AccessibilityPrefs;
   setPrefs: (next: AccessibilityPrefs) => void;
 } {
-  const [prefs, setPrefsState] = useState<AccessibilityPrefs>(() =>
-    typeof window === "undefined" ? defaults : readStored(),
-  );
+  // Read after mounting: hydration keeps what the server drew, which knows nothing
+  // of this browser, so reading any earlier leaves the switches showing "off".
+  const [prefs, setPrefsState] = useState<AccessibilityPrefs>(defaults);
 
   useEffect(() => {
-    apply(prefs);
-  }, [prefs]);
-
-  // Respect the OS reduce-motion setting until the user chooses explicitly. A
-  // choice saved before the rename counts as explicit, so it is read (and moved
-  // forward) rather than mistaken for "never chose".
-  useEffect(() => {
-    if (readWithLegacy(safeLocalStorage(), STORAGE_KEY, LEGACY_STORAGE_KEY)) return;
-    try {
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        setPrefsState((prev) => ({ ...prev, reduceMotion: true }));
-      }
-    } catch {
-      // Non-fatal.
-    }
+    setPrefsState(currentPrefs());
   }, []);
 
   function setPrefs(next: AccessibilityPrefs): void {

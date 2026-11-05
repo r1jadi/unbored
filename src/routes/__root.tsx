@@ -25,6 +25,7 @@ import { initializeSession, useAuth } from "@/lib/auth/session";
 import { applyAnalyticsConsent, identifyUser, resetAnalytics } from "@/lib/analytics";
 import { useConsent } from "@/lib/consent";
 import { CookieConsent } from "@/components/layout/CookieConsent";
+import { ACCESSIBILITY_BOOT_SCRIPT, restoreAccessibility } from "@/lib/settings/accessibility";
 import { currentLanguage, LanguageProvider, t } from "@/lib/settings/language";
 import { ThemeProvider } from "@/lib/settings/theme";
 import { startPushSync } from "@/lib/notifications/push";
@@ -178,7 +179,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { name: "twitter:card", content: "summary_large_image" },
         ...page.meta,
       ],
-      scripts: page.scripts,
+      scripts: [{ children: ACCESSIBILITY_BOOT_SCRIPT }, ...(page.scripts ?? [])],
       links: [
         {
           rel: "stylesheet",
@@ -200,7 +201,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang={currentLanguage()} className="dark">
+    // The boot script in `head` adds the accessibility classes before hydration.
+    <html lang={currentLanguage()} className="dark" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
@@ -222,6 +224,10 @@ function RootComponent() {
   const auth = useAuth();
   const consent = useConsent();
   const analyticsAllowed = consent?.analytics === true;
+
+  useEffect(() => {
+    restoreAccessibility();
+  }, []);
 
   // Restore a persisted session after hydration, never during SSR: the server
   // render and the first client render must agree (both anonymous), and the

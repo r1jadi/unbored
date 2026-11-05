@@ -184,7 +184,7 @@ export function pourAmount(tubes: readonly Tube[], from: number, to: number): nu
 }
 
 /** The tubes after a pour. Assumes the pour is allowed. */
-function poured(tubes: readonly Tube[], from: number, to: number): Tube[] {
+export function poured(tubes: readonly Tube[], from: number, to: number): Tube[] {
   const amount = pourAmount(tubes, from, to);
   const colour = topColour(tubes[from]);
   return tubes.map((tube, index) =>

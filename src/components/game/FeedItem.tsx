@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { GameArt } from "./GameArt";
 import { HowToPlaySheet } from "./HowToPlaySheet";
+import { GamePreview } from "./previews/GamePreview";
 import { CommentsSheet, ShareSheet } from "@/components/social/Sheets";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/client";
@@ -123,6 +123,7 @@ export function FeedItem({ game }: { game: Game }) {
     <article
       className="relative flex h-dvh snap-start snap-always items-stretch justify-center md:h-[calc(100dvh-0px)] md:py-6"
       aria-label={game.title}
+      data-game={game.slug}
     >
       <div className="relative flex w-full max-w-[460px] flex-col overflow-hidden md:rounded-2xl md:border md:border-glass-border">
         {/* Board — a playable game starts, an unplayable one opens its page. */}
@@ -132,7 +133,7 @@ export function FeedItem({ game }: { game: Game }) {
               The "Tap to play" pill sits under the board rather than on it, so
               nothing covers the picture. */}
           <div className="absolute inset-0 flex flex-col items-center gap-3 pt-[max(8rem,calc(env(safe-area-inset-top)+7rem))] pr-[4.5rem] pb-[calc(13.75rem+env(safe-area-inset-bottom))] pl-4 md:px-4 md:pt-16 md:pb-[8.75rem]">
-            <GameArt id={game.slug} className="min-h-0 w-full flex-1" />
+            <GamePreview id={game.slug} className="min-h-0 w-full flex-1" />
             <span className="press flex shrink-0 items-center gap-2 rounded-full glass px-5 py-3 text-sm font-semibold group-hover:bg-surface-2">
               {game.playable ? (
                 <>

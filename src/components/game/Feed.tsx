@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { FeedItem, FeedSkeleton } from "./FeedItem";
 import { EmptyState, ErrorState } from "@/components/common";
 import { LogoMark } from "@/components/layout/Logo";
@@ -25,6 +25,7 @@ export function Feed({
   error,
   onRetry,
   onRefresh,
+  landOn,
   empty = {
     title: t("Nothing here yet"),
     body: t("As soon as games are published they show up in this feed."),
@@ -37,22 +38,46 @@ export function Feed({
   onRetry?: () => void;
   /** Reads the feed again: a tap on Home or For You while already here. */
   onRefresh?: () => void;
+  /** The slug of the game to open on, rather than the first. */
+  landOn?: string;
   empty?: { title: string; body?: string };
 }) {
   const scroller = useRef<HTMLDivElement>(null);
+  const landing = useRef(landOn);
+  const stopLanding = () => {
+    landing.current = undefined;
+  };
 
   // Home or For You tapped while already on this feed: back to the first game,
   // and a fresh read of the list behind it.
   useFeedRefresh(() => {
+    stopLanding();
     scroller.current?.scrollTo({ top: 0, behavior: "smooth" });
     onRefresh?.();
   });
+
+  // Before paint, so the first card never shows on the way to this one. It stays
+  // on this card until the player moves: finishing a game changes its place in
+  // the order, and that fresh order can arrive a moment after the cached one. A
+  // game no longer in the feed leaves the player at the top.
+  useLayoutEffect(() => {
+    const element = scroller.current;
+    if (!element || !landing.current) return;
+    const card = [...element.children].find(
+      (child) => child instanceof HTMLElement && child.dataset["game"] === landing.current,
+    );
+    if (card instanceof HTMLElement) element.scrollTop = card.offsetTop;
+  }, [items]);
 
   return (
     <div className="relative">
       <FeedTabs tab={tab} />
       <div
         ref={scroller}
+        data-feed-scroller
+        onPointerDown={stopLanding}
+        onWheel={stopLanding}
+        onKeyDown={stopLanding}
         className="no-scrollbar h-dvh snap-y snap-mandatory overflow-y-auto overscroll-contain"
       >
         {loading ? (

@@ -9,6 +9,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CascadeRuntime } from "@/components/game/CascadeRuntime";
+import { buttonNamed } from "@/test/queries";
 import { clearSession } from "@/lib/auth/session";
 import { findSwap, firstBoard, isSwapLegal, swapCells } from "@/lib/games/cascade";
 
@@ -104,9 +105,7 @@ async function renderRuntime() {
 }
 
 const cellButton = (cell: number) =>
-  screen.getByRole("button", {
-    name: new RegExp(`^Row ${Math.floor(cell / 8) + 1}, column ${(cell % 8) + 1}:`),
-  });
+  buttonNamed(new RegExp(`^Row ${Math.floor(cell / 8) + 1}, column ${(cell % 8) + 1}:`));
 
 /** A tap on a cell, the way a finger makes one. */
 function tapCell(cell: number) {

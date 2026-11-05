@@ -225,7 +225,7 @@ export function PlaySurface({
       void nav({ to: "/messages/$username", params: { username: calloutWith }, replace: true });
       return;
     }
-    void nav({ to: "/", replace: true });
+    void nav({ to: "/", search: { game: id }, replace: true });
   }
 
   const leave = useMemo(() => ({ resumable, leave: quit }), [resumable]);

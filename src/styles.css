@@ -545,6 +545,65 @@
   }
 }
 
+/* Feed previews (components/game/previews). A pour or a stack of nuts lifts out
+   of one place, travels over the mouth of the next and settles in; tiles slide
+   in from where they were, drop into place or leave the board. Each offset comes
+   from the preview that uses it. */
+.preview-pour {
+  animation: preview-pour 420ms var(--ease-out) both;
+}
+
+@keyframes preview-pour {
+  0% {
+    transform: translate(var(--from-x), var(--from-y));
+  }
+  55% {
+    transform: translate(0, var(--over-y));
+  }
+  100% {
+    transform: none;
+  }
+}
+
+.preview-slide {
+  animation: preview-slide 170ms var(--ease-out) both;
+}
+
+@keyframes preview-slide {
+  from {
+    transform: translate(var(--from-x, 0), var(--from-y, 0));
+  }
+  to {
+    transform: none;
+  }
+}
+
+.preview-drop {
+  animation: preview-drop 240ms var(--ease-out) both;
+}
+
+@keyframes preview-drop {
+  from {
+    transform: translateY(-60%) scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.preview-leave {
+  animation: preview-leave 280ms cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+
+@keyframes preview-leave {
+  to {
+    transform: translate(var(--to-x, 0), var(--to-y, 0)) scale(0.7);
+    opacity: 0;
+  }
+}
+
 /* Flutter (components/game/UpdraftRuntime): the glider bobs while it waits for
    its first flap, and the ground's stripes scroll with the field. */
 .updraft-hover {
