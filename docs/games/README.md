@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Twenty-two games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Twenty-three games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted** and the **Daily Crossword**. Twenty of them — all but 7 Second and the crossword, the two daily
+**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox** and the **Daily Crossword**. Twenty-one of them — all but 7 Second and the crossword, the two daily
 games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -68,6 +68,28 @@ clocks, so a session opened before the change still verifies. See
 `supabase/migrations/20261123120000_tapered_clocks.sql`. The per-game sections
 below describe each game's base clock; where they name a `*_budget_ms` function,
 the new versions use its `*_tapered_budget_ms` twin.
+
+## The speed bonus
+
+Crowns, Sudoku and Mini Sudoku have no clock to lose to. Every board has a par time,
+and a run ahead of the par of its solved boards earns a bonus when it ends:
+
+```
+bonus = points × max(0, par − elapsed) ÷ par        // rounded down
+```
+
+So a run can earn up to double, and at par or slower it earns nothing extra and keeps
+its points. **The time is the server's**: the verifier measures it from the session's
+start, and continuing a saved run moves that start forward by the time away. The claim
+a client sends is the points before the bonus; the score recorded is the replay's plus
+the bonus, so the number on the result screen comes from the server, and the bonus on
+the board during play is only an estimate. `public.speed_bonus` and
+`src/lib/games/speed.ts` are the same function.
+
+Time spent on a board the run does not finish counts too, because the server only sees
+the whole run: a player who is ahead and wants to keep it should end the run after a
+solved board. A bot can always reach the double, as it can reach any score here: the
+verifier proves a run is legal, not that a person played it.
 
 ## Stack 10
 
@@ -798,7 +820,7 @@ drifts, one of the two suites fails.
 ## Crowns
 
 Crowns is the classic Star Battle puzzle (one star per line) as an endless run.
-Its code keeps its first name: runtime `queens`, rules `queens@1`, slug `crowns`.
+Its code keeps its first name: runtime `queens`, rules `queens@2`, slug `crowns`.
 Every board is an N×N grid split into
 N coloured regions: place exactly one crown in each row, each column and each
 region, with no two crowns touching — not even diagonally. Every board has exactly
@@ -810,9 +832,10 @@ one solution. Solve it and the next one is dealt; **there is no final board**.
 | -------- | ------------------------------------------------------------------ |
 | Board    | 5×5, growing to 9×9 by level eleven, then 9×9 for every board      |
 | Levels   | none — boards keep coming until the run ends                       |
-| Mistakes | 3 per run: the third crown placed off the solution ends the run    |
+| Undo     | Free, back to the start of the board; Clear board empties it       |
+| Par      | 60, 90, 150, 240 and 360 s for 5×5 to 9×9: [the speed bonus](#the-speed-bonus) |
 | Taps     | 8192 at most in one submission: a request bound, not a level       |
-| Rules    | `queens@1`                                                         |
+| Rules    | `queens@2` (the verifier still replays `queens@1`)                 |
 | Runtime  | `queens` (the catalogue's `games.runtime` value)                   |
 
 ### How the real game works, and what this one keeps
@@ -823,15 +846,11 @@ clashing crowns are highlighted rather than refused; and there is an optional
 automatic X that fills in the cells a crown rules out. Their boards are mostly 7×7
 to 10×10, hand-checked to have one solution that can be reached by deduction.
 
-Unbored keeps the rules, the tap cycle and the automatic X — shown as faint Xs,
-a display aid rather than state, so it changes no tap. It changes one thing: a
-crown placed off the solution is a **mistake**, not a clash to fix later. A daily
-puzzle can let a player shuffle crowns freely because nothing is ranked; an
-endless, ranked run needs a way to end and a skill a replay can measure, and a
-wrong crown is both. With a unique solution, "off the solution" and "breaks the
-rules eventually" are the same thing, so the mistake rule only makes the board say
-so at once. Because a wrong crown is refused, two crowns on the board can never
-clash, which is why there is no clash highlight.
+Unbored keeps the rules, the tap cycle, the clash highlight and the automatic X —
+shown as faint Xs, a display aid rather than state, so it changes no tap. Any cell can
+hold a crown, right or wrong, and nothing is locked or counted against the player.
+What it adds is a score worth racing for: every solved board is worth points, and
+being quick earns [the speed bonus](#the-speed-bonus).
 
 ### The boards
 
@@ -876,9 +895,9 @@ run's seed, which the **server** chooses:
    unique (every crown but the last alone in its region) exists so the generator
    is total, and has never been needed.
 
-Only the client grows regions. The verifier needs only the solution: a crown is
-right exactly when it sits on it, and no region a client could draw changes which
-crowns are mistakes. That keeps the database's copy to a shuffle.
+Only the client grows regions. The verifier needs only the solution: a board is
+solved exactly when its crowns are the solution's, and no region a client could draw
+changes that. That keeps the database's copy to a shuffle.
 
 The seed travels as a **decimal string**, as every game's does.
 
@@ -901,52 +920,56 @@ eleven on the difficulty comes from the layouts, which differ every board.
 
 A move is a **cell index on the current board**. The cell cycles:
 
-1. **Empty → X.** A note. Free.
-2. **X → crown.** If the cell is on the solution, the crown stays. If not, it is a
-   **mistake**: the cell is ruled out and locked, and the third mistake of the run
-   ends it.
+1. **Empty → X.** A note.
+2. **X → crown.** On any cell. Crowns that break a rule are shown in red.
 3. **crown → empty.**
 
-The board's last crown solves it: it scores ten points a row and the next board is
-dealt, empty. Mistakes carry from board to board. A tap on a ruled-out cell, a cell
-off the board, or a tap after the run ended is not a move: the submission is
-impossible and is refused.
+Two more actions are free and can be used any number of times:
+
+- **Undo** (81) steps back one tap, as far as the start of the board.
+- **Clear board** (82) empties the board. It cannot be undone.
+
+When the board's crowns are exactly its solution it is solved: it scores ten points a
+row and the next board is dealt, empty. A solved board cannot be undone. A cell off the
+board, an undo or clear with nothing to take back, or an action after the run ended is
+not a move: the submission is impossible and is refused.
 
 ### Scoring
 
 Each solved board scores **ten points per row** — 50 for a 5×5 board, 90 for a
-9×9. Larger boards take far longer, and the score says so; within a size, every
-board is worth the same. An unsolved board scores nothing, and there is no maximum.
+9×9, plus [the speed bonus](#the-speed-bonus). Larger boards take far longer, and the
+score says so. An unsolved board scores nothing, and there is no maximum.
 
 ### How a run ends
 
 | Outcome        | When                                                                  |
 | -------------- | --------------------------------------------------------------------- |
-| `over`         | The third mistake.                                                    |
 | `over` (ended) | The player pressed End run. The score so far is kept.                 |
 | `over` (bound) | The submission reached 8192 taps.                                     |
 
 Ending a run is always allowed, and the verifier therefore accepts **any prefix
 of a legal line**. That is safe because a run never loses points: cutting a line
-short can only drop boards the player did not solve, and cannot avoid a mistake —
-the session is closed once the run is submitted.
+short can only drop boards the player did not solve, and the session is closed once
+the run is submitted.
 
 ### Verified scores
 
 **The database decides the score**: see
-`supabase/migrations/20261104120000_queens_sessions.sql`.
+`supabase/migrations/20261217120000_speed_runs.sql` (and, for `queens@1`,
+`20261104120000_queens_sessions.sql`).
 
 - `public.queens_solution(seed, level)` draws one board's solution and
   `public.queens_side(level)` its size. Internals: execute is not granted to a
   client, and the verifier is the only caller.
 - `public.start_game_session(slug, rules, client)` accepts the pair (`queens`,
-  `queens@1`). A Crowns session reports `tile_count` 8192 — the submission bound —
+  `queens@2`). A Crowns session reports `tile_count` 8192 — the submission bound —
   and lives twelve hours, like every endless run.
-- `public.complete_queens_run(session, actions, score, duration)` replays the taps
-  cell by cell as above, derives the score, compares it with the claim, and only
-  then closes the session and records it. Its outcome vocabulary and ledger
-  behaviour are the other verifiers'. The Go service routes `queens@` runs to it
-  and accepts up to 8192 taps on cells 0 to 80, the 9×9 board.
+- `public.complete_queens_speed_run(session, actions, score, duration)` replays the
+  actions through `queens_speed_replay` as above, compares its points with the claim,
+  adds the speed bonus, and only then closes the session and records it. Its outcome
+  vocabulary and ledger behaviour are the other verifiers'. The Go service routes
+  `queens@2` runs to it and accepts up to 8192 actions from 0 to 82. Sessions opened
+  under `queens@1`, three mistakes and all, still go to `complete_queens_run`.
 - `20261104120100_queens_playable.sql` inserts the catalogue record — published,
   official, playable, runtime `queens`, category Logic — and is applied after the
   deployment carrying the runtime is live.
@@ -964,16 +987,12 @@ Each vector is asserted by both the SQL suite and the client engine.
    and `[5,8,3,0,2,6,1,4,7]` on board eleven, which is what catches a client that
    rounded the seed to a double.
 3. **The zero-state fallback** — seed `0` draws the same boards as `2654435769`.
-4. **Seed 1, a mistaken line** —
-   `1,1,8,8,10,10,19,19,22,22,4,4,4,0,0,1,1,2,2`: board one solved (each crown an
-   X, then a crown), cell 4 of board two cycled back to empty, then three crowns
-   off the solution. **50 points**, 19 taps, 1 board solved, and the third mistake
-   ends the run. Asserted in
-   [`tests/security/rls_test.sql`](../../tests/security/rls_test.sql) and in
-   [`src/lib/games/queens.test.ts`](../../src/lib/games/queens.test.ts).
-5. **Seed 1, an ended line** —
+4. **Seed 1, an ended line** —
    `1,1,8,8,10,10,19,19,22,22,4,4,7,7,15,15,18,18,29,29,32,32`: boards one and two
    solved, then the player ends the run. **110 points**, 22 taps.
+5. **Lines with wrong crowns, undos and clears** — in
+   [`tests/security/verifier_vectors.sql`](../../tests/security/verifier_vectors.sql),
+   recomputed from the engine by `src/test/verifier-vectors.test.ts`.
 
 ## Trail
 
@@ -1320,7 +1339,7 @@ reading order, 1 a sun, 2 a moon, 0 empty).
 
 ## Sudoku
 
-The classic number puzzle as an endless run against a clock. Fill a 9×9 grid so
+The classic number puzzle as an endless run, with no clock to lose to. Fill a 9×9 grid so
 that every row, every column and every 3×3 box holds the digits 1 to 9 once each.
 Some cells start filled, and every board has exactly one solution.
 
@@ -1331,9 +1350,9 @@ Some cells start filled, and every board has exactly one solution.
 | Board   | 9×9 in 3×3 boxes, always                                                 |
 | Boards  | from a bank of 200 graded puzzles, one solution each                     |
 | Tiers   | boards 1–2 gentle, 3–5 easy, 6–9 medium, then hard                       |
-| Clock   | 400 s to start; each solved board adds the next one's allowance, tapered; 20 s of slack |
+| Par     | each board's allowance, by tier: [the speed bonus](#the-speed-bonus)     |
 | Moves   | 8192 at most in one submission: a request bound, not a level             |
-| Rules   | `sudoku@3` (the verifier still replays `sudoku@2` and `sudoku@1`)        |
+| Rules   | `sudoku@4` (earlier versions still replay, against their clocks)         |
 | Runtime | `sudoku` (the catalogue's `games.runtime` value)                         |
 
 ### The bank and the tiers
@@ -1343,7 +1362,7 @@ Every board comes from a bank of 200 puzzles in four tiers of 50, generated by
 `src/lib/games/sudoku-bank.ts` and `public.sudoku_bank()`. Each puzzle has exactly
 one solution, and is graded by the hardest technique a logical solver needs:
 
-| Tier   | Boards | Givens | What it asks                                                         | Allowance |
+| Tier   | Boards | Givens | What it asks                                                         | Par       |
 | ------ | ------ | ------ | -------------------------------------------------------------------- | --------- |
 | gentle | 1–2    | 36     | the only place left for a digit in a box                             | 4 min     |
 | easy   | 3–5    | 30     | the only place in a row or column, or the only digit left for a cell | 5 min     |
@@ -1379,13 +1398,13 @@ start(r, c) = relabel(puzzle(rows[r], columns[c]))   // 0 stays empty
 A board is solved when it is **full and obeys the rules** — with one solution,
 that is the solution.
 
-### A move, scoring and the clock
+### A move and scoring
 
 A move is one number, **cell × 10 + digit**: it puts the digit (1–9) in the cell
 (0–80), or clears the cell when the digit is 0, so moves run from 0 to 809. A
 given, a cell off the board, or a move that leaves the cell as it was is not a
 move. The screen marks digits that repeat in a row, column or box, but a wrong
-digit never ends a run — the player fixes it, and the clock is what is spent.
+digit never ends a run — the player fixes it, and only the time it took is spent.
 
 On screen the player picks a cell, then a digit on the pad or the keyboard. Which
 cell is picked, **pencil notes** (Notes, or N) and their tidying when a digit is
@@ -1393,34 +1412,28 @@ placed are display: none of them is a move. **Undo** (or Ctrl+Z) restores the
 notes as they were and puts back what a cell held — which, for a digit, is itself
 a move, sent like any other.
 
-A move that leaves the board solved scores **ninety points** (ten a row), adds the
-next board's allowance to the clock and deals the next board. The run ends when
-the clock reaches zero or the player ends it; any prefix of a legal line is valid,
-because the score never goes down.
-
-The clock works as Trail's: the session is issued when the player presses Start,
-and the verifier refuses a run that reaches it more than
-`sudoku_tiered_budget_ms(boards solved) + sudoku_slack_ms()` after the session
-started (`out_of_time`, a `422`), where the budget is 360 s plus, for each solved
-board, the allowance of the board after it.
+A move that leaves the board solved scores **ninety points** (ten a row) and deals the
+next board. Only the player ends a run, and any prefix of a legal line is valid,
+because the score never goes down. The session is issued when the player presses
+Start, and being ahead of the boards' par earns [the speed bonus](#the-speed-bonus).
 
 ### Verified scores
 
 **The database decides the score**: see
-`supabase/migrations/20261115120000_sudoku_bank.sql` (and, for `sudoku@1`,
+`supabase/migrations/20261217120000_speed_runs.sql` (and, for the boards and the
+earlier versions, `20261115120000_sudoku_bank.sql` and
 `20261114120000_sudoku_sessions.sql`).
 
-- `public.sudoku_start(seed, level)` returns a `sudoku@2` board's starting cells
-  (81 values); `sudoku_bank()`, `sudoku_tier(level)`, `sudoku_allowance_ms(tier)`
-  and `sudoku_tiered_budget_ms(cleared)` are the bank, the tiers and the clock;
+- `public.sudoku_start(seed, level)` returns a board's starting cells (81 values);
+  `sudoku_bank()`, `sudoku_tier(level)`, `sudoku_allowance_ms(tier)` and
+  `sudoku_par_ms(cleared)` are the bank, the tiers and the par;
   `sudoku_solved(cells)` is the solved check. All are internals.
-- `public.start_game_session` issues (`sudoku`, `sudoku@2`) and still accepts
-  `sudoku@1`; the session reports `tile_count` 8192 and lives twelve hours.
-- `public.complete_sudoku_run(session, actions, score, duration)` replays the
-  moves on the boards and clock of the session's own rules version, derives the
-  score, compares it with the claim, checks the clock and only then records it.
-  The Go service routes `sudoku@` runs to it and accepts up to 8192 moves from 0
-  to 809.
+- `public.start_game_session` issues (`sudoku`, `sudoku@4`) and still accepts the
+  earlier versions; the session reports `tile_count` 8192 and lives twelve hours.
+- `public.complete_sudoku_speed_run(session, actions, score, duration)` replays the
+  moves, compares the points with the claim, adds the speed bonus and only then
+  records it. The Go service routes `sudoku@4` runs to it and accepts up to 8192
+  moves from 0 to 809. Earlier sessions go to `complete_sudoku_run`, clock included.
 - `sudoku@1` dealt random givens on a random grid, so its boards could have more
   than one solution; its generator (`sudoku_draw`) and clock (`sudoku_budget_ms`,
   three minutes a board) stay for sessions opened under it.
@@ -1441,17 +1454,16 @@ reading order, 0 empty).
    `22,34,58,65,71,86,95,119,146,188,191,206,212,243,272,297,325,334,353,363,375,381,404,419,432,447,456,469,474,487,492,511,535,575,586,613,655,663,678,697,706,724,743,767,808`,
    then `5` (a 5 in cell 0) on board two: **90 points**, 46 moves. Both boards
    filled: **180 points**, 90 moves.
-4. **The clock** — a session started seven hundred seconds earlier: board one
-   alone (360 + 240 s, + 20 s) is `out_of_time`; both boards (360 + 240 + 300 s,
-   + 20 s) are on time.
+4. **No clock** — a session started eleven hours earlier still records board one, at
+   90 points; one started a minute earlier records it with its speed bonus.
 
 ## Mini Sudoku
 
 Sudoku on a 6×6 grid: quick to start, hard to put down. Fill the grid so that
 every row, every column and every 2×3 box (two rows tall, three wide) holds the
 digits 1 to 6 once each. Some cells start filled, and every board has exactly one
-solution. It plays as Sudoku does — an endless run against a clock — on a board
-that takes a minute or two instead of ten.
+solution. It plays as Sudoku does — an endless run with no clock to lose to — on a
+board that takes a minute or two instead of ten.
 
 ### The board
 
@@ -1460,9 +1472,9 @@ that takes a minute or two instead of ten.
 | Board   | 6×6 in boxes two rows tall and three columns wide, always                          |
 | Boards  | from a bank of 120 puzzles, one solution each                                      |
 | Tiers   | boards 1–2 gentle (19 givens), 3–5 easy (16), 6–9 medium (14), then hard (12)      |
-| Clock   | 120 s to start; each solved board adds the next one's allowance, tapered; 15 s of slack |
+| Par     | each board's allowance, by tier: [the speed bonus](#the-speed-bonus)               |
 | Moves   | 8192 at most in one submission: a request bound, not a level                       |
-| Rules   | `mini-sudoku@1`                                                                    |
+| Rules   | `mini-sudoku@2` (`mini-sudoku@1` still replays, against its clock)                 |
 | Runtime | `mini-sudoku` (the catalogue's `games.runtime` value)                              |
 
 ### The bank and the tiers
@@ -1473,7 +1485,7 @@ Every board comes from a bank of 120 puzzles in four tiers of 30, generated by
 is checked to have exactly one solution; the tiers differ in how many cells they
 give:
 
-| Tier   | Boards | Givens | Allowance |
+| Tier   | Boards | Givens | Par       |
 | ------ | ------ | ------ | --------- |
 | gentle | 1–2    | 19     | 60 s      |
 | easy   | 3–5    | 16     | 75 s      |
@@ -1508,43 +1520,37 @@ start(r, c) = relabel(puzzle(rows[r], columns[c]))   // 0 stays empty
 
 A board is solved when it is **full and obeys the rules**.
 
-### A move, scoring and the clock
+### A move and scoring
 
 A move is one number, **cell × 10 + digit**: it puts the digit (1–6) in the cell
 (0–35), or clears the cell when the digit is 0, so moves run from 0 to 356. A
 given, a cell off the board, a digit above 6, or a move that leaves the cell as it
 was is not a move. The screen marks digits that repeat in a row, column or box, but
-a wrong digit never ends a run — the player fixes it, and the clock is what is
+a wrong digit never ends a run — the player fixes it, and only the time it took is
 spent. Pencil notes, Undo and hints are display, as in Sudoku.
 
 A move that leaves the board solved scores **sixty points** (ten a row; the screen
-shows ten times that, as it does for every game), adds the next board's allowance
-to the clock — scaled by `clock_taper_pct` for the board just solved, as in the
-other timed games — and deals the next board. The run ends when the clock reaches
-zero or the player ends it; any prefix of a legal line is valid, because the score
-never goes down.
-
-The verifier refuses a run that reaches it more than
-`mini_sudoku_budget_ms(boards solved) + mini_sudoku_slack_ms()` after the session
-started (`out_of_time`, a `422`), where the budget is 120 s plus, for each solved
-board, the allowance of the board after it, tapered.
+shows ten times that, as it does for every game) and deals the next board. Only the
+player ends a run, and any prefix of a legal line is valid, because the score never
+goes down. Being ahead of the boards' par earns [the speed bonus](#the-speed-bonus).
 
 ### Verified scores
 
 **The database decides the score**: see
-`supabase/migrations/20261126120000_mini_sudoku_sessions.sql`.
+`supabase/migrations/20261217120000_speed_runs.sql` (and, for the boards and
+`mini-sudoku@1`, `20261126120000_mini_sudoku_sessions.sql`).
 
 - `public.mini_sudoku_start(seed, level)` returns a board's starting cells (36
   values); `mini_sudoku_bank()`, `mini_sudoku_tier(level)`,
-  `mini_sudoku_allowance_ms(tier)` and `mini_sudoku_budget_ms(cleared)` are the
-  bank, the tiers and the clock; `mini_sudoku_solved(cells)` is the solved check.
+  `mini_sudoku_allowance_ms(tier)` and `mini_sudoku_par_ms(cleared)` are the
+  bank, the tiers and the par; `mini_sudoku_solved(cells)` is the solved check.
   All are internals.
-- `public.start_game_session` issues (`mini-sudoku`, `mini-sudoku@1`); the session
+- `public.start_game_session` issues (`mini-sudoku`, `mini-sudoku@2`); the session
   reports `tile_count` 8192 and lives twelve hours.
-- `public.complete_mini_sudoku_run(session, actions, score, duration)` replays the
-  moves, derives the score, compares it with the claim, checks the clock and only
-  then records it. The Go service routes `mini-sudoku@` runs to it and accepts up
-  to 8192 moves from 0 to 359.
+- `public.complete_mini_sudoku_speed_run(session, actions, score, duration)` replays
+  the moves, compares the points with the claim, adds the speed bonus and only then
+  records it. The Go service routes `mini-sudoku@2` runs to it and accepts up to 8192
+  moves from 0 to 359. `mini-sudoku@1` sessions go to `complete_mini_sudoku_run`.
 - `20261126120100_mini_sudoku_playable.sql` inserts the catalogue record (Puzzle).
   It lands last, after the service and the client are deployed.
 
@@ -1564,9 +1570,8 @@ reading order, 0 empty).
    17 moves. Board two filled by
    `26,33,96,104,135,142,163,171,191,241,256,275,282,293,325,331,354` after it:
    **120 points**, 34 moves.
-4. **The clock** — a session started two hundred and eighty seconds earlier: board
-   one alone (120 + 72 s, + 15 s) is `out_of_time`; both boards (120 + 72 + 82.5 s,
-   + 15 s) are on time.
+4. **No clock** — a session started eleven hours earlier still records board one, at
+   60 points; one started fifteen seconds earlier records it with its speed bonus.
 
 Asserted in [`src/lib/games/mini-sudoku.test.ts`](../../src/lib/games/mini-sudoku.test.ts)
 and `tests/security/rls_test.sql`.
@@ -2887,3 +2892,89 @@ and against the database in `tests/security/verifier_vectors.sql`.
 1. **Seed 1, board 1** — `2132 3321 1321 - -` (bolts bottom to top, `-` empty).
 2. **Seed 1, board 2** — `1311 3122 3322 - -`.
 3. **Seed 1, board 13** — `8685 7421 2544 7367 8383 1146 6213 2575 - -`.
+
+## Fusebox
+
+An original chain-reaction game. A tap spends a spark and adds a charge; a cell at
+four charge pops and its bolts charge the cells around it, which can pop in turn.
+Long chains pay sparks back, so a run can turn around on its last spark. There is
+no clock and no last board.
+
+| Thing   | Value                                                                        |
+| ------- | ---------------------------------------------------------------------------- |
+| Board   | 6×6, always; cleared at four charged cells or fewer                          |
+| Sparks  | 10 to start; a tap costs 1; a chain pays 0 to 3; a cleared board pays 3      |
+| Refunds | 4, 7 and 11 pops for +1, +2 and +3; with n = ⌊(board − 1) / 2⌋, add n, 2n, 2n |
+| Score   | A pop in wave *n* scores *n* units (10 on screen each)                       |
+| Ending  | No sparks left, or the player ending the run; no clock                       |
+| Actions | 4096 taps at most, each a cell index, 0 to 35                                |
+| Rules   | `fusebox@1`                                                                  |
+| Runtime | `fusebox` (the catalogue's `games.runtime` value)                            |
+
+### The rules
+
+- Any cell can be tapped, an empty one included: it gains one charge.
+- A wave is simultaneous. Every cell at four or more pops and empties, *then* every
+  bolt flies, so no bolt lands on a cell popping in the same wave. Bolts fly four
+  ways and reach three cells; each adds one charge to the first charged cell it
+  meets, and passes over empty ones. Cells at four or more then form the next wave.
+- A chain always ends: a popped cell is empty and bolts only land on charged cells,
+  so no cell pops twice in a tap.
+- A **surge** cell also fires the four diagonals.
+- A **shielded** cell loses its shield to the first thing that reaches it, a tap or
+  a bolt, for no charge. Any other bolts landing with that one still add charge.
+- After the chain, the sparks settle: minus one, plus the chain's refund. A board
+  with four charged cells or fewer is cleared: plus three sparks, and the next board.
+- Refunds use the board the tap was made on. No sparks left ends the run, and a
+  clear's sparks count first, so a clearing tap never ends one.
+- A tap off the board or after the run ended is not a move; the verifier refuses a
+  run that contains one (`invalid_actions`).
+
+### The boards
+
+Draws come from an outer LCG advanced once per level and a second LCG started at
+that state (the top sixteen bits of each state), over a seed mixed with 0xC2B2AE35.
+Each cell draws its charge with weights 30, 30 and 35 for 0, 1 and 2, and 18 − board
+for 3, never under 6. Then surge cells (one from board 3, one more every 4 boards,
+up to 3) and shielded cells (one from board 5, one more every 2 boards, up to 6)
+each draw a start cell, and the first charged plain cell from there, wrapping, takes
+that kind.
+
+`public.fusebox_board(seed, level)` and `board()` in `src/lib/games/fusebox.ts` are
+the same function. A board is written as one hex digit a cell: charge + 4 × kind,
+with kind 0 plain, 1 surge, 2 shielded.
+
+### The missed tap
+
+A run lost to the sparks shows the tap that would have saved it, if one existed: the
+best tap on the board of the last tap, most sparks first, then most pops, then most
+points. This is `missedTap()`, worked out on the screen from the run's own taps. It
+decides nothing about the score.
+
+### Balance
+
+Bots playing the real engine over hundreds of seeds, as medians, with score as shown
+on screen:
+
+| Bot                 | Score  | Taps | Boards reached (mean) | Biggest chain (mean) |
+| ------------------- | ------ | ---- | --------------------- | -------------------- |
+| Random charged cell | 1,120  | 17   | 2.2                   | 13                   |
+| Best tap in sight   | 5,270  | 44   | 6.7                   | 17                   |
+| Two taps ahead      | 19,950 | 71   | 10.5                  | 27                   |
+
+These are bots, not players: the numbers show the economy working, not how much fun
+it is. Change the ramp only with a new rules version.
+
+### The verifier
+
+`public.complete_fusebox_run` in `supabase/migrations/20261216120000_fusebox_sessions.sql`
+replays the taps through `public.fusebox_replay` and compares the claimed score with
+its own (`score_mismatch`). It reports boards cleared as `cleared_columns` and cells
+popped as `tiles_placed`. Any prefix of a legal line is a valid run, because the
+score only grows. The session lives twelve hours, and the run can be saved and
+continued. The lines in `tests/security/verifier_vectors.sql` reach boards with surge
+and shielded cells, and `src/test/verifier-vectors.test.ts` recomputes them from the
+engine.
+
+The board is fully visible and the client holds the seed, as in every game here, so
+the verifier proves a run is legal, not that a person played it.

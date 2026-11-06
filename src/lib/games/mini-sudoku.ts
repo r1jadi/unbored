@@ -33,18 +33,18 @@
  * (0–35), or clears the cell when `digit` is 0. A cell that started filled, or a
  * move that leaves the cell as it was, is not a move.
  *
- * ## The endless game, against the clock
+ * ## The endless game
  *
- * A run is a race: one clock that starts at two minutes, timed by the server from
- * the session's start. Every solved board scores sixty points and adds the next
- * board's allowance, tapered (`clock.ts`). A wrong digit never ends a run: the
- * player fixes it, and the clock is what is spent.
+ * A run has no clock to lose to: it ends only when the player ends it. Every solved
+ * board scores ten points a row, and every board has a par time, more for the harder
+ * tiers. A run ahead of its par earns a bonus when it ends (`speed.ts`), timed by the
+ * server from the session's start. A wrong digit never ends a run: the player fixes
+ * it, and only the time it took is spent.
  *
  * Storage rule: nothing here is persisted. A score only exists once the server has
  * verified it.
  */
 
-import { taperedBonusMs } from "@/lib/games/clock";
 import {
   MINI_SUDOKU_BANK,
   MINI_SUDOKU_PER_TIER,
@@ -55,7 +55,7 @@ import {
 export const MINI_SUDOKU_RUNTIME = "mini-sudoku";
 
 /** The rules the server can verify. Sent with every run and pinned to a session. */
-export const MINI_SUDOKU_RULES_VERSION = "mini-sudoku@1";
+export const MINI_SUDOKU_RULES_VERSION = "mini-sudoku@2";
 
 /** The board is always 6×6, in boxes two rows tall and three columns wide. */
 export const MINI_SUDOKU_SIDE = 6;
@@ -65,14 +65,8 @@ export const MINI_SUDOKU_BOX_COLS = 3;
 /** The most moves one submission may carry: a request ceiling, not a final board. */
 export const MINI_SUDOKU_MAX_ACTIONS = 8192;
 
-/** The clock a run starts with. */
-export const MINI_SUDOKU_START_MS = 120_000;
-
-/** The time a board of each tier is given: what solving the board before it adds. */
+/** A board's par time in ms, by tier. */
 export const MINI_SUDOKU_ALLOWANCE_MS = [60_000, 75_000, 105_000, 135_000] as const;
-
-/** How late after its clock ran out the server still accepts a run. */
-export const MINI_SUDOKU_SLACK_MS = 15_000;
 
 /** Ten points per row of a solved board. */
 export const MINI_SUDOKU_POINTS_PER_BOARD = 10 * MINI_SUDOKU_SIDE;
@@ -96,7 +90,7 @@ const OUTER_INCREMENT = 1013904223;
 const INNER_MULTIPLIER = 22695477;
 const INNER_INCREMENT = 1;
 
-export type MiniSudokuEnding = "time" | "stopped" | "bound";
+export type MiniSudokuEnding = "stopped" | "bound";
 export type MiniSudokuOutcome = "playing" | "over";
 
 /** A board as it is drawn. */
@@ -175,21 +169,15 @@ export function tierOf(level: number): MiniSudokuTier {
   return MINI_SUDOKU_TIERS[tierIndex(level)];
 }
 
-/** The time the board at `level` is given. */
+/** The par time of the board at `level`. */
 export function allowanceMs(level: number): number {
   return MINI_SUDOKU_ALLOWANCE_MS[tierIndex(level)];
 }
 
-/**
- * The clock a run has earned once `levelsCleared` boards are solved, in ms: two
- * minutes, plus the allowance of the board after each one solved, shrunk by the
- * taper (`clock.ts`) for the board just solved.
- */
-export function budgetMs(levelsCleared: number): number {
-  let total = MINI_SUDOKU_START_MS;
-  for (let level = 1; level <= levelsCleared; level += 1) {
-    total += taperedBonusMs(allowanceMs(level + 1), level);
-  }
+/** The par time of the first `levelsCleared` boards, in ms. */
+export function parMs(levelsCleared: number): number {
+  let total = 0;
+  for (let level = 1; level <= levelsCleared; level += 1) total += allowanceMs(level);
   return total;
 }
 
@@ -473,10 +461,10 @@ export function place(run: MiniSudokuRun, cell: number, digit: number): MiniSudo
   };
 }
 
-/** Ends the run where it stands: the clock ran out, or the player stopped. */
-export function finish(run: MiniSudokuRun, ending: "time" | "stopped"): MiniSudokuRun {
+/** Ends the run where it stands: the player stopped. */
+export function finish(run: MiniSudokuRun): MiniSudokuRun {
   if (run.outcome !== "playing") return run;
-  return { ...run, outcome: "over", ending };
+  return { ...run, outcome: "over", ending: "stopped" };
 }
 
 export type MiniSudokuSubmission = {

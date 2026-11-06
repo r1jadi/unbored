@@ -18,7 +18,7 @@ import { clearSession, signIn } from "@/lib/auth/session";
  * Seed 1's first board — gentle — starts with a 7 on cell 0 and a 9 on cell 4,
  * leaves cell 2 open to 1, 2, 5 or 6 (its answer is 2), and fills from the moves in
  * `LINE_ONE` (`cell × 10 + digit`). Like Sun & Moon, the rules show with no
- * session, Start asks for one, and the clock ends the run.
+ * session, Start asks for one, and only the player ends the run.
  */
 
 const LINE_ONE = [
@@ -32,7 +32,7 @@ function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
     id: "edededed-1111-4111-8111-edededededed",
     gameSlug: "sudoku",
-    rulesVersion: "sudoku@3",
+    rulesVersion: "sudoku@4",
     seed: "1",
     tileCount: 8192,
     startedAt: "2026-11-14T12:00:00.000Z",
@@ -181,16 +181,14 @@ describe("starting a run", () => {
 
     expect(JSON.parse(String(sessionCalls(spy)[0][1]?.body ?? "{}"))).toEqual({
       gameSlug: "sudoku",
-      rulesVersion: "sudoku@3",
+      rulesVersion: "sudoku@4",
       client: "web/1.0",
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     expect(screen.getAllByRole("button", { name: CELL })).toHaveLength(81);
     expect(screen.getByText("45 cells left")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: "Time left" })).toHaveAttribute(
-      "aria-valuenow",
-      "400",
-    );
+    expect(screen.getByText("par 4:00")).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 });
 
@@ -357,7 +355,7 @@ describe("the board", () => {
     expect(screen.queryByText(/Something clashes/)).not.toBeInTheDocument();
   });
 
-  it("solves a board when it is full and right: ninety points and more time", async () => {
+  it("solves a board when it is full and right: ninety points", async () => {
     mockPlayback();
     await renderRuntime();
     await startRun();
@@ -367,28 +365,39 @@ describe("the board", () => {
     expect(screen.getByRole("group", { name: "Board 2, 9 by 9" })).toBeInTheDocument();
     expect(scoreShown()).toBe("900");
     expect(screen.getByText(/Board 1 solved, \+90/)).toBeInTheDocument();
-    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuemax"))).toBe(688);
+    // The par now covers both boards: 4 minutes each.
+    expect(screen.getByText("par 8:00")).toBeInTheDocument();
   }, 15000);
 });
 
 describe("finishing a run", () => {
-  it("ends the run when the clock runs out, and submits every move", async () => {
-    const spy = mockPlayback({}, resultPayload({ score: 90, clearedColumns: 1 }));
+  it("never ends a run by time, however long it takes", async () => {
+    const spy = mockPlayback();
     await renderRuntime();
     await startRun();
 
     playMoves(LINE_ONE);
-    // Past the 688 seconds the first board earned: the next move finds the clock over.
-    const later = Date.now() + 689_000;
+    // A day later: the board is still there, and the next move is a move.
+    const later = Date.now() + 86_400_000;
     vi.spyOn(Date, "now").mockImplementation(() => later);
     playMoves([5]); // a 5 in cell 0 of board two
 
+    expect(screen.getByRole("group", { name: "Board 2, 9 by 9" })).toBeInTheDocument();
+    expect(screen.queryByText("Time's up")).not.toBeInTheDocument();
+    expect(spy.mock.calls.some((call) => String(call[0]).includes("/complete"))).toBe(false);
+  }, 15000);
+
+  it("shows the speed bonus the server added to the run's points", async () => {
+    mockPlayback({}, resultPayload({ score: 130, clearedColumns: 1 }));
+    await renderRuntime();
+    await startRun();
+    playMoves(LINE_ONE);
+    await endRun();
+
     await screen.findByRole("button", { name: /play again/i });
-    expect(screen.getByText("Time's up")).toBeInTheDocument();
-    const body = completionBody(spy);
-    expect(body.progress.rulesVersion).toBe("sudoku@3");
-    expect(body.progress.actions).toEqual(LINE_ONE);
-    expect(body.score).toBe(90);
+    expect(screen.getByText("1300")).toBeInTheDocument();
+    expect(screen.getByText("Speed bonus")).toBeInTheDocument();
+    expect(screen.getByText("+400")).toBeInTheDocument();
   }, 15000);
 
   it("lets the player end the run, and shows the score the server verified", async () => {

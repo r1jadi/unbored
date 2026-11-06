@@ -69,6 +69,7 @@ export function GameArt({
       {id === "decant" && <Decant />}
       {id === "scatter" && <Scatter />}
       {id === "huedini" && <Huedini />}
+      {id === "fusebox" && <Fusebox />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </GameStage>
   );
@@ -136,6 +137,7 @@ const KNOWN = new Set([
   "decant",
   "scatter",
   "huedini",
+  "fusebox",
 ]);
 
 /**
@@ -666,6 +668,31 @@ function Scatter() {
           {tile < 0 ? null : arrows[tile % 4]}
         </div>
       ))}
+    </div>
+  );
+}
+
+function Fusebox() {
+  // A chain caught mid-run: charge building across the grid, the middle cell
+  // popping, and its bolts on their way to the next cells.
+  const charges = [0, 1, 0, 2, 0, 2, 0, 3, 0, 1, 1, 3, 4, 3, 1, 0, 0, 3, 0, 2, 2, 0, 1, 0, 1];
+  return (
+    <div className="relative grid aspect-square h-[78%] grid-cols-5 gap-[min(1.5cqw,1.5cqh,0.4rem)]">
+      {charges.map((charge, i) => (
+        <div
+          key={i}
+          className={cn(
+            "rounded-[min(1.5cqw,1.5cqh,0.4rem)]",
+            charge === 0 && "bg-foreground/5",
+            charge === 1 && "bg-game-7/25",
+            charge === 2 && "bg-game-7/55",
+            charge === 3 && "bg-game-7",
+            charge === 4 && "bg-foreground",
+          )}
+        />
+      ))}
+      <div className="absolute left-1/2 top-[20%] h-[60%] w-[min(1cqw,1cqh,0.25rem)] -translate-x-1/2 rounded-full bg-foreground" />
+      <div className="absolute left-[20%] top-1/2 h-[min(1cqw,1cqh,0.25rem)] w-[60%] -translate-y-1/2 rounded-full bg-foreground" />
     </div>
   );
 }

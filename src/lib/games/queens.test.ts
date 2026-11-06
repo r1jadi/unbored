@@ -5,17 +5,24 @@ import {
   board,
   boardSize,
   canTap,
+  canUndo,
+  clashingCrowns,
+  clearBoard,
   createRun,
   fallbackRegions,
   finish,
+  parMs,
   progress,
+  QUEENS_CLEAR,
   QUEENS_MAX_ACTIONS,
-  QUEENS_MISTAKES,
   QUEENS_RULES_VERSION,
+  QUEENS_UNDO,
+  replay,
   solution,
   solutions,
   submission,
   tap,
+  undo,
   type QueensRun,
 } from "@/lib/games/queens";
 
@@ -183,11 +190,11 @@ describe("a run", () => {
       rulesVersion: QUEENS_RULES_VERSION,
       level: 1,
       score: 0,
-      mistakes: 0,
+      history: [],
       outcome: "playing",
     });
     expect(run.cells).toHaveLength(25);
-    expect(QUEENS_RULES_VERSION).toBe("queens@1");
+    expect(QUEENS_RULES_VERSION).toBe("queens@2");
   });
 
   it("cycles a cell: empty, X, Queen, empty", () => {
@@ -199,17 +206,103 @@ describe("a run", () => {
     run = tap(run, cell);
     expect(run.cells[cell]).toBe("empty");
     expect(run.taps).toEqual([1, 1, 1]);
-    expect(run.mistakes).toBe(0);
   });
 
-  it("counts a Queen off the solution as a mistake and locks the cell", () => {
+  it("lets a Queen sit off the solution, with nothing locked or counted", () => {
     let run = tap(tap(createRun("1"), 0), 0);
-    expect(run.cells[0]).toBe("ruled-out");
-    expect(run.mistakes).toBe(1);
-    expect(canTap(run, 0)).toBe(false);
-    expect(tap(run, 0)).toBe(run);
+    expect(run.cells[0]).toBe("queen");
+    expect(run.outcome).toBe("playing");
+    expect(canTap(run, 0)).toBe(true);
     run = tap(run, 0);
-    expect(run.taps).toEqual([0, 0]);
+    expect(run.cells[0]).toBe("empty");
+    expect(run.taps).toEqual([0, 0, 0]);
+  });
+
+  it("never ends a run for wrong Queens, however many", () => {
+    let run = createRun("1");
+    for (const cell of [0, 2, 3, 4, 5, 6]) run = tap(tap(run, cell), cell);
+    expect(run.outcome).toBe("playing");
+    expect(run.cells.filter((state) => state === "queen")).toHaveLength(6);
+  });
+
+  it("only solves a board when its Queens are the solution's", () => {
+    // Five Queens, one of them wrong: not solved. Swapping it for the right one is.
+    let run = playLine("1", [1, 1, 8, 8, 10, 10, 19, 19, 0, 0]);
+    expect(run).toMatchObject({ level: 1, score: 0 });
+    run = tap(tap(tap(run, 0), 22), 22);
+    expect(run).toMatchObject({ level: 2, levelsCleared: 1, score: 50 });
+  });
+
+  it("solves a board when an extra Queen comes off", () => {
+    let run = playLine("1", [0, 0, 1, 1, 8, 8, 10, 10, 19, 19, 22, 22]);
+    expect(run.level).toBe(1);
+    run = tap(run, 0);
+    expect(run).toMatchObject({ level: 2, score: 50 });
+  });
+
+  it("takes back any tap, one at a time, for free", () => {
+    const start = playLine("1", [1, 1, 3]); // A Queen and an X, on board one.
+    let run = undo(start);
+    expect(run.cells[3]).toBe("empty");
+    expect(run.cells[1]).toBe("queen");
+    run = undo(run);
+    expect(run.cells[1]).toBe("mark");
+    run = undo(run);
+    expect(run.cells[1]).toBe("empty");
+    expect(run.score).toBe(0);
+    expect(run.taps).toEqual([1, 1, 3, QUEENS_UNDO, QUEENS_UNDO, QUEENS_UNDO]);
+    expect(canUndo(run)).toBe(false);
+    expect(undo(run)).toBe(run);
+  });
+
+  it("puts a cleared Queen back when its clearing tap is undone", () => {
+    const run = undo(playLine("1", [1, 1, 1]));
+    expect(run.cells[1]).toBe("queen");
+  });
+
+  it("takes back a wrong Queen without touching the score", () => {
+    const solved = playLine("1", SEED_ONE_LINE.slice(0, 10));
+    const run = undo(tap(tap(solved, 0), 0));
+    expect(run.cells[0]).toBe("mark");
+    expect(run.score).toBe(50);
+  });
+
+  it("cannot undo past a solved board", () => {
+    const solved = playLine("1", SEED_ONE_LINE.slice(0, 10));
+    expect(canUndo(solved)).toBe(false);
+    expect(undo(solved)).toBe(solved);
+  });
+
+  it("empties a board for free, and that cannot be undone", () => {
+    const run = clearBoard(playLine("1", [1, 1, 3]));
+    expect(run.cells.every((state) => state === "empty")).toBe(true);
+    expect(run.taps.at(-1)).toBe(QUEENS_CLEAR);
+    expect(canUndo(run)).toBe(false);
+    expect(clearBoard(run)).toBe(run);
+  });
+
+  it("replays taps, undos and clears to the same run", () => {
+    const line = [1, 1, 0, 0, QUEENS_UNDO, QUEENS_UNDO, 3, QUEENS_CLEAR, 8];
+    const run = replay("1", line);
+    expect(run.taps).toEqual(line);
+    expect(run.cells[8]).toBe("mark");
+    expect(run.cells.filter((state) => state !== "empty")).toHaveLength(1);
+  });
+
+  it("finds the crowns that break a rule", () => {
+    const { size, regions } = board("1", 1);
+    // Cells 0 and 1 touch; cell 13 clashes with neither.
+    const run = playLine("1", [0, 0, 1, 1, 13, 13]);
+    const clashing = clashingCrowns(size, regions, run.cells);
+    expect(clashing.has(0)).toBe(true);
+    expect(clashing.has(1)).toBe(true);
+    // No clash at all on the way to a solution.
+    const clean = playLine("1", [1, 1, 8, 8]);
+    expect(clashingCrowns(size, regions, clean.cells).size).toBe(0);
+  });
+
+  it("gives every board a par time by its size", () => {
+    expect([0, 1, 2, 3, 4].map(parMs)).toEqual([0, 60_000, 150_000, 240_000, 390_000]);
   });
 
   it("solves a board on its last Queen, scores ten a row and deals an empty next board", () => {
@@ -225,25 +318,17 @@ describe("a run", () => {
     expect(run).toMatchObject({ level: 3, levelsCleared: 2, score: 110, outcome: "playing" });
   });
 
-  it("ends seed 1's line on the third mistake, keeping the solved board", () => {
+  it("keeps seed 1's line going through three wrong Queens, keeping the solved board", () => {
     const run = playLine("1", SEED_ONE_LINE);
     expect(run).toMatchObject({
       level: 2,
       levelsCleared: 1,
       score: 50,
-      mistakes: QUEENS_MISTAKES,
-      outcome: "over",
+      outcome: "playing",
       stopped: false,
     });
     expect(run.taps).toEqual(SEED_ONE_LINE);
-    expect(canTap(run, 5)).toBe(false);
-    expect(tap(run, 5)).toBe(run);
-  });
-
-  it("carries mistakes from one board to the next", () => {
-    const run = playLine("1", [0, 0, ...SEED_ONE_LINE.slice(0, 10)]);
-    expect(run.level).toBe(2);
-    expect(run.mistakes).toBe(1);
+    expect(tap(run, 5)).not.toBe(run);
   });
 
   it("lets the player end the run and keep its score", () => {
@@ -274,7 +359,7 @@ describe("a run", () => {
   it("assembles the submission from the run, so the claim cannot be edited on the way out", () => {
     const run = playLine("1", SEED_ONE_LINE);
     expect(submission(run)).toEqual({
-      rulesVersion: "queens@1",
+      rulesVersion: "queens@2",
       actions: SEED_ONE_LINE,
       score: 50,
       tapsPlaced: SEED_ONE_LINE.length,
@@ -282,8 +367,8 @@ describe("a run", () => {
     });
   });
 
-  it("reports the board, Queens placed and mistakes left", () => {
+  it("reports the board and Queens placed", () => {
     const run = playLine("1", [1, 1, 0, 0]);
-    expect(progress(run)).toEqual({ level: 1, side: 5, queens: 1, mistakesLeft: 2 });
+    expect(progress(run)).toEqual({ level: 1, side: 5, queens: 2 });
   });
 });

@@ -1565,6 +1565,28 @@ reset role;
 \set queens_open_session   'c0c0c0c0-2222-4222-8222-c0c0c0c0c0c0'
 \set queens_guest_session  'c0c0c0c0-4444-4444-8444-c0c0c0c0c0c0'
 \set queens_old_session    'c0c0c0c0-5555-4555-8555-c0c0c0c0c0c0'
+-- Fusebox. Seed 1's line below is the first of tests/security/verifier_vectors.sql:
+-- it clears four boards and spends its last spark. Its first twelve taps are the
+-- same run, stopped early.
+-- The speed rules. queens@2: seed 1's two boards are 110 points; the fast line takes
+-- wrong crowns back on the way. Par is 150 s for those boards, 240 s for Sudoku's first
+-- and 60 s for Mini Sudoku's, so a slow session earns no bonus and a fast one does.
+\set speed_queens_line 'array[1,1,8,8,10,10,19,19,22,22,4,4,7,7,15,15,18,18,29,29,32,32]'
+\set speed_queens_undo 'array[0,0,0,3,3,81,81,82,1,1,8,8,10,10,19,19,22,22]'
+\set speed_sudoku_line 'array[22,34,58,65,71,86,95,119,146,188,191,206,212,243,272,297,325,334,353,363,375,381,404,419,432,447,456,469,474,487,492,511,535,575,586,613,655,663,678,697,706,724,743,767,808]'
+\set speed_mini_line 'array[1,16,24,42,82,91,116,123,134,205,216,234,255,261,273,286,351]'
+\set speed_queens_slow  'e0e0e0e0-1111-4111-8111-e0e0e0e0e0e0'
+\set speed_queens_fast  'e0e0e0e0-2222-4222-8222-e0e0e0e0e0e0'
+\set speed_queens_undos 'e0e0e0e0-3333-4333-8333-e0e0e0e0e0e0'
+\set speed_sudoku_slow  'e0e0e0e0-4444-4444-8444-e0e0e0e0e0e0'
+\set speed_sudoku_fast  'e0e0e0e0-5555-4555-8555-e0e0e0e0e0e0'
+\set speed_mini_slow    'e0e0e0e0-6666-4666-8666-e0e0e0e0e0e0'
+\set speed_mini_fast    'e0e0e0e0-7777-4777-8777-e0e0e0e0e0e0'
+\set fusebox_line 'array[13,8,16,10,14,8,7,15,27,22,23,17,26,1,7,8,3,12,16,4,17,22,26,5,3,24,18,19,26,20,27,8,23,28]'
+\set fusebox_prefix 'array[13,8,16,10,14,8,7,15,27,22,23,17]'
+\set fusebox_session      'f0f0f0f0-1111-4111-8111-f0f0f0f0f0f0'
+\set fusebox_open_session 'f0f0f0f0-2222-4222-8222-f0f0f0f0f0f0'
+\set fusebox_old_session  'f0f0f0f0-5555-4555-8555-f0f0f0f0f0f0'
 -- Zip. Seed 1's first two solution paths (both 5×5) are below. The line solves
 -- board one, starts board two, cuts back once and stops: 50 points, thirty-one
 -- cells. See the Zip section of docs/games/README.md.
@@ -1788,6 +1810,19 @@ insert into public.game_sessions (id, game_id, user_id, seed, rules_version, sta
   (:'queens_open_session',  :'queens_game', :'alice', 1, 'queens@1', now() - interval '5 minutes', now() + interval '2 hours', null),
   (:'queens_guest_session', :'queens_game', null,     1, 'queens@1', now() - interval '5 minutes', now() + interval '2 hours', null),
   (:'queens_old_session',   :'queens_game', :'alice', 1, 'queens@0', now() - interval '5 minutes', now() + interval '2 hours', null),
+  -- The speed rules, on the shipped games and seed 1. The slow ones started eleven
+  -- hours ago, far past any clock these games used to have.
+  (:'speed_queens_slow',  (select id from public.games where slug = 'crowns'), :'alice', 1, 'queens@2', now() - interval '11 hours', now() + interval '2 hours', null),
+  (:'speed_queens_fast',  (select id from public.games where slug = 'crowns'), :'alice', 1, 'queens@2', now() - interval '30 seconds', now() + interval '2 hours', null),
+  (:'speed_queens_undos', (select id from public.games where slug = 'crowns'), :'alice', 1, 'queens@2', now() - interval '11 hours', now() + interval '2 hours', null),
+  (:'speed_sudoku_slow',  (select id from public.games where slug = 'sudoku'), :'alice', 1, 'sudoku@4', now() - interval '11 hours', now() + interval '2 hours', null),
+  (:'speed_sudoku_fast',  (select id from public.games where slug = 'sudoku'), :'alice', 1, 'sudoku@4', now() - interval '60 seconds', now() + interval '2 hours', null),
+  (:'speed_mini_slow',    (select id from public.games where slug = 'mini-sudoku'), :'alice', 1, 'mini-sudoku@2', now() - interval '11 hours', now() + interval '2 hours', null),
+  (:'speed_mini_fast',    (select id from public.games where slug = 'mini-sudoku'), :'alice', 1, 'mini-sudoku@2', now() - interval '15 seconds', now() + interval '2 hours', null),
+  -- Fusebox fixtures, on the shipped game and seed 1.
+  (:'fusebox_session',      (select id from public.games where slug = 'fusebox'), :'alice', 1, 'fusebox@1', now() - interval '5 minutes', now() + interval '2 hours', null),
+  (:'fusebox_open_session', (select id from public.games where slug = 'fusebox'), :'alice', 1, 'fusebox@1', now() - interval '5 minutes', now() + interval '2 hours', null),
+  (:'fusebox_old_session',  (select id from public.games where slug = 'fusebox'), :'alice', 1, 'fusebox@0', now() - interval '5 minutes', now() + interval '2 hours', null),
   -- Zip fixtures, all on seed 1. Zip's verifier times the run from the session,
   -- so these started thirty seconds ago — inside the sixty-second opening clock —
   -- except the late one, which started two minutes ago.
@@ -2467,11 +2502,11 @@ select rls_test.visible(
 );
 -- `fixture-%` are this suite's own playable games (the ones the refusal paths
 -- need), so the claim is about the catalogue: of the games this repository
--- ships, only the twenty-two with runtimes are playable.
+-- ships, only the twenty-three with runtimes are playable.
 select rls_test.visible(
   $$select 1 from public.games
-     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku', 'scatter', 'huedini', 'cascade', 'checkmate', 'bolted') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
-  0, 'no shipped game besides the twenty-two runtimes is marked playable'
+     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku', 'scatter', 'huedini', 'cascade', 'checkmate', 'bolted', 'fusebox') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
+  0, 'no shipped game besides the twenty-three runtimes is marked playable'
 );
 select rls_test.says_field(
   $$public.start_game_session('stack-10', 'stack-10@1', 'test/1.0')$$,
@@ -2633,7 +2668,7 @@ select rls_test.says(
   'unsupported_runtime', 'a Queens game cannot start a One Move run'
 );
 select rls_test.says(
-  $$public.start_game_session('fixture-queens', 'queens@2', 'test/1.0')$$,
+  $$public.start_game_session('fixture-queens', 'queens@3', 'test/1.0')$$,
   'unsupported_runtime', 'Queens rules the verifier does not implement are refused at the door'
 );
 select rls_test.says(
@@ -2764,6 +2799,24 @@ select rls_test.says(
 );
 select rls_test.denied($$select public.bolted_board(1, 1)$$,
   'a client cannot call the Bolted deal');
+-- The shipped Fusebox game, started through its registry row.
+select rls_test.visible(
+  $$select 1 from public.games where slug = 'fusebox' and title = 'Fusebox' and playable
+       and runtime = 'fusebox' and status = 'published' and is_official$$,
+  1, 'the shipped Fusebox game is published, playable and names its runtime'
+);
+select rls_test.says_field(
+  $$public.start_game_session('fusebox', 'fusebox@1', 'test/1.0')$$,
+  'tile_count', '4096', 'a Fusebox session reports its submission bound'
+);
+select rls_test.says(
+  $$public.start_game_session('fusebox', 'scatter@1', 'test/1.0')$$,
+  'unsupported_runtime', 'Fusebox does not accept the Scatter rules'
+);
+select rls_test.denied($$select public.fusebox_board(1, 1)$$,
+  'a client cannot call the Fusebox deal');
+select rls_test.denied($$select public.fusebox_replay(1, array[0])$$,
+  'a client cannot call the Fusebox replay');
 select rls_test.says(
   $$public.start_game_session('sudoku', 'mini-sudoku@1', 'test/1.0')$$,
   'unsupported_runtime', 'Sudoku does not accept the Mini Sudoku rules'
@@ -3900,6 +3953,165 @@ select rls_test.ok(
 select rls_test.ok(
   (select rank = 1 and score = 110 from public.game_standing('fixture-queens', '11111111-1111-4111-8111-111111111111', null)),
   'your Queens standing is your recorded best at its real rank'
+);
+
+-- ── The speed rules: no clock to lose to, and a bonus for being quick ──
+select rls_test.denied($$select public.queens_speed_replay(1, array[0])$$,
+  'a client cannot call the Crowns replay');
+select rls_test.denied($$select public.speed_bonus(1, 1, 1)$$,
+  'a client cannot call the speed bonus');
+select rls_test.ok(
+  public.run_resumable('queens@2') and public.run_resumable('sudoku@4')
+    and public.run_resumable('mini-sudoku@2'),
+  'the speed rules can be saved and continued'
+);
+
+-- Crowns: refusals first, leaving the fixtures open.
+select rls_test.says(
+  format($$public.complete_queens_speed_run('e0e0e0e0-1111-4111-8111-e0e0e0e0e0e0'::uuid, %s, 999, 45000)$$, :'speed_queens_line'),
+  'score_mismatch', 'a queens@2 score the replay does not produce is refused'
+);
+select rls_test.says(
+  $$public.complete_queens_speed_run('e0e0e0e0-1111-4111-8111-e0e0e0e0e0e0'::uuid, array[25], 0, 45000)$$,
+  'invalid_actions', 'a cell off the first queens@2 board is impossible play'
+);
+select rls_test.says(
+  $$public.complete_queens_speed_run('e0e0e0e0-1111-4111-8111-e0e0e0e0e0e0'::uuid, array[81], 0, 45000)$$,
+  'invalid_actions', 'an undo with nothing to take back is impossible play'
+);
+select rls_test.says(
+  $$public.complete_queens_speed_run('e0e0e0e0-1111-4111-8111-e0e0e0e0e0e0'::uuid, array[82], 0, 45000)$$,
+  'invalid_actions', 'a clear on an empty board is impossible play'
+);
+select rls_test.says(
+  $$public.complete_queens_speed_run('e0e0e0e0-1111-4111-8111-e0e0e0e0e0e0'::uuid, array[83], 0, 45000)$$,
+  'invalid_actions', 'an action past the clear is impossible play'
+);
+select rls_test.says(
+  $$public.complete_queens_speed_run('c0c0c0c0-5555-4555-8555-c0c0c0c0c0c0'::uuid, array[1], 0, 45000)$$,
+  'wrong_rules', 'a session on other rules is refused by the queens@2 verifier'
+);
+-- Eleven hours on two boards: recorded, with its points and no bonus.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 110 and r.cleared_columns = 2 and r.tiles_placed = 22
+     from public.complete_queens_speed_run('e0e0e0e0-1111-4111-8111-e0e0e0e0e0e0'::uuid, :speed_queens_line, 110, 45000) r),
+  'a slow Crowns run is never out of time: it keeps its 110 points, with no bonus'
+);
+-- Thirty seconds on the same boards, with 150 s of par: 110 + 110 × 120/150, near enough.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score between 190 and 198
+     from public.complete_queens_speed_run('e0e0e0e0-2222-4222-8222-e0e0e0e0e0e0'::uuid, :speed_queens_line, 110, 25000) r),
+  'a fast Crowns run earns a speed bonus, by the server''s own time'
+);
+select rls_test.says(
+  format($$public.complete_queens_speed_run('e0e0e0e0-2222-4222-8222-e0e0e0e0e0e0'::uuid, %s, 110, 25000)$$, :'speed_queens_line'),
+  'duplicate', 'a retry of a Crowns speed run is safe, and does not count twice'
+);
+select rls_test.says_field(
+  format($$public.complete_queens_speed_run('e0e0e0e0-2222-4222-8222-e0e0e0e0e0e0'::uuid, %s, 110, 25000)$$, :'speed_queens_line'),
+  'game_slug', 'crowns', 'a duplicate Crowns speed run still names its game'
+);
+-- Wrong crowns, undos and a clear on the way to a solved board cost nothing.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 50 and r.cleared_columns = 1 and r.tiles_placed = 18
+     from public.complete_queens_speed_run('e0e0e0e0-3333-4333-8333-e0e0e0e0e0e0'::uuid, :speed_queens_undo, 50, 45000) r),
+  'wrong crowns, undos and a clear deduct nothing from a Crowns run'
+);
+
+-- Sudoku.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 90 and r.cleared_columns = 1
+     from public.complete_sudoku_speed_run('e0e0e0e0-4444-4444-8444-e0e0e0e0e0e0'::uuid, :speed_sudoku_line, 90, 45000) r),
+  'a slow Sudoku run is never out of time: it keeps its 90 points, with no bonus'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score between 155 and 158
+     from public.complete_sudoku_speed_run('e0e0e0e0-5555-4555-8555-e0e0e0e0e0e0'::uuid, :speed_sudoku_line, 90, 45000) r),
+  'a fast Sudoku run earns a speed bonus, by the server''s own time'
+);
+
+-- Mini Sudoku.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 60 and r.cleared_columns = 1
+     from public.complete_mini_sudoku_speed_run('e0e0e0e0-6666-4666-8666-e0e0e0e0e0e0'::uuid, :speed_mini_line, 60, 10000) r),
+  'a slow Mini Sudoku run is never out of time: it keeps its 60 points, with no bonus'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score between 100 and 105
+     from public.complete_mini_sudoku_speed_run('e0e0e0e0-7777-4777-8777-e0e0e0e0e0e0'::uuid, :speed_mini_line, 60, 10000) r),
+  'a fast Mini Sudoku run earns a speed bonus, by the server''s own time'
+);
+
+-- Last: starting a run abandons the player's other open run of that game.
+select rls_test.says_field(
+  $$public.start_game_session('crowns', 'queens@2', 'test/1.0')$$,
+  'tile_count', '8192', 'a queens@2 session reports its submission bound'
+);
+select rls_test.says_field(
+  $$public.start_game_session('sudoku', 'sudoku@4', 'test/1.0')$$,
+  'tile_count', '8192', 'a sudoku@4 session reports its submission bound'
+);
+select rls_test.says_field(
+  $$public.start_game_session('mini-sudoku', 'mini-sudoku@2', 'test/1.0')$$,
+  'tile_count', '8192', 'a mini-sudoku@2 session reports its submission bound'
+);
+
+-- ── Fusebox: a chain's every wave, replayed ──
+--
+-- Refusals first, all leaving the fixtures open for the runs that follow.
+select rls_test.says(
+  format($$public.complete_fusebox_run('f0f0f0f0-1111-4111-8111-f0f0f0f0f0f0'::uuid, %s, 999, 45000)$$, :'fusebox_line'),
+  'score_mismatch', 'a Fusebox score the replay does not produce is refused'
+);
+select rls_test.says_field(
+  format($$public.complete_fusebox_run('f0f0f0f0-1111-4111-8111-f0f0f0f0f0f0'::uuid, %s, 999, 45000)$$, :'fusebox_line'),
+  'score', '533', 'the Fusebox replay is the score, and it is reported back'
+);
+select rls_test.says(
+  $$public.complete_fusebox_run('f0f0f0f0-1111-4111-8111-f0f0f0f0f0f0'::uuid, array[36], 0, 45000)$$,
+  'invalid_actions', 'a tap off the Fusebox board is impossible play'
+);
+select rls_test.says(
+  format($$public.complete_fusebox_run('f0f0f0f0-1111-4111-8111-f0f0f0f0f0f0'::uuid, %s || 0, 533, 45000)$$, :'fusebox_line'),
+  'invalid_actions', 'a tap after the last spark is impossible play'
+);
+select rls_test.says(
+  $$public.complete_fusebox_run('f0f0f0f0-1111-4111-8111-f0f0f0f0f0f0'::uuid, array[13], 0, 999999)$$,
+  'invalid_duration', 'a Fusebox run cannot claim to have lasted longer than its session'
+);
+select rls_test.raises(
+  $$select public.complete_fusebox_run('f0f0f0f0-1111-4111-8111-f0f0f0f0f0f0'::uuid, array[null]::integer[], 0, 45000)$$,
+  '22023', 'a ragged Fusebox action list is a request error, not a scored run'
+);
+select rls_test.says(
+  $$public.complete_fusebox_run('f0f0f0f0-5555-4555-8555-f0f0f0f0f0f0'::uuid, array[13], 0, 45000)$$,
+  'wrong_rules', 'a Fusebox session pinned to other rules is refused by its own verifier'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded'
+      and r.score = 533
+      and r.cleared_columns = 4
+      and r.tiles_placed = 110
+     from public.complete_fusebox_run('f0f0f0f0-1111-4111-8111-f0f0f0f0f0f0'::uuid, :fusebox_line, 533, 45000) r),
+  'a Fusebox run that spent its last spark is recorded, with its boards and pops'
+);
+select rls_test.says(
+  format($$public.complete_fusebox_run('f0f0f0f0-1111-4111-8111-f0f0f0f0f0f0'::uuid, %s, 533, 45000)$$, :'fusebox_line'),
+  'duplicate', 'a retry of the same Fusebox run is safe to repeat'
+);
+select rls_test.says(
+  $$public.complete_fusebox_run('f0f0f0f0-1111-4111-8111-f0f0f0f0f0f0'::uuid, array[13], 0, 45000)$$,
+  'closed', 'a closed Fusebox session does not accept a different run'
+);
+select rls_test.ok(
+  rls_test.count_rows($$select 1 from public.scores where session_id = 'f0f0f0f0-1111-4111-8111-f0f0f0f0f0f0'$$) = 1,
+  'a Fusebox run leaves exactly one score for its session'
+);
+-- Ending a run is a prefix of a legal line, with sparks to spare.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 176
+     from public.complete_fusebox_run('f0f0f0f0-2222-4222-8222-f0f0f0f0f0f0'::uuid, :fusebox_prefix, 176, 45000) r),
+  'a Fusebox run the player ended is recorded as it stands'
 );
 
 -- ── Zip: one path through every cell, against the clock ──

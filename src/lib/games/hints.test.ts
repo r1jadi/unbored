@@ -106,7 +106,7 @@ describe("hints", () => {
   });
 
   it("Crowns: names the rule, outlines what it is about, and is never wrong", () => {
-    // Following the hints alone solves boards, without a single mistake: every
+    // Following the hints alone solves boards, without a wrong crown: every
     // crown hinted is on the solution, and every X hinted is off it.
     for (const seed of [1, 202, 303, 404]) {
       let run = createQueens(seed);
@@ -128,8 +128,14 @@ describe("hints", () => {
           run = tapQueens(run, hint.cell);
         }
       }
-      expect(run).toMatchObject({ levelsCleared: 1, mistakes: 0 });
+      expect(run).toMatchObject({ levelsCleared: 1 });
     }
+  });
+
+  it("Crowns: a crown off the solution is the first thing to come off", () => {
+    // Seed 1's row 0 crown is in column 1, so cell 0 is wrong.
+    const run = tapQueens(tapQueens(createQueens(1), 0), 0);
+    expect(queensHint(run)).toMatchObject({ cell: 0, kind: "clear" });
   });
 
   it("Zip: the next cell of the solution, or back to the last one that agreed", () => {

@@ -18,7 +18,7 @@ import { board } from "@/lib/games/queens";
  *
  * The screen is mounted in a router because its end-of-run panel is a set of
  * links, and it is driven through the real API client against a stubbed server —
- * so what is asserted is the whole path: a session is issued, the rules are shown,
+ * so what is asserted is the whole path: the rules are shown, Start issues a session,
  * boards are solved, the taps are submitted, and the number that appears is the
  * one the server verified.
  *
@@ -26,8 +26,9 @@ import { board } from "@/lib/games/queens";
  * board (6×6) by cells 4, 7, 15, 18, 29, 32. The states that matter:
  *
  *   - no board is playable before the player has read the rules and started;
- *   - a tap cycles X, Queen and empty, and a wrong Queen is a mistake;
- *   - the third mistake, or the player ending the run, submits it;
+ *   - a tap cycles X, Queen and empty, and a wrong Queen costs nothing;
+ *   - Undo and Clear board take anything back, for free;
+ *   - only the player ending the run submits it;
  *   - a score is never shown as verified before it is;
  *   - a failed submission keeps the run and can be retried.
  */
@@ -36,7 +37,7 @@ function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
     id: "99999999-1111-4111-8111-999999999999",
     gameSlug: "crowns",
-    rulesVersion: "queens@1",
+    rulesVersion: "queens@2",
     seed: "1",
     tileCount: 8192,
     startedAt: "2026-11-04T12:00:00.000Z",
@@ -145,6 +146,12 @@ async function startRun() {
   await screen.findByRole("group", { name: "Board 1, 5 by 5" });
 }
 
+async function endRun() {
+  fireEvent.click(screen.getByRole("button", { name: "End run" }));
+  const dialog = await screen.findByRole("alertdialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: "End run" }));
+}
+
 function completionBody(spy: ReturnType<typeof mockFetch>) {
   const completion = spy.mock.calls.find((call) => String(call[0]).includes("/complete"));
   return JSON.parse(String(completion?.[1]?.body ?? "{}"));
@@ -157,40 +164,27 @@ afterEach(() => {
 });
 
 describe("starting a run", () => {
-  it("issues a session before it shows the rules or a board", async () => {
-    let release: (() => void) | null = null;
-    const spy = vi.fn(
-      () =>
-        new Promise<Response>((resolve) => {
-          release = () => resolve(jsonResponse(sessionPayload(), 201));
-        }),
-    );
-    vi.stubGlobal("fetch", spy);
-
+  it("shows the rules with no session behind them, and asks for one only on Start", async () => {
+    const spy = mockPlayback();
     await renderRuntime();
 
-    expect(screen.getByText("Starting a run…")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Start run" })).not.toBeInTheDocument();
-
-    await act(async () => {
-      release?.();
-    });
-
-    expect(await screen.findByRole("button", { name: "Start run" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "One crown each" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "One crown each" })).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: /^Board / })).not.toBeInTheDocument();
-    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls.some((call) => String(call[0]).endsWith("/api/v1/sessions"))).toBe(false);
+
+    await startRun();
+    expect(spy.mock.calls.some((call) => String(call[0]).endsWith("/api/v1/sessions"))).toBe(true);
   });
 
   it("asks for a Queens session, not another game's rules", async () => {
     const spy = mockPlayback();
     await renderRuntime();
-    await screen.findByRole("button", { name: "Start run" });
+    await startRun();
 
     const start = spy.mock.calls.find((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(JSON.parse(String(start?.[1]?.body ?? "{}"))).toEqual({
       gameSlug: "crowns",
-      rulesVersion: "queens@1",
+      rulesVersion: "queens@2",
       client: "web/1.0",
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
@@ -204,7 +198,6 @@ describe("starting a run", () => {
     expect(screen.getByText(/every row, every column and every colour region/)).toBeInTheDocument();
     expect(screen.getByText(/not even\s+diagonally/)).toBeInTheDocument();
     expect(screen.getByText(/twice for a crown, and a third time to clear it/)).toBeInTheDocument();
-    expect(screen.getByText("Signed in: this run can be ranked")).toBeInTheDocument();
     expect(screen.queryAllByRole("button", { name: CELL })).toHaveLength(0);
 
     await startRun();
@@ -233,9 +226,10 @@ describe("starting a run", () => {
     });
 
     await renderRuntime();
+    fireEvent.click(await screen.findByRole("button", { name: "Start run" }));
     await screen.findByText("Couldn't start a run");
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
-    await screen.findByRole("button", { name: "Start run" });
+    await screen.findByRole("group", { name: "Board 1, 5 by 5" });
   });
 });
 
@@ -278,17 +272,59 @@ describe("playing the board", () => {
     expect(cell(13, 5)).toHaveAccessibleName(/, empty\. Tap/);
   });
 
-  it("counts a wrong Queen as a mistake and locks its cell", async () => {
+  it("lets a wrong Queen stand, costs nothing, and shows when Queens clash", async () => {
     mockPlayback();
     await renderRuntime();
     await startRun();
 
     placeQueen(0, 5);
+    expect(cell(0, 5)).toBeEnabled();
+    expect(cell(0, 5)).toHaveAccessibleName(/crown\. Tap to clear it\./);
+    expect(screen.queryByRole("img", { name: /mistakes left/ })).not.toBeInTheDocument();
 
-    expect(screen.getByText("No crown goes there. 2 mistakes left.")).toBeInTheDocument();
-    expect(cell(0, 5)).toBeDisabled();
-    expect(cell(0, 5)).toHaveAccessibleName(/ruled out by a mistake/);
-    expect(screen.getByRole("img", { name: "2 of 3 mistakes left" })).toBeInTheDocument();
+    placeQueen(1, 5); // Touching the first.
+    expect(cell(0, 5)).toHaveAccessibleName(/clashing with another crown/);
+    expect(screen.getByText(/Those crowns clash/)).toBeInTheDocument();
+
+    // Three, four, five wrong Queens: the run is still going.
+    placeQueen(2, 5);
+    placeQueen(3, 5);
+    expect(screen.queryByRole("button", { name: /play again/i })).not.toBeInTheDocument();
+  });
+
+  it("undoes any tap, for free", async () => {
+    mockPlayback();
+    await renderRuntime();
+    await startRun();
+
+    const undo = screen.getByRole("button", { name: "Undo" });
+    expect(undo).toBeDisabled();
+    placeQueen(0, 5);
+    fireEvent.click(undo);
+    expect(cell(0, 5)).toHaveAccessibleName(/marked X/);
+    fireEvent.click(undo);
+    expect(cell(0, 5)).toHaveAccessibleName(/, empty\. Tap to mark an X\./);
+    expect(undo).toBeDisabled();
+    expect(scoreShown()).toBe("0");
+  });
+
+  it("clears the board for free, and keeps the points already earned", async () => {
+    const spy = mockPlayback();
+    await renderRuntime();
+    await startRun();
+
+    BOARD_ONE.forEach((index) => placeQueen(index, 5));
+    placeQueen(4, 6);
+    placeQueen(0, 6);
+    fireEvent.click(screen.getByRole("button", { name: "Clear board" }));
+    expect(screen.getAllByRole("button", { name: /, empty/ })).toHaveLength(36);
+    expect(scoreShown()).toBe("500");
+
+    await endRun();
+    await screen.findByRole("button", { name: /play again/i });
+    const body = completionBody(spy);
+    expect(body.score).toBe(50);
+    expect(body.progress.actions.at(-1)).toBe(82);
   });
 
   it("solves a board on its last Queen, scores it and deals a larger one", async () => {
@@ -325,7 +361,7 @@ describe("playing the board", () => {
 });
 
 describe("finishing a run", () => {
-  it("ends the run on the third mistake and submits every tap", async () => {
+  it("submits every tap and undo when the player ends the run", async () => {
     const spy = mockPlayback();
     await renderRuntime();
     await startRun();
@@ -333,20 +369,35 @@ describe("finishing a run", () => {
     BOARD_ONE.forEach((index) => placeQueen(index, 5));
     tapIndex(4, 6);
     tapIndex(4, 6);
-    tapIndex(4, 6);
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     placeQueen(0, 6);
-    placeQueen(1, 6);
-    placeQueen(2, 6);
+    await endRun();
 
     await screen.findByRole("button", { name: /play again/i });
-    expect(screen.getByText("Out of mistakes")).toBeInTheDocument();
+    expect(screen.getByText("Run ended")).toBeInTheDocument();
 
     const body = completionBody(spy);
-    expect(body.progress.actions).toEqual([
-      1, 1, 8, 8, 10, 10, 19, 19, 22, 22, 4, 4, 4, 0, 0, 1, 1, 2, 2,
-    ]);
-    expect(body.progress.rulesVersion).toBe("queens@1");
+    expect(body.progress.actions).toEqual([1, 1, 8, 8, 10, 10, 19, 19, 22, 22, 4, 4, 81, 0, 0]);
+    expect(body.progress.rulesVersion).toBe("queens@2");
     expect(body.score).toBe(50);
+  });
+
+  it("shows the speed bonus the server added to the run's points", async () => {
+    mockFetch((url) =>
+      url.includes("/complete")
+        ? jsonResponse(resultPayload({ score: 80 }))
+        : jsonResponse(sessionPayload(), 201),
+    );
+    await renderRuntime();
+    await startRun();
+
+    BOARD_ONE.forEach((index) => placeQueen(index, 5));
+    await endRun();
+
+    await screen.findByRole("button", { name: /play again/i });
+    expect(screen.getByText("800")).toBeInTheDocument();
+    expect(screen.getByText("Speed bonus")).toBeInTheDocument();
+    expect(screen.getByText("+300")).toBeInTheDocument();
   });
 
   it("lets the player end the run, keeping the score, after confirming", async () => {
@@ -383,9 +434,8 @@ describe("finishing a run", () => {
     await renderRuntime();
     await startRun();
 
-    placeQueen(0, 5);
-    placeQueen(2, 5);
-    placeQueen(3, 5);
+    placeQueen(1, 5);
+    await endRun();
 
     await screen.findByRole("button", { name: /play again/i });
     expect(screen.getByText("700")).toBeInTheDocument();
@@ -399,16 +449,16 @@ describe("finishing a run", () => {
     await renderRuntime();
     await startRun();
 
-    placeQueen(0, 5);
-    placeQueen(2, 5);
-    placeQueen(3, 5);
+    placeQueen(1, 5);
+    await endRun();
     await screen.findByRole("button", { name: /play again/i });
 
     fireEvent.click(screen.getByRole("button", { name: /play again/i }));
 
     expect(await screen.findByRole("heading", { name: "One crown each" })).toBeInTheDocument();
+    // The next session waits for Start, like the first.
     const sessions = spy.mock.calls.filter((call) => String(call[0]).endsWith("/api/v1/sessions"));
-    expect(sessions).toHaveLength(2);
+    expect(sessions).toHaveLength(1);
   });
 
   it("reports a guest's run as unranked", async () => {
@@ -422,9 +472,8 @@ describe("finishing a run", () => {
 
     await startRun();
     expect(screen.getByText("Guest run")).toBeInTheDocument();
-    placeQueen(0, 5);
-    placeQueen(2, 5);
-    placeQueen(3, 5);
+    placeQueen(1, 5);
+    await endRun();
     await screen.findByRole("button", { name: /play again/i });
 
     expect(
@@ -453,9 +502,8 @@ describe("finishing a run", () => {
 
     await renderRuntime();
     await startRun();
-    placeQueen(0, 5);
-    placeQueen(2, 5);
-    placeQueen(3, 5);
+    placeQueen(1, 5);
+    await endRun();
 
     await screen.findByText("Your run was not verified");
     fireEvent.click(screen.getByRole("button", { name: /try submitting again/i }));
@@ -484,9 +532,8 @@ describe("finishing a run", () => {
     const spy = mockPlayback();
     await renderRuntime();
     await startRun();
-    placeQueen(0, 5);
-    placeQueen(2, 5);
-    placeQueen(3, 5);
+    placeQueen(1, 5);
+    await endRun();
     await screen.findByRole("button", { name: /play again/i });
 
     const completion = spy.mock.calls.find((call) => String(call[0]).includes("/complete"));

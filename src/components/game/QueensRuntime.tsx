@@ -1,4 +1,14 @@
-import { Crown, Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert, X } from "lucide-react";
+import {
+  Crown,
+  Eraser,
+  Loader2,
+  RotateCcw,
+  ShieldCheck,
+  Trophy,
+  TriangleAlert,
+  Undo2,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { ErrorState } from "@/components/common";
@@ -8,6 +18,7 @@ import { HintButton, HintNote } from "@/components/game/Hint";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { SavedRunCard } from "@/components/game/SavedRunCard";
 import { RulesList } from "@/components/game/RulesList";
+import { SpeedBonusStat, SpeedMeter } from "@/components/game/SpeedMeter";
 import { RunEndActions } from "@/components/game/RunEndActions";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import {
@@ -26,7 +37,9 @@ import {
   blockedCells,
   board as drawBoard,
   boardSize,
-  QUEENS_MISTAKES,
+  canUndo,
+  clashingCrowns,
+  parMs,
   type QueensCell,
   type QueensRun,
 } from "@/lib/games/queens";
@@ -71,7 +84,7 @@ export function QueensRuntime({
   /** Skip the rules and start the run as soon as it exists: the feed's Tap to play. */
   autoStart?: boolean;
 }) {
-  const state = useQueensRun(slug);
+  const state = useQueensRun(slug, autoStart);
 
   // A signed-in player's unfinished run is offered before a new one starts.
   if (state.status === "saved") {
@@ -85,6 +98,10 @@ export function QueensRuntime({
         title={title}
       />
     );
+  }
+
+  if (state.status === "intro") {
+    return <Intro signedIn={state.signedIn} onBegin={state.begin} slug={slug} title={title} />;
   }
 
   if (state.status === "starting") {
@@ -143,13 +160,12 @@ export function QueensRuntime({
         key={state.session.id}
         run={state.run}
         session={state.session}
+        startedAt={state.startedAt}
         verifying={state.status === "submitting"}
         onTap={state.tap}
+        onUndo={state.undo}
+        onClear={state.clear}
         onFinish={state.finish}
-        onBegin={state.begin}
-        autoStart={autoStart}
-        slug={slug}
-        title={title}
       />
     );
   }
@@ -159,7 +175,7 @@ export function QueensRuntime({
       <Finished
         slug={slug}
         result={state.result}
-        stopped={state.run.stopped}
+        played={state.run.score}
         onRestart={state.restart}
       />
     );
@@ -193,54 +209,87 @@ const REGION_COLOURS = [
 const REGION_EDGE = "color-mix(in oklch, var(--foreground) 70%, transparent)";
 const CELL_EDGE = "color-mix(in oklch, var(--foreground) 14%, transparent)";
 
-/** The live run: the rules first, then one board per level. */
-function Board({
-  run,
-  session,
-  verifying,
-  onTap,
-  onFinish,
+/** The rules, shown before any session exists. */
+function Intro({
+  signedIn,
   onBegin,
-  autoStart,
   slug,
   title,
 }: {
-  run: QueensRun;
-  session: PlaySession;
-  verifying: boolean;
-  onTap: (cell: number) => void;
-  onFinish: () => void;
-  /** Starts the run's clock; the time spent on the rules is not the run's. */
+  signedIn: boolean;
   onBegin: () => void;
-  /** Start without the rules screen (Tap to play). */
-  autoStart: boolean;
   slug: string;
   title: string;
+}) {
+  return (
+    <div className="flex flex-1 flex-col justify-center px-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="enter mx-auto flex w-full max-w-sm flex-col items-center gap-4 text-center">
+        <div className="flex size-12 items-center justify-center rounded-full bg-surface-2">
+          <Crown className="size-5 text-muted-foreground" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold">{t(RULES.heading)}</h1>
+          <p className="text-sm text-muted-foreground">{t(RULES.summary)}</p>
+        </div>
+
+        <RulesList rules={RULES.rules} />
+
+        <div className="flex w-full flex-col gap-2">
+          <Button variant="play" size="lg" onClick={onBegin} autoFocus>
+            {t("Start run")}
+          </Button>
+          <Button asChild variant="ghost" size="lg">
+            <ExitGameLink slug={slug}>{t("Back to {title}", { title })}</ExitGameLink>
+          </Button>
+        </div>
+
+        <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <ShieldCheck className="size-3.5" />
+          {signedIn
+            ? t("Signed in: this run can be ranked")
+            : t("Guest run: verified, but not ranked")}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** The live run: one board per level. */
+function Board({
+  run,
+  session,
+  startedAt,
+  verifying,
+  onTap,
+  onUndo,
+  onClear,
+  onFinish,
+}: {
+  run: QueensRun;
+  session: PlaySession;
+  /** When the run started, as a `Date.now()` timestamp. */
+  startedAt: number;
+  verifying: boolean;
+  onTap: (cell: number) => void;
+  onUndo: () => void;
+  onClear: () => void;
+  onFinish: () => void;
 }) {
   useGameSounds({
     moves: run.taps.length,
     score: run.score,
     cleared: run.levelsCleared,
-    mistakes: run.mistakes,
     over: run.outcome === "over",
-    ending: run.stopped ? "stop" : "lose",
+    ending: "stop",
   });
-  const [started, setStarted] = useState(autoStart || run.taps.length > 0);
-
-  // Tap to play skips the rules: the run, and its clock, start at once.
-  useEffect(() => {
-    if (autoStart && run.taps.length === 0) onBegin();
-    // Once, on the first board: a retried submission remounts with a started run.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const [confirming, setConfirming] = useState(false);
   const firstCell = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (started) firstCell.current?.focus();
-  }, [started]);
+    firstCell.current?.focus();
+  }, []);
 
-  useReportRunProgress(started && !verifying && run.outcome === "playing", onFinish, session);
+  useReportRunProgress(!verifying && run.outcome === "playing", onFinish, session);
 
   // A solved board gets a beat before the next one, with a note when it grows.
   const nextSide = boardSize(run.level);
@@ -250,64 +299,19 @@ function Board({
   // A right move is a Queen placed: Xs are notes, not progress.
   const hints = useHint({
     progress: `${run.level}:${queensPlaced(run)}`,
-    active: started && !verifying && run.outcome === "playing" && !levelUp,
+    active: !verifying && run.outcome === "playing" && !levelUp,
     compute: () => queensHint(run),
   });
 
   // Drawing a board runs the region search, so it is done once per board rather
   // than on every tap.
-  const drawn = useMemo(
-    () => (started ? drawBoard(run.seed, run.level) : null),
-    [started, run.seed, run.level],
-  );
-
-  if (!started || !drawn) {
-    return (
-      <div className="flex flex-1 flex-col justify-center px-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="enter mx-auto flex w-full max-w-sm flex-col items-center gap-4 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-surface-2">
-            <Crown className="size-5 text-muted-foreground" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">{t(RULES.heading)}</h1>
-            <p className="text-sm text-muted-foreground">{t(RULES.summary)}</p>
-          </div>
-
-          <RulesList rules={RULES.rules} />
-
-          <div className="flex w-full flex-col gap-2">
-            <Button
-              variant="play"
-              size="lg"
-              onClick={() => {
-                onBegin();
-                setStarted(true);
-              }}
-              autoFocus
-            >
-              {t("Start run")}
-            </Button>
-            <Button asChild variant="ghost" size="lg">
-              <ExitGameLink slug={slug}>{t("Back to {title}", { title })}</ExitGameLink>
-            </Button>
-          </div>
-
-          <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <ShieldCheck className="size-3.5" />
-            {session.ranked
-              ? t("Signed in: this run can be ranked")
-              : t("Guest run: verified, but not ranked")}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const drawn = useMemo(() => drawBoard(run.seed, run.level), [run.seed, run.level]);
 
   const { size, regions } = drawn;
   const accepting = !verifying && run.outcome === "playing" && !levelUp;
   const blocked = blockedCells(size, regions, run.cells);
+  const clashing = clashingCrowns(size, regions, run.cells);
   const queens = run.cells.filter((cell) => cell === "queen").length;
-  const mistakesLeft = Math.max(0, QUEENS_MISTAKES - run.mistakes);
 
   return (
     <div className="flex flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -336,11 +340,11 @@ function Board({
         <HintNote reason={hints.hint.reason} className="my-0.5" />
       ) : (
         <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
-          {statusLine(run, verifying)}
+          {statusLine(run, verifying, clashing.size > 0)}
         </p>
       )}
 
-      <div className="flex items-center justify-center gap-3 pb-1 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 pb-1 text-xs text-muted-foreground">
         <span>
           <span className="tabular">
             {size}×{size}
@@ -348,38 +352,27 @@ function Board({
           {t("board ·")} <span className="tabular">{queens}</span> of{" "}
           <span className="tabular">{size}</span> crowns
         </span>
-        <span
-          className="inline-flex items-center gap-1"
-          aria-label={t("{mistakesLeft} of {QUEENS_MISTAKES} mistakes left", {
-            mistakesLeft,
-            QUEENS_MISTAKES,
-          })}
-          role="img"
-        >
-          {Array.from({ length: QUEENS_MISTAKES }, (_, index) => (
-            <span
-              key={index}
-              className={cn(
-                "size-2 rounded-full",
-                index < mistakesLeft ? "bg-foreground/70" : "bg-destructive",
-              )}
-            />
-          ))}
-        </span>
+        <SpeedMeter
+          startedAt={startedAt}
+          score={run.score}
+          solvedParMs={parMs(run.levelsCleared)}
+          boardParMs={parMs(run.levelsCleared + 1)}
+          running={!verifying && run.outcome === "playing"}
+        />
       </div>
 
       {/* A square board, centred in whatever space is left, sized the way One
           Move's is: the smaller of the column and the viewport height minus the
           chrome around it, so it never scrolls on a phone or a laptop. The
-          chrome is taller than One Move's — the mistakes row above the board and
-          End run below it — so 16rem is held back rather than 12rem. */}
+          chrome is taller than One Move's — the speed row above the board and the
+          tools and End run below it — so 18rem is held back rather than 12rem. */}
       <div className="flex min-h-0 flex-1 items-center justify-center py-3">
         <div className="flex max-h-full w-full justify-center">
           <div
             className="relative grid aspect-square w-full overflow-hidden rounded-lg border-2"
             style={{
               borderColor: REGION_EDGE,
-              maxWidth: `min(${size > 7 ? 36 : 28}rem, calc(100dvh - ${hints.hint ? 18.5 : 16}rem))`,
+              maxWidth: `min(${size > 7 ? 36 : 28}rem, calc(100dvh - ${hints.hint ? 20.5 : 18}rem))`,
               gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${size}, minmax(0, 1fr))`,
             }}
@@ -411,13 +404,15 @@ function Board({
                   key={index}
                   ref={index === 0 ? firstCell : undefined}
                   type="button"
-                  disabled={!accepting || cell === "ruled-out"}
+                  disabled={!accepting}
                   onClick={() => onTap(index)}
-                  aria-label={`${cellLabel(row, column, region, cell, auto, run, verifying)}${
+                  aria-label={`${cellLabel(row, column, region, cell, auto, clashing.has(index), run, verifying)}${
                     hinted
                       ? hints.hint?.kind === "mark"
                         ? " " + t("Hint: no crown goes here.")
-                        : " " + t("Hint: a crown goes here.")
+                        : hints.hint?.kind === "clear"
+                          ? " " + t("Hint: this crown comes off.")
+                          : " " + t("Hint: a crown goes here.")
                       : ""
                   }`}
                   style={edges}
@@ -431,7 +426,7 @@ function Board({
                     hinted && "animate-pulse ring-2 ring-inset ring-primary",
                   )}
                 >
-                  <CellMark cell={cell} auto={auto} />
+                  <CellMark cell={cell} auto={auto} clashing={clashing.has(index)} />
                 </button>
               );
             })}
@@ -455,11 +450,33 @@ function Board({
       </div>
 
       <div className="flex flex-col items-center gap-1 pt-1">
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={!accepting || !canUndo(run)}
+            onClick={onUndo}
+          >
+            <Undo2 />
+            {t("Undo")}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={!accepting || !canUndo(run)}
+            onClick={onClear}
+          >
+            <Eraser />
+            {t("Clear board")}
+          </Button>
+        </div>
         <HintButton offered={hints.offered} waitSeconds={hints.waitSeconds} onAsk={hints.ask} />
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
             ? t("The taps you made are your score if the server agrees.")
-            : t("Faint Xs mark cells your crowns already rule out.")}
+            : t("Undo is free. Beat par for a speed bonus.")}
         </p>
         <Button variant="ghost" size="sm" disabled={!accepting} onClick={() => setConfirming(true)}>
           {t("End run")}
@@ -492,16 +509,26 @@ function Board({
   );
 }
 
-/** What a cell shows: a Queen, an X, a ruled-out X, or a faint automatic X. */
-function CellMark({ cell, auto }: { cell: QueensCell; auto: boolean }) {
+/** What a cell shows: a Queen, red if it clashes, an X, or a faint automatic X. */
+function CellMark({
+  cell,
+  auto,
+  clashing,
+}: {
+  cell: QueensCell;
+  auto: boolean;
+  clashing: boolean;
+}) {
   if (cell === "queen") {
-    return <Crown className="size-[55%] fill-current text-foreground" strokeWidth={1.75} />;
+    return (
+      <Crown
+        className={cn("size-[55%] fill-current", clashing ? "text-destructive" : "text-foreground")}
+        strokeWidth={1.75}
+      />
+    );
   }
   if (cell === "mark") {
     return <X className="size-[40%] text-foreground/75" strokeWidth={2.5} />;
-  }
-  if (cell === "ruled-out") {
-    return <X className="size-[50%] text-destructive" strokeWidth={3} />;
   }
   if (auto) {
     return <X className="size-[30%] text-foreground/30" strokeWidth={2} />;
@@ -510,19 +537,10 @@ function CellMark({ cell, auto }: { cell: QueensCell; auto: boolean }) {
 }
 
 /** The line above the board: what just happened, or what to do. */
-function statusLine(run: QueensRun, verifying: boolean): string {
+function statusLine(run: QueensRun, verifying: boolean, clash: boolean): string {
   if (verifying) return t("Verifying your run with the server…");
-  if (run.outcome === "over") {
-    return run.stopped ? t("Run ended.") : t("Three mistakes. The run is over.");
-  }
-  const last = run.taps.at(-1);
-  if (last !== undefined && run.cells[last] === "ruled-out") {
-    const left = QUEENS_MISTAKES - run.mistakes;
-    return t("No crown goes there. {left} {n} left.", {
-      left,
-      n: left === 1 ? t("mistake") : t("mistakes"),
-    });
-  }
+  if (run.outcome === "over") return t("Run ended.");
+  if (clash) return t("Those crowns clash. Tap one to clear it, or use Undo.");
   if (run.levelsCleared > 0 && run.cells.every((cell) => cell === "empty")) {
     const solved = boardSize(run.level - 1);
     return t("Board {n} solved, +{points}. Board {level} is {level2}×{level3}.", {
@@ -543,23 +561,23 @@ function cellLabel(
   region: number,
   cell: QueensCell,
   auto: boolean,
+  clashing: boolean,
   run: QueensRun,
   verifying: boolean,
 ): string {
   const contents =
     cell === "queen"
-      ? "crown"
+      ? clashing
+        ? t("crown, clashing with another crown")
+        : "crown"
       : cell === "mark"
         ? t("marked X")
-        : cell === "ruled-out"
-          ? t("ruled out by a mistake")
-          : auto
-            ? t("empty, ruled out by a crown")
-            : "empty";
+        : auto
+          ? t("empty, ruled out by a crown")
+          : "empty";
   const position = `Row ${row + 1} column ${column + 1}, region ${region + 1}, ${contents}`;
   if (verifying) return `${position}. The run is being verified.`;
   if (run.outcome !== "playing") return `${position}. The run has ended.`;
-  if (cell === "ruled-out") return `${position}.`;
   const next =
     cell === "empty" ? t("mark an X") : cell === "mark" ? t("place a crown") : t("clear it");
   return `${position}. Tap to ${next}.`;
@@ -569,12 +587,13 @@ function cellLabel(
 function Finished({
   slug,
   result,
-  stopped,
+  played,
   onRestart,
 }: {
   slug: string;
   result: RunResult;
-  stopped: boolean;
+  /** The points the run scored before the server added its speed bonus. */
+  played: number;
   onRestart: () => void;
 }) {
   return (
@@ -587,9 +606,7 @@ function Finished({
             <ShieldCheck className="size-5 text-muted-foreground" />
           )}
         </div>
-        <p className="text-sm text-muted-foreground">
-          {stopped ? t("Run ended") : t("Out of mistakes")}
-        </p>
+        <p className="text-sm text-muted-foreground">{t("Run ended")}</p>
         <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
           {t("{tilesPlaced} {n}, {clearedColumns} {n2} solved.", {
@@ -602,6 +619,7 @@ function Finished({
       </div>
 
       <dl className="mx-auto grid w-full max-w-xs grid-cols-2 gap-2 text-sm">
+        <SpeedBonusStat verified={result.score} played={played} />
         <div className="rounded-xl bg-surface p-3">
           <dt className="text-xs text-muted-foreground">{t("Duration")}</dt>
           <dd className="font-semibold tabular">{formatDuration(result.durationMs)}</dd>

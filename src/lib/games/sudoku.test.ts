@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SUDOKU_BANK, SUDOKU_PER_TIER, SUDOKU_TIERS } from "@/lib/games/sudoku-bank";
 import {
   board,
-  budgetMs,
+  parMs,
   candidates,
   canPlace,
   conflicts,
@@ -187,12 +187,12 @@ describe("the rules on a board", () => {
   });
 });
 
-describe("the clock", () => {
-  it("starts at six minutes forty and adds the next board's allowance per solved board, tapered", () => {
-    // Board 2 is gentle (+4 min), 3 easy (+5), 6 medium (+8), 10 hard (+10).
-    expect([0, 1, 2].map(budgetMs)).toEqual([400_000, 688_000, 1_018_000]);
-    expect(budgetMs(5) - budgetMs(4)).toBe(384_000);
-    expect(budgetMs(9) - budgetMs(8)).toBe(300_000);
+describe("par", () => {
+  it("adds each board's allowance, by its tier", () => {
+    // Boards 1–2 gentle (4 min), 3–5 easy (5), 6–9 medium (8), 10+ hard (10).
+    expect([0, 1, 2, 3, 6, 10].map(parMs)).toEqual([
+      0, 240_000, 480_000, 780_000, 1_860_000, 3_900_000,
+    ]);
   });
 });
 
@@ -206,7 +206,7 @@ describe("a run", () => {
       score: 0,
       outcome: "playing",
     });
-    expect(SUDOKU_RULES_VERSION).toBe("sudoku@3");
+    expect(SUDOKU_RULES_VERSION).toBe("sudoku@4");
   });
 
   it("puts a digit in a cell, replaces it, and clears it", () => {
@@ -245,11 +245,11 @@ describe("a run", () => {
     expect(run.moves).toHaveLength(90);
   });
 
-  it("ends where the player stops or the clock runs out, keeping the score", () => {
-    const stopped = finish(playLine("1", [...LINE_ONE, 5]), "stopped");
+  it("ends where the player stops, keeping the score", () => {
+    const stopped = finish(playLine("1", [...LINE_ONE, 5]));
     expect(stopped).toMatchObject({ score: 90, outcome: "over", ending: "stopped" });
     expect(place(stopped, 1, 2)).toBe(stopped);
-    expect(finish(stopped, "time")).toBe(stopped);
+    expect(finish(stopped)).toBe(stopped);
   });
 
   it("ends a run at the submission bound", () => {
@@ -261,9 +261,9 @@ describe("a run", () => {
   });
 
   it("assembles the submission from the run", () => {
-    const run = finish(playLine("1", LINE_ONE), "stopped");
+    const run = finish(playLine("1", LINE_ONE));
     expect(submission(run)).toEqual({
-      rulesVersion: "sudoku@3",
+      rulesVersion: "sudoku@4",
       actions: LINE_ONE,
       score: 90,
       tapsPlaced: LINE_ONE.length,

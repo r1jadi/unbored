@@ -4,11 +4,18 @@ import "testing"
 
 func TestLookupRoutesEachFamilyToItsVerifier(t *testing.T) {
 	for version, verifier := range map[string]string{
-		"decant@2":     "complete_decant_run",
-		"fjalekryqi@1": "complete_fjalekryqi_run",
-		"checkmate@1":  "complete_checkmate_run",
-		"cascade@9":    "complete_cascade_run",
-		"bolted@1":     "complete_bolted_run",
+		"decant@2":      "complete_decant_run",
+		"fjalekryqi@1":  "complete_fjalekryqi_run",
+		"checkmate@1":   "complete_checkmate_run",
+		"cascade@9":     "complete_cascade_run",
+		"bolted@1":      "complete_bolted_run",
+		"fusebox@1":     "complete_fusebox_run",
+		"queens@1":      "complete_queens_run",
+		"queens@2":      "complete_queens_speed_run",
+		"sudoku@3":      "complete_sudoku_run",
+		"sudoku@4":      "complete_sudoku_speed_run",
+		"mini-sudoku@1": "complete_mini_sudoku_run",
+		"mini-sudoku@2": "complete_mini_sudoku_speed_run",
 	} {
 		if got := Lookup(version).Verifier; got != verifier {
 			t.Errorf("Lookup(%q).Verifier = %q, want %q", version, got, verifier)

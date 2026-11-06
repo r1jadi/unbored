@@ -45,6 +45,34 @@ export const sqRules: Record<string, string> = {
   "Pour until it's sorted": "Derdh derisa të renditet",
   "Pour the colours between the tubes until each tube holds just one.":
     "Derdh ngjyrat mes epruvetave derisa secila të mbajë vetëm një.",
+  "One tap, one chain": "Një prekje, një zinxhir",
+  "Spend sparks to charge the grid. Set off chains that pay the sparks back.":
+    "Shpenzo shkëndija për të ngarkuar rrjetën. Nis zinxhirë që t'i kthejnë shkëndijat.",
+  "to spend a spark and add one charge. At four charge a cell pops and fires a bolt each way.":
+    "për të shpenzuar një shkëndijë dhe për të shtuar një ngarkesë. Me katër ngarkesa kutia shpërthen dhe lëshon një rrufe në çdo drejtim.",
+  "A bolt": "Një rrufe",
+  "reaches up to three cells and adds one charge to the first charged cell it meets, which can pop that one too. Each wave of a chain is worth more than the last.":
+    "arrin deri në tri kuti dhe i shton një ngarkesë kutisë së parë të ngarkuar që takon, e cila mund të shpërthejë edhe ajo. Çdo valë e zinxhirit vlen më shumë se e mëparshmja.",
+  "Long chains pay.": "Zinxhirët e gjatë paguajnë.",
+  "Four pops from one tap gives back a spark, seven gives two, eleven gives three. Leave four charged cells or fewer to clear the board for three more.":
+    "Katër shpërthime nga një prekje kthejnë një shkëndijë, shtatë kthejnë dy, njëmbëdhjetë kthejnë tri. Lër katër kuti të ngarkuara ose më pak për ta pastruar tabelën dhe për të marrë edhe tri.",
+  "It gets harder.": "Bëhet më e vështirë.",
+  "Every second board asks for longer chains. From board three, surge cells fire diagonally too; from board five, a shielded cell's first hit only breaks its shield. The run ends when the sparks run out.":
+    "Çdo tabelë e dytë kërkon zinxhirë më të gjatë. Nga tabela e tretë, kutitë e fuqishme lëshojnë rrufe edhe diagonalisht; nga tabela e pestë, goditja e parë te një kuti e mbrojtur vetëm ia thyen mburojën. Loja mbaron kur mbarojnë shkëndijat.",
+  "Change your mind": "Ndërro mendje",
+  "whenever you like: Undo takes back any tap and Clear board starts the board again, and neither costs a point. Crowns that break the rules turn red.":
+    "kur të duash: Zhbëj e kthen çdo prekje dhe Pastro tabelën e nis tabelën nga e para, dhe asnjëra nuk kushton pikë. Kurorat që shkelin rregullat bëhen të kuqe.",
+  "No clock": "Pa orë",
+  "to lose to. Every board has one solution and is worth 100 points a row, and beating its par time earns a speed bonus when the run ends, up to double. The boards grow as you go, and you end the run when you like.":
+    "që të humbësh prej saj. Çdo tabelë ka një zgjidhje dhe vlen 100 pikë për rresht, dhe nëse e mund kohën normale të saj fiton një bonus shpejtësie kur mbaron loja, deri në dyfish. Tabelat rriten ndërsa luan, dhe ti e mbyll lojën kur të duash.",
+  "Every row, column and box, once each. Be quick for a bonus.":
+    "Çdo rresht, kolonë dhe kuti, nga një herë. Ji i shpejtë për një bonus.",
+  "A small Sudoku on a 6×6 grid. Be quick for a bonus.":
+    "Një Sudoku i vogël në rrjetë 6×6. Ji i shpejtë për një bonus.",
+  "to lose to. Boards start gentle and get harder, and every solved board scores 900 points. Beating a board's par time earns a speed bonus when the run ends, up to double. You end the run when you like.":
+    "që të humbësh prej saj. Tabelat nisin lehtë dhe vështirësohen, dhe çdo tabelë e zgjidhur jep 900 pikë. Nëse e mund kohën normale të tabelës, fiton një bonus shpejtësie kur mbaron loja, deri në dyfish. Ti e mbyll lojën kur të duash.",
+  "to lose to. Boards start gentle and get harder, and every solved board scores 600 points. Beating a board's par time earns a speed bonus when the run ends, up to double. You end the run when you like.":
+    "që të humbësh prej saj. Tabelat nisin lehtë dhe vështirësohen, dhe çdo tabelë e zgjidhur jep 600 pikë. Nëse e mund kohën normale të tabelës, fiton një bonus shpejtësie kur mbaron loja, deri në dyfish. Ti e mbyll lojën kur të duash.",
   "Clear the way": "Hape rrugën",
   "Send every arrow off the board. Mind what stands in its lane.":
     "Nxirr çdo shigjetë nga tabela. Kujdes çfarë qëndron në rrugën e saj.",

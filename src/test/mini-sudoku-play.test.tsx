@@ -19,7 +19,7 @@ import { clearSession } from "@/lib/auth/session";
  * Seed 1's first board — gentle — starts "000503530040006215210030400002623450"
  * (0 empty, 17 empty cells) and is filled by the moves in `LINE_ONE`
  * (`cell × 10 + digit`). Like Sudoku, the rules show with no session, Start asks
- * for one, and the clock ends the run.
+ * for one, and only the player ends the run.
  */
 
 const LINE_ONE = [1, 16, 24, 42, 82, 91, 116, 123, 134, 205, 216, 234, 255, 261, 273, 286, 351];
@@ -29,7 +29,7 @@ function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
     id: "edededed-2222-4222-8222-edededededed",
     gameSlug: "mini-sudoku",
-    rulesVersion: "mini-sudoku@1",
+    rulesVersion: "mini-sudoku@2",
     seed: "1",
     tileCount: 8192,
     startedAt: "2026-11-26T12:00:00.000Z",
@@ -165,16 +165,14 @@ describe("starting a run", () => {
     const session = spy.mock.calls.find((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(JSON.parse(String(session?.[1]?.body ?? "{}"))).toEqual({
       gameSlug: "mini-sudoku",
-      rulesVersion: "mini-sudoku@1",
+      rulesVersion: "mini-sudoku@2",
       client: "web/1.0",
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     expect(screen.getAllByRole("button", { name: CELL })).toHaveLength(36);
     expect(screen.getByText("17 cells left")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar", { name: "Time left" })).toHaveAttribute(
-      "aria-valuenow",
-      "120",
-    );
+    expect(screen.getByText("par 1:00")).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
     // A pad of six digits, not nine.
     expect(document.querySelectorAll('button[aria-label^="Place "]')).toHaveLength(6);
   });
@@ -246,7 +244,7 @@ describe("scoring", () => {
       await screen.findByText("Run ended");
 
       expect(completionBody(spy)).toMatchObject({
-        progress: { rulesVersion: "mini-sudoku@1", actions: LINE_ONE },
+        progress: { rulesVersion: "mini-sudoku@2", actions: LINE_ONE },
         score: 60,
       });
       // The screen shows the number the server verified, not the client's 600.

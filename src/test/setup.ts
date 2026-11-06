@@ -1,10 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 
+import { fuseboxTiming } from "@/lib/games/fusebox-waves";
 import { levelUpTiming } from "@/lib/games/level-up";
 
 // The beat between two levels runs on a real clock. The play tests solve level
 // after level in one go, so it is off by default; the level-up tests turn it on.
 beforeEach(() => {
+  fuseboxTiming.waveMs = 0;
   levelUpTiming.ms = 0;
   levelUpTiming.noteMs = 0;
 });

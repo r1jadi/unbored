@@ -93,6 +93,12 @@ import {
   QUEENS_PREVIEW_SOLUTION,
   QueensPreview,
 } from "./QueensPreview";
+import {
+  FUSEBOX_PREVIEW_BEATS,
+  FUSEBOX_PREVIEW_CHAIN,
+  FUSEBOX_PREVIEW_REFUND,
+  FuseboxPreview,
+} from "./FuseboxPreview";
 import { SCATTER_PREVIEW_BEATS, ScatterPreview } from "./ScatterPreview";
 import { SEVEN_SECOND_PREVIEW_BEATS, SevenSecondPreview } from "./SevenSecondPreview";
 import { STACK10_PREVIEW_BEATS, Stack10Preview } from "./Stack10Preview";
@@ -148,6 +154,7 @@ const SCRIPTED: Row[] = [
   { name: "decant", beats: DECANT_PREVIEW_BEATS, Preview: DecantPreview },
   { name: "dont-break-the-chain", beats: CHAIN_PREVIEW_BEATS, Preview: ChainPreview },
   { name: "dont-touch-the-black", beats: DONT_TOUCH_PREVIEW_BEATS, Preview: DontTouchPreview },
+  { name: "fusebox", beats: FUSEBOX_PREVIEW_BEATS, Preview: FuseboxPreview },
   { name: "gridburst", beats: GRIDBURST_PREVIEW_BEATS, Preview: GridburstPreview },
   { name: "huedini", beats: HUEDINI_PREVIEW_BEATS, Preview: HuediniPreview },
   { name: "memory-flash", beats: MEMORY_FLASH_PREVIEW_BEATS, Preview: MemoryFlashPreview },
@@ -328,6 +335,17 @@ describe("the Bolted preview", () => {
     }
     expect(isBoltedSolved(bolts)).toBe(true);
     expect(bolts.filter(isLocked)).toHaveLength(3);
+  });
+});
+
+describe("the Fusebox preview", () => {
+  it("plays one tap's chain, long enough to pay sparks back", () => {
+    expect(FUSEBOX_PREVIEW_CHAIN.waves.length).toBeGreaterThanOrEqual(3);
+    expect(FUSEBOX_PREVIEW_REFUND).toBeGreaterThanOrEqual(1);
+    expect(FUSEBOX_PREVIEW_BEATS.filter((beat) => beat.pressed !== null)).toHaveLength(1);
+    expect(FUSEBOX_PREVIEW_BEATS.some((beat) => beat.gain === FUSEBOX_PREVIEW_CHAIN.gain)).toBe(
+      true,
+    );
   });
 });
 

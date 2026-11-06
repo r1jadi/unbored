@@ -110,6 +110,15 @@ import {
   replay as replayBoltedRun,
 } from "@/lib/games/bolted";
 import {
+  createRun as createFuseboxRun,
+  finish as finishFuseboxRun,
+  FUSEBOX_RULES_VERSION,
+  replay as replayFuseboxRun,
+  submission as fuseboxSubmission,
+  tap as tapFusebox,
+  type FuseboxRun,
+} from "@/lib/games/fusebox";
+import {
   createRun as createScatterRun,
   finish as finishScatterRun,
   SCATTER_RULES_VERSION,
@@ -165,11 +174,14 @@ import {
   type OneMoveRun,
 } from "@/lib/games/one-move";
 import {
+  clearBoard as clearQueensBoard,
   createRun as createQueensRun,
   finish as finishQueensRun,
-  submission as queensSubmission,
   QUEENS_RULES_VERSION,
+  replay as replayQueensRun,
+  submission as queensSubmission,
   tap as tapQueensCell,
+  undo as undoQueensTap,
   type QueensRun,
 } from "@/lib/games/queens";
 import {
@@ -206,7 +218,6 @@ import {
   type CrosswordRun,
 } from "@/lib/games/crossword";
 import {
-  budgetMs as sudokuBudgetMs,
   createRun as createSudokuRun,
   finish as finishSudokuRun,
   place as placeSudoku,
@@ -216,7 +227,6 @@ import {
   replay as replaySudokuRun,
 } from "@/lib/games/sudoku";
 import {
-  budgetMs as miniSudokuBudgetMs,
   createRun as createMiniSudokuRun,
   finish as finishMiniSudokuRun,
   place as placeMiniSudoku,
@@ -1473,22 +1483,20 @@ export function useOneMoveRun(gameSlug: string): OneMoveRunControls {
   return { ...state, begin, tap, finish, restart, retry, continueRun, newRun };
 }
 
-// ── A run of Queens, from session to score ───────────────────────────────
+// ── A run of Crowns, from Start to score ───────────────────────────────────
 
 export type QueensRunState =
-  | { status: "starting" }
-  /**
-   * The player has an unfinished run of this game saved on their account. It is
-   * offered before a new one is started: continue it, or start over.
-   */
+  /** A run the player left or ended, on their account: continue it, or start over. */
   | { status: "saved"; session: PlaySession; run: QueensRun; playedMs: number }
-  | { status: "playing"; session: PlaySession; run: QueensRun }
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | { status: "playing"; session: PlaySession; run: QueensRun; startedAt: number }
   /** A finished run is being verified. No score is shown yet. */
-  | { status: "submitting"; session: PlaySession; run: QueensRun }
+  | { status: "submitting"; session: PlaySession; run: QueensRun; startedAt: number }
   | { status: "finished"; session: PlaySession; run: QueensRun; result: RunResult }
   | {
       status: "error";
-      /** Which half failed: the start of a run, or the submission of one. */
       stage: "start" | "submit";
       error: ApiError;
       session?: PlaySession;
@@ -1498,47 +1506,45 @@ export type QueensRunState =
 export type QueensRunControls = QueensRunState & {
   /** Continues the saved run, where it was left. */
   continueRun: () => void;
-  /** Ends the saved run, keeping its score, and starts a new one. */
+  /** Leaves the saved run with its score, and starts a new one. */
   newRun: () => void;
-  /**
-   * Marks the moment the player pressed Start, so the submitted duration is the
-   * run's and not the time spent reading the rules.
-   */
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for a session. */
   begin: () => void;
-  /** Taps a cell: empty, X, Queen, empty. Ignored unless the run is live. */
+  /** Taps a cell: empty, X, crown, empty. Ignored unless the run is live. */
   tap: (cell: number) => void;
+  /** Takes back the last tap on this board, for free. */
+  undo: () => void;
+  /** Empties this board, for free. */
+  clear: () => void;
   /** Ends the run where it stands and submits it, keeping its score. */
   finish: () => void;
-  /** Starts a fresh run, replacing whatever is on the board. */
+  /** Back to the rules, for a fresh run. */
   restart: () => void;
   /** Retries whichever step failed — a new session, or the same submission. */
   retry: () => void;
 };
 
 /**
- * Plays one run of Queens against the session API.
+ * Plays one run of Crowns against the session API.
  *
- * The same lifecycle as the other runtimes, because the server treats every
- * game the same way: a run exists only after the server issued a session under the
- * game's own rules version, a result exists only after the server verified the
- * submission, and an error is reported as an error rather than as a score of
- * zero. A submission is attempted exactly once per run — the effect that triggers
- * it is guarded — so a re-render cannot send it twice, and a player who retries a
- * failed submission sends the identical body, which the server recognises.
+ * The rules first, a session issued on Start, boards dealt from its seed, and
+ * verification once the player ends the run. The session has to wait for Start
+ * because the server times the speed bonus from it: reading the rules is not play.
  */
-export function useQueensRun(gameSlug: string): QueensRunControls {
-  const [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<QueensRunState>({ status: "starting" });
+export function useQueensRun(gameSlug: string, autoStart = false): QueensRunControls {
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<QueensRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
   const startedAt = useRef(0);
-  // When the run ended, captured once. A retry must send the duration the run
-  // actually took, not the time the retry happened to be made: the submission is
-  // meant to be the same submission, and a number that grows on every attempt
-  // would describe a run that did not happen.
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
-  // Set by "New run": the next start skips the saved run and begins afresh.
+  // Set by New run: the next start skips the saved run and begins afresh.
   const skipSaved = useRef(false);
+  const signedIn = !!getAccessToken();
 
   useEffect(() => {
     mounted.current = true;
@@ -1547,28 +1553,40 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
     };
   }, []);
 
+  // A session is requested only once Start has been pressed (`attempt` > 0).
   useEffect(() => {
     const controller = new AbortController();
-    // A new run starts from nothing: keeping the previous board on screen while a
-    // session is issued would show a board with no session behind it.
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, QUEENS_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayQueensRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
     startedAt.current = 0;
     endedAt.current = 0;
     submitting.current = false;
     setState({ status: "starting" });
 
-    // A signed-in player's unfinished run comes first: it is offered to continue
-    // rather than replaced by a new session behind their back.
-    const fresh = skipSaved.current;
-    skipSaved.current = false;
     (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, QUEENS_RULES_VERSION))
       .then((saved) => {
         if (controller.signal.aborted) return null;
         if (saved) {
-          const run = saved.actions.reduce(
-            (current: QueensRun, action) => tapQueensCell(current, action),
-            createQueensRun(saved.session.seed),
-          );
-          setState({ status: "saved", session: saved.session, run, playedMs: saved.playedMs });
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayQueensRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
           return null;
         }
         return startSession(gameSlug, {
@@ -1578,9 +1596,13 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
       })
       .then((session) => {
         if (!session || controller.signal.aborted) return;
-        // The clock starts when the player presses Start (`begin`), not when the
-        // session arrives: reading the rules is not part of the run.
-        setState({ status: "playing", session, run: createQueensRun(session.seed) });
+        startedAt.current = Date.now();
+        setState({
+          status: "playing",
+          session,
+          run: createQueensRun(session.seed),
+          startedAt: startedAt.current,
+        });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -1590,20 +1612,17 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
     return () => controller.abort();
   }, [gameSlug, attempt]);
 
-  // Verification. It runs when a run has ended, once, and never for a run that is
-  // still in progress.
+  // Verification: once, when a run has ended.
   useEffect(() => {
     if (state.status !== "playing" || state.run.outcome === "playing") return;
     if (submitting.current) return;
     submitting.current = true;
 
     const { session, run } = state;
-    // Defensive: every run is begun before it can end, but a missing mark must
-    // never turn into a duration measured from the epoch.
     if (startedAt.current === 0) startedAt.current = Date.now();
     if (endedAt.current === 0) endedAt.current = Date.now();
     const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
-    setState({ status: "submitting", session, run });
+    setState({ status: "submitting", session, run, startedAt: startedAt.current });
 
     completeRun(
       session.id,
@@ -1630,8 +1649,24 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
     setState((current) => {
       if (current.status !== "playing") return current;
       const next = tapQueensCell(current.run, cell);
-      // An impossible tap returns the same run, and the same reference means
-      // there is nothing to re-render.
+      if (next === current.run) return current;
+      if (next.outcome !== "playing") endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = undoQueensTap(current.run);
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
+  const clear = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = clearQueensBoard(current.run);
       return next === current.run ? current : { ...current, run: next };
     });
   }, []);
@@ -1640,12 +1675,10 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
     setState((current) => {
       if (current.status !== "playing") return current;
       const next = finishQueensRun(current.run);
-      return next === current.run ? current : { ...current, run: next };
+      if (next === current.run) return current;
+      endedAt.current = Date.now();
+      return { ...current, run: next };
     });
-  }, []);
-
-  const begin = useCallback(() => {
-    if (startedAt.current === 0) startedAt.current = Date.now();
   }, []);
 
   const continueRun = useCallback(() => {
@@ -1655,11 +1688,15 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
     resumeRun(session)
       .then((resumed) => {
         if (!mounted.current) return;
-        // The run's clock carries on from the time it had already been played.
         startedAt.current = Date.now() - resumed.playedMs;
         endedAt.current = 0;
         submitting.current = false;
-        setState({ status: "playing", session: resumed.session, run });
+        setState({
+          status: "playing",
+          session: resumed.session,
+          run,
+          startedAt: startedAt.current,
+        });
       })
       .catch((error: unknown) => {
         if (mounted.current)
@@ -1671,9 +1708,6 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
     if (state.status !== "saved") return;
     const { session, run, playedMs } = state;
     setState({ status: "starting" });
-    // The saved run ends here and keeps its score, like any run the player ends:
-    // it is submitted as it was left. Only then does the new run start, because
-    // starting one closes the player's open session.
     closeSavedRun(
       session,
       { ...queensSubmission(run), rulesVersion: session.rulesVersion },
@@ -1689,30 +1723,56 @@ export function useQueensRun(gameSlug: string): QueensRunControls {
   // A signed-in player's live run is kept on their account as it is played.
   useSaveProgress(
     state.status === "playing" && state.run.outcome === "playing"
-      ? { session: state.session, actions: state.run.taps }
+      ? { session: state.session, actions: queensSubmission(state.run).actions }
       : null,
     startedAt,
   );
 
-  const restart = useCallback(() => setAttempt((n) => n + 1), []);
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    // Tap to play skips the rules on Play again too: straight to a new session.
+    if (autoStart) {
+      setState({ status: "starting" });
+      setAttempt((n) => n + 1);
+    } else {
+      setState({ status: "intro" });
+      setAttempt(0);
+    }
+  }, [autoStart]);
 
   const retry = useCallback(() => {
     if (state.status !== "error") return;
 
     if (state.stage === "submit" && state.session && state.run) {
-      // The identical submission, sent again. The server recognises a repeated
-      // body as the run it already recorded, so this cannot score twice — and a
-      // new session here would abandon a run that was only a retry away.
+      // The identical submission, sent again.
       submitting.current = false;
-      setState({ status: "playing", session: state.session, run: state.run });
+      setState({
+        status: "playing",
+        session: state.session,
+        run: state.run,
+        startedAt: startedAt.current,
+      });
       return;
     }
 
-    // The run never started: ask for a new session.
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, begin, tap, finish, restart, retry, continueRun, newRun };
+  return {
+    ...state,
+    signedIn,
+    continueRun,
+    newRun,
+    begin,
+    tap,
+    undo,
+    clear,
+    finish,
+    restart,
+    retry,
+  };
 }
 
 // ── A run of Zip, from Start to score ──────────────────────────────────────
@@ -2621,11 +2681,11 @@ export type SudokuRunState =
       status: "playing";
       session: PlaySession;
       run: SudokuRun;
-      /** When the clock runs out, as a `Date.now()` timestamp. */
-      deadline: number;
+      /** When the run started, as a `Date.now()` timestamp. */
+      startedAt: number;
     }
   /** A finished run is being verified. No score is shown yet. */
-  | { status: "submitting"; session: PlaySession; run: SudokuRun; deadline: number }
+  | { status: "submitting"; session: PlaySession; run: SudokuRun; startedAt: number }
   | { status: "finished"; session: PlaySession; run: SudokuRun; result: RunResult }
   | {
       status: "error";
@@ -2642,7 +2702,7 @@ export type SudokuRunControls = SudokuRunState & {
   newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
-  /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
+  /** Presses Start: asks the server for a session, and the run starts when it arrives. */
   begin: () => void;
   /** Puts a digit in a cell, or clears it with 0. Ignored unless the run is live and the cell is not a given. */
   place: (cell: number, digit: number) => void;
@@ -2657,10 +2717,9 @@ export type SudokuRunControls = SudokuRunState & {
 /**
  * Plays one run of Sudoku against the session API.
  *
- * The same lifecycle as Zip, 8 Puzzle and Tango, for the same reason: the run is against
- * a clock the verifier times from the session's start (`out_of_time`), so the
- * session is issued when the player presses Start, the clock starts when it
- * arrives, and the run ends by itself when the clock reaches zero.
+ * The rules first, a session issued on Start, boards dealt from its seed, and
+ * verification once the player ends the run. There is no clock to lose to, but the
+ * server times the speed bonus from the session, so it has to wait for Start.
  */
 export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunControls {
   // Tap to play skips the rules: the first render is already "starting", so the
@@ -2733,7 +2792,7 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
           status: "playing",
           session,
           run,
-          deadline: startedAt.current + sudokuBudgetMs(0),
+          startedAt: startedAt.current,
         });
       })
       .catch((error: unknown) => {
@@ -2744,35 +2803,17 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
     return () => controller.abort();
   }, [gameSlug, attempt]);
 
-  // The clock. When it reaches zero the run is over, and verification follows.
-  useEffect(() => {
-    if (state.status !== "playing" || state.run.outcome !== "playing") return;
-    const remaining = state.deadline - Date.now();
-    const timer = setTimeout(
-      () => {
-        setState((current) => {
-          if (current.status !== "playing" || current.run.outcome !== "playing") return current;
-          if (Date.now() < current.deadline) return { ...current };
-          endedAt.current = current.deadline;
-          return { ...current, run: finishSudokuRun(current.run, "time") };
-        });
-      },
-      Math.max(0, remaining),
-    );
-    return () => clearTimeout(timer);
-  }, [state]);
-
   // Verification: once, when a run has ended.
   useEffect(() => {
     if (state.status !== "playing" || state.run.outcome === "playing") return;
     if (submitting.current) return;
     submitting.current = true;
 
-    const { session, run, deadline } = state;
+    const { session, run } = state;
     if (startedAt.current === 0) startedAt.current = Date.now();
     if (endedAt.current === 0) endedAt.current = Date.now();
     const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
-    setState({ status: "submitting", session, run, deadline });
+    setState({ status: "submitting", session, run, startedAt: startedAt.current });
 
     completeRun(
       session.id,
@@ -2798,28 +2839,15 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
   const place = useCallback((cell: number, digit: number) => {
     setState((current) => {
       if (current.status !== "playing") return current;
-      // A move after the deadline — a backgrounded tab can hold its timer back —
-      // ends the run instead of moving: the clock has already run out.
-      if (Date.now() >= current.deadline) {
-        if (current.run.outcome !== "playing") return current;
-        endedAt.current = current.deadline;
-        return { ...current, run: finishSudokuRun(current.run, "time") };
-      }
       const next = placeSudoku(current.run, cell, digit);
-      if (next === current.run) return current;
-      // A solved board buys time: the deadline follows the boards solved.
-      return {
-        ...current,
-        run: next,
-        deadline: startedAt.current + sudokuBudgetMs(next.levelsCleared),
-      };
+      return next === current.run ? current : { ...current, run: next };
     });
   }, []);
 
   const finish = useCallback(() => {
     setState((current) => {
       if (current.status !== "playing") return current;
-      const next = finishSudokuRun(current.run, "stopped");
+      const next = finishSudokuRun(current.run);
       if (next === current.run) return current;
       endedAt.current = Date.now();
       return { ...current, run: next };
@@ -2833,7 +2861,7 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
     resumeRun(session)
       .then((resumed) => {
         if (!mounted.current) return;
-        // The clock carries on from where it stopped, here as on the server.
+        // The run's time carries on from where it stopped, here as on the server.
         startedAt.current = Date.now() - resumed.playedMs;
         endedAt.current = 0;
         submitting.current = false;
@@ -2841,7 +2869,7 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
           status: "playing",
           session: resumed.session,
           run,
-          deadline: startedAt.current + sudokuBudgetMs(run.levelsCleared),
+          startedAt: startedAt.current,
         });
       })
       .catch((error: unknown) => {
@@ -2892,10 +2920,14 @@ export function useSudokuRun(gameSlug: string, autoStart = false): SudokuRunCont
     if (state.status !== "error") return;
 
     if (state.stage === "submit" && state.session && state.run) {
-      // The identical submission, sent again. The clock is already over, so the
-      // deadline only has to exist; it no longer moves.
+      // The identical submission, sent again.
       submitting.current = false;
-      setState({ status: "playing", session: state.session, run: state.run, deadline: 0 });
+      setState({
+        status: "playing",
+        session: state.session,
+        run: state.run,
+        startedAt: startedAt.current,
+      });
       return;
     }
 
@@ -2917,11 +2949,11 @@ export type MiniSudokuRunState =
       status: "playing";
       session: PlaySession;
       run: MiniSudokuRun;
-      /** When the clock runs out, as a `Date.now()` timestamp. */
-      deadline: number;
+      /** When the run started, as a `Date.now()` timestamp. */
+      startedAt: number;
     }
   /** A finished run is being verified. No score is shown yet. */
-  | { status: "submitting"; session: PlaySession; run: MiniSudokuRun; deadline: number }
+  | { status: "submitting"; session: PlaySession; run: MiniSudokuRun; startedAt: number }
   | { status: "finished"; session: PlaySession; run: MiniSudokuRun; result: RunResult }
   | {
       status: "error";
@@ -2938,7 +2970,7 @@ export type MiniSudokuRunControls = MiniSudokuRunState & {
   newRun: () => void;
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
-  /** Presses Start: asks the server for a session, and the clock starts when it arrives. */
+  /** Presses Start: asks the server for a session, and the run starts when it arrives. */
   begin: () => void;
   /** Puts a digit in a cell, or clears it with 0. Ignored unless the run is live and the cell is not a given. */
   place: (cell: number, digit: number) => void;
@@ -2953,10 +2985,9 @@ export type MiniSudokuRunControls = MiniSudokuRunState & {
 /**
  * Plays one run of Mini Sudoku against the session API.
  *
- * The same lifecycle as Zip, 8 Puzzle and Tango, for the same reason: the run is against
- * a clock the verifier times from the session's start (`out_of_time`), so the
- * session is issued when the player presses Start, the clock starts when it
- * arrives, and the run ends by itself when the clock reaches zero.
+ * The rules first, a session issued on Start, boards dealt from its seed, and
+ * verification once the player ends the run. There is no clock to lose to, but the
+ * server times the speed bonus from the session, so it has to wait for Start.
  */
 export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudokuRunControls {
   // Tap to play skips the rules: the first render is already "starting", so the
@@ -3029,7 +3060,7 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
           status: "playing",
           session,
           run,
-          deadline: startedAt.current + miniSudokuBudgetMs(0),
+          startedAt: startedAt.current,
         });
       })
       .catch((error: unknown) => {
@@ -3040,35 +3071,17 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
     return () => controller.abort();
   }, [gameSlug, attempt]);
 
-  // The clock. When it reaches zero the run is over, and verification follows.
-  useEffect(() => {
-    if (state.status !== "playing" || state.run.outcome !== "playing") return;
-    const remaining = state.deadline - Date.now();
-    const timer = setTimeout(
-      () => {
-        setState((current) => {
-          if (current.status !== "playing" || current.run.outcome !== "playing") return current;
-          if (Date.now() < current.deadline) return { ...current };
-          endedAt.current = current.deadline;
-          return { ...current, run: finishMiniSudokuRun(current.run, "time") };
-        });
-      },
-      Math.max(0, remaining),
-    );
-    return () => clearTimeout(timer);
-  }, [state]);
-
   // Verification: once, when a run has ended.
   useEffect(() => {
     if (state.status !== "playing" || state.run.outcome === "playing") return;
     if (submitting.current) return;
     submitting.current = true;
 
-    const { session, run, deadline } = state;
+    const { session, run } = state;
     if (startedAt.current === 0) startedAt.current = Date.now();
     if (endedAt.current === 0) endedAt.current = Date.now();
     const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
-    setState({ status: "submitting", session, run, deadline });
+    setState({ status: "submitting", session, run, startedAt: startedAt.current });
 
     completeRun(
       session.id,
@@ -3094,28 +3107,15 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
   const place = useCallback((cell: number, digit: number) => {
     setState((current) => {
       if (current.status !== "playing") return current;
-      // A move after the deadline — a backgrounded tab can hold its timer back —
-      // ends the run instead of moving: the clock has already run out.
-      if (Date.now() >= current.deadline) {
-        if (current.run.outcome !== "playing") return current;
-        endedAt.current = current.deadline;
-        return { ...current, run: finishMiniSudokuRun(current.run, "time") };
-      }
       const next = placeMiniSudoku(current.run, cell, digit);
-      if (next === current.run) return current;
-      // A solved board buys time: the deadline follows the boards solved.
-      return {
-        ...current,
-        run: next,
-        deadline: startedAt.current + miniSudokuBudgetMs(next.levelsCleared),
-      };
+      return next === current.run ? current : { ...current, run: next };
     });
   }, []);
 
   const finish = useCallback(() => {
     setState((current) => {
       if (current.status !== "playing") return current;
-      const next = finishMiniSudokuRun(current.run, "stopped");
+      const next = finishMiniSudokuRun(current.run);
       if (next === current.run) return current;
       endedAt.current = Date.now();
       return { ...current, run: next };
@@ -3129,7 +3129,7 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
     resumeRun(session)
       .then((resumed) => {
         if (!mounted.current) return;
-        // The clock carries on from where it stopped, here as on the server.
+        // The run's time carries on from where it stopped, here as on the server.
         startedAt.current = Date.now() - resumed.playedMs;
         endedAt.current = 0;
         submitting.current = false;
@@ -3137,7 +3137,7 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
           status: "playing",
           session: resumed.session,
           run,
-          deadline: startedAt.current + miniSudokuBudgetMs(run.levelsCleared),
+          startedAt: startedAt.current,
         });
       })
       .catch((error: unknown) => {
@@ -3188,10 +3188,14 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
     if (state.status !== "error") return;
 
     if (state.stage === "submit" && state.session && state.run) {
-      // The identical submission, sent again. The clock is already over, so the
-      // deadline only has to exist; it no longer moves.
+      // The identical submission, sent again.
       submitting.current = false;
-      setState({ status: "playing", session: state.session, run: state.run, deadline: 0 });
+      setState({
+        status: "playing",
+        session: state.session,
+        run: state.run,
+        startedAt: startedAt.current,
+      });
       return;
     }
 
@@ -5775,6 +5779,251 @@ export function useHuediniRun(gameSlug: string, autoStart = false): HuediniRunCo
     restart,
     retry,
   };
+}
+
+// ── A run of Fusebox, from Start to score ──────────────────────────────────
+
+export type FuseboxRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: FuseboxRun; playedMs: number }
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | { status: "playing"; session: PlaySession; run: FuseboxRun }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: FuseboxRun }
+  | { status: "finished"; session: PlaySession; run: FuseboxRun; result: RunResult }
+  | {
+      status: "error";
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: FuseboxRun;
+    };
+
+export type FuseboxRunControls = FuseboxRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for a session. */
+  begin: () => void;
+  /** Taps a cell, spending a spark. Ignored unless the run is live. */
+  tap: (cell: number) => void;
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
+  /** Back to the rules, for a fresh run. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of Fusebox against the session API.
+ *
+ * Scatter's lifecycle: the rules first, a session issued on Start, boards dealt
+ * from its seed, and verification once the run ends — when the sparks run out, or
+ * when the player ends it.
+ */
+export function useFuseboxRun(gameSlug: string, autoStart = false): FuseboxRunControls {
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<FuseboxRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
+  const startedAt = useRef(0);
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
+  const signedIn = !!getAccessToken();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // A session is requested only once Start has been pressed (`attempt` > 0).
+  useEffect(() => {
+    const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, FUSEBOX_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayFuseboxRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, FUSEBOX_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayFuseboxRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: FUSEBOX_RULES_VERSION,
+        });
+      })
+      .then((session) => {
+        if (!session || controller.signal.aborted) return;
+        startedAt.current = Date.now();
+        setState({ status: "playing", session, run: createFuseboxRun(session.seed) });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // Verification: once, when a run has ended.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run } = state;
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run });
+
+    completeRun(
+      session.id,
+      { ...fuseboxSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const tap = useCallback((cell: number) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = tapFusebox(current.run, cell);
+      if (next === current.run) return current;
+      if (next.outcome !== "playing") endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishFuseboxRun(current.run);
+      if (next === current.run) return current;
+      endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({ status: "playing", session: resumed.session, run });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...fuseboxSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: fuseboxSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    // Tap to play skips the rules on Play again too: straight to a new session.
+    if (autoStart) {
+      setState({ status: "starting" });
+      setAttempt((n) => n + 1);
+    } else {
+      setState({ status: "intro" });
+      setAttempt(0);
+    }
+  }, [autoStart]);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again.
+      submitting.current = false;
+      setState({ status: "playing", session: state.session, run: state.run });
+      return;
+    }
+
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, signedIn, continueRun, newRun, begin, tap, finish, restart, retry };
 }
 
 // ── A run of Scatter, from Start to score ──────────────────────────────────

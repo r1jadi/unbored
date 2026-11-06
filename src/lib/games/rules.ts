@@ -205,9 +205,15 @@ export const GAME_RULES = {
         ),
       },
       {
-        lead: msg("A wrong crown"),
+        lead: msg("Change your mind"),
         text: msg(
-          "is a mistake, and the third one ends the run. Every board has one solution and is worth 100 points a row; the boards grow as you go, and you can end the run whenever you like.",
+          "whenever you like: Undo takes back any tap and Clear board starts the board again, and neither costs a point. Crowns that break the rules turn red.",
+        ),
+      },
+      {
+        lead: msg("No clock"),
+        text: msg(
+          "to lose to. Every board has one solution and is worth 100 points a row, and beating its par time earns a speed bonus when the run ends, up to double. The boards grow as you go, and you end the run when you like.",
         ),
       },
     ],
@@ -288,7 +294,7 @@ export const GAME_RULES = {
   },
   sudoku: {
     heading: msg("One to nine"),
-    summary: msg("Every row, column and box, once each. Beat the clock."),
+    summary: msg("Every row, column and box, once each. Be quick for a bonus."),
     rules: [
       {
         lead: msg("Fill the grid"),
@@ -309,16 +315,16 @@ export const GAME_RULES = {
         ),
       },
       {
-        lead: msg("The clock"),
+        lead: msg("No clock"),
         text: msg(
-          "starts at 6:40. Boards start gentle and get harder, and every solved board scores 900 points and adds time for the next one: generous early on, tighter as the run goes. The run ends when the clock does.",
+          "to lose to. Boards start gentle and get harder, and every solved board scores 900 points. Beating a board's par time earns a speed bonus when the run ends, up to double. You end the run when you like.",
         ),
       },
     ],
   },
   "mini-sudoku": {
     heading: msg("One to six"),
-    summary: msg("A small Sudoku on a 6×6 grid. Beat the clock."),
+    summary: msg("A small Sudoku on a 6×6 grid. Be quick for a bonus."),
     rules: [
       {
         lead: msg("Fill the grid"),
@@ -339,9 +345,9 @@ export const GAME_RULES = {
         ),
       },
       {
-        lead: msg("The clock"),
+        lead: msg("No clock"),
         text: msg(
-          "starts at 2:00. Boards start gentle and get harder, and every solved board scores 600 points and adds time for the next one: generous early on, tighter as the run goes. The run ends when the clock does.",
+          "to lose to. Boards start gentle and get harder, and every solved board scores 600 points. Beating a board's par time earns a speed bonus when the run ends, up to double. You end the run when you like.",
         ),
       },
     ],
@@ -528,6 +534,36 @@ export const GAME_RULES = {
         lead: msg("The clock"),
         text: msg(
           "starts at 75 seconds. Clear a board for 10 points per block and time for the next one; boards grow trickier, and the time they add tightens as the run goes. The run ends when the clock does.",
+        ),
+      },
+    ],
+  },
+  fusebox: {
+    heading: msg("One tap, one chain"),
+    summary: msg("Spend sparks to charge the grid. Set off chains that pay the sparks back."),
+    rules: [
+      {
+        lead: msg("Tap a cell"),
+        text: msg(
+          "to spend a spark and add one charge. At four charge a cell pops and fires a bolt each way.",
+        ),
+      },
+      {
+        lead: msg("A bolt"),
+        text: msg(
+          "reaches up to three cells and adds one charge to the first charged cell it meets, which can pop that one too. Each wave of a chain is worth more than the last.",
+        ),
+      },
+      {
+        lead: msg("Long chains pay."),
+        text: msg(
+          "Four pops from one tap gives back a spark, seven gives two, eleven gives three. Leave four charged cells or fewer to clear the board for three more.",
+        ),
+      },
+      {
+        lead: msg("It gets harder."),
+        text: msg(
+          "Every second board asks for longer chains. From board three, surge cells fire diagonally too; from board five, a shielded cell's first hit only breaks its shield. The run ends when the sparks run out.",
         ),
       },
     ],

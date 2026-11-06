@@ -125,7 +125,7 @@ afterEach(() => {
 
 describe("the feed card", () => {
   it("offers Tap to play, which starts the game, and the rules", async () => {
-    stubSessions("crowns", "queens@1");
+    stubSessions("crowns", "queens@2");
     await renderAt(<FeedItem game={crowns} />);
 
     const play = screen.getByRole("link", { name: /Tap to play/ });
@@ -141,7 +141,7 @@ describe("the feed card", () => {
   });
 
   it("shows the game's full rules in a sheet, with Tap to play at the bottom", async () => {
-    stubSessions("crowns", "queens@1");
+    stubSessions("crowns", "queens@2");
     await renderAt(<FeedItem game={crowns} />);
 
     fireEvent.click(screen.getByRole("button", { name: /^Rules$/ }));

@@ -7,7 +7,7 @@ import {
 } from "@/lib/games/mini-sudoku-bank";
 import {
   board,
-  budgetMs,
+  parMs,
   candidates,
   canPlace,
   conflicts,
@@ -162,9 +162,10 @@ describe("the boards", () => {
   });
 });
 
-describe("the clock", () => {
-  it("starts at two minutes and adds the tapered allowance of the next board", () => {
-    expect([0, 1, 2, 3, 8].map(budgetMs)).toEqual([120000, 192000, 274500, 349500, 690000]);
+describe("par", () => {
+  it("adds each board's allowance, by its tier", () => {
+    // Boards 1–2 gentle (60 s), 3–5 easy (75), 6–9 medium (105), 10+ hard (135).
+    expect([0, 1, 2, 3, 6, 10].map(parMs)).toEqual([0, 60_000, 120_000, 195_000, 450_000, 900_000]);
   });
 });
 
@@ -235,7 +236,7 @@ describe("a run", () => {
     const run = play(createRun(1), [...LINE_ONE, ...LINE_TWO]);
     expect(run).toMatchObject({ level: 3, levelsCleared: 2, score: 120 });
     expect(submission(run)).toEqual({
-      rulesVersion: "mini-sudoku@1",
+      rulesVersion: "mini-sudoku@2",
       actions: [...LINE_ONE, ...LINE_TWO],
       score: 120,
       tapsPlaced: 34,
@@ -243,10 +244,10 @@ describe("a run", () => {
     });
   });
 
-  it("ends when stopped or out of time, and then takes no more moves", () => {
-    const stopped = finish(play(createRun(1), LINE_ONE.slice(0, 3)), "stopped");
+  it("ends when stopped, and then takes no more moves", () => {
+    const stopped = finish(play(createRun(1), LINE_ONE.slice(0, 3)));
     expect(stopped).toMatchObject({ outcome: "over", ending: "stopped" });
-    expect(finish(stopped, "time")).toBe(stopped);
+    expect(finish(stopped)).toBe(stopped);
     const empty = stopped.cells.indexOf(EMPTY);
     expect(canPlace(stopped, empty, 2)).toBe(false);
   });

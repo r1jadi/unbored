@@ -290,8 +290,8 @@ export function oneMoveHint(
 
 export type QueensHint = {
   readonly cell: number;
-  /** `crown`: place one here. `mark`: this cell can't hold one — an X. */
-  readonly kind: "crown" | "mark";
+  /** `crown`: place one here. `mark`: this cell can't hold one — an X. `clear`: this crown comes off. */
+  readonly kind: "crown" | "mark" | "clear";
   readonly reason: string;
   /** The cells the reason is about — a row, column or region — to outline. */
   readonly focus: readonly number[];
@@ -299,9 +299,11 @@ export type QueensHint = {
 
 /**
  * Crowns: a cell and what goes there, by the simplest rule that forces it. Cells
- * are "open" when no crown placed so far rules them out and they are not a red
- * X; the player's own X notes are not trusted. In order:
+ * are "open" when no crown placed so far rules them out; the player's own X notes
+ * are not trusted. In order:
  *
+ *   0. a crown off the board's only solution comes off, since every step below
+ *      trusts the crowns placed;
  *   1. a row, column or region with one open cell left takes its crown there;
  *   2. a region whose open cells all sit in one row (or column) owns that row's
  *      crown, so the row's other open cells are X — and the same the other way
@@ -315,11 +317,23 @@ export function queensHint(run: QueensRun): QueensHint | null {
   const { size, regions, solution } = queensBoard(run.seed, run.level);
   const cells = run.cells;
   const blocked = blockedCells(size, regions, cells);
-  const open = (cell: number) =>
-    cells[cell] !== "queen" && cells[cell] !== "ruled-out" && !blocked.has(cell);
+  const open = (cell: number) => cells[cell] !== "queen" && !blocked.has(cell);
   const rowOf = (cell: number) => Math.floor(cell / size);
   const columnOf = (cell: number) => cell % size;
   const everyCell = Array.from({ length: size * size }, (_, cell) => cell);
+
+  // 0. A crown that can't stay.
+  const wrong = everyCell.find(
+    (cell) => cells[cell] === "queen" && solution[rowOf(cell)] !== columnOf(cell),
+  );
+  if (wrong !== undefined) {
+    return {
+      cell: wrong,
+      kind: "clear",
+      reason: t("This crown isn't part of the solution. Tap it or use Undo to take it off."),
+      focus: [wrong],
+    };
+  }
 
   type Unit = { name: string; own: string; cells: number[] };
   const units: Unit[] = [];

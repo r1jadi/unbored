@@ -6,6 +6,9 @@ import { describe, expect, it } from "vitest";
 import { board as boltedBoard } from "@/lib/games/bolted";
 import { createRun, findSwap, swap } from "@/lib/games/cascade";
 import { puzzleFor } from "@/lib/games/checkmate";
+import { replay as queensReplay } from "@/lib/games/queens";
+import { speedBonus } from "@/lib/games/speed";
+import { board as fuseboxBoard, boardCode, replay as fuseboxReplay } from "@/lib/games/fusebox";
 
 /**
  * The other half of tests/security/verifier_vectors.sql.
@@ -65,6 +68,60 @@ describe("the verifier vectors", () => {
         `seed ${seed}, board ${level}`,
       ).toBe(nuts);
     }
+  });
+
+  it("are Crowns' lines as the engine plays them", () => {
+    const cases = vectors("queens-speed");
+    expect(cases.length).toBeGreaterThanOrEqual(3);
+    for (const [seed, actions, score, level, cleared, cells] of cases) {
+      const run = queensReplay(seed!, actions!.split(",").map(Number));
+      expect(run.taps.join(","), `seed ${seed}: every action is legal`).toBe(actions);
+      expect(String(run.score), `seed ${seed}`).toBe(score);
+      expect(String(run.level), `seed ${seed}`).toBe(level);
+      expect(String(run.levelsCleared), `seed ${seed}`).toBe(cleared);
+      expect(
+        run.cells.map((cell) => ["empty", "mark", "queen"].indexOf(cell)).join(""),
+        `seed ${seed}`,
+      ).toBe(cells);
+    }
+  });
+
+  it("are the speed bonus as the client works it out", () => {
+    const cases = vectors("speed-bonus");
+    expect(cases.length).toBeGreaterThanOrEqual(3);
+    for (const [base, par, elapsed, bonus] of cases) {
+      expect(String(speedBonus(Number(base), Number(par), Number(elapsed)))).toBe(bonus);
+    }
+  });
+
+  it("are Fusebox's boards as the engine deals them", () => {
+    const cases = vectors("fusebox-boards");
+    expect(cases.length).toBeGreaterThanOrEqual(3);
+    for (const [seed, level, cells] of cases) {
+      expect(boardCode(fuseboxBoard(seed!, Number(level))), `seed ${seed}, board ${level}`).toBe(
+        cells,
+      );
+    }
+  });
+
+  it("are Fusebox's lines as the engine plays them", () => {
+    const cases = vectors("fusebox-lines");
+    expect(cases.length).toBeGreaterThanOrEqual(3);
+    const reached = new Set<number>();
+    for (const [seed, actions, score, sparks, level, boards, pops, cells] of cases) {
+      const run = fuseboxReplay(seed!, actions!.split(",").map(Number));
+      expect(run.actions.join(","), `seed ${seed}: every tap is legal`).toBe(actions);
+      expect(String(run.score), `seed ${seed}`).toBe(score);
+      expect(String(run.sparks), `seed ${seed}`).toBe(sparks);
+      expect(String(run.level), `seed ${seed}`).toBe(level);
+      expect(String(run.levelsCleared), `seed ${seed}`).toBe(boards);
+      expect(String(run.pops), `seed ${seed}`).toBe(pops);
+      // A run that ended has dealt nothing since its last board, and the verifier stops there too.
+      expect(boardCode(run.cells), `seed ${seed}`).toBe(cells);
+      reached.add(run.level);
+    }
+    // The lines have to reach the boards with surge and shielded cells, or they prove little.
+    expect(Math.max(...reached)).toBeGreaterThanOrEqual(5);
   });
 
   it("are Checkmate's first ten puzzles as the engine deals them", () => {

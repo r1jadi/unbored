@@ -18,6 +18,7 @@ import { GameExits } from "@/components/game/GameExits";
 import { HintButton, HintNote } from "@/components/game/Hint";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import { RulesList } from "@/components/game/RulesList";
+import { SpeedBonusStat, SpeedMeter } from "@/components/game/SpeedMeter";
 import { RunEndActions } from "@/components/game/RunEndActions";
 import { SavedRunCard } from "@/components/game/SavedRunCard";
 import {
@@ -42,10 +43,9 @@ import {
   type PlaySession,
   type RunResult,
 } from "@/lib/games/sessions";
-import { formatClockGain } from "@/lib/games/clock";
 import {
   board as drawBoard,
-  budgetMs,
+  parMs,
   conflicts,
   EMPTY,
   MINI_SUDOKU_BOX_COLS,
@@ -158,7 +158,7 @@ export function MiniSudokuRuntime({
         <h2 className="text-xl font-semibold">{t("Your run was not verified")}</h2>
         <p className="mx-auto max-w-sm text-sm text-muted-foreground">
           {t(
-            "{error} Nothing was saved. Sending the same run again is safe, but a timed run has to reach the server soon after its clock runs out.",
+            "{error} Nothing was saved, and nothing needs to be — sending the same run again is safe.",
             { error: playErrorMessage(state.error) },
           )}
         </p>
@@ -182,7 +182,7 @@ export function MiniSudokuRuntime({
         key={state.session.id}
         run={state.run}
         session={state.session}
-        deadline={state.deadline}
+        startedAt={state.startedAt}
         verifying={state.status === "submitting"}
         onPlace={state.place}
         onFinish={state.finish}
@@ -196,7 +196,7 @@ export function MiniSudokuRuntime({
         slug={slug}
         run={state.run}
         result={state.result}
-        outOfTime={state.run.ending === "time"}
+        played={state.run.score}
         onRestart={state.restart}
       />
     );
@@ -262,18 +262,19 @@ function firstEmpty(cells: readonly number[]): number {
   return Math.max(0, cells.indexOf(EMPTY));
 }
 
-/** The live run: one board at a time, against the clock. */
+/** The live run: one board at a time, with no clock to lose to. */
 function Board({
   run,
   session,
-  deadline,
+  startedAt,
   verifying,
   onPlace,
   onFinish,
 }: {
   run: MiniSudokuRun;
   session: PlaySession;
-  deadline: number;
+  /** When the run started, as a `Date.now()` timestamp. */
+  startedAt: number;
   verifying: boolean;
   onPlace: (cell: number, digit: number) => void;
   onFinish: () => void;
@@ -283,10 +284,9 @@ function Board({
     score: run.score,
     cleared: run.levelsCleared,
     over: run.outcome === "over",
-    ending: run.ending === "time" ? "lose" : "stop",
+    ending: "stop",
   });
   const [confirming, setConfirming] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
   const [selected, setSelected] = useState(() => firstEmpty(run.cells));
   const cellRefs = useRef<(HTMLButtonElement | null)[]>([]);
   // Pencil notes, and whether the pad writes notes instead of digits. Both are
@@ -310,8 +310,8 @@ function Board({
     latestNotes.current = emptyNotesState();
   }, [drawn]);
 
-  // A solved board gets a beat before the next one. It is short: the clock keeps
-  // running, on the server as well as here. A step up to a harder tier is worth
+  // A solved board gets a beat before the next one. It is short: the speed bonus is
+  // still being timed, on the server as well as here. A step up to a harder tier is worth
   // saying once, and what it asks of the player.
   const steppedUp = run.level > 1 && tierOf(run.level) !== tierOf(run.level - 1);
   const levelUp = useLevelUp(run.level, run.score, levelUpHold(steppedUp));
@@ -325,12 +325,6 @@ function Board({
     cellRefs.current[firstFocus.current]?.focus();
   }, []);
 
-  useEffect(() => {
-    if (!accepting) return;
-    const timer = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(timer);
-  }, [accepting]);
-
   // A right move is one more of the player's digits that clashes with nothing.
   const hints = useHint({
     progress: `${run.level}:${miniSudokuRight(run)}`,
@@ -340,8 +334,6 @@ function Board({
 
   const clashes = useSettledClashes(conflicts(run.cells));
   const empty = run.cells.filter((value) => value === EMPTY).length;
-  const remaining = Math.max(0, deadline - now);
-  const earned = budgetMs(run.levelsCleared);
   const selectedGiven = drawn.start[selected] !== EMPTY;
   const selectedDigit = run.cells[selected];
   const related = useMemo(() => new Set(peers(selected)), [selected]);
@@ -450,29 +442,17 @@ function Board({
         </p>
       )}
 
-      <div className="mx-auto flex w-full max-w-md items-center gap-3 pb-1 text-xs text-muted-foreground">
+      <div className="mx-auto flex w-full max-w-md items-center justify-between gap-3 pb-1 text-xs text-muted-foreground">
         <span className="tabular">
           {empty} {empty === 1 ? t("cell") : t("cells")} left
         </span>
-        <div
-          className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2"
-          role="progressbar"
-          aria-label={t("Time left")}
-          aria-valuemin={0}
-          aria-valuemax={Math.round(earned / 1000)}
-          aria-valuenow={Math.ceil(remaining / 1000)}
-        >
-          <div
-            className={cn(
-              "h-full rounded-full transition-[width] duration-200 motion-reduce:transition-none",
-              remaining < 20_000 ? "bg-destructive" : "bg-primary",
-            )}
-            style={{ width: `${Math.min(100, (remaining / earned) * 100)}%` }}
-          />
-        </div>
-        <span className={cn("tabular", remaining < 20_000 && "text-destructive")}>
-          {formatSeconds(remaining)}
-        </span>
+        <SpeedMeter
+          startedAt={startedAt}
+          score={run.score}
+          solvedParMs={parMs(run.levelsCleared)}
+          boardParMs={parMs(run.levelsCleared + 1)}
+          running={!verifying && run.outcome === "playing"}
+        />
       </div>
 
       {/* A square board, centred in whatever space is left: the smaller of the
@@ -569,9 +549,7 @@ function Board({
               <LevelUpOverlay
                 levelUp={levelUp}
                 unit={t("Board")}
-                next={`Board ${run.level} · ${tierOf(run.level)} · clock +${formatClockGain(
-                  budgetMs(run.levelsCleared) - budgetMs(run.levelsCleared - 1),
-                )}`}
+                next={`Board ${run.level} · ${tierOf(run.level)}`}
                 note={
                   steppedUp && TIER_NOTES[tierOf(run.level)]
                     ? t(TIER_NOTES[tierOf(run.level)]!)
@@ -683,7 +661,7 @@ function Board({
 /** The line above the board: what just happened, or what to do. */
 function statusLine(run: MiniSudokuRun, verifying: boolean, clashing: boolean): string {
   if (verifying) return t("Verifying your run with the server…");
-  if (run.outcome === "over") return run.ending === "time" ? t("Time's up.") : t("Run ended.");
+  if (run.outcome === "over") return t("Run ended.");
   if (clashing) return t("Something clashes: a red digit repeats in its row, column or box.");
   const start = drawBoard(run.seed, run.level).start;
   if (run.levelsCleared > 0 && run.cells.every((value, cell) => value === start[cell])) {
@@ -726,13 +704,14 @@ function Finished({
   slug,
   run,
   result,
-  outOfTime,
+  played,
   onRestart,
 }: {
   slug: string;
   run: MiniSudokuRun;
   result: RunResult;
-  outOfTime: boolean;
+  /** The points the run scored before the server added its speed bonus. */
+  played: number;
   onRestart: () => void;
 }) {
   return (
@@ -745,9 +724,7 @@ function Finished({
             <ShieldCheck className="size-5 text-muted-foreground" />
           )}
         </div>
-        <p className="text-sm text-muted-foreground">
-          {outOfTime ? t("Time's up") : t("Run ended")}
-        </p>
+        <p className="text-sm text-muted-foreground">{t("Run ended")}</p>
         <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
           {t("{tilesPlaced} {n}, {clearedColumns} {n2} solved.", {
@@ -762,6 +739,7 @@ function Finished({
       <BoardReview run={run} />
 
       <dl className="mx-auto grid w-full max-w-xs grid-cols-2 gap-2 text-sm">
+        <SpeedBonusStat verified={result.score} played={played} />
         <div className="rounded-xl bg-surface p-3">
           <dt className="text-xs text-muted-foreground">{t("Duration")}</dt>
           <dd className="font-semibold tabular">{formatSeconds(result.durationMs)}</dd>

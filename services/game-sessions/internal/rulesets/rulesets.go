@@ -87,6 +87,8 @@ var families = map[string]Ruleset{
 	// Bolted: a move as from × 16 + to (up to 170 with eleven bolts), then 253 an
 	// extra bolt, 254 undo and 255 restart.
 	"bolted": {Verifier: "complete_bolted_run", MaxActions: 8192, ActionCodes: 256},
+	// Fusebox taps a cell of the 6×6 board.
+	"fusebox": {Verifier: "complete_fusebox_run", MaxActions: 4096, ActionCodes: 36},
 }
 
 // overrides are the versions whose bounds differ from their family's: the
@@ -101,6 +103,10 @@ var overrides = map[string]Ruleset{
 	// The retired 5×5 maximum, twelve taps for a perfect run; the endless rules carry 4096.
 	"one-move@1": {Verifier: "complete_one_move_run", MaxActions: 60, ActionCodes: 25},
 	"one-move@2": {Verifier: "complete_one_move_run", MaxActions: 4096, ActionCodes: 1026 * 1026},
+	// The untimed rules with a speed bonus. Crowns' 81 is undo and 82 clears the board.
+	"queens@2":      {Verifier: "complete_queens_speed_run", MaxActions: 8192, ActionCodes: 83},
+	"sudoku@4":      {Verifier: "complete_sudoku_speed_run", MaxActions: 8192, ActionCodes: 810},
+	"mini-sudoku@2": {Verifier: "complete_mini_sudoku_speed_run", MaxActions: 8192, ActionCodes: 360},
 	// The legacy deck: sixty cells, one tap each.
 	"dont-touch@1": {Verifier: "complete_dont_touch_run", MaxActions: 60, ActionCodes: 60},
 }

@@ -34,25 +34,25 @@
  * (0–80), or clears the cell when `digit` is 0. A cell that started filled, or a
  * move that leaves the cell as it was, is not a move.
  *
- * ## The endless game, against the clock
+ * ## The endless game
  *
- * A run is a race: one clock that starts at six minutes forty, timed by the server from
- * the session's start. Every solved board scores ten points a row and adds the
- * next board's allowance — more for the harder tiers. A wrong digit never ends a
- * run: the player fixes it, and the clock is what is spent.
+ * A run has no clock to lose to: it ends only when the player ends it. Every solved
+ * board scores ten points a row, and every board has a par time, more for the harder
+ * tiers. A run ahead of its par earns a bonus when it ends (`speed.ts`), timed by the
+ * server from the session's start. A wrong digit never ends a run: the player fixes
+ * it, and only the time it took is spent.
  *
  * Storage rule: nothing here is persisted. A score only exists once the server has
  * verified it.
  */
 
 import { SUDOKU_BANK, SUDOKU_PER_TIER, SUDOKU_TIERS } from "@/lib/games/sudoku-bank";
-import { taperedBonusMs } from "@/lib/games/clock";
 
 /** The `runtime` value the catalogue must carry for these rules to play a game. */
 export const SUDOKU_RUNTIME = "sudoku";
 
 /** The rules the server can verify. Sent with every run and pinned to a session. */
-export const SUDOKU_RULES_VERSION = "sudoku@3";
+export const SUDOKU_RULES_VERSION = "sudoku@4";
 
 /** The board is always 9×9, in 3×3 boxes. */
 export const SUDOKU_SIDE = 9;
@@ -61,14 +61,8 @@ export const SUDOKU_BOX = 3;
 /** The most moves one submission may carry: a request ceiling, not a final board. */
 export const SUDOKU_MAX_ACTIONS = 8192;
 
-/** The clock a run starts with. */
-export const SUDOKU_START_MS = 400_000;
-
-/** The time a board of each tier is given: what solving the board before it adds. */
+/** A board's par time in ms, by tier. */
 export const SUDOKU_ALLOWANCE_MS = [240_000, 300_000, 480_000, 600_000] as const;
-
-/** How late after its clock ran out the server still accepts a run. */
-export const SUDOKU_SLACK_MS = 20_000;
 
 /** Ten points per row of a solved board. */
 export const SUDOKU_POINTS_PER_BOARD = 10 * SUDOKU_SIDE;
@@ -92,7 +86,7 @@ const OUTER_INCREMENT = 1013904223;
 const INNER_MULTIPLIER = 22695477;
 const INNER_INCREMENT = 1;
 
-export type SudokuEnding = "time" | "stopped" | "bound";
+export type SudokuEnding = "stopped" | "bound";
 export type SudokuOutcome = "playing" | "over";
 
 /** A board as it is drawn. */
@@ -171,21 +165,15 @@ export function tierOf(level: number): SudokuTier {
   return SUDOKU_TIERS[tierIndex(level)];
 }
 
-/** The time the board at `level` is given. */
+/** The par time of the board at `level`. */
 export function allowanceMs(level: number): number {
   return SUDOKU_ALLOWANCE_MS[tierIndex(level)];
 }
 
-/**
- * The clock a run has earned once `levelsCleared` boards are solved, in ms: six
- * minutes forty, plus the allowance of the board after each one solved, shrunk by
- * the taper (`clock.ts`) for the board just solved.
- */
-export function budgetMs(levelsCleared: number): number {
-  let total = SUDOKU_START_MS;
-  for (let level = 1; level <= levelsCleared; level += 1) {
-    total += taperedBonusMs(allowanceMs(level + 1), level);
-  }
+/** The par time of the first `levelsCleared` boards, in ms. */
+export function parMs(levelsCleared: number): number {
+  let total = 0;
+  for (let level = 1; level <= levelsCleared; level += 1) total += allowanceMs(level);
   return total;
 }
 
@@ -446,10 +434,10 @@ export function place(run: SudokuRun, cell: number, digit: number): SudokuRun {
   };
 }
 
-/** Ends the run where it stands: the clock ran out, or the player stopped. */
-export function finish(run: SudokuRun, ending: "time" | "stopped"): SudokuRun {
+/** Ends the run where it stands: the player stopped. */
+export function finish(run: SudokuRun): SudokuRun {
   if (run.outcome !== "playing") return run;
-  return { ...run, outcome: "over", ending };
+  return { ...run, outcome: "over", ending: "stopped" };
 }
 
 export type SudokuSubmission = {

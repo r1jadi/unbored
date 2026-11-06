@@ -9,6 +9,7 @@ import { CrosswordRuntime } from "@/components/game/CrosswordRuntime";
 import { DecantRuntime } from "@/components/game/DecantRuntime";
 import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
 import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
+import { FuseboxRuntime } from "@/components/game/FuseboxRuntime";
 import { GridburstRuntime } from "@/components/game/GridburstRuntime";
 import { HuediniRuntime } from "@/components/game/HuediniRuntime";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
@@ -31,6 +32,7 @@ import { CROSSWORD_RUNTIME } from "@/lib/games/crossword";
 import { DECANT_RUNTIME } from "@/lib/games/decant";
 import { DONT_TOUCH_RUNTIME } from "@/lib/games/dont-touch";
 import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
+import { FUSEBOX_RUNTIME } from "@/lib/games/fusebox";
 import { GRIDBURST_RUNTIME } from "@/lib/games/gridburst";
 import { HUEDINI_RUNTIME } from "@/lib/games/huedini";
 import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
@@ -84,4 +86,5 @@ export const RUNTIMES: Readonly<Record<string, ComponentType<RuntimeProps>>> = {
   [CASCADE_RUNTIME]: CascadeRuntime,
   [CHECKMATE_RUNTIME]: CheckmateRuntime,
   [BOLTED_RUNTIME]: BoltedRuntime,
+  [FUSEBOX_RUNTIME]: FuseboxRuntime,
 };

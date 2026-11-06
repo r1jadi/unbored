@@ -132,4 +132,148 @@ begin
   end loop;
 end $$;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Fusebox: the cells a seed deals a level, one hex digit each (charge + 4 × kind)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  got text;
+begin
+  for v in select * from (values
+    -- vectors:fusebox-boards:begin
+    ('1', '1', '022310021200332112130320102201102203'),
+    ('1', '3', '321603131001122112003103233130112221'),
+    ('1', '5', '590203112010010013221101302222010200'),
+    ('1', '13', '20000905ab102122112112220a7592100102'),
+    ('42', '1', '001030211232103301202110122112021221'),
+    ('42', '3', '252001002201301012232010330101310022'),
+    ('42', '5', '120107231010031000290303103120022200'),
+    ('42', '13', '01295212b6120300001210a21131050212aa'),
+    ('9001', '1', '120212220200111112223203100002111222'),
+    ('9001', '3', '321002302201210322061322002122001010'),
+    ('9001', '5', '022111101110122200225110122930332201'),
+    ('9001', '13', '1932012100a1a01255a92050122213022111'),
+    ('-7', '1', '002323222001201230020022200300033300'),
+    ('-7', '3', '700102131202220110020301020231012200'),
+    ('-7', '5', '100310232121112211211500120321119110'),
+    ('-7', '13', '07101111220220311126a909322213005a91')
+    -- vectors:fusebox-boards:end
+  ) as vectors(seed, level, cells) loop
+    select string_agg(to_hex(c), '') into got
+      from unnest(public.fusebox_board(v.seed::bigint, v.level::integer)) as c;
+    if got is distinct from v.cells then
+      raise exception 'ASSERTION FAILED: Fusebox seed % board % — the database deals %, the engine %',
+        v.seed, v.level, got, v.cells;
+    end if;
+    raise notice 'ok   Fusebox seed % board %: the verifier deals the engine''s board', v.seed, v.level;
+  end loop;
+end $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Fusebox: a line of taps, and everything the replay derives from it
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  r record;
+  got text;
+begin
+  for v in select * from (values
+    -- vectors:fusebox-lines:begin
+    ('1', '13,8,16,10,14,8,7,15,27,22,23,17,26,1,7,8,3,12,16,4,17,22,26,5,3,24,18,19,26,20,27,8,23,28', '533', '0', '5', '4', '110', '510000220020020030000000000000030000'),
+    ('42', '4,14,6,26,17,22,28,34,6,0,2,10,4,11,16,22,30,0,1,2,9,27,34,22', '188', '0', '3', '2', '64', '000002000002000032000000000002000003'),
+    ('9001', '20,19,29,33,14,7,3,14,28,8,6,0,1,6,15,1,8,31,28,31,25,19,21,1,2,10,3,25,12,6,0,3,4,10,20,14,2,7,10,12,13,21,22,19,18', '493', '0', '7', '6', '157', '000000000000000000000000322220232030'),
+    ('123456789', '2,0,1,7,6,14,20,34,35,17,0', '30', '0', '1', '0', '18', '100002000022000000000020020020000000'),
+    ('-7', '27,6,22,9,6,0,34,0,6,12,19,15,3,16,15,1,25,3,7,8,14,16,12,19,20,4,11,17,24,31,15,32,25,19,17,23,13,5,23,27,26,25,5,0,0,0,0,0', '526', '0', '8', '7', '152', '322120221120160a02152921120122112122')
+    -- vectors:fusebox-lines:end
+  ) as vectors(seed, actions, score, sparks, level, boards, pops, cells) loop
+    select * into r from public.fusebox_replay(
+      v.seed::bigint, string_to_array(v.actions, ',')::integer[]);
+    select string_agg(to_hex(c), '') into got from unnest(r.cells) as c;
+    if not r.valid
+       or r.score::text is distinct from v.score
+       or r.sparks::text is distinct from v.sparks
+       or r.level::text is distinct from v.level
+       or r.boards::text is distinct from v.boards
+       or r.pops::text is distinct from v.pops
+       or got is distinct from v.cells then
+      raise exception 'ASSERTION FAILED: Fusebox seed % — the database reaches % (score %, sparks %, board %, % cleared, % pops), the engine % (score %, sparks %, board %, % cleared, % pops)',
+        v.seed, got, r.score, r.sparks, r.level, r.boards, r.pops,
+        v.cells, v.score, v.sparks, v.level, v.boards, v.pops;
+    end if;
+    raise notice 'ok   Fusebox seed %: the verifier replays the engine''s line', v.seed;
+  end loop;
+
+  -- A tap off the board, or after the sparks ran out, is not a move.
+  select * into r from public.fusebox_replay(1, array[36]);
+  if r.valid then
+    raise exception 'ASSERTION FAILED: Fusebox accepted a tap off the board';
+  end if;
+  select * into r from public.fusebox_replay(1, array[-1]);
+  if r.valid then
+    raise exception 'ASSERTION FAILED: Fusebox accepted a negative tap';
+  end if;
+end $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Crowns (queens@2): a line of taps, undos (81) and clears (82). The cells left are
+-- written one digit each: 0 empty, 1 X, 2 crown.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  r record;
+begin
+  for v in select * from (values
+    -- vectors:queens-speed:begin
+    ('1', '0,0,0,3,3,81,81,82,1,1,8,8,10,10,19,19,22,22,4', '50', '2', '1', '000010000000000000000000000000000000'),
+    ('1', '1,1,3,81,1', '0', '1', '0', '0000000000000000000000000'),
+    ('1', '0,0,1,1,81,81,81', '0', '1', '0', '1000000000000000000000000'),
+    ('1', '1,1,8,8,10,10,19,19,0,0,0,22,22', '50', '2', '1', '000000000000000000000000000000000000')
+    -- vectors:queens-speed:end
+  ) as vectors(seed, actions, score, level, cleared, cells) loop
+    select * into r from public.queens_speed_replay(
+      v.seed::bigint, string_to_array(v.actions, ',')::integer[]);
+    if not r.valid
+       or r.score::text is distinct from v.score
+       or r.level::text is distinct from v.level
+       or r.cleared::text is distinct from v.cleared
+       or array_to_string(r.cells, '') is distinct from v.cells then
+      raise exception 'ASSERTION FAILED: Crowns line % — the database reaches % (score %, board %), the engine % (score %, board %)',
+        v.actions, array_to_string(r.cells, ''), r.score, r.level, v.cells, v.score, v.level;
+    end if;
+    raise notice 'ok   Crowns line %: the verifier replays the engine''s line', v.actions;
+  end loop;
+end $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- The speed bonus: points, par, elapsed, bonus
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+begin
+  for v in select * from (values
+    -- vectors:speed-bonus:begin
+    ('50', '60000', '0', '50'),
+    ('50', '60000', '30000', '25'),
+    ('50', '60000', '59999', '0'),
+    ('50', '60000', '60000', '0'),
+    ('50', '60000', '999999', '0'),
+    ('110', '150000', '30000', '88'),
+    ('0', '60000', '0', '0'),
+    ('50', '0', '0', '0')
+    -- vectors:speed-bonus:end
+  ) as vectors(base, par, elapsed, bonus) loop
+    if public.speed_bonus(v.base::bigint, v.par::bigint, v.elapsed::bigint)::text is distinct from v.bonus then
+      raise exception 'ASSERTION FAILED: speed_bonus(%, %, %) is not %', v.base, v.par, v.elapsed, v.bonus;
+    end if;
+  end loop;
+end $$;
+
 rollback;

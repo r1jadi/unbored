@@ -5,6 +5,7 @@ import * as cascade from "@/lib/games/cascade";
 import * as checkmate from "@/lib/games/checkmate";
 import * as decant from "@/lib/games/decant";
 import * as eightPuzzle from "@/lib/games/eight-puzzle";
+import * as fusebox from "@/lib/games/fusebox";
 import * as huedini from "@/lib/games/huedini";
 import * as miniSudoku from "@/lib/games/mini-sudoku";
 import * as scatter from "@/lib/games/scatter";
@@ -142,6 +143,12 @@ describe("replaying a saved run", () => {
       run = huedini.move(run, found, direction);
     }
     expectSameRun(run, (r) => huedini.submission(r).actions, huedini.replay);
+  });
+
+  it("rebuilds Fusebox", () => {
+    let run = fusebox.createRun(SEED);
+    for (const cell of [0, 7, 14, 21]) run = fusebox.tap(run, cell);
+    expectSameRun(run, (r) => fusebox.submission(r).actions, fusebox.replay);
   });
 
   it("rebuilds Scatter", () => {

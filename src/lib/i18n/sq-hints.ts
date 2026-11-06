@@ -1,5 +1,7 @@
 /** Albanian for the hints (`lib/games/hints.ts`, `lib/games/mini-sudoku-hints.ts`). */
 export const sqHints: Record<string, string> = {
+  "This crown isn't part of the solution. Tap it or use Undo to take it off.":
+    "Kjo kurorë nuk është pjesë e zgjidhjes. Preke ose përdor Zhbëj për ta hequr.",
   " — and it holds the most tiles of the columns that would clear":
     " — dhe ka më shumë pllaka nga kolonat që do të pastroheshin",
   "{fits} all fit here, and more than one of them can finish the board. A {digit} works.":

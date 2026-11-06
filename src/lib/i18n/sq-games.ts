@@ -536,6 +536,59 @@ export const sqGames: Record<string, string> = {
   "You have an unfinished run of {title}, saved to your account.":
     "Ke një lojë të papërfunduar të {title}, të ruajtur në llogarinë tënde.",
 
+  // Fusebox
+  "{charged} charged cells": "{charged} kuti të ngarkuara",
+  "{n} sparks left": "{n} shkëndija të mbetura",
+  "{pops} pops: 1 spark back.": "{pops} shpërthime: 1 shkëndijë kthehet.",
+  "{pops} pops: {refund} sparks back.": "{pops} shpërthime: {refund} shkëndija kthehen.",
+  "{pops} pops. Longer chains pay sparks back.":
+    "{pops} shpërthime. Zinxhirët më të gjatë kthejnë shkëndija.",
+  "{tilesPlaced} {n} popped, {clearedColumns} {n2} cleared.":
+    "{tilesPlaced} {n} të shpërthyera, {clearedColumns} {n2} të pastruara.",
+  "1 pop. Chains pay sparks back.": "1 shpërthim. Zinxhirët kthejnë shkëndija.",
+  "1 spark left": "1 shkëndijë e mbetur",
+  "Biggest chain": "Zinxhiri më i madh",
+  "Board {level}, {charged} charged cells.": "Tabela {level}, {charged} kuti të ngarkuara.",
+  "Board {n} cleared: +{FUSEBOX_CLEAR_SPARKS} sparks.":
+    "Tabela {n} u pastrua: +{FUSEBOX_CLEAR_SPARKS} shkëndija.",
+  "Charged. Line up a chain.": "U ngarkua. Përgatit një zinxhir.",
+  "Last spark. Make it count.": "Shkëndija e fundit. Përdore mirë.",
+  "One tap could have saved this run": "Një prekje mund ta kishte shpëtuar këtë lojë",
+  "Out of sparks": "Pa shkëndija",
+  "Out of sparks. The run is over.": "Mbaruan shkëndijat. Loja mbaroi.",
+  "Row {n}, column {n2}: charge {charge}.": "Rreshti {n}, kolona {n2}: ngarkesa {charge}.",
+  "Row {n}, column {n2}: shielded cell, charge {charge}.":
+    "Rreshti {n}, kolona {n2}: kuti e mbrojtur, ngarkesa {charge}.",
+  "Row {n}, column {n2}: surge cell, charge {charge}.":
+    "Rreshti {n}, kolona {n2}: kuti e fuqishme, ngarkesa {charge}.",
+  "Row {row}, column {column} would have popped 1 cell for +{gain}.":
+    "Rreshti {row}, kolona {column} do të shpërthente 1 kuti për +{gain}.",
+  "Row {row}, column {column} would have popped {pops} cells for +{gain}.":
+    "Rreshti {row}, kolona {column} do të shpërthente {pops} kuti për +{gain}.",
+  "Shielded cells appear: the first hit only breaks the shield.":
+    "Shfaqen kutitë e mbrojtura: goditja e parë vetëm thyen mburojën.",
+  "Sparks back: {one} pops +1 · {two} pops +2 · {three} pops +3":
+    "Shkëndija kthehen: {one} shpërthime +1 · {two} shpërthime +2 · {three} shpërthime +3",
+  "Surge cells appear: they fire diagonally too.":
+    "Shfaqen kutitë e fuqishme: lëshojnë rrufe edhe diagonalisht.",
+  "Tap a cell to add charge. At {n} it pops.":
+    "Prek një kuti për të shtuar ngarkesë. Me {n} ajo shpërthen.",
+  "The missed tap: row {row}, column {column}.":
+    "Prekja e humbur: rreshti {row}, kolona {column}.",
+  "Wave {n}": "Vala {n}",
+
+  // The speed bonus, and Crowns' free undo
+  "+{bonus} speed": "+{bonus} shpejtësi",
+  "Clear board": "Pastro tabelën",
+  "crown, clashing with another crown": "kurorë, në konflikt me një kurorë tjetër",
+  "Hint: this crown comes off.": "Ndihmë: kjo kurorë duhet hequr.",
+  "par {time}": "normale {time}",
+  "Speed bonus": "Bonus shpejtësie",
+  "Those crowns clash. Tap one to clear it, or use Undo.":
+    "Këto kurora janë në konflikt. Prek njërën për ta hequr, ose përdor Zhbëj.",
+  "Undo is free. Beat par for a speed bonus.":
+    "Zhbërja është falas. Mund kohën normale për një bonus shpejtësie.",
+
   // Scatter
   "{jams} of {SCATTER_MAX_JAMS} jams": "{jams} nga {SCATTER_MAX_JAMS} bllokime",
   "Board {level}, {side} by {side2}, {tiles} tiles.":

@@ -182,7 +182,25 @@ export function playSound(cue: SoundCue): void {
   if (!ctx) return;
   if (ctx.state === "suspended") void ctx.resume().catch(() => {});
 
-  const voice = VOICES[cue];
+  playVoice(ctx, VOICES[cue]);
+}
+
+/**
+ * One note of a chain reaction, two semitones higher for each wave and levelling
+ * off after two octaves, so a long chain keeps climbing without turning shrill.
+ */
+export function playChainNote(wave: number): void {
+  if (!readEnabled()) return;
+  const ctx = audio();
+  if (!ctx) return;
+  if (ctx.state === "suspended") void ctx.resume().catch(() => {});
+
+  const step = Math.min(Math.max(wave, 1) - 1, 12);
+  const frequency = 392 * 2 ** ((step * 2) / 12);
+  playVoice(ctx, { type: "triangle", volume: 0.14, notes: [[frequency, 0, 0.13]] });
+}
+
+function playVoice(ctx: AudioContext, voice: Voice): void {
   const now = ctx.currentTime;
   try {
     for (const [frequency, start, length] of voice.notes) {
