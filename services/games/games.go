@@ -345,6 +345,28 @@ func (s *service) register(router *httpx.Router) {
 	router.AuthenticatedFunc("POST "+GamePath+"/publish", httpx.NotImplemented(Name, "Submitting a game for review"))
 }
 
+// Short CDN lifetimes for answers that are the same for every guest. A cache hit
+// never reaches the gateway, this service or the database, which is most of what a
+// public read costs. The stale window answers at once while one request refreshes.
+const (
+	catalogueCDNCache   = "max-age=60, stale-while-revalidate=300"
+	leaderboardCDNCache = "max-age=30, stale-while-revalidate=120"
+)
+
+// cacheForGuests lets Vercel's CDN keep this answer. Call it only on the way to a
+// successful response. `Vercel-CDN-Cache-Control` is read by the CDN and removed
+// before the response leaves it, so browsers still get the API's `no-store`, and the
+// gateway passes it through because it isn't one of the headers it owns.
+//
+// A request with a token is never marked: it can carry the caller's own standing.
+// Vercel doesn't serve or store a cached answer for such a request either.
+func cacheForGuests(w http.ResponseWriter, r *http.Request, policy string) {
+	if r.Header.Get("Authorization") != "" {
+		return
+	}
+	w.Header().Set("Vercel-CDN-Cache-Control", policy)
+}
+
 func (s *service) listGames(w http.ResponseWriter, r *http.Request) {
 	if s.backend == nil {
 		s.notConfigured(w, r, "browse the catalogue")
@@ -366,6 +388,7 @@ func (s *service) listGames(w http.ResponseWriter, r *http.Request) {
 		// A well-formed slug that names no category is an empty result, not an
 		// error: the caller asked a valid question and the answer is "none".
 		if !found {
+			cacheForGuests(w, r, catalogueCDNCache)
 			httpx.WriteJSON(w, r, http.StatusOK, gameListResponse{Items: []gameView{}})
 			return
 		}
@@ -406,6 +429,7 @@ func (s *service) listGames(w http.ResponseWriter, r *http.Request) {
 			next = &cursor
 		}
 	}
+	cacheForGuests(w, r, catalogueCDNCache)
 	httpx.WriteJSON(w, r, http.StatusOK, gameListResponse{Items: items, NextCursor: next})
 }
 
@@ -506,6 +530,7 @@ func (s *service) getGame(w http.ResponseWriter, r *http.Request) {
 		plays = stat.Plays
 	}
 
+	cacheForGuests(w, r, catalogueCDNCache)
 	httpx.WriteJSON(w, r, http.StatusOK, view(game, plays))
 }
 
@@ -591,6 +616,7 @@ func (s *service) leaderboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	cacheForGuests(w, r, leaderboardCDNCache)
 	httpx.WriteJSON(w, r, http.StatusOK, response)
 }
 
@@ -648,6 +674,7 @@ func (s *service) overallLeaderboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	cacheForGuests(w, r, leaderboardCDNCache)
 	httpx.WriteJSON(w, r, http.StatusOK, response)
 }
 
@@ -672,6 +699,7 @@ func (s *service) listCategories(w http.ResponseWriter, r *http.Request) {
 			GameCount:   count.GameCount,
 		})
 	}
+	cacheForGuests(w, r, catalogueCDNCache)
 	httpx.WriteJSON(w, r, http.StatusOK, struct {
 		Items []categoryView `json:"items"`
 	}{Items: items})

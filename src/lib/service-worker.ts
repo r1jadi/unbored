@@ -6,8 +6,11 @@
  * change on every edit, and a worker holding on to them would only get in the way.
  *
  * Warming asks the worker to keep the play page of every playable game, and reads
- * each game's catalogue entry through it so the worker keeps that too. It runs at
- * most once a day per device, after the page has settled, and only online.
+ * each game's catalogue entry through it so the worker keeps that too. Each page is a
+ * server render, so this runs only when it has to: after a deploy (a kept page names
+ * that build's files, which the worker has since dropped), and otherwise weekly so
+ * new games arrive. Never more than once a day per device, after the page has
+ * settled, and only online.
  */
 
 import { useSyncExternalStore } from "react";
@@ -15,7 +18,9 @@ import { useSyncExternalStore } from "react";
 import { fetchCategories, fetchGame, fetchGames, MAX_PAGE_SIZE } from "@/lib/games/catalog";
 
 const WARMED_AT_KEY = "unbored:offline-warmed-at";
-const WARM_EVERY_MS = 24 * 60 * 60 * 1000;
+const WARMED_BUILD_KEY = "unbored:offline-warmed-build";
+const WARM_MIN_GAP_MS = 24 * 60 * 60 * 1000;
+const WARM_EVERY_MS = 7 * WARM_MIN_GAP_MS;
 const WARM_DELAY_MS = 5000;
 
 let registered = false;
@@ -33,9 +38,41 @@ export function registerServiceWorker(): void {
     .catch(() => undefined);
 }
 
+/** Whether to warm again, given the time since last time and the build it was for. */
+export function warmIsDue(
+  elapsedMs: number,
+  build: string | null,
+  warmedBuild: string | null,
+): boolean {
+  if (elapsedMs < WARM_MIN_GAP_MS) return false;
+  if (elapsedMs >= WARM_EVERY_MS) return true;
+  return build !== null && build !== warmedBuild;
+}
+
+async function currentBuild(): Promise<string | null> {
+  try {
+    const response = await fetch("/offline-manifest.json", { cache: "no-store" });
+    if (!response.ok) return null;
+    const { version } = (await response.json()) as { version?: unknown };
+    return typeof version === "string" ? version : null;
+  } catch {
+    return null;
+  }
+}
+
+function readWarmedBuild(): string | null {
+  try {
+    return localStorage.getItem(WARMED_BUILD_KEY);
+  } catch {
+    return null;
+  }
+}
+
 async function warm(registration: ServiceWorkerRegistration): Promise<void> {
   if (!navigator.onLine || !registration.active) return;
-  if (Date.now() - readWarmedAt() < WARM_EVERY_MS) return;
+  // Cheap to ask: this is a static file the CDN answers.
+  const build = await currentBuild();
+  if (!warmIsDue(Date.now() - readWarmedAt(), build, readWarmedBuild())) return;
   try {
     const list = await fetchGames({ limit: MAX_PAGE_SIZE });
     const games = list.items.filter((game) => game.playable && game.runtime);
@@ -48,7 +85,7 @@ async function warm(registration: ServiceWorkerRegistration): Promise<void> {
       type: "warm",
       games: games.map((game) => ({ slug: game.slug, title: game.title })),
     });
-    writeWarmedAt(Date.now());
+    writeWarmedAt(Date.now(), build);
   } catch {
     // Offline or the catalogue is down: try again on the next visit.
   }
@@ -62,9 +99,10 @@ function readWarmedAt(): number {
   }
 }
 
-function writeWarmedAt(value: number): void {
+function writeWarmedAt(value: number, build: string | null): void {
   try {
     localStorage.setItem(WARMED_AT_KEY, String(value));
+    if (build !== null) localStorage.setItem(WARMED_BUILD_KEY, build);
   } catch {
     // Storage blocked: warming simply runs again next visit.
   }
