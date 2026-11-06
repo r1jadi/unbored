@@ -2,12 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { EmptyState, GridSkeleton, Page, PageHeader, Section } from "@/components/common";
-import { GameArt } from "@/components/game/GameArt";
+import { DailyWidget } from "@/components/game/DailyWidget";
 import { GameCard } from "@/components/game/GameCard";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth/session";
 import { MAX_PAGE_SIZE, mostPlayed, useCategories, useGames } from "@/lib/games/catalog";
-import { prefetchExplore } from "@/lib/prefetch";
+import { pickBySlug, useFeaturedSlugs, useTrending } from "@/lib/games/rankings";
+import { DAILY_LIMIT, prefetchExplore } from "@/lib/prefetch";
 import { seo } from "@/lib/seo";
 
 import { t } from "@/lib/settings/language";
@@ -53,13 +53,12 @@ function SectionError({ children, onRetry }: { children: ReactNode; onRetry: () 
  * Explore.
  *
  * Every section is real. "Popular" orders the catalogue by completed runs, which
- * the database counts, and leaves out games nobody has finished. There is no
- * Trending section: a trend needs plays over a window of time, which nothing
- * computes yet, and an empty section explaining that is noise for a player.
- * Categories with no published game are not offered either.
+ * the database counts, and leaves out games nobody has finished. "Trending" is
+ * this week's runs against last week's, and "Featured" is what staff chose; each is
+ * hidden while it has nothing to show, as are categories with no published game.
  */
 export function Explore() {
-  const daily = useGames({ category: "daily", limit: 1 });
+  const daily = useGames({ category: "daily", limit: DAILY_LIMIT });
   // One catalogue read feeds both "New" (its first five, newest first) and
   // "Popular" (all of it, by plays).
   const catalogue = useGames({ limit: MAX_PAGE_SIZE });
@@ -69,8 +68,13 @@ export function Explore() {
   const categories = useCategories();
   const withGames =
     categories.status === "ready" ? categories.items.filter((c) => c.gameCount > 0) : [];
-  const challenge = daily.items[0];
-  const signedIn = useAuth().status === "authenticated";
+  const featuredSlugs = useFeaturedSlugs();
+  const featured = pickBySlug(catalogue.items, featuredSlugs.data ?? []);
+  const trendingRead = useTrending(5);
+  const trending = pickBySlug(
+    catalogue.items,
+    (trendingRead.data ?? []).map((entry) => entry.slug),
+  );
 
   return (
     <Page className="max-w-5xl">
@@ -99,27 +103,37 @@ export function Explore() {
               {t("Today's challenge is unavailable right now.")}
             </SectionError>
           </div>
-        ) : challenge ? (
-          <Link
-            to="/games/$id"
-            params={{ id: challenge.slug }}
-            className="press mt-4 flex items-center gap-4 overflow-hidden rounded-2xl border border-glass-border bg-surface p-4"
-          >
-            <div className="flex-1">
-              <p className="text-xs font-medium text-primary">{t("Today's challenge")}</p>
-              <p className="mt-1 text-lg font-semibold">{challenge.title}</p>
-              <p className="text-sm text-muted-foreground">
-                {!challenge.playable
-                  ? t("Not playable yet.")
-                  : signedIn
-                    ? t("One ranked attempt a day.")
-                    : t("Practise as often as you like.")}
-              </p>
-            </div>
-            <GameArt id={challenge.slug} className="size-24 shrink-0 rounded-xl" />
-          </Link>
-        ) : null}
+        ) : (
+          <DailyWidget games={daily.items} />
+        )}
       </div>
+
+      {/* Hidden when nothing is featured: staff choose whether this section exists. */}
+      {featured.length > 0 && (
+        <Section title={t("Featured")}>
+          <div className="no-scrollbar flex gap-3 overflow-x-auto px-4 md:grid md:grid-cols-4 md:px-0 lg:grid-cols-5">
+            {featured.map((game) => (
+              <GameCard key={game.slug} game={game} className="w-36 shrink-0 md:w-auto" />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Hidden until something has been played this week. */}
+      {trending.length > 0 && (
+        <Section title={t("Trending")} action={<More to="/trending" />}>
+          <div className="no-scrollbar flex gap-3 overflow-x-auto px-4 md:grid md:grid-cols-4 md:px-0 lg:grid-cols-5">
+            {trending.map((game, i) => (
+              <GameCard
+                key={game.slug}
+                game={game}
+                rank={i + 1}
+                className="w-36 shrink-0 md:w-auto"
+              />
+            ))}
+          </div>
+        </Section>
+      )}
 
       <Section title={t("Categories")} action={<More to="/categories" />}>
         {categories.status === "loading" ? (

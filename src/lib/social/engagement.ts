@@ -25,6 +25,7 @@
  * placeholder.
  */
 
+import { listBlockedIds } from "@/lib/settings/blocked";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 
@@ -930,6 +931,23 @@ export type CommentsState = {
 };
 
 /** A game's thread: the visible rows, the measured total, posting and own-delete. */
+/**
+ * A thread as this viewer should see it: comments by anyone they blocked are left
+ * out, along with the replies under them, and the total counts what's left.
+ */
+async function readThread(gameId: string): Promise<{ rows: GameComment[]; total: number }> {
+  const [all, total, blocked] = await Promise.all([
+    fetchComments(gameId),
+    fetchCommentCount(gameId).catch(() => null),
+    listBlockedIds(),
+  ]);
+  const removed = new Set(all.filter((row) => blocked.has(row.authorId)).map((row) => row.id));
+  const rows = all.filter(
+    (row) => !removed.has(row.id) && !(row.parentId !== null && removed.has(row.parentId)),
+  );
+  return { rows, total: (total ?? all.length) - (all.length - rows.length) };
+}
+
 export function useComments(gameId: string | undefined): CommentsState {
   const [items, setItems] = useState<GameComment[]>([]);
   const [count, setCount] = useState<number | null>(null);
@@ -946,11 +964,11 @@ export function useComments(gameId: string | undefined): CommentsState {
     let cancelled = false;
     setLoading(true);
     setError(undefined);
-    Promise.all([fetchComments(gameId), fetchCommentCount(gameId).catch(() => null)])
-      .then(([rows, total]) => {
+    readThread(gameId)
+      .then(({ rows, total }) => {
         if (cancelled) return;
         setItems(rows);
-        setCount(total ?? rows.length);
+        setCount(total);
         setLoading(false);
       })
       .catch((err: unknown) => {
@@ -969,12 +987,9 @@ export function useComments(gameId: string | undefined): CommentsState {
       setPosting(true);
       try {
         await postComment(gameId, body, parentId);
-        const [rows, total] = await Promise.all([
-          fetchComments(gameId),
-          fetchCommentCount(gameId).catch(() => null),
-        ]);
+        const { rows, total } = await readThread(gameId);
         setItems(rows);
-        setCount(total ?? rows.length);
+        setCount(total);
       } catch (err) {
         throw err instanceof ApiError
           ? err

@@ -5,6 +5,7 @@ import { EmptyState, ErrorState, ListSkeleton, Page, PageHeader } from "@/compon
 import { NewGameCard } from "@/components/game/NewGameCard";
 import { Button } from "@/components/ui/button";
 import {
+  announcementOf,
   describeNotification,
   newGameOf,
   openInbox,
@@ -168,6 +169,7 @@ function Notifications() {
           {list.map((item) => {
             if (newGameOf(item)) return <NewGameCard key={item.id} item={item} />;
             const Icon = icon[item.kind];
+            const announcement = announcementOf(item);
             const actor =
               typeof item.payload["username"] === "string"
                 ? (item.payload["username"] as string)
@@ -195,6 +197,7 @@ function Notifications() {
                       @{actor}{" "}
                     </Link>
                   )}
+                  {announcement && <span className="block font-medium">{announcement.title}</span>}
                   <span className={actor ? "text-muted-foreground" : ""}>
                     {describeNotification(item)}
                   </span>
@@ -208,6 +211,11 @@ function Notifications() {
                     <Link to="/games/$id" params={{ id: game }}>
                       {t("Open")}
                     </Link>
+                  </Button>
+                )}
+                {announcement?.link && (
+                  <Button asChild size="sm" variant="secondary">
+                    <Link to={announcement.link}>{t("Open")}</Link>
                   </Button>
                 )}
                 {!item.readAt && (

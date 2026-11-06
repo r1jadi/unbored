@@ -544,24 +544,93 @@ describe("suspending an account", () => {
   });
 });
 
-describe("screens with no backend", () => {
-  it.each([
-    ["featured games", () => <FeaturedAdmin />, "Featured placement is not implemented"],
-    ["notifications", () => <NotificationsAdmin />, "Broadcast campaigns are not implemented"],
-  ])("states that %s does not exist, and asks the API for nothing", async (_name, page, copy) => {
-    const spy = adminApi("admin");
+describe("featured games", () => {
+  const saved = {
+    gameId: "11111111-1111-4111-8111-111111111111",
+    slug: "sudoku",
+    title: "Sudoku",
+    status: "published",
+    position: 0,
+    setByUsername: "rijad",
+    setAt: "2026-11-01T00:00:00Z",
+  };
+  const second = {
+    ...saved,
+    gameId: "22222222-2222-4222-8222-222222222222",
+    slug: "stack-10",
+    title: "Stack 10",
+    position: 1,
+  };
 
-    await renderPage(page);
+  it("saves a new order as one write, only once something changed", async () => {
+    const spy = adminApi("admin", {
+      "/admin/featured": () => jsonResponse({ items: [saved, second] }),
+      "/admin/games": () => jsonResponse({ items: [], hasMore: false }),
+    });
+    await signedIn(spy);
+    await renderPage(() => <FeaturedAdmin />);
 
-    await screen.findByText(copy);
-    // No fabricated rows, no controls that could not work, and no request whose
-    // answer would have to be invented.
-    expect(spy).not.toHaveBeenCalled();
-    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Save|Send|Feature/ })).not.toBeInTheDocument();
+    const save = await screen.findByRole("button", { name: "Save order" });
+    expect(save).toBeDisabled();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Move Stack 10 up" }));
+    expect(save).toBeEnabled();
+    fireEvent.click(save);
+
+    await waitFor(() => {
+      const write = spy.mock.calls.find(([, init]) => (init as RequestInit)?.method === "PUT");
+      expect(write).toBeDefined();
+      expect(JSON.parse((write![1] as RequestInit).body as string)).toEqual({
+        gameIds: [second.gameId, saved.gameId],
+      });
+    });
   });
+});
 
-  it("describes the system from the service list, without editable settings", async () => {
+describe("announcements", () => {
+  it("asks for confirmation before it sends to everyone", async () => {
+    const spy = adminApi("admin", {
+      "/admin/broadcasts": () =>
+        jsonResponse({
+          items: [
+            {
+              id: "b1",
+              title: "Earlier news",
+              body: "Sent before",
+              link: null,
+              sentByUsername: "rijad",
+              recipients: 40,
+              readCount: 12,
+              createdAt: "2026-11-01T00:00:00Z",
+            },
+          ],
+          hasMore: false,
+        }),
+    });
+    await signedIn(spy);
+    await renderPage(() => <NotificationsAdmin />);
+
+    // Measured numbers, from the API.
+    await screen.findByText("Earlier news");
+    expect(screen.getByText("40 recipients")).toBeInTheDocument();
+    expect(screen.getByText("12 read")).toBeInTheDocument();
+
+    fireEvent.change(await screen.findByLabelText("Title"), { target: { value: "Big news" } });
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Something new" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await screen.findByRole("button", { name: "Yes, send to everyone" });
+    expect(
+      spy.mock.calls.some(
+        ([input, init]) =>
+          String(input).includes("/admin/broadcasts") && (init as RequestInit)?.method === "POST",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("the system screen", () => {
+  it("describes the system from the service list, with settings only admins can change", async () => {
     const spy = adminApi("admin", {
       "/admin/system/services": () =>
         jsonResponse({
@@ -580,6 +649,15 @@ describe("screens with no backend", () => {
             },
           ],
         }),
+      "/admin/system/settings": () =>
+        jsonResponse({
+          bannerText: null,
+          commentsEnabled: true,
+          messagesEnabled: true,
+          updatedAt: "2026-11-01T00:00:00Z",
+          updatedByUsername: null,
+          log: [],
+        }),
     });
     await signedIn(spy);
 
@@ -587,9 +665,10 @@ describe("screens with no backend", () => {
 
     await screen.findByText("auth");
     expect(screen.getByText("games")).toBeInTheDocument();
-    expect(screen.getByText("Platform settings are not editable here")).toBeInTheDocument();
-    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Save changes/ })).not.toBeInTheDocument();
+    const save = await screen.findByRole("button", { name: /Save changes/ });
+    // Nothing has changed yet, so there is nothing to save.
+    expect(save).toBeDisabled();
+    expect(screen.getAllByRole("switch")).toHaveLength(2);
   });
 });
 

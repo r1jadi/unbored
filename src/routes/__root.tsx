@@ -21,6 +21,7 @@ import { useDocumentTitle } from "@/lib/document-title";
 import { AppShell } from "@/components/layout/AppShell";
 import { SafeAreaDiagnostics } from "@/components/dev/SafeAreaDiagnostics";
 import { Toaster } from "@/components/ui/sonner";
+import { useTwoFactorRequired } from "@/lib/auth/security";
 import { initializeSession, useAuth } from "@/lib/auth/session";
 import { applyAnalyticsConsent, identifyUser, resetAnalytics } from "@/lib/analytics";
 import { useConsent } from "@/lib/consent";
@@ -45,6 +46,7 @@ const BARE = [
   "/verify-email",
   "/account-created",
   "/auth/callback",
+  "/two-factor",
 ];
 
 /**
@@ -92,6 +94,18 @@ const UNFINISHED_SIGNUP_PATHS = [
   "/forgot-password",
   "/reset-password",
   "/auth",
+  "/two-factor",
+  "/terms",
+  "/privacy",
+];
+
+// Where a session that still owes its second step may be: the prompt, a way to leave,
+// and the documents that are public anyway.
+const TWO_FACTOR_FREE_PATHS = [
+  "/two-factor",
+  "/login",
+  "/auth",
+  "/reset-password",
   "/terms",
   "/privacy",
 ];
@@ -266,6 +280,16 @@ function RootComponent() {
   useEffect(() => {
     if (finishingSignup) void navigate({ to: "/signup", replace: true });
   }, [finishingSignup, navigate]);
+
+  // Two-step verification is enforced by the database; this is only the way to the
+  // prompt, so a player isn't left on screens that all refuse them.
+  const twoFactorRequired = useTwoFactorRequired();
+  const owesCode = twoFactorRequired && !TWO_FACTOR_FREE_PATHS.some((p) => path.startsWith(p));
+  useEffect(() => {
+    if (owesCode) void navigate({ to: "/two-factor", search: { next: path }, replace: true });
+    // `path` is where they were headed at the moment the prompt became due.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owesCode, navigate]);
 
   return (
     <QueryClientProvider client={queryClient}>

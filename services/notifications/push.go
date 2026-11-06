@@ -48,6 +48,7 @@ var pushEndpoint = regexp.MustCompile(`^https://(fcm\.googleapis\.com|([a-z0-9-]
 type PushBackend interface {
 	ClaimPushBatch(ctx context.Context, limit int) ([]supabasedigest.PushDelivery, error)
 	DeletePushSubscriptions(ctx context.Context, ids []string) error
+	WakePush(ctx context.Context) error
 }
 
 // PushSender delivers one encrypted message, answering the push service's status.
@@ -100,6 +101,7 @@ func (s *pushService) dispatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var total pushResponse
+	drained := false
 	for range pushMaxBatches {
 		rows, err := s.backend.ClaimPushBatch(r.Context(), pushBatch)
 		if err != nil {
@@ -108,12 +110,21 @@ func (s *pushService) dispatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(rows) == 0 {
+			drained = true
 			break
 		}
 		result := s.deliver(r.Context(), rows)
 		total.Sent += result.Sent
 		total.Failed += result.Failed
 		total.Expired += result.Expired
+	}
+	// One run stops at its batch limit, and a broadcast can be larger than that. Nothing
+	// else would wake the sender for the rest, so a full run asks for another. A failure
+	// here loses no notification: they stay waiting for the next wake.
+	if !drained {
+		if err := s.backend.WakePush(r.Context()); err != nil {
+			s.logger.WarnContext(r.Context(), "asking for another push run failed", slog.Any("error", err))
+		}
 	}
 	httpx.WriteJSON(w, r, http.StatusOK, total)
 }
@@ -232,6 +243,10 @@ func renderPush(row supabasedigest.PushDelivery) ([]byte, bool) {
 		Reason    string `json:"reason"`
 		Game      string `json:"game"`
 		GameTitle string `json:"game_title"`
+		Title     string `json:"title"`
+		Text      string `json:"text"`
+		Link      string `json:"link"`
+		Broadcast string `json:"broadcast"`
 	}
 	if err := json.Unmarshal(row.Payload, &payload); err != nil {
 		return nil, false
@@ -280,6 +295,21 @@ func renderPush(row supabasedigest.PushDelivery) ([]byte, bool) {
 		}
 		if payload.Game != "" {
 			message.URL = "/leaderboards/" + payload.Game
+		}
+	case "system":
+		// Announcements only, and worded by whoever sent them. Every other system row
+		// belongs in the app's inbox, not on a lock screen.
+		if payload.Reason != "announcement" || payload.Title == "" || payload.Text == "" {
+			return nil, false
+		}
+		message = pushMessage{
+			Title: payload.Title,
+			Body:  payload.Text,
+			URL:   "/notifications",
+			Tag:   "announcement:" + payload.Broadcast,
+		}
+		if strings.HasPrefix(payload.Link, "/") && !strings.HasPrefix(payload.Link, "//") {
+			message.URL = payload.Link
 		}
 	case "message":
 		// The sender's name only. The row holds no text, because a push is shown on a

@@ -50,6 +50,24 @@ create table if not exists auth.users (
   updated_at         timestamptz not null default now()
 );
 
+-- One row per signed-in device, and the two-step factors Supabase Auth keeps.
+create table if not exists auth.sessions (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users (id) on delete cascade,
+  created_at   timestamptz default now(),
+  updated_at   timestamptz default now(),
+  refreshed_at timestamp,
+  not_after    timestamptz,
+  user_agent   text,
+  ip           inet
+);
+
+create table if not exists auth.mfa_factors (
+  id      uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  status  text not null
+);
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Auth helpers — same contract as the hosted versions
 -- ─────────────────────────────────────────────────────────────────────────────

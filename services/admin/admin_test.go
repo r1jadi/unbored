@@ -946,3 +946,36 @@ func TestTokenIsForwardedToTheDatabase(t *testing.T) {
 		t.Errorf("the database received token %q, want the caller's own", backend.lastToken)
 	}
 }
+
+func (f *fakeBackend) FeaturedGames(_ context.Context, token, actor string) ([]supabaseadmin.FeaturedGame, error) {
+	f.record("FeaturedGames")
+	return nil, nil
+}
+
+func (f *fakeBackend) SetFeaturedGames(_ context.Context, token, actor string, gameIDs []string) error {
+	f.record("SetFeaturedGames", gameIDs...)
+	f.lastActor = actor
+	return nil
+}
+
+func (f *fakeBackend) PlatformSettings(_ context.Context, token, actor string) (supabaseadmin.PlatformSettings, error) {
+	f.record("PlatformSettings")
+	return supabaseadmin.PlatformSettings{}, nil
+}
+
+func (f *fakeBackend) SetPlatformSettings(_ context.Context, token, actor, bannerText string, commentsEnabled, messagesEnabled bool) error {
+	f.record("SetPlatformSettings", bannerText)
+	f.lastActor = actor
+	return nil
+}
+
+func (f *fakeBackend) Broadcasts(_ context.Context, token, actor string, page supabaseadmin.Page) ([]supabaseadmin.Broadcast, error) {
+	f.record("Broadcasts")
+	return nil, nil
+}
+
+func (f *fakeBackend) SendBroadcast(_ context.Context, token, actor, title, body, link string) (supabaseadmin.BroadcastResult, error) {
+	f.record("SendBroadcast", title, body, link)
+	f.lastActor = actor
+	return supabaseadmin.BroadcastResult{ID: "broadcast-1", Recipients: 3}, nil
+}

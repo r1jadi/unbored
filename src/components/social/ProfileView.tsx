@@ -1,4 +1,7 @@
 import { Link } from "@tanstack/react-router";
+import { resolveUserId } from "@/lib/social/follows";
+import { AchievementsList } from "@/components/social/AchievementsList";
+import { ReportDialog } from "@/components/social/ReportDialog";
 import {
   Activity,
   Award,
@@ -422,6 +425,7 @@ export function ProfileView({
   const skeleton = loading ?? false;
   const [tab, setTab] = useState<TabName>("Best scores");
   const [share, setShare] = useState(false);
+  const [reporting, setReporting] = useState(false);
   // A visitor to a private profile gets the name and picture, and the scores
   // only if the player chose to show them.
   const restricted = !self && visibility?.isPrivate === true;
@@ -481,15 +485,7 @@ export function ProfileView({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() =>
-                      toast(
-                        t(
-                          "Reporting is reviewed by moderators. Open an issue to report this account.",
-                        ),
-                      )
-                    }
-                  >
+                  <DropdownMenuItem onClick={() => setReporting(true)}>
                     {t("Report")}
                   </DropdownMenuItem>
                   <DropdownMenuItem className="text-destructive" onClick={() => void block()}>
@@ -680,12 +676,10 @@ export function ProfileView({
                     />
                   ))}
                 {active === "Achievements" && (
-                  <EmptyState
-                    icon={Award}
-                    title={t("No achievements yet")}
-                    body={t(
-                      "Achievements are not recorded yet, so nothing is shown rather than a sample set.",
-                    )}
+                  <AchievementsList
+                    userId={user.userId}
+                    self={self === true}
+                    username={user.username}
                   />
                 )}
               </>
@@ -696,6 +690,13 @@ export function ProfileView({
             onOpenChange={setShare}
             title={`@${user.username}`}
             path={`/u/${user.username}`}
+          />
+          <ReportDialog
+            open={reporting}
+            onOpenChange={setReporting}
+            kind="profile"
+            targetId={user.userId ?? (() => resolveUserId(user.username))}
+            subject={`@${user.username}`}
           />
         </>
       )}

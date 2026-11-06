@@ -1,3 +1,7 @@
+import { Ban, Flag } from "lucide-react";
+import { ReportDialog } from "@/components/social/ReportDialog";
+import { blockUsername } from "@/lib/settings/blocked";
+import { usePlatformSettings } from "@/lib/platform-settings";
 import { Check, Link2, Loader2, Mail, Reply, Search, Send, Share2, Trash2, X } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
@@ -68,6 +72,8 @@ export function CommentsSheet({
   const [draft, setDraft] = useState("");
   const [postError, setPostError] = useState<string>();
   const [replyTo, setReplyTo] = useState<GameComment | null>(null);
+  const [reporting, setReporting] = useState<GameComment | null>(null);
+  const platform = usePlatformSettings();
   const input = useRef<HTMLInputElement>(null);
 
   // Top-level comments in order, each with its replies. A reply whose parent is
@@ -103,8 +109,30 @@ export function CommentsSheet({
     }
   }
 
+  async function blockAuthor(comment: GameComment) {
+    if (!comment.author) return;
+    try {
+      await blockUsername(comment.author.username);
+      toast.success(t("Blocked @{username}", { username: comment.author.username }));
+      thread.retry();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("Couldn't block this account."));
+    }
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
+      {reporting && (
+        <ReportDialog
+          open
+          onOpenChange={(next) => {
+            if (!next) setReporting(null);
+          }}
+          kind="comment"
+          targetId={reporting.id}
+          subject={t("this comment")}
+        />
+      )}
       <SheetContent
         side="bottom"
         className="mx-auto flex h-[78dvh] max-w-xl flex-col rounded-t-2xl border-glass-border p-0"
@@ -153,6 +181,8 @@ export function CommentsSheet({
                   comment={comment}
                   mine={myId !== null && comment.authorId === myId}
                   onDelete={() => thread.remove(comment.id)}
+                  onReport={myId !== null ? () => setReporting(comment) : undefined}
+                  onBlock={myId !== null ? () => void blockAuthor(comment) : undefined}
                   onReply={
                     auth.status === "authenticated"
                       ? () => {
@@ -170,6 +200,8 @@ export function CommentsSheet({
                           comment={reply}
                           mine={myId !== null && reply.authorId === myId}
                           onDelete={() => thread.remove(reply.id)}
+                          onReport={myId !== null ? () => setReporting(reply) : undefined}
+                          onBlock={myId !== null ? () => void blockAuthor(reply) : undefined}
                         />
                       ))}
                     </ul>
@@ -179,7 +211,11 @@ export function CommentsSheet({
             </ul>
           )}
         </div>
-        {auth.status === "authenticated" ? (
+        {!platform.commentsEnabled ? (
+          <div className="safe-bottom border-t border-border p-3 text-center">
+            <p className="text-sm text-muted-foreground">{t("New comments are paused for now.")}</p>
+          </div>
+        ) : auth.status === "authenticated" ? (
           <form className="safe-bottom border-t border-border p-3" onSubmit={(e) => void submit(e)}>
             {activeReply && (
               <div className="mb-2 flex items-center justify-between rounded-full bg-surface-2 px-3 py-1 text-xs text-muted-foreground">
@@ -252,11 +288,16 @@ function CommentRow({
   mine,
   onDelete,
   onReply,
+  onReport,
+  onBlock,
   children,
 }: {
   comment: GameComment;
   mine: boolean;
   onDelete: () => Promise<void>;
+  /** Present for a signed-in viewer; only offered on someone else's comment. */
+  onReport?: () => void;
+  onBlock?: () => void;
   /** Present on top-level comments of a signed-in viewer only. */
   onReply?: () => void;
   /** The nested replies, rendered under the body. */
@@ -313,6 +354,28 @@ function CommentRow({
             >
               <Reply className="size-3.5" />
               {t("Reply")}
+            </button>
+          )}
+          {!mine && onReport && (
+            <button
+              type="button"
+              aria-label={t("Report comment")}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={onReport}
+            >
+              <Flag className="size-3.5" />
+              {t("Report")}
+            </button>
+          )}
+          {!mine && onBlock && author && (
+            <button
+              type="button"
+              aria-label={t("Block @{username}", { username: author.username })}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
+              onClick={onBlock}
+            >
+              <Ban className="size-3.5" />
+              {t("Block")}
             </button>
           )}
           {mine && (

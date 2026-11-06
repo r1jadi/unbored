@@ -105,6 +105,11 @@ The schema's only history. Applied in filename order by the Supabase CLI and by
 | `20261127120000_feedback_admin_and_email.sql`     | Feedback reaches the team: `feedback.emailed_at`, the admin console's list (`admin_feedback_directory`, staff only) and the email outbox for the notifications service (`feedback_pending_email`, `mark_feedback_emailed`, service role only). Apply before the service and client that use them. |
 | `20261125120000_feedback.sql`                      | `feedback`: in-app feedback from Settings. Insert own and read own (staff read all), no edits, a per-hour cap by trigger. The Send feedback page needs it; apply before the client. |
 | `20261103120000_game_engagement_counts.sql`       | `game_engagement_counts`: like and comment counts for many games in one read, for the feed. `security_invoker`, so counts match the per-game reads. Safe in either order with the app deploy (the client falls back). |
+| `20261219120000_report_submission.sql` | `submit_report`: the one way to file a report, validated, one open report per target, 30 a day, and from a chat it copies the reported player's last 5 messages out of the conversation. Apply before the client. |
+| `20261219120100_achievements_and_trending.sql` | `profile_achievements` (counters from verified scores, same visibility as `profile_showcase`) and `trending_games` (this week's runs and growth on last week). Apply before the client. |
+| `20261219120200_account_security.sql` | `list_my_sessions`, `revoke_my_session`, `revoke_my_other_sessions`, and `enforce_mfa`, installed as PostgREST's `db_pre_request` so a password-only token whose owner has a verified factor is refused everywhere. Changes nothing until a player enrols. Apply before the client. |
+| `20261219120300_announcement_preference.sql` | `user_preferences.notify_announcements`. Apply before the client, which saves it. |
+| `20261219120400_admin_platform.sql` | `featured_games`, `platform_settings` with its log and the triggers that pause comments and messages, `broadcasts`, `claim_push_batch` restated to carry announcements, and the staff functions with their `*_svc` wrappers. Apply before the client and the admin service. |
 
 Two migrations exist for one feature — the play schema and the catalogue flip — because
 the flip is a claim about shipped code. Applying it before the service that answers

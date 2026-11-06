@@ -13,6 +13,7 @@
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
+import { playHaptic } from "@/lib/haptics";
 import { safeLocalStorage } from "@/lib/storage";
 
 export type SoundCue =
@@ -238,6 +239,12 @@ export type RunSoundState = {
   ending?: "win" | "lose" | "stop";
 };
 
+/** One moment in a run: heard and felt, each with its own on/off choice. */
+function cue(name: SoundCue): void {
+  playSound(name);
+  playHaptic(name);
+}
+
 /**
  * Plays the cue a change in the run deserves. The first render, a fresh run
  * (moves going down) and a board that mounts already over are silent.
@@ -251,11 +258,11 @@ export function useGameSounds(state: RunSoundState): void {
     previous.current = { moves, score, cleared, mistakes, over, ending };
     if (!prev || moves < prev.moves) return;
 
-    if (over && !prev.over) playSound(ending);
+    if (over && !prev.over) cue(ending);
     else if (over) return;
-    else if (cleared > (prev.cleared ?? 0)) playSound("clear");
-    else if (mistakes > (prev.mistakes ?? 0)) playSound("error");
-    else if (score > prev.score) playSound("score");
-    else if (moves > prev.moves) playSound("tap");
+    else if (cleared > (prev.cleared ?? 0)) cue("clear");
+    else if (mistakes > (prev.mistakes ?? 0)) cue("error");
+    else if (score > prev.score) cue("score");
+    else if (moves > prev.moves) cue("tap");
   }, [moves, score, cleared, mistakes, over, ending]);
 }

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight, Eye, RotateCcw, ShieldCheck, X } from "lucide-react";
+import { ArrowUpRight, Eye, EyeOff, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -23,6 +23,7 @@ import {
   asApiError,
   formatAgo,
   formatStamp,
+  moderateComment,
   moderateReport,
   useAdminModerationLog,
   useAdminOverview,
@@ -93,6 +94,19 @@ export function ReportsAdmin() {
       .then((result) => {
         toast.success(t("Report is now {n}.", { n: result.status ?? next }));
         reports.retry();
+        log.retry();
+      })
+      .catch((error: unknown) => toast.error(asApiError(error).message))
+      .finally(() => setBusy(null));
+  };
+
+  // Hiding is a decision of its own in the log; the report stays open until someone
+  // resolves it, because hiding one comment may not be the whole answer.
+  const hideComment = (report: AdminReport) => {
+    setBusy(report.id);
+    moderateComment(report.targetId, true, `Report: ${report.reason}`)
+      .then(() => {
+        toast.success(t("Comment hidden."));
         log.retry();
       })
       .catch((error: unknown) => toast.error(asApiError(error).message))
@@ -251,6 +265,25 @@ export function ReportsAdmin() {
                           <ArrowUpRight />
                           {t("Open game")}
                         </Link>
+                      </Button>
+                    )}
+                    {report.targetKind === "profile" && report.targetLabel && (
+                      <Button asChild variant="secondary" size="sm">
+                        <Link to="/u/$username" params={{ username: report.targetLabel }}>
+                          <ArrowUpRight />
+                          {t("Open profile")}
+                        </Link>
+                      </Button>
+                    )}
+                    {report.targetKind === "comment" && report.targetLabel && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={busy === report.id}
+                        onClick={() => hideComment(report)}
+                      >
+                        <EyeOff />
+                        {t("Hide comment")}
                       </Button>
                     )}
                     {report.status === "open" && (

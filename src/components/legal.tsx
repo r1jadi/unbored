@@ -3,7 +3,7 @@
 // here: where operator details are required, the document says exactly what the
 // owner must supply (see OPERATOR_DETAILS_REQUIRED below).
 //
-// Effective date: 2026-10-17. Review with counsel before public launch; this
+// Effective date: 2026-11-06. Review with counsel before public launch; this
 // is product-accurate copy, not legal advice.
 
 import { msg, t } from "@/lib/settings/language";
@@ -22,7 +22,7 @@ export const terms = [
   [
     msg("1. What Unbored is"),
     msg(
-      "Unbored is a web catalogue of short playable games with accounts, profiles, scores, leaderboards, follows, notifications and moderation. Browsing the catalogue is public; scoring, following, notifications and settings require an account.",
+      "Unbored is a web catalogue of short playable games with accounts, profiles, scores, leaderboards, follows, comments, direct messages, notifications and moderation. Browsing the catalogue is public; scoring, following, commenting, messaging, notifications and settings require an account.",
     ),
   ],
   [
@@ -52,7 +52,7 @@ export const terms = [
   [
     msg("6. Moderation and enforcement"),
     msg(
-      "Moderators review reports and the review queue; administrators manage games, categories, users and system settings. Enforcement ranges from hidden content to suspension. Decisions are made from database records of the reported content and account history.",
+      "You can report a player, a comment or a game from where you see it, and block a player at any time. Moderators review reports and the review queue; administrators manage games, categories, users, announcements and system settings. Enforcement ranges from hidden content to suspension. Decisions are made from database records of the reported content and account history. A report made from a chat shares the reported player's last 5 messages in that chat with moderators, and direct messages are otherwise not read by staff.",
     ),
   ],
   [
@@ -64,7 +64,7 @@ export const terms = [
   [
     msg("8. Availability, changes and third parties"),
     msg(
-      "The service is provided as-is and may change, including games, scores display, social features and rate limits. Authentication and hosting run on Supabase and Vercel; Google sign-in, when enabled, is subject to Google's terms. No uptime, response-time or support promise is made in this document.",
+      "The service is provided as-is and may change, including games, scores display, social features and rate limits. Authentication and hosting run on Supabase and Vercel; Google sign-in and linking, when enabled, are subject to Google's terms. No uptime, response-time or support promise is made in this document.",
     ),
   ],
   [
@@ -91,49 +91,49 @@ export const privacy = [
   [
     msg("What we collect"),
     msg(
-      "Account and authentication: email, password verifier (stored by Supabase Auth, never by Unbored), email-verification state, OAuth provider identities you link (Google), and session tokens stored in this browser only (see Storage, cookies and local data below). Profile: username (generated), display name, bio, avatar object path, onboarding state. Gameplay: play sessions (game, seed, start/end times) and scores (session, game, value, duration). Social, when you use it: follows, blocked-user relationships, notification rows (kind, payload, read time) and your privacy/notification preferences. Operational: rate-limit counters, request ids and error logs needed to run and protect the API.",
+      "Account and authentication: email, password verifier (stored by Supabase Auth, never by Unbored), email-verification state, OAuth provider identities you link (Google), and session tokens stored in this browser only (see Storage, cookies and local data below). Profile: username (generated), display name, bio, avatar object path, onboarding state. Gameplay: play sessions (game, seed, start/end times) and scores (session, game, value, duration). Social, when you use it: follows, blocked-user relationships, comments, likes, saves, direct messages, challenges, notification rows (kind, payload, read time) and your privacy/notification preferences. Reports you file and feedback you send. Security, when you use it: two-step verification factors (held by Supabase Auth), and for each signed-in device the session's browser details, IP address and last-active time, which you can see in Settings → Security. Push, when you turn it on: this browser's push subscription (an address at your browser's push service and its encryption keys) and language. Analytics, only if you accept them: page views, in-app events, and session recordings with form inputs masked, tied to your account id and role but never your email. Operational: rate-limit counters, request ids and error logs needed to run and protect the API.",
     ),
   ],
   [
     msg("What we do not collect"),
     msg(
-      "No payment data (no payments feature exists), no push subscriptions (no push delivery exists), no email campaign data (no email delivery beyond Supabase auth mails), no device fingerprint inventory beyond what the browser necessarily sends, and no analytics events beyond the append-only table the backend validates — the app does not run third-party analytics or advertising trackers.",
+      "No payment data (no payments feature exists), no advertising trackers, and no device fingerprint inventory beyond what the browser necessarily sends. Nothing is sold. Analytics do not start, and set no cookies, until you accept them.",
     ),
   ],
   [
     msg("How we use it"),
     msg(
-      "To create and secure accounts, verify email, run play sessions and leaderboards, render profiles and follow graphs, deliver in-app notifications for genuine events (such as new followers), enforce blocks and privacy choices, moderate reported content, and keep the platform safe within rate limits.",
+      "To create and secure accounts, verify email, run play sessions and leaderboards, work out achievements and trending games from verified scores, render profiles and follow graphs, carry direct messages, deliver notifications for genuine events (such as new followers) in the app and by push on devices you turned it on for, send announcements from the Unbored team, send the new-games email digest if you opted in, enforce blocks and privacy choices, moderate reported content, understand how the app is used if you accepted analytics, and keep the platform safe within rate limits.",
     ),
   ],
   [
     msg("Who can see it"),
     msg(
-      "Profiles (username, display name, bio, avatar), published games, scores on visible games, follows and visible comments are public by default. Private-account and visibility toggles in Settings → Privacy limit discovery where implemented. Notifications and preferences are visible only to their owner; roles are visible only to their owner and to staff. Administrators and moderators see moderation queues and audit trails through the staff-gated admin API.",
+      "Profiles (username, display name, bio, avatar), published games, scores on visible games, follows and visible comments are public by default. Private-account and visibility toggles in Settings → Privacy limit discovery where implemented. Achievements follow the same choice as your scores. Direct messages are visible only to the two players in the chat, except that a report made from a chat shares the reported player's last 5 messages in it with moderators; reports do not reveal who filed them to the person reported. Notifications and preferences are visible only to their owner; roles are visible only to their owner and to staff. Administrators and moderators see moderation queues and audit trails through the staff-gated admin API.",
     ),
   ],
   [
     msg("Storage, cookies and local data"),
     msg(
-      "Your session tokens (access and refresh) are saved in this browser's localStorage under one namespaced Unbored key so a reload keeps you signed in; the app re-checks them with the server on load and removes them on sign-out or when the server refuses the session. Appearance and accessibility choices persist in this browser's localStorage, and your language choice in a cookie, so the server can show pages in it. Recent searches persist in this browser's localStorage. OAuth PKCE verifiers live in sessionStorage for the duration of one sign-in attempt. Avatar images live in the public `avatars` Supabase Storage bucket under your account folder.",
+      "Your session tokens (access and refresh) are saved in this browser's localStorage under one namespaced Unbored key so a reload keeps you signed in; the app re-checks them with the server on load and removes them on sign-out or when the server refuses the session. Appearance and accessibility choices persist in this browser's localStorage, and your language choice in a cookie, so the server can show pages in it. Recent searches, sound and vibration choices and your cookie choice persist in this browser's localStorage. If you accept analytics, PostHog and Vercel Analytics set their own cookies or local identifiers; you can withdraw in Settings → Privacy. To let games run offline, a service worker keeps the app's code, pages and the public game catalogue in this browser, and offline practice runs stay on this device. OAuth PKCE verifiers live in sessionStorage for the duration of one sign-in attempt. Avatar images live in the public `avatars` Supabase Storage bucket under your account folder.",
     ),
   ],
   [
     msg("Infrastructure"),
     msg(
-      "Hosting and API: Vercel (web app, Go gateway and Go services on one domain). Identity, database and storage: Supabase (Auth, Postgres with Row Level Security, Storage). OAuth, when enabled: Google. No other processors are used by this deployment.",
+      "Hosting and API: Vercel (web app, Go gateway and Go services on one domain). Identity, database and storage: Supabase (Auth, Postgres with Row Level Security, Storage). OAuth, when enabled: Google. Email (the new-games digest and feedback mail): Resend. Product analytics, only with your consent: PostHog and Vercel Analytics. Push messages pass through your browser's own push service (for example Google, Apple, Mozilla or Microsoft), encrypted so that service can't read them. No other processors are used by this deployment.",
     ),
   ],
   [
     msg("Retention and deletion"),
     msg(
-      "Data is kept while your account is active. You can delete your account from Settings at any time; deletion immediately removes your profile and picture, preferences, scores, comments, likes, saves, follows, blocks and notifications. Backups, if any, age out on the provider's schedule.",
+      "Data is kept while your account is active. You can delete your account from Settings at any time; deletion immediately removes your profile and picture, preferences, scores, comments, likes, saves, follows, blocks, messages you sent, reports you filed, push subscriptions, signed-in devices and notifications. Backups, if any, age out on the provider's schedule.",
     ),
   ],
   [
     msg("Your choices and rights"),
     msg(
-      "Edit profile, privacy, notification, language, appearance, accessibility and blocked-user settings in Settings; each supported control persists and takes effect as described on its screen. Unsupported controls (push, email delivery, MFA, per-device session lists) are labelled unavailable rather than simulated. To request access, correction or deletion, open an issue on the project tracker from your signed-in account until a dedicated privacy contact is published.",
+      "Edit profile, privacy, notification, language, appearance, accessibility, cookie and blocked-user settings in Settings; each control persists and takes effect as described on its screen. Turn push on or off per device, opt in or out of the email digest and announcements, sign out other devices and turn on two-step verification in Settings. To request access, correction or deletion, open an issue on the project tracker from your signed-in account until a dedicated privacy contact is published.",
     ),
   ],
   [
@@ -147,7 +147,7 @@ export const privacy = [
 export function LegalBody({ sections }: { sections: string[][] }) {
   return (
     <div className="space-y-5 text-sm leading-relaxed">
-      <p className="text-xs text-muted-foreground">{t("Last updated October 17, 2026")}</p>
+      <p className="text-xs text-muted-foreground">{t("Last updated November 6, 2026")}</p>
       {sections.map(([h, b]) => (
         <section key={h}>
           <h2 className="font-semibold">{t(h)}</h2>

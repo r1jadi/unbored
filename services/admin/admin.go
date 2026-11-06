@@ -156,6 +156,12 @@ type Backend interface {
 	SetReportStatus(ctx context.Context, token, actor, reportID, status, reason string) (supabaseadmin.ActionResult, error)
 	SetCommentHidden(ctx context.Context, token, actor, commentID string, hidden bool, reason string) (supabaseadmin.ActionResult, error)
 	SetSuspension(ctx context.Context, token, actor, userID string, suspended bool, reason string) (supabaseadmin.ActionResult, error)
+	FeaturedGames(ctx context.Context, token, actor string) ([]supabaseadmin.FeaturedGame, error)
+	SetFeaturedGames(ctx context.Context, token, actor string, gameIDs []string) error
+	PlatformSettings(ctx context.Context, token, actor string) (supabaseadmin.PlatformSettings, error)
+	SetPlatformSettings(ctx context.Context, token, actor, bannerText string, commentsEnabled, messagesEnabled bool) error
+	Broadcasts(ctx context.Context, token, actor string, page supabaseadmin.Page) ([]supabaseadmin.Broadcast, error)
+	SendBroadcast(ctx context.Context, token, actor, title, body, link string) (supabaseadmin.BroadcastResult, error)
 }
 
 // staffTier is what a staff request was authorized as: an allowlisted
@@ -451,6 +457,15 @@ func (s *service) register(router *httpx.Router) {
 	// admits, and the handler re-checks the tier before the database is
 	// touched. A database moderator row — however stale — never reaches it.
 	router.AdminFunc("PATCH "+UserPath, s.staff(s.suspendUser))
+
+	// Arranging featured games is moderation work. Broadcasts reach every player and
+	// settings change the platform for everyone, so both writes stay on the admin tier.
+	router.AuthenticatedFunc("GET "+FeaturedPath, s.staff(s.listFeatured))
+	router.AuthenticatedFunc("PUT "+FeaturedPath, s.staff(s.setFeatured))
+	router.AuthenticatedFunc("GET "+PlatformSettingsPath, s.staff(s.getPlatformSettings))
+	router.AdminFunc("PATCH "+PlatformSettingsPath, s.staff(s.setPlatformSettings))
+	router.AuthenticatedFunc("GET "+BroadcastsPath, s.staff(s.listBroadcasts))
+	router.AdminFunc("POST "+BroadcastsPath, s.staff(s.sendBroadcast))
 }
 
 // staff authorizes every staff request, after the router verified the token.

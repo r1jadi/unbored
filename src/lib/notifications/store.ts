@@ -306,6 +306,18 @@ export function newGameOf(
   return { slug: game, title, tagline: typeof tagline === "string" ? tagline : null };
 }
 
+/** The announcement a notification carries, or null for any other row. */
+export function announcementOf(
+  item: AppNotification,
+): { title: string; body: string; link: string | null } | null {
+  const { reason, title, text, link } = item.payload;
+  if (item.kind !== "system" || reason !== "announcement") return null;
+  if (typeof title !== "string" || typeof text !== "string") return null;
+  // Only a path inside the app: the database holds the same rule.
+  const safe = typeof link === "string" && /^\/[^/\\]/.test(link) ? link : null;
+  return { title, body: text, link: safe };
+}
+
 /** Human-readable line for a notification row. Never invents actor names. */
 export function describeNotification(item: AppNotification): string {
   const newGame = newGameOf(item);

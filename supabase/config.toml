@@ -52,6 +52,8 @@ enable_signup = true
 # Minimum length, not composition rules: length beats character classes.
 minimum_password_length = 10
 enable_anonymous_sign_ins = false
+# Settings -> Connected accounts links Google to an existing account.
+enable_manual_linking = true
 
 [auth.email]
 enable_signup = true

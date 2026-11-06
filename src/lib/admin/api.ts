@@ -41,6 +41,9 @@ const Routes = {
   moderationLog: "/admin/moderation-log",
   feedback: "/admin/feedback",
   systemServices: "/admin/system/services",
+  systemSettings: "/admin/system/settings",
+  featured: "/admin/featured",
+  broadcasts: "/admin/broadcasts",
   game: (id: string) => `/admin/games/${id}`,
   report: (id: string) => `/admin/reports/${id}`,
   comment: (id: string) => `/admin/comments/${id}`,
@@ -252,6 +255,50 @@ export type AdminSystemReport = {
   items: AdminServiceStatus[];
 };
 
+export type AdminFeaturedGame = {
+  gameId: string;
+  slug: string;
+  title: string;
+  status: string;
+  position: number;
+  setByUsername: string | null;
+  setAt: string;
+};
+
+export type AdminPlatformSettingsValues = {
+  bannerText: string;
+  commentsEnabled: boolean;
+  messagesEnabled: boolean;
+};
+
+export type AdminPlatformSettingsChange = {
+  id: string;
+  actorUsername: string | null;
+  before: { banner_text: string | null; comments_enabled: boolean; messages_enabled: boolean };
+  after: { banner_text: string | null; comments_enabled: boolean; messages_enabled: boolean };
+  createdAt: string;
+};
+
+export type AdminPlatformSettings = {
+  bannerText: string | null;
+  commentsEnabled: boolean;
+  messagesEnabled: boolean;
+  updatedAt: string;
+  updatedByUsername: string | null;
+  log: AdminPlatformSettingsChange[];
+};
+
+export type AdminBroadcast = {
+  id: string;
+  title: string;
+  body: string;
+  link: string | null;
+  sentByUsername: string | null;
+  recipients: number;
+  readCount: number;
+  createdAt: string;
+};
+
 type Page<T> = { items: T[]; hasMore: boolean };
 
 /** Every admin read needs the caller's token; without one there is nothing to send. */
@@ -385,6 +432,21 @@ export function fetchAdminSystemServices(signal?: AbortSignal): Promise<AdminSys
   return get<AdminSystemReport>(Routes.systemServices, undefined, signal);
 }
 
+export function fetchAdminFeatured(signal?: AbortSignal): Promise<{ items: AdminFeaturedGame[] }> {
+  return get<{ items: AdminFeaturedGame[] }>(Routes.featured, undefined, signal);
+}
+
+export function fetchAdminPlatformSettings(signal?: AbortSignal): Promise<AdminPlatformSettings> {
+  return get<AdminPlatformSettings>(Routes.systemSettings, undefined, signal);
+}
+
+export function fetchAdminBroadcasts(
+  filters: { limit?: number; offset?: number } = {},
+  signal?: AbortSignal,
+): Promise<Page<AdminBroadcast>> {
+  return get<Page<AdminBroadcast>>(Routes.broadcasts, { ...filters }, signal);
+}
+
 // ── Moderation writes ───────────────────────────────────────────────────────
 //
 // Each of these is one request that the server either performs or refuses. A
@@ -412,6 +474,38 @@ export async function moderateReport(
     method: "PATCH",
     token: requireToken(),
     body: { status, reason: reason ?? "" },
+  });
+}
+
+export async function saveAdminFeatured(
+  gameIds: string[],
+): Promise<{ items: AdminFeaturedGame[] }> {
+  return apiFetch<{ items: AdminFeaturedGame[] }>(Routes.featured, {
+    method: "PUT",
+    token: requireToken(),
+    body: { gameIds },
+  });
+}
+
+export async function saveAdminPlatformSettings(
+  values: AdminPlatformSettingsValues,
+): Promise<AdminPlatformSettings> {
+  return apiFetch<AdminPlatformSettings>(Routes.systemSettings, {
+    method: "PATCH",
+    token: requireToken(),
+    body: values,
+  });
+}
+
+export async function sendAdminBroadcast(message: {
+  title: string;
+  body: string;
+  link: string;
+}): Promise<{ id: string; recipients: number }> {
+  return apiFetch<{ id: string; recipients: number }>(Routes.broadcasts, {
+    method: "POST",
+    token: requireToken(),
+    body: message,
   });
 }
 
@@ -555,6 +649,21 @@ export function useAdminModerationLog(filters: { limit?: number; offset?: number
   return useResource<Page<AdminModerationEntry>>(
     (signal) => fetchAdminModerationLog({ limit, offset }, signal),
     [limit, offset],
+  );
+}
+
+export function useAdminFeatured() {
+  return useResource<{ items: AdminFeaturedGame[] }>((signal) => fetchAdminFeatured(signal), []);
+}
+
+export function useAdminPlatformSettings() {
+  return useResource<AdminPlatformSettings>((signal) => fetchAdminPlatformSettings(signal), []);
+}
+
+export function useAdminBroadcasts(filters: { limit?: number; offset?: number } = {}) {
+  return useResource<Page<AdminBroadcast>>(
+    (signal) => fetchAdminBroadcasts(filters, signal),
+    [filters.limit, filters.offset],
   );
 }
 

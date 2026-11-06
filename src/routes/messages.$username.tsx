@@ -1,3 +1,5 @@
+import { ReportDialog } from "@/components/social/ReportDialog";
+import { usePlatformSettings } from "@/lib/platform-settings";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -55,7 +57,6 @@ import { shortDate } from "@/lib/format";
 import {
   clearConversation,
   MAX_MESSAGE_LENGTH,
-  reportConversationPartner,
   sameRun,
   useThread,
   type ChatMessage,
@@ -203,6 +204,9 @@ function Thread({ other }: { other: PublicProfile }) {
     stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
   }
 
+  const platform = usePlatformSettings();
+  const [reporting, setReporting] = useState(false);
+
   function onSend(text: string) {
     stickToBottom.current = true;
     send(text);
@@ -211,15 +215,6 @@ function Thread({ other }: { other: PublicProfile }) {
   function older() {
     heightBeforeOlder.current = scroller.current?.scrollHeight ?? null;
     void loadOlder();
-  }
-
-  async function report() {
-    try {
-      await reportConversationPartner(other.id);
-      toast.success(t("Thanks. Moderators will review this account."));
-    } catch {
-      toast.error(t("Couldn't send your report. Try again."));
-    }
   }
 
   async function block() {
@@ -259,6 +254,14 @@ function Thread({ other }: { other: PublicProfile }) {
 
   return (
     <div className={FRAME}>
+      <ReportDialog
+        open={reporting}
+        onOpenChange={setReporting}
+        kind="profile"
+        targetId={other.id}
+        subject={`@${other.username}`}
+        includeMessages
+      />
       <header className="z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/80 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-xl box-content md:mt-4 md:rounded-t-2xl md:border md:px-2">
         <Button asChild variant="ghost" size="icon" aria-label={t("Back to messages")}>
           <Link to="/messages">
@@ -299,7 +302,7 @@ function Thread({ other }: { other: PublicProfile }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => void report()}>{t("Report")}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setReporting(true)}>{t("Report")}</DropdownMenuItem>
             <DropdownMenuItem className="text-destructive" onClick={() => void block()}>
               {t("Block")}
             </DropdownMenuItem>
@@ -479,7 +482,11 @@ function Thread({ other }: { other: PublicProfile }) {
         </p>
       )}
       {state.status === "ready" &&
-        (state.canSend ? (
+        (!platform.messagesEnabled ? (
+          <div className="shrink-0 border-t border-border px-4 py-4 text-center text-sm text-muted-foreground">
+            {t("Messages are paused for now. You can still read your chats.")}
+          </div>
+        ) : state.canSend ? (
           <Composer onSend={onSend} onTyping={notifyTyping} onCallOut={() => setCallingOut(true)} />
         ) : (
           <div className="shrink-0 border-t border-border px-4 py-4 text-center text-sm text-muted-foreground">

@@ -851,6 +851,68 @@ export async function googleAuthorizeUrl(next = "/"): Promise<string> {
   return authorize.toString();
 }
 
+/**
+ * Where to send a signed-in player to link Google to this account (PKCE, as above).
+ *
+ * Not the sign-in flow: this call carries the current token, so Supabase attaches the
+ * Google identity to this account rather than signing in as whichever account that
+ * Google address belongs to. Needs manual linking turned on in the Auth settings.
+ */
+export async function googleLinkUrl(next = "/settings/connected"): Promise<string> {
+  const token = getAccessToken();
+  if (!token) {
+    throw new ApiError(t("Sign in to link an account."), { code: "unauthorized", status: 401 });
+  }
+  const { url, publishableKey } = supabaseAuthBase();
+  const redirectTo = new URL("/auth/callback", window.location.origin);
+  redirectTo.searchParams.set("next", next);
+  const verifier = randomVerifier();
+  try {
+    sessionStorage.setItem(OAUTH_VERIFIER_STORAGE_KEY, verifier);
+  } catch {
+    // The callback then reports a clear error instead of silently failing.
+  }
+  const authorize = new URL(`${url}/auth/v1/user/identities/authorize`);
+  authorize.searchParams.set("provider", "google");
+  authorize.searchParams.set("redirect_to", redirectTo.toString());
+  authorize.searchParams.set("skip_http_redirect", "true");
+  authorize.searchParams.set("code_challenge", await codeChallenge(verifier));
+  authorize.searchParams.set("code_challenge_method", "s256");
+  const response = await fetch(authorize.toString(), {
+    headers: { apikey: publishableKey, Authorization: `Bearer ${token}` },
+  });
+  const body = (await response.json().catch(() => ({}))) as { url?: unknown };
+  if (!response.ok || typeof body.url !== "string") {
+    throw new ApiError(t("Couldn't start linking Google. Try again later."), {
+      code: "link_failed",
+      status: response.status,
+    });
+  }
+  return body.url;
+}
+
+/** Removes a linked sign-in method. Supabase refuses to remove the last one. */
+export async function unlinkIdentity(identityId: string): Promise<void> {
+  const token = getAccessToken();
+  if (!token) {
+    throw new ApiError(t("Sign in to change linked accounts."), {
+      code: "unauthorized",
+      status: 401,
+    });
+  }
+  const { url, publishableKey } = supabaseAuthBase();
+  const response = await fetch(`${url}/auth/v1/user/identities/${encodeURIComponent(identityId)}`, {
+    method: "DELETE",
+    headers: { apikey: publishableKey, Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    throw new ApiError(t("Couldn't unlink this account. Try again."), {
+      code: "unlink_failed",
+      status: response.status,
+    });
+  }
+}
+
 function randomVerifier(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
@@ -965,7 +1027,9 @@ export async function changePassword(newPassword: string): Promise<void> {
 }
 
 /** Reads the provider identities linked to the current Supabase user. */
-export async function fetchLinkedProviders(): Promise<Array<{ provider: string }>> {
+export async function fetchLinkedProviders(): Promise<
+  Array<{ provider: string; identityId?: string }>
+> {
   const token = getAccessToken();
   if (!token) return [];
   const { url, publishableKey } = supabaseAuthBase();
@@ -973,9 +1037,14 @@ export async function fetchLinkedProviders(): Promise<Array<{ provider: string }
     headers: { apikey: publishableKey, Authorization: `Bearer ${token}` },
   });
   if (!response.ok) return [];
-  const payload = (await response.json()) as { identities?: Array<{ provider?: string }> };
+  const payload = (await response.json()) as {
+    identities?: Array<{ provider?: string; identity_id?: string }>;
+  };
   return (payload.identities ?? [])
-    .map((identity) => ({ provider: String(identity.provider ?? "").toLowerCase() }))
+    .map((identity) => ({
+      provider: String(identity.provider ?? "").toLowerCase(),
+      identityId: identity.identity_id,
+    }))
     .filter((entry) => entry.provider !== "");
 }
 

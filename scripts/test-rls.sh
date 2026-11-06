@@ -99,5 +99,6 @@ run_file "$ROOT_DIR/tests/security/rls_test.sql"
 # checks the same rows against the engines).
 log "Checking the game verifiers against the engines' vectors"
 run_file "$ROOT_DIR/tests/security/verifier_vectors.sql"
+run_file "$ROOT_DIR/tests/security/platform_features_test.sql"
 
 log "Database security suite passed."

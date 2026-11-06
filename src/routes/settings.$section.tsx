@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -7,14 +8,23 @@ import { allSettings } from "@/components/settings/config";
 import { FeedbackForm } from "@/components/settings/FeedbackForm";
 import { ProfileForm } from "@/components/settings/ProfileForm";
 import { PushToggle } from "@/components/settings/PushToggle";
+import { DeviceSessionsPanel, TwoFactorPanel } from "@/components/settings/SecurityPanels";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ApiError } from "@/lib/api/client";
-import { changePassword, fetchLinkedProviders, signOut, useAuth } from "@/lib/auth/session";
+import {
+  changePassword,
+  fetchLinkedProviders,
+  googleLinkUrl,
+  signOut,
+  unlinkIdentity,
+  useAuth,
+} from "@/lib/auth/session";
 import { offeredLanguages, useLanguage, t, msg } from "@/lib/settings/language";
 import { useTheme, type Appearance } from "@/lib/settings/theme";
 import { useAccessibility } from "@/lib/settings/accessibility";
+import { hapticsSupported, useHapticsEnabled } from "@/lib/haptics";
 import { useSoundEnabled } from "@/lib/sound";
 import {
   defaultPreferences,
@@ -237,6 +247,7 @@ function Body({ section, category }: { section: string; category?: "bug" }) {
   const { choice, setChoice } = useTheme();
   const { prefs: a11y, setPrefs: setA11y } = useAccessibility();
   const [soundOn, setSoundOn] = useSoundEnabled();
+  const [hapticsOn, setHapticsOn] = useHapticsEnabled();
 
   // The language page is only a choice when there is more than one language to
   // pick; until then an old link to it lands on "Setting not found".
@@ -364,6 +375,13 @@ function Body({ section, category }: { section: string; category?: "bug" }) {
               desc={t("Get in first, while the leaderboard is wide open")}
               checked={prefs.notifyGameReleases}
               onChange={(v) => void update({ ...prefs, notifyGameReleases: v })}
+            />
+            <Toggle
+              id="n6"
+              label={t("News from the Unbored team")}
+              desc={t("Occasional announcements, in your inbox and as a push if it's on")}
+              checked={prefs.notifyAnnouncements}
+              onChange={(v) => void update({ ...prefs, notifyAnnouncements: v })}
             />
             <Toggle
               id="n1"
@@ -496,6 +514,15 @@ function Body({ section, category }: { section: string; category?: "bug" }) {
               checked={soundOn}
               onChange={setSoundOn}
             />
+            {hapticsSupported() && (
+              <Toggle
+                id="a-haptics"
+                label={t("Vibration")}
+                desc={t("Feel moves, clears and the end of a run")}
+                checked={hapticsOn}
+                onChange={setHapticsOn}
+              />
+            )}
           </Group>
           <Group title={t("Display")}>
             <Toggle
@@ -748,35 +775,31 @@ export function SecuritySection({ signedIn }: { signedIn: boolean }) {
             </Button>
           }
         />
-        <Row
-          label={t("Other sessions")}
-          value={t("Use log out on each device")}
-          action={
-            <span className="text-xs text-muted-foreground">
-              {t("Per-device session list is not implemented")}
-            </span>
-          }
-        />
       </Group>
-      <p className="mt-3 px-4 text-xs text-muted-foreground md:px-0">
-        {t(
-          "Two-step verification is not implemented — it is not offered here rather than shown as a toggle that does nothing.",
-        )}
-      </p>
+      <Group title={t("Signed-in devices")}>
+        <DeviceSessionsPanel />
+      </Group>
+      <Group title={t("Two-step verification")}>
+        <TwoFactorPanel />
+      </Group>
     </>
   );
 }
 
 function ConnectedSection({ signedIn }: { signedIn: boolean }) {
-  const [providers, setProviders] = useState<string[]>([]);
+  const [identities, setIdentities] = useState<Array<{ provider: string; identityId?: string }>>(
+    [],
+  );
   const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
     if (!signedIn) return;
     let cancelled = false;
     fetchLinkedProviders()
       .then((entries) => {
-        if (!cancelled) setProviders(entries.map((entry) => entry.provider));
+        if (!cancelled) setIdentities(entries);
       })
       .finally(() => {
         if (!cancelled) setLoaded(true);
@@ -784,12 +807,40 @@ function ConnectedSection({ signedIn }: { signedIn: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, [signedIn]);
+  }, [signedIn, refresh]);
 
   if (!signedIn) return <RequireSignIn body={t("Connected accounts belong to your account.")} />;
   if (!loaded) return <p className="px-4 text-sm text-muted-foreground">{t("Loading…")}</p>;
 
-  const googleConnected = providers.includes("google");
+  const google = identities.find((entry) => entry.provider === "google");
+  const googleConnected = google !== undefined;
+  // Removing the only way in would lock the player out.
+  const canUnlink = google?.identityId !== undefined && identities.length > 1;
+
+  async function link() {
+    setBusy(true);
+    try {
+      window.location.assign(await googleLinkUrl());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("Couldn't start linking Google."));
+      setBusy(false);
+    }
+  }
+
+  async function unlink() {
+    if (!google?.identityId) return;
+    setBusy(true);
+    try {
+      await unlinkIdentity(google.identityId);
+      toast.success(t("Google is no longer linked."));
+      setRefresh((n) => n + 1);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("Couldn't unlink this account."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <Group>
       <Row
@@ -797,13 +848,18 @@ function ConnectedSection({ signedIn }: { signedIn: boolean }) {
         value={googleConnected ? t("Connected") : t("Not connected")}
         action={
           googleConnected ? (
-            <span className="text-xs text-muted-foreground">{t("Linked to this account")}</span>
+            canUnlink ? (
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => void unlink()}>
+                {t("Unlink")}
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">{t("Linked to this account")}</span>
+            )
           ) : (
-            // Signing in with Google is not linking: the OAuth flow replaces the
-            // browser session, and a different Google account would land the
-            // visitor in a different account. Identity linking needs its own
-            // server-side flow, so it is reported as unavailable instead.
-            <span className="text-xs text-muted-foreground">{t("Linking is not implemented")}</span>
+            // Not the sign-in flow, which would replace this session: see `googleLinkUrl`.
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => void link()}>
+              {t("Link")}
+            </Button>
           )
         }
       />

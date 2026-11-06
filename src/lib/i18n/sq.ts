@@ -9,6 +9,7 @@
 import { sqAdmin } from "@/lib/i18n/sq-admin";
 import { sqApp } from "@/lib/i18n/sq-app";
 import { sqContent } from "@/lib/i18n/sq-content";
+import { sqFeatures } from "@/lib/i18n/sq-features";
 import { sqGames } from "@/lib/i18n/sq-games";
 import { sqHints } from "@/lib/i18n/sq-hints";
 import { sqRules } from "@/lib/i18n/sq-rules";
@@ -17,6 +18,7 @@ export const sq: Record<string, string> = {
   ...sqAdmin,
   ...sqContent,
   ...sqApp,
+  ...sqFeatures,
   ...sqRules,
   ...sqHints,
   ...sqGames,

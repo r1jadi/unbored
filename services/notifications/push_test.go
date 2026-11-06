@@ -24,6 +24,7 @@ type fakePushBackend struct {
 	mu      sync.Mutex
 	batches [][]supabasedigest.PushDelivery
 	claims  int
+	wakes   int
 	deleted []string
 	err     error
 }
@@ -218,6 +219,62 @@ func TestDispatchNeverContactsAnEndpointThatIsNotAPushService(t *testing.T) {
 	}
 }
 
+func TestRenderPushSendsAnnouncementsAndNoOtherSystemRow(t *testing.T) {
+	render := func(payload string) (pushMessage, bool) {
+		encoded, ok := renderPush(supabasedigest.PushDelivery{Kind: "system", Payload: []byte(payload), Language: "en"})
+		if !ok {
+			return pushMessage{}, false
+		}
+		var message pushMessage
+		if err := json.Unmarshal(encoded, &message); err != nil {
+			t.Fatal(err)
+		}
+		return message, true
+	}
+
+	message, ok := render(`{"reason":"announcement","broadcast":"b1","title":"Big news","text":"Something new","link":"/games/sudoku"}`)
+	if !ok || message != (pushMessage{"Big news", "Something new", "/games/sudoku", "announcement:b1"}) {
+		t.Errorf("announcement = %+v, %v", message, ok)
+	}
+	// A link can't leave the app, however the row came to hold one.
+	for _, link := range []string{"https://evil.example", "//evil.example", ""} {
+		message, ok = render(`{"reason":"announcement","broadcast":"b1","title":"Big news","text":"Something new","link":"` + link + `"}`)
+		if !ok || message.URL != "/notifications" {
+			t.Errorf("link %q = %+v, %v, want the inbox", link, message, ok)
+		}
+	}
+	if _, ok := render(`{"reason":"new_game","title":"T","text":"B"}`); ok {
+		t.Error("a system row that isn't an announcement was pushed")
+	}
+}
+
+func TestDispatchAsksForAnotherRunOnlyWhenItStoppedAtItsLimit(t *testing.T) {
+	row := supabasedigest.PushDelivery{Kind: "follow", Payload: []byte(`{"username":"rijad"}`), Language: "en", SubscriptionID: "s"}
+	full := make([][]supabasedigest.PushDelivery, pushMaxBatches)
+	for i := range full {
+		full[i] = []supabasedigest.PushDelivery{row}
+	}
+	for _, c := range []struct {
+		name    string
+		batches [][]supabasedigest.PushDelivery
+		wakes   int
+	}{
+		{"more than one run can send", full, 1},
+		{"finished within the run", full[:1], 0},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			backend := &fakePushBackend{batches: c.batches}
+			service := newPushService(backend, &fakePushSender{configured: true}, nil, "secret")
+			request := httptest.NewRequest(http.MethodPost, PushDispatchPath, nil)
+			request.Header.Set("Authorization", "Bearer secret")
+			service.dispatch(httptest.NewRecorder(), request)
+			if backend.wakes != c.wakes {
+				t.Errorf("wakes = %d, want %d", backend.wakes, c.wakes)
+			}
+		})
+	}
+}
+
 func TestRenderPushWordsEachKindForTheDevicesLanguage(t *testing.T) {
 	cases := []struct {
 		name, kind, payload, language string
@@ -359,4 +416,11 @@ func TestSendErrorsDoNotQuoteTheEndpoint(t *testing.T) {
 	if strings.Contains(err.Error(), "secret-device-token") {
 		t.Fatalf("the error quotes the endpoint: %v", err)
 	}
+}
+
+func (f *fakePushBackend) WakePush(context.Context) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.wakes++
+	return nil
 }

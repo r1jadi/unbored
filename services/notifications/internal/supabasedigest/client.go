@@ -218,3 +218,8 @@ func (c *Client) PendingFeedback(ctx context.Context, limit int) ([]Feedback, er
 func (c *Client) MarkFeedbackEmailed(ctx context.Context, id string) error {
 	return c.call(ctx, "mark_feedback_emailed", map[string]any{"p_id": id}, nil)
 }
+
+// WakePush asks the sender to run again, for a broadcast too large for one run.
+func (c *Client) WakePush(ctx context.Context) error {
+	return c.call(ctx, "wake_push_dispatch_once", map[string]any{}, nil)
+}

@@ -34,10 +34,13 @@ export function prefetchFeed(client: QueryClient): void {
   warm(() => client.prefetchInfiniteQuery(gamesQuery(FEED_QUERY)));
 }
 
+/** How many daily games Explore's widget lists. */
+export const DAILY_LIMIT = 5;
+
 export function prefetchExplore(client: QueryClient): void {
   warm(() =>
     Promise.all([
-      client.prefetchInfiniteQuery(gamesQuery({ category: "daily", limit: 1 })),
+      client.prefetchInfiniteQuery(gamesQuery({ category: "daily", limit: DAILY_LIMIT })),
       client.prefetchInfiniteQuery(gamesQuery({ limit: MAX_PAGE_SIZE })),
       client.prefetchQuery(categoriesQuery()),
     ]),

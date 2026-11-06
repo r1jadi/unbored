@@ -4,6 +4,7 @@ import { WelcomeMoment } from "@/components/layout/WelcomeMoment";
 import { useEffect, useMemo, useState } from "react";
 import { FEED_QUERY, useGames } from "@/lib/games/catalog";
 import { personalOrder } from "@/lib/games/for-you-personal";
+import { useFeaturedSlugs, withFeaturedFirst } from "@/lib/games/rankings";
 import { prefetchFeed } from "@/lib/prefetch";
 import { seo } from "@/lib/seo";
 import { useForYouSignals } from "@/lib/social/engagement";
@@ -53,9 +54,15 @@ function ForYou() {
   useEffect(() => {
     if (status === "ready" && nextCursor !== null && !loadingMore) loadMore();
   }, [status, nextCursor, loadingMore, loadMore]);
+  // Waits for the featured answer, like the viewer's signals, so the first card doesn't
+  // change a moment after it appears. A failed read just means no featured games.
+  const featured = useFeaturedSlugs();
   const ranked = useMemo(
-    () => (complete ? personalOrder(items, viewer.signals) : []),
-    [complete, items, viewer.signals],
+    () =>
+      complete && !featured.isPending
+        ? withFeaturedFirst(personalOrder(items, viewer.signals), featured.data ?? [])
+        : [],
+    [complete, featured.isPending, featured.data, items, viewer.signals],
   );
   return (
     <>

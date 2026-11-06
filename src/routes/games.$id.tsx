@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Bookmark, Clock, Heart, MessageCircle, Play, Share2 } from "lucide-react";
+import { Bookmark, Clock, Flag, Heart, MessageCircle, Play, Share2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Page, PageHeader, Section } from "@/components/common";
@@ -7,6 +7,7 @@ import { GameArt } from "@/components/game/GameArt";
 import { GameCard } from "@/components/game/GameCard";
 import { LeaderboardList } from "@/components/game/Leaderboard";
 import { YourStats } from "@/components/game/YourStats";
+import { ReportDialog } from "@/components/social/ReportDialog";
 import { CommentsSheet, ShareSheet } from "@/components/social/Sheets";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -114,6 +115,8 @@ function Detail({ game }: { game: Game }) {
   // Liking and saving need an account. Anonymous visitors are sent to sign in
   // with a redirect back to this game, instead of watching a toggle that
   // cannot persist.
+  const [reporting, setReporting] = useState(false);
+
   async function guarded(action: () => Promise<void>) {
     try {
       await action();
@@ -209,6 +212,16 @@ function Detail({ game }: { game: Game }) {
               >
                 <Share2 />
               </Button>
+              {engagement.gameId && (
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  aria-label={t("Report this game")}
+                  onClick={() => setReporting(true)}
+                >
+                  <Flag />
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -282,6 +295,15 @@ function Detail({ game }: { game: Game }) {
         gameSlug={game.slug}
         count={engagement.commentCount}
       />
+      {engagement.gameId && (
+        <ReportDialog
+          open={reporting}
+          onOpenChange={setReporting}
+          kind="game"
+          targetId={engagement.gameId}
+          subject={game.title}
+        />
+      )}
       <ShareSheet
         open={share}
         onOpenChange={setShare}

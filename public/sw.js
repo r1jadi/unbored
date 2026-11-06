@@ -40,7 +40,7 @@ const STATIC_FILES = [
 
 /** Pages that are personal or one-off, and never worth keeping. */
 const UNCACHED_PAGES =
-  /^\/(admin|auth|login|signup|forgot-password|reset-password|verify-email)(\/|$)/;
+  /^\/(admin|auth|login|signup|forgot-password|reset-password|two-factor|verify-email)(\/|$)/;
 
 /**
  * The catalogue's public reads, relative to wherever the API is mounted. The

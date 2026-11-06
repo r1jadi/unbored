@@ -1,3 +1,4 @@
+import { usePlatformSettings } from "@/lib/platform-settings";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Bookmark,
@@ -58,6 +59,7 @@ const desktop: Array<{ to: string; key: string; icon: typeof Home }> = [
 export function AppShell({ children }: { children: ReactNode }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const auth = useAuth();
+  const platform = usePlatformSettings();
   const unread = useUnreadCount();
   const showAdmin = useAdminVisibility();
   const isAnonymous = auth.status === "anonymous";
@@ -150,7 +152,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1">{children}</main>
+      <main className="min-w-0 flex-1">
+        {platform.bannerText && (
+          <p
+            role="status"
+            className="border-b border-border bg-surface px-4 py-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] text-center text-sm md:pt-2"
+          >
+            {platform.bannerText}
+          </p>
+        )}
+        {children}
+      </main>
 
       {/* Opaque fill for the home-indicator strip: the translucent bar above
           keeps blurring page content, while this layer guarantees the

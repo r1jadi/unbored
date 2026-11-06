@@ -254,20 +254,6 @@ export async function unsendMessage(messageId: string): Promise<void> {
   announceUnreadChange();
 }
 
-/** A real report row for the moderators' queue. It names the account, not the chat. */
-export async function reportConversationPartner(userId: string): Promise<void> {
-  const reporter = sessionUser();
-  if (!reporter) throw unauthorised();
-  await withToken((token) =>
-    restMutate("reports", "POST", token, {
-      reporter_id: reporter,
-      target_kind: "profile",
-      target_id: userId,
-      reason: "Direct messages",
-    }),
-  );
-}
-
 // Badges listen here, so reading a chat clears them straight away.
 const unreadListeners = new Set<() => void>();
 

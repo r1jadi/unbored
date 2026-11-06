@@ -1893,6 +1893,172 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "503": { $ref: "#/components/responses/Unavailable" }
 
+  /admin/system/settings:
+    get:
+      operationId: getPlatformSettings
+      tags: [admin]
+      summary: What can be changed at runtime, and its recent history
+      description: Requires the moderator or administrator role.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: The current settings and the last 20 changes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPlatformSettings" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+    patch:
+      operationId: updatePlatformSettings
+      tags: [admin]
+      summary: Change the banner, or open and pause comments and messages
+      description: |
+        Requires an administrator. The database refuses new comments or messages while
+        they are paused, whatever a client shows. Every change is recorded with who made it.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [commentsEnabled, messagesEnabled]
+              properties:
+                bannerText: { type: string, maxLength: 200 }
+                commentsEnabled: { type: boolean }
+                messagesEnabled: { type: boolean }
+      responses:
+        "200":
+          description: The settings as they now stand.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPlatformSettings" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /admin/featured:
+    get:
+      operationId: listFeaturedGames
+      tags: [admin]
+      summary: The editorial slots, in order
+      description: Requires the moderator or administrator role.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: The featured games.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminFeaturedGames" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+    put:
+      operationId: setFeaturedGames
+      tags: [admin]
+      summary: Replace the editorial slots in one write
+      description: |
+        Requires the moderator or administrator role. Published games only, at most 12.
+        Games added and removed are recorded in the moderation log.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [gameIds]
+              properties:
+                gameIds:
+                  type: array
+                  maxItems: 12
+                  items: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The featured games as they now stand.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminFeaturedGames" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /admin/broadcasts:
+    get:
+      operationId: listBroadcasts
+      tags: [admin]
+      summary: Announcements already sent, with their measured reach
+      description: Requires the moderator or administrator role.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: One page of announcements, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, hasMore]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminBroadcast" }
+                  hasMore: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+    post:
+      operationId: sendBroadcast
+      tags: [admin]
+      summary: Send an announcement to every player who hasn't opted out
+      description: |
+        Requires an administrator. Writes one notification per player and pushes to
+        their devices that allow it. A link must be a path inside the app.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [title, body]
+              properties:
+                title: { type: string, minLength: 3, maxLength: 80 }
+                body: { type: string, minLength: 3, maxLength: 300 }
+                link: { type: string, maxLength: 200 }
+      responses:
+        "201":
+          description: Sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, recipients]
+                properties:
+                  id: { type: string, format: uuid }
+                  recipients: { type: integer }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
   /cron/game-digests:
     get:
       operationId: sendGameDigest
@@ -2894,6 +3060,55 @@ components:
           }
         note: { type: string }
 
+    AdminFeaturedGames:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [gameId, slug, title, status, position, setAt]
+            properties:
+              gameId: { type: string, format: uuid }
+              slug: { type: string }
+              title: { type: string }
+              status: { type: string }
+              position: { type: integer }
+              setByUsername: { type: string, nullable: true }
+              setAt: { type: string, format: date-time }
+    AdminPlatformSettings:
+      type: object
+      required: [commentsEnabled, messagesEnabled, updatedAt, log]
+      properties:
+        bannerText: { type: string, nullable: true }
+        commentsEnabled: { type: boolean }
+        messagesEnabled: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+        updatedByUsername: { type: string, nullable: true }
+        log:
+          type: array
+          items:
+            type: object
+            required: [id, before, after, createdAt]
+            properties:
+              id: { type: string, format: uuid }
+              actorUsername: { type: string, nullable: true }
+              before: { type: object }
+              after: { type: object }
+              createdAt: { type: string, format: date-time }
+    AdminBroadcast:
+      type: object
+      required: [id, title, body, recipients, readCount, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        body: { type: string }
+        link: { type: string, nullable: true }
+        sentByUsername: { type: string, nullable: true }
+        recipients: { type: integer }
+        readCount: { type: integer }
+        createdAt: { type: string, format: date-time }
     AdminSystemReport:
       type: object
       required: [measured, note, items]

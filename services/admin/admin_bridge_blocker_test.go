@@ -471,3 +471,36 @@ func TestClientMarkersCannotBypassGuardBackend(t *testing.T) {
 		t.Error("a refused request reached the database read")
 	}
 }
+
+func (g *guardBackend) FeaturedGames(_ context.Context, token, actor string) ([]supabaseadmin.FeaturedGame, error) {
+	g.record("FeaturedGames")
+	return nil, nil
+}
+
+func (g *guardBackend) SetFeaturedGames(_ context.Context, token, actor string, gameIDs []string) error {
+	g.record("SetFeaturedGames", gameIDs...)
+	g.lastActor = actor
+	return nil
+}
+
+func (g *guardBackend) PlatformSettings(_ context.Context, token, actor string) (supabaseadmin.PlatformSettings, error) {
+	g.record("PlatformSettings")
+	return supabaseadmin.PlatformSettings{}, nil
+}
+
+func (g *guardBackend) SetPlatformSettings(_ context.Context, token, actor, bannerText string, commentsEnabled, messagesEnabled bool) error {
+	g.record("SetPlatformSettings", bannerText)
+	g.lastActor = actor
+	return nil
+}
+
+func (g *guardBackend) Broadcasts(_ context.Context, token, actor string, page supabaseadmin.Page) ([]supabaseadmin.Broadcast, error) {
+	g.record("Broadcasts")
+	return nil, nil
+}
+
+func (g *guardBackend) SendBroadcast(_ context.Context, token, actor, title, body, link string) (supabaseadmin.BroadcastResult, error) {
+	g.record("SendBroadcast", title, body, link)
+	g.lastActor = actor
+	return supabaseadmin.BroadcastResult{ID: "broadcast-1", Recipients: 3}, nil
+}

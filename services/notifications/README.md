@@ -76,6 +76,10 @@ Nothing is sent until all of this is done, and nothing breaks before it is.
    select vault.create_secret('<CRON_SECRET>', 'push_dispatch_secret');
    ```
 
+Announcements from `/admin/notifications` go through the same sender. One run sends at
+most three batches, so a larger broadcast has the sender wake itself for the rest
+(`wake_push_dispatch_once`).
+
 To check it, turn the switch on in Settings and have another account follow you. Calls
 pg_net made are in `net._http_response`.
 

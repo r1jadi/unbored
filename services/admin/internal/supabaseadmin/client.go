@@ -751,3 +751,107 @@ func ParsePage(query url.Values) (Page, error) {
 	}
 	return page, nil
 }
+
+// ── Featured games, platform settings and broadcasts ────────────────────────
+
+// FeaturedGame is one editorial slot, in the order staff chose.
+type FeaturedGame struct {
+	GameID        string    `json:"game_id"`
+	Slug          string    `json:"slug"`
+	Title         string    `json:"title"`
+	GameStatus    string    `json:"game_status"`
+	Position      int       `json:"position"`
+	SetByUsername *string   `json:"set_by_username"`
+	SetAt         time.Time `json:"set_at"`
+}
+
+// FeaturedGames reads the current slots.
+func (c *Client) FeaturedGames(ctx context.Context, token, actor string) ([]FeaturedGame, error) {
+	var rows []FeaturedGame
+	if err := c.invoke(ctx, "featured-games", "admin_featured_games", "admin_featured_games_svc", nil, token, actor, &rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// SetFeaturedGames replaces the slots in one transaction.
+func (c *Client) SetFeaturedGames(ctx context.Context, token, actor string, gameIDs []string) error {
+	payload := map[string]any{"p_game_ids": gameIDs}
+	return c.invoke(ctx, "set-featured-games", "admin_set_featured_games", "admin_set_featured_games_svc", payload, token, actor, nil)
+}
+
+// PlatformSettingsChange is one audited edit of the platform settings.
+type PlatformSettingsChange struct {
+	ID            string          `json:"id"`
+	ActorUsername *string         `json:"actorUsername"`
+	Before        json.RawMessage `json:"before"`
+	After         json.RawMessage `json:"after"`
+	CreatedAt     time.Time       `json:"createdAt"`
+}
+
+// PlatformSettings is what can be changed at runtime, and who last changed it.
+type PlatformSettings struct {
+	BannerText        *string                  `json:"bannerText"`
+	CommentsEnabled   bool                     `json:"commentsEnabled"`
+	MessagesEnabled   bool                     `json:"messagesEnabled"`
+	UpdatedAt         time.Time                `json:"updatedAt"`
+	UpdatedByUsername *string                  `json:"updatedByUsername"`
+	Log               []PlatformSettingsChange `json:"log"`
+}
+
+// PlatformSettings reads the settings and their recent history.
+func (c *Client) PlatformSettings(ctx context.Context, token, actor string) (PlatformSettings, error) {
+	var settings PlatformSettings
+	if err := c.invoke(ctx, "platform-settings", "admin_platform_settings", "admin_platform_settings_svc", nil, token, actor, &settings); err != nil {
+		return PlatformSettings{}, err
+	}
+	return settings, nil
+}
+
+// SetPlatformSettings applies a change and records it.
+func (c *Client) SetPlatformSettings(ctx context.Context, token, actor, bannerText string, commentsEnabled, messagesEnabled bool) error {
+	payload := map[string]any{
+		"p_banner_text":      nullable(bannerText),
+		"p_comments_enabled": commentsEnabled,
+		"p_messages_enabled": messagesEnabled,
+	}
+	return c.invoke(ctx, "set-platform-settings", "admin_set_platform_settings", "admin_set_platform_settings_svc", payload, token, actor, nil)
+}
+
+// Broadcast is one announcement sent to players, with its measured reach.
+type Broadcast struct {
+	ID             string    `json:"id"`
+	Title          string    `json:"title"`
+	Body           string    `json:"body"`
+	Link           *string   `json:"link"`
+	SentByUsername *string   `json:"sent_by_username"`
+	Recipients     int64     `json:"recipients"`
+	ReadCount      int64     `json:"read_count"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+// BroadcastResult is what sending an announcement did.
+type BroadcastResult struct {
+	ID         string `json:"id"`
+	Recipients int64  `json:"recipients"`
+}
+
+// Broadcasts reads one page of sent announcements.
+func (c *Client) Broadcasts(ctx context.Context, token, actor string, page Page) ([]Broadcast, error) {
+	payload := map[string]any{"p_limit": page.Limit + 1, "p_offset": page.Offset}
+	var rows []Broadcast
+	if err := c.invoke(ctx, "broadcasts", "admin_broadcasts", "admin_broadcasts_svc", payload, token, actor, &rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// SendBroadcast writes one announcement to every player who hasn't opted out.
+func (c *Client) SendBroadcast(ctx context.Context, token, actor, title, body, link string) (BroadcastResult, error) {
+	payload := map[string]any{"p_title": title, "p_body": body, "p_link": nullable(link)}
+	var result BroadcastResult
+	if err := c.invoke(ctx, "send-broadcast", "admin_send_broadcast", "admin_send_broadcast_svc", payload, token, actor, &result); err != nil {
+		return BroadcastResult{}, err
+	}
+	return result, nil
+}
