@@ -773,6 +773,22 @@
   }
 }
 
+/* Minefield (components/game/MinefieldCell): a mine that goes off flashes once. */
+.minefield-hit {
+  animation: minefield-hit 360ms ease-out;
+}
+
+@keyframes minefield-hit {
+  0% {
+    scale: 1.2;
+    box-shadow: 0 0 0 0.25rem var(--destructive);
+  }
+  100% {
+    scale: 1;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
 /* Scatter (components/game/ScatterRuntime): a jammed tile shakes in place. */
 .scatter-jam {
   animation: scatter-jam 320ms ease-in-out;

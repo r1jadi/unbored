@@ -7,6 +7,7 @@ import * as decant from "@/lib/games/decant";
 import * as eightPuzzle from "@/lib/games/eight-puzzle";
 import * as fusebox from "@/lib/games/fusebox";
 import * as huedini from "@/lib/games/huedini";
+import * as minefield from "@/lib/games/minefield";
 import * as miniSudoku from "@/lib/games/mini-sudoku";
 import * as scatter from "@/lib/games/scatter";
 import * as sudoku from "@/lib/games/sudoku";
@@ -149,6 +150,14 @@ describe("replaying a saved run", () => {
     let run = fusebox.createRun(SEED);
     for (const cell of [0, 7, 14, 21]) run = fusebox.tap(run, cell);
     expectSameRun(run, (r) => fusebox.submission(r).actions, fusebox.replay);
+  });
+
+  it("rebuilds Minefield, flags and all", () => {
+    let run = minefield.createRun(SEED);
+    for (const action of [127, 27, 127, minefield.MINEFIELD_FLAG_OFFSET + 3]) {
+      run = minefield.act(run, action);
+    }
+    expectSameRun(run, (r) => minefield.submission(r).actions, minefield.replay);
   });
 
   it("rebuilds Scatter", () => {

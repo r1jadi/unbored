@@ -568,6 +568,36 @@ export const GAME_RULES = {
       },
     ],
   },
+  minefield: {
+    heading: msg("Read the numbers"),
+    summary: msg("Open every safe cell. The numbers tell you where the mines are."),
+    rules: [
+      {
+        lead: msg("Tap a cell"),
+        text: msg(
+          "to open it. A number says how many of the eight cells around it hide a mine, and a cell with none opens its neighbours too. The first tap of a board is always safe.",
+        ),
+      },
+      {
+        lead: msg("Flag a mine"),
+        text: msg(
+          "by switching to Flag, long-pressing or right-clicking. A flag protects its cell. Tap an opened number whose flags add up to open the rest of its neighbours.",
+        ),
+      },
+      {
+        lead: msg("Three lives."),
+        text: msg(
+          "A mine costs a life, and the run ends when all three are gone. Every third cleared board brings one back.",
+        ),
+      },
+      {
+        lead: msg("No last board."),
+        text: msg(
+          "Each safe cell is 10 points, a cleared board 20 a row, and a board with no mine set off 10 more a row. The boards grow and hold more mines as you go.",
+        ),
+      },
+    ],
+  },
   scatter: {
     heading: msg("Clear the way"),
     summary: msg("Send every arrow off the board. Mind what stands in its lane."),

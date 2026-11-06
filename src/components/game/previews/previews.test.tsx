@@ -99,7 +99,14 @@ import {
   FUSEBOX_PREVIEW_REFUND,
   FuseboxPreview,
 } from "./FuseboxPreview";
+import {
+  MINEFIELD_PREVIEW_BEATS,
+  MINEFIELD_PREVIEW_FLAGS,
+  MINEFIELD_PREVIEW_MINES,
+  MinefieldPreview,
+} from "./MinefieldPreview";
 import { SCATTER_PREVIEW_BEATS, ScatterPreview } from "./ScatterPreview";
+import { FLAGGED, OPEN } from "@/lib/games/minefield";
 import { SEVEN_SECOND_PREVIEW_BEATS, SevenSecondPreview } from "./SevenSecondPreview";
 import { STACK10_PREVIEW_BEATS, Stack10Preview } from "./Stack10Preview";
 import {
@@ -158,6 +165,7 @@ const SCRIPTED: Row[] = [
   { name: "gridburst", beats: GRIDBURST_PREVIEW_BEATS, Preview: GridburstPreview },
   { name: "huedini", beats: HUEDINI_PREVIEW_BEATS, Preview: HuediniPreview },
   { name: "memory-flash", beats: MEMORY_FLASH_PREVIEW_BEATS, Preview: MemoryFlashPreview },
+  { name: "minefield", beats: MINEFIELD_PREVIEW_BEATS, Preview: MinefieldPreview },
   { name: "mini-sudoku", beats: MINI_SUDOKU_PREVIEW_BEATS, Preview: MiniSudokuPreview },
   { name: "one-move", beats: ONE_MOVE_PREVIEW_BEATS, Preview: OneMovePreview },
   { name: "scatter", beats: SCATTER_PREVIEW_BEATS, Preview: ScatterPreview },
@@ -335,6 +343,23 @@ describe("the Bolted preview", () => {
     }
     expect(isBoltedSolved(bolts)).toBe(true);
     expect(bolts.filter(isLocked)).toHaveLength(3);
+  });
+});
+
+describe("the Minefield preview", () => {
+  it("flags only mines, never opens one, and floats the cells it opened", () => {
+    const last = MINEFIELD_PREVIEW_BEATS[MINEFIELD_PREVIEW_BEATS.length - 1]!;
+    expect(MINEFIELD_PREVIEW_FLAGS.length).toBeGreaterThanOrEqual(1);
+    last.cells.forEach((state, at) => {
+      if (state === FLAGGED) expect(MINEFIELD_PREVIEW_MINES).toContain(at);
+      if (state === OPEN) expect(MINEFIELD_PREVIEW_MINES).not.toContain(at);
+    });
+    const gains = MINEFIELD_PREVIEW_BEATS.flatMap((beat) =>
+      beat.gain === null ? [] : [beat.gain],
+    );
+    expect(gains.reduce((sum, gain) => sum + gain, 0)).toBe(
+      last.cells.filter((state) => state === OPEN).length,
+    );
   });
 });
 

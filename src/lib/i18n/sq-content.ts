@@ -28,6 +28,7 @@ export const sqContent: Record<string, string> = {
   Decant: "Derdhe",
   Scatter: "Shpërndaje",
   Fusebox: "Kutia e Siguresave",
+  Minefield: "Fusha e Minuar",
 
   // Taglines
   "Place a crown in every row, column and colour region, with no two touching. Every board has one solution, the boards keep coming, and the quick earn more.":
@@ -47,6 +48,11 @@ export const sqContent: Record<string, string> = {
     "Një rrjetë kutish të ngarkuara, një shkëndijë në çdo prekje. Shpërthe një kuti dhe rrufetë e saj ngarkojnë të tjerat, valë pas vale, gjithnjë me më shumë vlerë. Zinxhirët e gjatë t'i kthejnë shkëndijat, ndaj një lojë është gjithmonë një prekje e mirë larg nga kthesa.",
   "Tap a cell to spend a spark and add one charge. At four charge it pops and fires a bolt each way, up to three cells, charging the first charged cell it meets. Each wave of a chain scores more than the last. Four pops from one tap gives back a spark, seven gives two, eleven gives three, and leaving four charged cells or fewer clears the board for three more. Every second board asks for longer chains. Surge cells fire diagonally too from board three; a shielded cell's first hit only breaks its shield from board five. The run ends when the sparks run out.":
     "Prek një kuti për të shpenzuar një shkëndijë dhe për të shtuar një ngarkesë. Me katër ngarkesa ajo shpërthen dhe lëshon një rrufe në çdo drejtim, deri në tri kuti, duke ngarkuar kutinë e parë të ngarkuar që takon. Çdo valë e zinxhirit jep më shumë pikë se e mëparshmja. Katër shpërthime nga një prekje kthejnë një shkëndijë, shtatë kthejnë dy, njëmbëdhjetë kthejnë tri, dhe nëse lë katër kuti të ngarkuara ose më pak, tabela pastrohet për edhe tri. Çdo tabelë e dytë kërkon zinxhirë më të gjatë. Nga tabela e tretë, kutitë e fuqishme lëshojnë rrufe edhe diagonalisht; nga tabela e pestë, goditja e parë te një kuti e mbrojtur vetëm ia thyen mburojën. Loja mbaron kur mbarojnë shkëndijat.",
+  "Every number is a clue.": "Çdo numër është një e dhënë.",
+  "Open every safe cell of a hidden minefield, reading the numbers to work out where the mines lie. The first tap of a board is always safe, three lives forgive a bad guess, and the boards keep getting bigger and denser.":
+    "Hap çdo kuti të sigurt të një fushe të fshehur me mina, duke lexuar numrat për të gjetur ku janë minat. Prekja e parë e një tabele është gjithmonë e sigurt, tri jetë falin një hamendësim të keq, dhe tabelat bëhen gjithnjë më të mëdha dhe më të dendura.",
+  "Tap a cell to open it. A number says how many of the eight cells around it hide a mine, and a cell with none opens its neighbours too. Switch to Flag, long-press or right-click to flag a cell you think is a mine. Tap an opened number whose flags add up to open the rest of its neighbours. A mine costs a life, and the run ends when all three are gone. Each safe cell is worth 10 points, a cleared board 20 a row, and a board cleared without setting off a mine 10 more a row. Every third cleared board brings back a life. Boards grow from 8×8 to 10×10 and hold more mines as you go.":
+    "Prek një kuti për ta hapur. Një numër tregon sa nga tetë kutitë përreth fshehin një minë, dhe një kuti pa asnjë hap edhe fqinjët e saj. Kalo te Flamuri, bëj prekje të gjatë ose kliko djathtas për të shënuar një kuti që mendon se ka minë. Prek një numër të hapur me flamujt e plotë për të hapur fqinjët e tjerë. Një minë kushton një jetë, dhe loja mbaron kur mbarojnë të trija. Çdo kuti e sigurt vlen 10 pikë, një tabelë e pastruar 20 për rresht, dhe një tabelë e pastruar pa shpërthyer asnjë minë edhe 10 për rresht. Çdo tabelë e tretë e pastruar kthen një jetë. Tabelat rriten nga 8×8 në 10×10 dhe mbajnë më shumë mina ndërsa vazhdon.",
   "Every block escapes. Find the order.": "Çdo bllok del. Gjej radhën.",
   "Clear the way. Every arrow out.": "Hape rrugën. Çdo shigjetë jashtë.",
   "Sudoku on a 6×6 grid.": "Sudoku në rrjetë 6×6.",

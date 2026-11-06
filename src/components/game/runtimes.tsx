@@ -13,6 +13,7 @@ import { FuseboxRuntime } from "@/components/game/FuseboxRuntime";
 import { GridburstRuntime } from "@/components/game/GridburstRuntime";
 import { HuediniRuntime } from "@/components/game/HuediniRuntime";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
+import { MinefieldRuntime } from "@/components/game/MinefieldRuntime";
 import { MiniSudokuRuntime } from "@/components/game/MiniSudokuRuntime";
 import { OneMoveRuntime } from "@/components/game/OneMoveRuntime";
 import { QueensRuntime } from "@/components/game/QueensRuntime";
@@ -36,6 +37,7 @@ import { FUSEBOX_RUNTIME } from "@/lib/games/fusebox";
 import { GRIDBURST_RUNTIME } from "@/lib/games/gridburst";
 import { HUEDINI_RUNTIME } from "@/lib/games/huedini";
 import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
+import { MINEFIELD_RUNTIME } from "@/lib/games/minefield";
 import { MINI_SUDOKU_RUNTIME } from "@/lib/games/mini-sudoku";
 import { ONE_MOVE_RUNTIME } from "@/lib/games/one-move";
 import { QUEENS_RUNTIME } from "@/lib/games/queens";
@@ -87,4 +89,5 @@ export const RUNTIMES: Readonly<Record<string, ComponentType<RuntimeProps>>> = {
   [CHECKMATE_RUNTIME]: CheckmateRuntime,
   [BOLTED_RUNTIME]: BoltedRuntime,
   [FUSEBOX_RUNTIME]: FuseboxRuntime,
+  [MINEFIELD_RUNTIME]: MinefieldRuntime,
 };

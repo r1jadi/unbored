@@ -1587,6 +1587,15 @@ reset role;
 \set fusebox_session      'f0f0f0f0-1111-4111-8111-f0f0f0f0f0f0'
 \set fusebox_open_session 'f0f0f0f0-2222-4222-8222-f0f0f0f0f0f0'
 \set fusebox_old_session  'f0f0f0f0-5555-4555-8555-f0f0f0f0f0f0'
+-- Minefield. Seed 1, first cell 27: the line sets off three mines and ends the run; the
+-- prefix stops after the first of them; the clear line opens every safe cell of board 1.
+\set minefield_line 'array[27,5,6,33]'
+\set minefield_prefix 'array[27,5]'
+\set minefield_clear 'array[27,7,32,40,41,48,49,53,55,57,60,61,62,63]'
+\set minefield_session       'f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1'
+\set minefield_open_session  'f1f1f1f1-2222-4222-8222-f1f1f1f1f1f1'
+\set minefield_clear_session 'f1f1f1f1-3333-4333-8333-f1f1f1f1f1f1'
+\set minefield_old_session   'f1f1f1f1-5555-4555-8555-f1f1f1f1f1f1'
 -- Zip. Seed 1's first two solution paths (both 5×5) are below. The line solves
 -- board one, starts board two, cuts back once and stops: 50 points, thirty-one
 -- cells. See the Zip section of docs/games/README.md.
@@ -1823,6 +1832,11 @@ insert into public.game_sessions (id, game_id, user_id, seed, rules_version, sta
   (:'fusebox_session',      (select id from public.games where slug = 'fusebox'), :'alice', 1, 'fusebox@1', now() - interval '5 minutes', now() + interval '2 hours', null),
   (:'fusebox_open_session', (select id from public.games where slug = 'fusebox'), :'alice', 1, 'fusebox@1', now() - interval '5 minutes', now() + interval '2 hours', null),
   (:'fusebox_old_session',  (select id from public.games where slug = 'fusebox'), :'alice', 1, 'fusebox@0', now() - interval '5 minutes', now() + interval '2 hours', null),
+  -- Minefield fixtures, on the shipped game and seed 1.
+  (:'minefield_session',       (select id from public.games where slug = 'minefield'), :'alice', 1, 'minefield@1', now() - interval '5 minutes', now() + interval '2 hours', null),
+  (:'minefield_open_session',  (select id from public.games where slug = 'minefield'), :'alice', 1, 'minefield@1', now() - interval '5 minutes', now() + interval '2 hours', null),
+  (:'minefield_clear_session', (select id from public.games where slug = 'minefield'), :'alice', 1, 'minefield@1', now() - interval '5 minutes', now() + interval '2 hours', null),
+  (:'minefield_old_session',   (select id from public.games where slug = 'minefield'), :'alice', 1, 'minefield@0', now() - interval '5 minutes', now() + interval '2 hours', null),
   -- Zip fixtures, all on seed 1. Zip's verifier times the run from the session,
   -- so these started thirty seconds ago — inside the sixty-second opening clock —
   -- except the late one, which started two minutes ago.
@@ -2502,11 +2516,11 @@ select rls_test.visible(
 );
 -- `fixture-%` are this suite's own playable games (the ones the refusal paths
 -- need), so the claim is about the catalogue: of the games this repository
--- ships, only the twenty-three with runtimes are playable.
+-- ships, only the twenty-four with runtimes are playable.
 select rls_test.visible(
   $$select 1 from public.games
-     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku', 'scatter', 'huedini', 'cascade', 'checkmate', 'bolted', 'fusebox') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
-  0, 'no shipped game besides the twenty-three runtimes is marked playable'
+     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku', 'scatter', 'huedini', 'cascade', 'checkmate', 'bolted', 'fusebox', 'minefield') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
+  0, 'no shipped game besides the twenty-four runtimes is marked playable'
 );
 select rls_test.says_field(
   $$public.start_game_session('stack-10', 'stack-10@1', 'test/1.0')$$,
@@ -2817,6 +2831,24 @@ select rls_test.denied($$select public.fusebox_board(1, 1)$$,
   'a client cannot call the Fusebox deal');
 select rls_test.denied($$select public.fusebox_replay(1, array[0])$$,
   'a client cannot call the Fusebox replay');
+-- The shipped Minefield game, started through its registry row.
+select rls_test.visible(
+  $$select 1 from public.games where slug = 'minefield' and title = 'Minefield' and playable
+       and runtime = 'minefield' and status = 'published' and is_official$$,
+  1, 'the shipped Minefield game is published, playable and names its runtime'
+);
+select rls_test.says_field(
+  $$public.start_game_session('minefield', 'minefield@1', 'test/1.0')$$,
+  'tile_count', '4096', 'a Minefield session reports its submission bound'
+);
+select rls_test.says(
+  $$public.start_game_session('minefield', 'fusebox@1', 'test/1.0')$$,
+  'unsupported_runtime', 'Minefield does not accept the Fusebox rules'
+);
+select rls_test.denied($$select public.minefield_mines(1, 1, 0)$$,
+  'a client cannot call the Minefield deal');
+select rls_test.denied($$select public.minefield_replay(1, array[0])$$,
+  'a client cannot call the Minefield replay');
 select rls_test.says(
   $$public.start_game_session('sudoku', 'mini-sudoku@1', 'test/1.0')$$,
   'unsupported_runtime', 'Sudoku does not accept the Mini Sudoku rules'
@@ -4112,6 +4144,74 @@ select rls_test.ok(
   (select r.outcome = 'recorded' and r.score = 176
      from public.complete_fusebox_run('f0f0f0f0-2222-4222-8222-f0f0f0f0f0f0'::uuid, :fusebox_prefix, 176, 45000) r),
   'a Fusebox run the player ended is recorded as it stands'
+);
+
+-- ── Minefield: every reveal, flag and chord, replayed ──
+--
+-- Refusals first, all leaving the fixtures open for the runs that follow.
+select rls_test.says(
+  format($$public.complete_minefield_run('f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1'::uuid, %s, 999, 45000)$$, :'minefield_line'),
+  'score_mismatch', 'a Minefield score the replay does not produce is refused'
+);
+select rls_test.says_field(
+  format($$public.complete_minefield_run('f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1'::uuid, %s, 999, 45000)$$, :'minefield_line'),
+  'score', '43', 'the Minefield replay is the score, and it is reported back'
+);
+select rls_test.says(
+  $$public.complete_minefield_run('f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1'::uuid, array[64], 0, 45000)$$,
+  'invalid_actions', 'a cell off the Minefield board is impossible play'
+);
+select rls_test.says(
+  $$public.complete_minefield_run('f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1'::uuid, array[127, 27], 0, 45000)$$,
+  'invalid_actions', 'opening a flagged Minefield cell is impossible play'
+);
+select rls_test.says(
+  format($$public.complete_minefield_run('f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1'::uuid, %s || 0, 43, 45000)$$, :'minefield_line'),
+  'invalid_actions', 'an action after the last life is impossible play'
+);
+select rls_test.says(
+  $$public.complete_minefield_run('f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1'::uuid, array[27], 0, 999999)$$,
+  'invalid_duration', 'a Minefield run cannot claim to have lasted longer than its session'
+);
+select rls_test.raises(
+  $$select public.complete_minefield_run('f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1'::uuid, array[null]::integer[], 0, 45000)$$,
+  '22023', 'a ragged Minefield action list is a request error, not a scored run'
+);
+select rls_test.says(
+  $$public.complete_minefield_run('f1f1f1f1-5555-4555-8555-f1f1f1f1f1f1'::uuid, array[27], 0, 45000)$$,
+  'wrong_rules', 'a Minefield session pinned to other rules is refused by its own verifier'
+);
+select rls_test.ok(
+  (select r.outcome = 'recorded'
+      and r.score = 43
+      and r.cleared_columns = 0
+      and r.tiles_placed = 43
+     from public.complete_minefield_run('f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1'::uuid, :minefield_line, 43, 45000) r),
+  'a Minefield run that lost its last life is recorded, with the cells it opened'
+);
+select rls_test.says(
+  format($$public.complete_minefield_run('f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1'::uuid, %s, 43, 45000)$$, :'minefield_line'),
+  'duplicate', 'a retry of the same Minefield run is safe to repeat'
+);
+select rls_test.says(
+  $$public.complete_minefield_run('f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1'::uuid, array[27], 0, 45000)$$,
+  'closed', 'a closed Minefield session does not accept a different run'
+);
+select rls_test.ok(
+  rls_test.count_rows($$select 1 from public.scores where session_id = 'f1f1f1f1-1111-4111-8111-f1f1f1f1f1f1'$$) = 1,
+  'a Minefield run leaves exactly one score for its session'
+);
+-- Ending a run is a prefix of a legal line, with lives to spare.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 43
+     from public.complete_minefield_run('f1f1f1f1-2222-4222-8222-f1f1f1f1f1f1'::uuid, :minefield_prefix, 43, 45000) r),
+  'a Minefield run the player ended is recorded as it stands'
+);
+-- A clean board: fifty-six safe cells, sixteen for clearing it and eight for no mines.
+select rls_test.ok(
+  (select r.outcome = 'recorded' and r.score = 80 and r.cleared_columns = 1 and r.tiles_placed = 56
+     from public.complete_minefield_run('f1f1f1f1-3333-4333-8333-f1f1f1f1f1f1'::uuid, :minefield_clear, 80, 45000) r),
+  'a cleared Minefield board scores its cells and its bonuses'
 );
 
 -- ── Zip: one path through every cell, against the clock ──

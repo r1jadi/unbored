@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Twenty-three games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Twenty-four games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox** and the **Daily Crossword**. Twenty-one of them — all but 7 Second and the crossword, the two daily
+**Mini Sudoku**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield** and the **Daily Crossword**. Twenty-two of them — all but 7 Second and the crossword, the two daily
 games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -2978,3 +2978,79 @@ engine.
 
 The board is fully visible and the client holds the seed, as in every game here, so
 the verifier proves a run is legal, not that a person played it.
+
+## Minefield
+
+Hidden mines and numbered clues, played as an endless run in this catalogue's own
+look. Open every safe cell of a board for the next one. A mine costs a life rather
+than the run, because a board can come down to a true guess. There is no clock and no
+last board.
+
+| Thing   | Value                                                                       |
+| ------- | --------------------------------------------------------------------------- |
+| Board   | 8×8 for boards 1–2, 9×9 for 3–5, then 10×10                                 |
+| Mines   | ⌊cells × min(22, 12 + ⌊(board + 1) / 2⌋) / 100⌋: 8 on board 1, 22 from 19   |
+| Lives   | 3 to start and at most; every third cleared board brings one back           |
+| Score   | A safe cell 1 unit, a cleared board 2 a row, no mine set off 1 more a row   |
+| Ending  | No lives left, or the player ending the run; no clock                       |
+| Actions | 4096 at most: 0–99 a cell to open, 100–199 a flag toggled on cell − 100     |
+| Rules   | `minefield@1`                                                               |
+| Runtime | `minefield` (the catalogue's `games.runtime` value)                         |
+
+### The rules
+
+- Opening a closed cell: a mine costs a life and stays on the board as a found mine;
+  anything else opens, and a cell numbered 0 opens its neighbours too. A flag stops
+  that spread.
+- A flag toggles on a closed cell and protects it: opening a flagged cell is not a
+  move. Flags are actions because a chord depends on them.
+- A **chord** is a tap on an opened number whose flagged and found neighbours add up
+  to it, with a closed neighbour left. Its closed neighbours open in ascending order,
+  and a wrong flag can set off a mine. The chord stops if the last life goes.
+- A board is cleared when every safe cell is open, unless the action cost the last
+  life. Flags are not needed to clear one, and a flag on a safe cell has to come off.
+- Anything else is not a move, and the verifier refuses a run that contains one
+  (`invalid_actions`): an action after the run ended, a cell off the board, flagging
+  an opened cell, or tapping an opened cell whose flags do not add up.
+
+### The boards
+
+A board's mines are drawn when its first cell is opened, so the first tap is always
+safe and always opens an area: the mines are never on that cell or its neighbours.
+Draws come from an outer LCG advanced once per level and a second LCG started at that
+state (the top sixteen bits of each state), over a seed mixed with 0x27D4EB2F. The
+candidates are every other cell, ascending. For i from 0, slot i swaps with slot
+i + draw mod (candidates − i), and the first slots are the mines.
+
+`public.minefield_mines(seed, level, first)` and `minesOn()` in
+`src/lib/games/minefield.ts` are the same function.
+
+Boards are not checked to be solvable without guessing. That would need a solver in
+the verifier, and the three lives do the same job more simply.
+
+### Balance
+
+Bots playing the real engine over 400 seeds, as medians, with score as shown on screen:
+
+| Bot                            | Score  | Boards cleared | Actions |
+| ------------------------------ | ------ | -------------- | ------- |
+| One clue at a time, then guess | 8,050  | 8              | 290     |
+| Also compares two clues        | 14,600 | 14             | 620     |
+
+These are bots, not players: the numbers show the ramp working, not how much fun it
+is. Change the ramp only with a new rules version.
+
+### The verifier
+
+`public.complete_minefield_run` in
+`supabase/migrations/20261218120000_minefield_sessions.sql` replays the actions through
+`public.minefield_replay` and compares the claimed score with its own
+(`score_mismatch`). It reports boards cleared as `cleared_columns` and cells opened as
+`tiles_placed`. Any prefix of a legal line is a valid run, because the score only
+grows. The session lives twelve hours, and the run can be saved and continued. The
+lines in `tests/security/verifier_vectors.sql` cover flags stopping a spread, a chord
+setting off a mine, a life coming back and a run to its last life, and
+`src/test/verifier-vectors.test.ts` recomputes them from the engine.
+
+The client holds the seed, as in every game here, so a client could work out where
+the mines are: the verifier proves a run is legal, not that a person played it.

@@ -119,6 +119,15 @@ import {
   type FuseboxRun,
 } from "@/lib/games/fusebox";
 import {
+  act as actMinefield,
+  createRun as createMinefieldRun,
+  finish as finishMinefieldRun,
+  MINEFIELD_RULES_VERSION,
+  replay as replayMinefieldRun,
+  submission as minefieldSubmission,
+  type MinefieldRun,
+} from "@/lib/games/minefield";
+import {
   createRun as createScatterRun,
   finish as finishScatterRun,
   SCATTER_RULES_VERSION,
@@ -6024,6 +6033,251 @@ export function useFuseboxRun(gameSlug: string, autoStart = false): FuseboxRunCo
   }, [state]);
 
   return { ...state, signedIn, continueRun, newRun, begin, tap, finish, restart, retry };
+}
+
+// ── A run of Minefield, from Start to score ──────────────────────────────────
+
+export type MinefieldRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: MinefieldRun; playedMs: number }
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | { status: "playing"; session: PlaySession; run: MinefieldRun }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: MinefieldRun }
+  | { status: "finished"; session: PlaySession; run: MinefieldRun; result: RunResult }
+  | {
+      status: "error";
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: MinefieldRun;
+    };
+
+export type MinefieldRunControls = MinefieldRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for a session. */
+  begin: () => void;
+  /** One action: a cell opened, or a flag toggled. Ignored if it is not a move. */
+  act: (action: number) => void;
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
+  /** Back to the rules, for a fresh run. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of Minefield against the session API.
+ *
+ * Fusebox's lifecycle: the rules first, a session issued on Start, boards drawn
+ * from its seed, and verification once the run ends — when the lives run out, or
+ * when the player ends it.
+ */
+export function useMinefieldRun(gameSlug: string, autoStart = false): MinefieldRunControls {
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<MinefieldRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
+  const startedAt = useRef(0);
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
+  const signedIn = !!getAccessToken();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // A session is requested only once Start has been pressed (`attempt` > 0).
+  useEffect(() => {
+    const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, MINEFIELD_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayMinefieldRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, MINEFIELD_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayMinefieldRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: MINEFIELD_RULES_VERSION,
+        });
+      })
+      .then((session) => {
+        if (!session || controller.signal.aborted) return;
+        startedAt.current = Date.now();
+        setState({ status: "playing", session, run: createMinefieldRun(session.seed) });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // Verification: once, when a run has ended.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run } = state;
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run });
+
+    completeRun(
+      session.id,
+      { ...minefieldSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const act = useCallback((action: number) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = actMinefield(current.run, action);
+      if (next === current.run) return current;
+      if (next.outcome !== "playing") endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishMinefieldRun(current.run);
+      if (next === current.run) return current;
+      endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({ status: "playing", session: resumed.session, run });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...minefieldSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: minefieldSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    // Tap to play skips the rules on Play again too: straight to a new session.
+    if (autoStart) {
+      setState({ status: "starting" });
+      setAttempt((n) => n + 1);
+    } else {
+      setState({ status: "intro" });
+      setAttempt(0);
+    }
+  }, [autoStart]);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again.
+      submitting.current = false;
+      setState({ status: "playing", session: state.session, run: state.run });
+      return;
+    }
+
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, signedIn, continueRun, newRun, begin, act, finish, restart, retry };
 }
 
 // ── A run of Scatter, from Start to score ──────────────────────────────────

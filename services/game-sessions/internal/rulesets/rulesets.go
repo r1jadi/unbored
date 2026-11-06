@@ -89,6 +89,8 @@ var families = map[string]Ruleset{
 	"bolted": {Verifier: "complete_bolted_run", MaxActions: 8192, ActionCodes: 256},
 	// Fusebox taps a cell of the 6×6 board.
 	"fusebox": {Verifier: "complete_fusebox_run", MaxActions: 4096, ActionCodes: 36},
+	// Minefield opens a cell of a board up to 10×10, or flags one as 100 + cell.
+	"minefield": {Verifier: "complete_minefield_run", MaxActions: 4096, ActionCodes: 200},
 }
 
 // overrides are the versions whose bounds differ from their family's: the

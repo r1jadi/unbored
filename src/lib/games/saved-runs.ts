@@ -52,6 +52,7 @@ export const RESUMABLE_RULES: ReadonlySet<string> = new Set([
   "huedini@1",
   "scatter@1",
   "fusebox@1",
+  "minefield@1",
   "cascade@1",
   "checkmate@1",
 ]);

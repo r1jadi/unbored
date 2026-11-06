@@ -219,6 +219,94 @@ begin
 end $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Minefield: the mines a seed deals a level, given the first cell opened
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  got text;
+begin
+  for v in select * from (values
+    -- vectors:minefield-mines:begin
+    ('1', '1', '27', '5,6,33,45,54,56,58,59'),
+    ('1', '3', '0', '7,20,24,27,39,41,43,48,57,61,67'),
+    ('1', '6', '55', '0,4,9,17,23,28,33,42,51,53,83,85,91,92,94'),
+    ('1', '19', '99', '2,7,10,27,29,46,47,48,50,51,54,55,58,61,62,63,66,69,73,80,91,94'),
+    ('42', '1', '27', '1,22,39,42,43,55,58,63'),
+    ('42', '3', '0', '8,12,13,18,21,26,33,41,50,59,74'),
+    ('42', '6', '55', '1,18,33,37,39,57,59,60,78,80,82,85,91,94,95'),
+    ('42', '19', '99', '2,21,29,30,31,36,41,42,45,48,49,54,61,62,72,79,81,86,87,94,95,97'),
+    ('9223372036854775807', '1', '27', '1,10,23,40,45,50,55,63'),
+    ('9223372036854775807', '3', '0', '4,5,22,27,29,34,35,36,37,42,52'),
+    ('9223372036854775807', '6', '55', '2,4,13,22,26,27,30,40,41,60,68,69,93,94,96'),
+    ('9223372036854775807', '19', '99', '1,6,13,21,22,24,38,44,50,55,56,61,66,68,70,71,72,76,79,90,91,97'),
+    ('-7', '1', '27', '4,23,24,38,40,43,46,60'),
+    ('-7', '3', '0', '3,7,8,15,19,22,43,52,54,61,70'),
+    ('-7', '6', '55', '21,22,24,25,27,31,33,34,37,43,49,50,52,78,82'),
+    ('-7', '19', '99', '0,2,10,13,25,31,39,42,46,47,50,54,57,60,63,64,65,68,74,81,84,96')
+    -- vectors:minefield-mines:end
+  ) as vectors(seed, level, first, mines) loop
+    select array_to_string(
+      public.minefield_mines(v.seed::bigint, v.level::integer, v.first::integer), ',') into got;
+    if got is distinct from v.mines then
+      raise exception 'ASSERTION FAILED: Minefield seed % board % first % — the database deals %, the engine %',
+        v.seed, v.level, v.first, got, v.mines;
+    end if;
+    raise notice 'ok   Minefield seed % board %: the verifier deals the engine''s mines', v.seed, v.level;
+  end loop;
+end $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Minefield: a line of actions, and everything the replay derives from it. The cells
+-- left are written one digit each: 0 closed, 1 flagged, 2 open, 3 a mine that was hit.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  r record;
+  got text;
+begin
+  for v in select * from (values
+    -- vectors:minefield-lines:begin
+    ('1', '27,5,6,33', '43', '0', '1', '0', '43', '3', '2222233022222222222222222222222203222222002220220022200000000000'),
+    ('1', '27,7,32,40,41,48,49,53,55,57,60,61,62,63', '80', '3', '2', '1', '56', '0', '0000000000000000000000000000000000000000000000000000000000000000'),
+    ('42', '128,27,128,28', '51', '3', '1', '0', '51', '0', '0022222222222222222222002222222022222220220022202202222022022220'),
+    ('7', '27,100,101,9', '48', '1', '1', '0', '48', '2', '1130000032222222222222220222222202222222022202220222222202222220'),
+    ('124', '35,110,17,102,111,4,132,141,33,40,48,150,49,155,54,35,140,41,145,153,52,61,54,138,29,114,5,6,15,131,139,157,48,43,169,60,59,70,141,33,32,116,15,7,104,13,130,31,148,39,29,47,58,111,1,165,177,67,174,72,63,43,141,33,50,49,126,25,167,58,68,175,66,147,48,9,105,14,107,16,131,146,36,45,56,163,173,64', '345', '3', '5', '4', '252', '1', '000000000000000000000000000000000000000000000000000000000000000000000000000000000'),
+    ('186', '35,125,26,18,112,3,4,5,120,13,123,132,140,33,24,108,1,153,52,35,13,31,120,11,117,8,16,121,133,24,141,32,147,46,54,152,43,51,149,40,48,43,139,30,29,38,111,1,149,48,154,155,159,168,66,56,57,64,175,76,67,77,179,70,43,7,66,137,154,46,36,27,122,13,130,21,159,49,132,33,115,5,6,126,25,108,170,61,69,71', '336', '1', '5', '4', '252', '3', '000000000000000000000000000000000000000000000000000000000000000000000000000000000'),
+    ('-2', '35,106,114,22,15,118,147,150,42,43,153,52,154,46,55,35,14,37,9,54,23,15,129,28,113,6,5,4,118,140,152,43,51,149,41,48,43,123,124,32,125,34,149,145,46,36,121,20,139,179,180,16', '214', '0', '3', '2', '174', '3', '222200000222200030222121112222222222222122222122212222222222222222222222222222211')
+    -- vectors:minefield-lines:end
+  ) as vectors(seed, actions, score, lives, level, boards, opened, hits, cells) loop
+    select * into r from public.minefield_replay(
+      v.seed::bigint, string_to_array(v.actions, ',')::integer[]);
+    select array_to_string(r.cells, '') into got;
+    if not r.valid
+       or r.score::text is distinct from v.score
+       or r.lives::text is distinct from v.lives
+       or r.level::text is distinct from v.level
+       or r.boards::text is distinct from v.boards
+       or r.opened::text is distinct from v.opened
+       or r.hits::text is distinct from v.hits
+       or got is distinct from v.cells then
+      raise exception 'ASSERTION FAILED: Minefield seed % — the database reaches % (score %, lives %, board %, % cleared, % opened, % hit), the engine % (score %, lives %, board %, % cleared, % opened, % hit)',
+        v.seed, got, r.score, r.lives, r.level, r.boards, r.opened, r.hits,
+        v.cells, v.score, v.lives, v.level, v.boards, v.opened, v.hits;
+    end if;
+    raise notice 'ok   Minefield seed %: the verifier replays the engine''s line', v.seed;
+  end loop;
+
+  -- Each of these is not a move, on a board where cell 27 opens a clear area.
+  foreach got in array array['{64}', '{164}', '{-1}', '{27,27}', '{127,27}', '{27,127}', '{27,5,6,33,0}', '{27,5,6,33,100}'] loop
+    select * into r from public.minefield_replay(1, got::integer[]);
+    if r.valid then
+      raise exception 'ASSERTION FAILED: Minefield accepted %', got;
+    end if;
+  end loop;
+end $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Crowns (queens@2): a line of taps, undos (81) and clears (82). The cells left are
 -- written one digit each: 0 empty, 1 X, 2 crown.
 -- ─────────────────────────────────────────────────────────────────────────────

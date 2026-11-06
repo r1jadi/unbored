@@ -1,3 +1,4 @@
+import { Flag } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 
 import { CascadeTile } from "@/components/game/CascadeTile";
@@ -70,6 +71,7 @@ export function GameArt({
       {id === "scatter" && <Scatter />}
       {id === "huedini" && <Huedini />}
       {id === "fusebox" && <Fusebox />}
+      {id === "minefield" && <Minefield />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </GameStage>
   );
@@ -138,6 +140,7 @@ const KNOWN = new Set([
   "scatter",
   "huedini",
   "fusebox",
+  "minefield",
 ]);
 
 /**
@@ -693,6 +696,36 @@ function Fusebox() {
       ))}
       <div className="absolute left-1/2 top-[20%] h-[60%] w-[min(1cqw,1cqh,0.25rem)] -translate-x-1/2 rounded-full bg-foreground" />
       <div className="absolute left-[20%] top-1/2 h-[min(1cqw,1cqh,0.25rem)] w-[60%] -translate-y-1/2 rounded-full bg-foreground" />
+    </div>
+  );
+}
+
+function Minefield() {
+  // A board part-solved: open numbers around a corner of closed cells, one flagged.
+  const faces = ["  1cc", "  2fc", "112cc", "c2ccc", "ccccc"].join("").split("");
+  const hue: Record<string, string> = {
+    "1": "text-game-1",
+    "2": "text-game-2",
+    "3": "text-game-5",
+  };
+  return (
+    <div className="grid aspect-square h-[78%] grid-cols-5 grid-rows-5 gap-[min(1.5cqw,1.5cqh,0.4rem)]">
+      {faces.map((face, i) => (
+        <div
+          key={i}
+          className={cn(
+            "flex items-center justify-center rounded-[min(1.5cqw,1.5cqh,0.4rem)] text-[min(8cqw,8cqh,2rem)] font-bold leading-none",
+            face === "c" || face === "f" ? "bg-foreground/25" : "bg-foreground/5",
+            hue[face],
+          )}
+        >
+          {face === "f" ? (
+            <Flag className="size-[55%] fill-primary text-primary" />
+          ) : face === "c" ? null : (
+            face
+          )}
+        </div>
+      ))}
     </div>
   );
 }

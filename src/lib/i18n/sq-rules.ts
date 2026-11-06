@@ -59,6 +59,19 @@ export const sqRules: Record<string, string> = {
   "It gets harder.": "Bëhet më e vështirë.",
   "Every second board asks for longer chains. From board three, surge cells fire diagonally too; from board five, a shielded cell's first hit only breaks its shield. The run ends when the sparks run out.":
     "Çdo tabelë e dytë kërkon zinxhirë më të gjatë. Nga tabela e tretë, kutitë e fuqishme lëshojnë rrufe edhe diagonalisht; nga tabela e pestë, goditja e parë te një kuti e mbrojtur vetëm ia thyen mburojën. Loja mbaron kur mbarojnë shkëndijat.",
+  "Read the numbers": "Lexo numrat",
+  "Open every safe cell. The numbers tell you where the mines are.":
+    "Hap çdo kuti të sigurt. Numrat të tregojnë ku janë minat.",
+  "to open it. A number says how many of the eight cells around it hide a mine, and a cell with none opens its neighbours too. The first tap of a board is always safe.":
+    "për ta hapur. Një numër tregon sa nga tetë kutitë përreth fshehin një minë, dhe një kuti pa asnjë hap edhe fqinjët e saj. Prekja e parë e një tabele është gjithmonë e sigurt.",
+  "Flag a mine": "Shëno një minë",
+  "by switching to Flag, long-pressing or right-clicking. A flag protects its cell. Tap an opened number whose flags add up to open the rest of its neighbours.":
+    "duke kaluar te Flamuri, me prekje të gjatë ose me klikim të djathtë. Flamuri e mbron kutinë e vet. Prek një numër të hapur me flamujt e plotë për të hapur fqinjët e tjerë.",
+  "Three lives.": "Tri jetë.",
+  "A mine costs a life, and the run ends when all three are gone. Every third cleared board brings one back.":
+    "Një minë kushton një jetë, dhe loja mbaron kur mbarojnë të trija. Çdo tabelë e tretë e pastruar kthen një.",
+  "Each safe cell is 10 points, a cleared board 20 a row, and a board with no mine set off 10 more a row. The boards grow and hold more mines as you go.":
+    "Çdo kuti e sigurt vlen 10 pikë, një tabelë e pastruar 20 për rresht, dhe një tabelë pa asnjë minë të shpërthyer edhe 10 për rresht. Tabelat rriten dhe mbajnë më shumë mina ndërsa vazhdon.",
   "Change your mind": "Ndërro mendje",
   "whenever you like: Undo takes back any tap and Clear board starts the board again, and neither costs a point. Crowns that break the rules turn red.":
     "kur të duash: Zhbëj e kthen çdo prekje dhe Pastro tabelën e nis tabelën nga e para, dhe asnjëra nuk kushton pikë. Kurorat që shkelin rregullat bëhen të kuqe.",

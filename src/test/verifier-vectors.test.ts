@@ -6,6 +6,11 @@ import { describe, expect, it } from "vitest";
 import { board as boltedBoard } from "@/lib/games/bolted";
 import { createRun, findSwap, swap } from "@/lib/games/cascade";
 import { puzzleFor } from "@/lib/games/checkmate";
+import {
+  cellsCode as minefieldCells,
+  minesOn,
+  replay as minefieldReplay,
+} from "@/lib/games/minefield";
 import { replay as queensReplay } from "@/lib/games/queens";
 import { speedBonus } from "@/lib/games/speed";
 import { board as fuseboxBoard, boardCode, replay as fuseboxReplay } from "@/lib/games/fusebox";
@@ -122,6 +127,33 @@ describe("the verifier vectors", () => {
     }
     // The lines have to reach the boards with surge and shielded cells, or they prove little.
     expect(Math.max(...reached)).toBeGreaterThanOrEqual(5);
+  });
+
+  it("are Minefield's mines as the engine draws them", () => {
+    const cases = vectors("minefield-mines");
+    expect(cases.length).toBeGreaterThanOrEqual(3);
+    for (const [seed, level, first, mines] of cases) {
+      expect(
+        minesOn(seed!, Number(level), Number(first)).join(","),
+        `seed ${seed}, board ${level}`,
+      ).toBe(mines);
+    }
+  });
+
+  it("are Minefield's lines as the engine plays them", () => {
+    const cases = vectors("minefield-lines");
+    expect(cases.length).toBeGreaterThanOrEqual(3);
+    for (const [seed, actions, score, lives, level, boards, opened, hits, cells] of cases) {
+      const run = minefieldReplay(seed!, actions!.split(",").map(Number));
+      expect(run.actions.join(","), `seed ${seed}: every action is legal`).toBe(actions);
+      expect(String(run.score), `seed ${seed}`).toBe(score);
+      expect(String(run.lives), `seed ${seed}`).toBe(lives);
+      expect(String(run.level), `seed ${seed}`).toBe(level);
+      expect(String(run.levelsCleared), `seed ${seed}`).toBe(boards);
+      expect(String(run.opened), `seed ${seed}`).toBe(opened);
+      expect(String(run.hits), `seed ${seed}`).toBe(hits);
+      expect(minefieldCells(run.cells), `seed ${seed}`).toBe(cells);
+    }
   });
 
   it("are Checkmate's first ten puzzles as the engine deals them", () => {

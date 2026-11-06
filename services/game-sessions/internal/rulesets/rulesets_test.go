@@ -10,6 +10,7 @@ func TestLookupRoutesEachFamilyToItsVerifier(t *testing.T) {
 		"cascade@9":     "complete_cascade_run",
 		"bolted@1":      "complete_bolted_run",
 		"fusebox@1":     "complete_fusebox_run",
+		"minefield@1":   "complete_minefield_run",
 		"queens@1":      "complete_queens_run",
 		"queens@2":      "complete_queens_speed_run",
 		"sudoku@3":      "complete_sudoku_run",

@@ -576,6 +576,40 @@ export const sqGames: Record<string, string> = {
   "The missed tap: row {row}, column {column}.": "Prekja e humbur: rreshti {row}, kolona {column}.",
   "Wave {n}": "Vala {n}",
 
+  // Minefield
+  "{left} mines left": "{left} mina të mbetura",
+  "{n} lives left": "{n} jetë të mbetura",
+  "{tilesPlaced} {n} opened, {clearedColumns} {n2} cleared.":
+    "{tilesPlaced} {n} të hapura, {clearedColumns} {n2} të pastruara.",
+  "1 life left": "1 jetë e mbetur",
+  "A mine! Last life.": "Një minë! Jeta e fundit.",
+  "A mine! {n} lives left.": "Një minë! {n} jetë të mbetura.",
+  "Board {level}, {side} by {side2}, {left} mines left.":
+    "Tabela {level}, {side} me {side2}, {left} mina të mbetura.",
+  "Board {n} cleared.": "Tabela {n} u pastrua.",
+  "Board {n} cleared. A life comes back.": "Tabela {n} u pastrua. Një jetë kthehet.",
+  "Clean boards": "Tabela pa minë",
+  Flag: "Flamur",
+  "Flag mode: tap a cell you think hides a mine.":
+    "Mënyra e flamurit: prek një kuti që mendon se fsheh një minë.",
+  "Flag removed.": "Flamuri u hoq.",
+  "Flagged.": "U shënua me flamur.",
+  "Out of lives": "Pa jetë",
+  "Out of lives. The run is over.": "Mbaruan jetët. Loja mbaroi.",
+  "Read the numbers. Flag what you are sure of.":
+    "Lexo numrat. Shëno me flamur atë që e di me siguri.",
+  Reveal: "Zbulo",
+  "Row {n}, column {n2}: {count} mines nearby.": "Rreshti {n}, kolona {n2}: {count} mina afër.",
+  "Row {n}, column {n2}: 1 mine nearby.": "Rreshti {n}, kolona {n2}: 1 minë afër.",
+  "Row {n}, column {n2}: closed.": "Rreshti {n}, kolona {n2}: e mbyllur.",
+  "Row {n}, column {n2}: flagged.": "Rreshti {n}, kolona {n2}: me flamur.",
+  "Row {n}, column {n2}: mine.": "Rreshti {n}, kolona {n2}: minë.",
+  "Row {n}, column {n2}: no mines nearby.": "Rreshti {n}, kolona {n2}: asnjë minë afër.",
+  "Tap any cell. The first one is always safe.":
+    "Prek çfarëdo kutie. E para është gjithmonë e sigurt.",
+  "Tap mode": "Mënyra e prekjes",
+  "The board you ended on, with its mines shown.": "Tabela ku mbarove, me minat e saj të shfaqura.",
+
   // The speed bonus, and Crowns' free undo
   "+{bonus} speed": "+{bonus} shpejtësi",
   "Clear board": "Pastro tabelën",

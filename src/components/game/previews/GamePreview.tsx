@@ -30,6 +30,7 @@ const LOADERS: Record<string, Loader> = {
   huedini: () => import("./HuediniPreview").then((m) => ({ default: m.HuediniPreview })),
   "memory-flash": () =>
     import("./MemoryFlashPreview").then((m) => ({ default: m.MemoryFlashPreview })),
+  minefield: () => import("./MinefieldPreview").then((m) => ({ default: m.MinefieldPreview })),
   "mini-sudoku": () =>
     import("./MiniSudokuPreview").then((m) => ({ default: m.MiniSudokuPreview })),
   "one-move": () => import("./OneMovePreview").then((m) => ({ default: m.OneMovePreview })),
