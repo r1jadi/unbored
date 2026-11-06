@@ -5,7 +5,7 @@
 
 ## Context
 
-This repository is deployed to Vercel and connected to Lovable. Its JavaScript
+This repository is deployed to Vercel. Its JavaScript
 lockfile is `bun.lock`; `bunfig.toml` sets a 24-hour supply-chain guard on new
 package versions. Vercel detects the lockfile and installs with bun, which in a CI
 environment (`CI=1`) defaults to `--frozen-lockfile`: a `package.json` that

@@ -40,7 +40,8 @@ app, using Vercel's Go framework preset:
 - Both frameworks are explicit because a service has no dashboard preset: the
   root contains a Nitro config, a TanStack Start app and a Node project at once,
   and Vercel refuses to choose between them ("Multiple frameworks detected in
-  project root"). `tanstack-start-lovable` is the Lovable variant of the TanStack
+  project root"). (Since the project left Lovable, the web service uses the generic `tanstack-start`;
+  see docs/deployment/vercel.md.) `tanstack-start-lovable` is the Lovable variant of the TanStack
   Start preset, which supersedes the generic detectors for a repository holding
   `@lovable.dev/vite-tanstack-config` and `@tanstack/react-start`.
 - `services/cmd/api/main.go` is the deployment entrypoint Vercel detects. It is

@@ -51,7 +51,7 @@ reachable to the gateway by a **service binding**, and move the gateway to a
 **container image** because it is the service that declares the binding.
 
 - `vercel.json` declares three services:
-  - `web` — repository root, `framework: "tanstack-start-lovable"` (unchanged).
+  - `web` — repository root, `framework: "tanstack-start-lovable"` at the time, now `tanstack-start` (unchanged).
   - `api` — repository root, `runtime: "container"`,
     `entrypoint: "Dockerfile.vercel"`, which is the Go gateway.
   - `auth` — `root: "services/"`, `framework: "go"`,

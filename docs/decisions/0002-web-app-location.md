@@ -1,5 +1,8 @@
 # 0002 — The web app stays at the repository root, with a path to apps/web
 
+> **Update, 2026-11-06:** the project is no longer connected to Lovable. The Lovable
+> constraints below no longer apply; the Vercel, lockfile and CI work of a move still does.
+
 * Status: accepted
 * Date: 2026-10-05
 

@@ -15,7 +15,6 @@ import { Loader2 } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { rootSeo, SITE_NAME } from "../lib/seo";
 import { useDocumentTitle } from "@/lib/document-title";
 import { AppShell } from "@/components/layout/AppShell";
@@ -136,9 +135,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">

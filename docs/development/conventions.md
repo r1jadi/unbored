@@ -4,10 +4,8 @@
 
 * Branches: `main` is deployable. Work happens on a branch and lands through a
   pull request.
-* **Never rewrite published history.** This repository is connected to Lovable;
-  force pushing, rebasing, amending or squashing commits that are already pushed
-  rewrites history on their side and can lose the user's project history. Add a
-  commit on top instead.
+* **Never rewrite published history.** Force pushing, rebasing, amending or squashing
+  commits that are already pushed breaks everyone else's copy. Add a new commit instead.
 * Commit messages describe the *why*, not the file list. Keep the branch in a
   working state: CI (web, go, database, api-contract, security) runs on every push.
 * One logical change per commit. Do not reformat unrelated files in a change —

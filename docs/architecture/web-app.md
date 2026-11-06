@@ -12,7 +12,7 @@
 | Tests | Vitest + Testing Library (`src/**/*.test.ts(x)`) |
 
 The app lives at the repository root. That is deliberate — moving a working
-Lovable-connected app is riskier than leaving it — and the migration path to
+live app is riskier than leaving it — and the migration path to
 `apps/web` is recorded in [decisions/0002](../decisions/0002-web-app-location.md).
 
 ## Rendering
