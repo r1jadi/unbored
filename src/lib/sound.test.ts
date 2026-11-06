@@ -9,7 +9,15 @@ class FakeAudioContext {
   state = "running";
   currentTime = 0;
   destination = {};
-  resume = () => Promise.resolve();
+  resume = () => {
+    FakeAudioContext.resumes++;
+    return Promise.resolve();
+  };
+  static resumes = 0;
+  static last: FakeAudioContext | null = null;
+  constructor() {
+    FakeAudioContext.last = this;
+  }
   createOscillator() {
     return {
       type: "sine",
@@ -47,6 +55,56 @@ describe("useGameSounds", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     localStorage.clear();
+  });
+
+  describe("starting the audio", () => {
+    afterEach(() => {
+      if (FakeAudioContext.last) FakeAudioContext.last.state = "running";
+    });
+
+    it.each(["pointerup", "touchend", "click", "keydown"])("starts it on %s", (gesture) => {
+      play([base, { ...base, moves: 1 }]);
+      FakeAudioContext.last!.state = "suspended";
+      FakeAudioContext.resumes = 0;
+
+      window.dispatchEvent(new Event(gesture));
+
+      expect(FakeAudioContext.resumes).toBe(1);
+    });
+
+    it("keeps trying after the first gesture, because a touch's first event can't start it", () => {
+      play([base, { ...base, moves: 1 }]);
+      FakeAudioContext.last!.state = "suspended";
+      FakeAudioContext.resumes = 0;
+
+      window.dispatchEvent(new Event("pointerdown"));
+      window.dispatchEvent(new Event("touchend"));
+
+      expect(FakeAudioContext.resumes).toBe(2);
+    });
+
+    it("recovers from an iOS interruption", () => {
+      play([base, { ...base, moves: 1 }]);
+      FakeAudioContext.last!.state = "interrupted";
+      FakeAudioContext.resumes = 0;
+
+      window.dispatchEvent(new Event("touchend"));
+
+      expect(FakeAudioContext.resumes).toBe(1);
+    });
+
+    it("leaves running audio alone, and stays out of the way while muted", () => {
+      play([base, { ...base, moves: 1 }]);
+      FakeAudioContext.resumes = 0;
+      window.dispatchEvent(new Event("touchend"));
+      expect(FakeAudioContext.resumes).toBe(0);
+
+      FakeAudioContext.last!.state = "suspended";
+      setSoundEnabled(false);
+      FakeAudioContext.resumes = 0;
+      window.dispatchEvent(new Event("touchend"));
+      expect(FakeAudioContext.resumes).toBe(0);
+    });
   });
 
   it("is silent on the first render", () => {

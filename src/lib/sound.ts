@@ -142,7 +142,7 @@ export function useSoundEnabled(): [boolean, (next: boolean) => void] {
 let context: AudioContext | null = null;
 
 function audio(): AudioContext | null {
-  if (context) return context;
+  if (context && context.state !== "closed") return context;
   if (typeof window === "undefined") return null;
   const Ctor =
     window.AudioContext ??
@@ -157,31 +157,40 @@ function audio(): AudioContext | null {
 }
 
 /**
- * Browsers start audio suspended until a user gesture. Cues play from effects
- * that may run just outside the gesture, so the first gesture on the page
- * creates and resumes the context ahead of time.
+ * Asks a stopped context to run. Not only "suspended": iOS also reports
+ * "interrupted", after a call or a trip to another app.
+ */
+function wake(ctx: AudioContext): void {
+  if (ctx.state !== "running") void ctx.resume().catch(() => {});
+}
+
+/**
+ * Browsers start audio stopped until a user gesture, and cues play from effects
+ * just outside one, so gestures start it ahead of time.
+ *
+ * On a touchscreen `pointerdown` doesn't count: only the end of the touch does. And
+ * a phone can stop the audio again at any time. So this listens for every kind of
+ * gesture for as long as the page is open, instead of stopping after the first.
  */
 function unlock(): void {
   const ctx = audio();
-  if (ctx && ctx.state === "suspended") void ctx.resume().catch(() => {});
+  if (ctx) wake(ctx);
 }
 
 if (typeof window !== "undefined") {
   const onGesture = () => {
-    if (!readEnabled()) return;
-    unlock();
-    window.removeEventListener("pointerdown", onGesture, true);
-    window.removeEventListener("keydown", onGesture, true);
+    if (readEnabled()) unlock();
   };
-  window.addEventListener("pointerdown", onGesture, true);
-  window.addEventListener("keydown", onGesture, true);
+  for (const gesture of ["pointerdown", "pointerup", "touchend", "click", "keydown"]) {
+    window.addEventListener(gesture, onGesture, { capture: true, passive: true });
+  }
 }
 
 export function playSound(cue: SoundCue): void {
   if (!readEnabled()) return;
   const ctx = audio();
   if (!ctx) return;
-  if (ctx.state === "suspended") void ctx.resume().catch(() => {});
+  wake(ctx);
 
   playVoice(ctx, VOICES[cue]);
 }
@@ -194,7 +203,7 @@ export function playChainNote(wave: number): void {
   if (!readEnabled()) return;
   const ctx = audio();
   if (!ctx) return;
-  if (ctx.state === "suspended") void ctx.resume().catch(() => {});
+  wake(ctx);
 
   const step = Math.min(Math.max(wave, 1) - 1, 12);
   const frequency = 392 * 2 ** ((step * 2) / 12);
