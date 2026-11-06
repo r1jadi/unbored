@@ -573,8 +573,7 @@ export const sqGames: Record<string, string> = {
     "Shfaqen kutitë e fuqishme: lëshojnë rrufe edhe diagonalisht.",
   "Tap a cell to add charge. At {n} it pops.":
     "Prek një kuti për të shtuar ngarkesë. Me {n} ajo shpërthen.",
-  "The missed tap: row {row}, column {column}.":
-    "Prekja e humbur: rreshti {row}, kolona {column}.",
+  "The missed tap: row {row}, column {column}.": "Prekja e humbur: rreshti {row}, kolona {column}.",
   "Wave {n}": "Vala {n}",
 
   // The speed bonus, and Crowns' free undo
