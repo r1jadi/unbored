@@ -3075,17 +3075,17 @@ components:
               title: { type: string }
               status: { type: string }
               position: { type: integer }
-              setByUsername: { type: string, nullable: true }
+              setByUsername: { type: [string, "null"] }
               setAt: { type: string, format: date-time }
     AdminPlatformSettings:
       type: object
       required: [commentsEnabled, messagesEnabled, updatedAt, log]
       properties:
-        bannerText: { type: string, nullable: true }
+        bannerText: { type: [string, "null"] }
         commentsEnabled: { type: boolean }
         messagesEnabled: { type: boolean }
         updatedAt: { type: string, format: date-time }
-        updatedByUsername: { type: string, nullable: true }
+        updatedByUsername: { type: [string, "null"] }
         log:
           type: array
           items:
@@ -3093,7 +3093,7 @@ components:
             required: [id, before, after, createdAt]
             properties:
               id: { type: string, format: uuid }
-              actorUsername: { type: string, nullable: true }
+              actorUsername: { type: [string, "null"] }
               before: { type: object }
               after: { type: object }
               createdAt: { type: string, format: date-time }
@@ -3104,8 +3104,8 @@ components:
         id: { type: string, format: uuid }
         title: { type: string }
         body: { type: string }
-        link: { type: string, nullable: true }
-        sentByUsername: { type: string, nullable: true }
+        link: { type: [string, "null"] }
+        sentByUsername: { type: [string, "null"] }
         recipients: { type: integer }
         readCount: { type: integer }
         createdAt: { type: string, format: date-time }
