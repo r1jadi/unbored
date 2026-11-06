@@ -43,6 +43,7 @@ import (
 	"github.com/r1jadi/unbored/packages/go/platform/httpx"
 	"github.com/r1jadi/unbored/packages/go/platform/identity"
 	"github.com/r1jadi/unbored/services/games/internal/supabasegames"
+	"github.com/r1jadi/unbored/services/internal/apiroutes"
 	"github.com/r1jadi/unbored/services/internal/servicekit"
 )
 
@@ -349,22 +350,22 @@ func (s *service) register(router *httpx.Router) {
 // never reaches the gateway, this service or the database, which is most of what a
 // public read costs. The stale window answers at once while one request refreshes.
 const (
-	catalogueCDNCache   = "max-age=60, stale-while-revalidate=300"
-	leaderboardCDNCache = "max-age=30, stale-while-revalidate=120"
+	catalogueCDNCache   = "s-maxage=60, stale-while-revalidate=300"
+	leaderboardCDNCache = "s-maxage=30, stale-while-revalidate=120"
 )
 
-// cacheForGuests lets Vercel's CDN keep this answer. Call it only on the way to a
-// successful response. `Vercel-CDN-Cache-Control` is read by the CDN and removed
-// before the response leaves it, so browsers still get the API's `no-store`, and the
-// gateway passes it through because it isn't one of the headers it owns.
+// cacheForGuests marks this answer as one the CDN may keep. Call it only on the way
+// to a successful response. It is a request to the gateway, which sets the CDN's own
+// headers (see gateway/internal/proxy/cdn_cache.go): set here, they would be consumed
+// by the Vercel hop in front of this service.
 //
 // A request with a token is never marked: it can carry the caller's own standing.
-// Vercel doesn't serve or store a cached answer for such a request either.
+// The gateway checks that again, and Vercel doesn't cache such a request either.
 func cacheForGuests(w http.ResponseWriter, r *http.Request, policy string) {
 	if r.Header.Get("Authorization") != "" {
 		return
 	}
-	w.Header().Set("Vercel-CDN-Cache-Control", policy)
+	w.Header().Set(apiroutes.CDNCachePolicyHeader, policy)
 }
 
 func (s *service) listGames(w http.ResponseWriter, r *http.Request) {

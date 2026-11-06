@@ -153,8 +153,10 @@ func (p *Proxy) Middleware() httpx.Middleware {
 				if !strings.HasPrefix(r.URL.Path, rt.prefix) {
 					continue
 				}
+				// Before the strip: the writer needs the request as the client sent it.
+				cached := newCDNCacheWriter(w, r)
 				stripHeaders(r.Header)
-				rt.handler.ServeHTTP(w, r)
+				rt.handler.ServeHTTP(cached, r)
 				return
 			}
 			if strings.HasPrefix(r.URL.Path, "/api/") {

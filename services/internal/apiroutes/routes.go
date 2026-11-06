@@ -15,6 +15,10 @@ type Group struct {
 // Version is the only API version served today.
 const Version = "v1"
 
+// CDNCachePolicyHeader is how a service tells the gateway an answer is the same for
+// every guest, and how long the CDN may keep it. It stops at the gateway.
+const CDNCachePolicyHeader = "X-Unbored-Cdn-Cache"
+
 // BasePath is the versioned API root.
 const BasePath = "/api/" + Version
 

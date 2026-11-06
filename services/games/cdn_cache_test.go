@@ -3,9 +3,11 @@ package games
 import (
 	"net/http"
 	"testing"
+
+	"github.com/r1jadi/unbored/services/internal/apiroutes"
 )
 
-const cdnHeader = "Vercel-CDN-Cache-Control"
+const cdnHeader = apiroutes.CDNCachePolicyHeader
 
 func requestHeaders(t *testing.T, url, token string) (int, http.Header) {
 	t.Helper()
@@ -37,7 +39,7 @@ func TestPublicReadsCanBeKeptByTheCDN(t *testing.T) {
 		if headers.Get(cdnHeader) == "" {
 			t.Errorf("%s: the CDN isn't allowed to keep this", path)
 		}
-		// Browsers keep the API's baseline; only the CDN may hold a copy.
+		// The service keeps the API's baseline; the gateway decides what leaves it.
 		if got := headers.Get("Cache-Control"); got != "no-store" {
 			t.Errorf("%s: Cache-Control = %q, want no-store", path, got)
 		}
