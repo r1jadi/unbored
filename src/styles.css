@@ -153,14 +153,18 @@
     -webkit-tap-highlight-color: transparent;
   }
   /* Where a screen's own content may start: below the status bar. Use this, not the
-     raw inset, for anything pinned to the top of the screen.
+     raw inset, for anything pinned to the top of the screen, and offset content from
+     it with `calc(var(--safe-top) + …)` rather than `max()`, so the installed app lays
+     out exactly like Safari does below its status bar.
 
-     Installed on an iPhone's Home Screen (iOS 26+), the system blurs a band across the
-     top of the web view that runs about 2rem past the translucent status bar, and a
-     page can't turn it off. A flat background under it looks unchanged, but titles
-     and buttons inside it come out smeared. So there, content starts 1.5rem lower.
-     `min()` keeps it at zero when there is no inset (an opaque status bar), and
-     `-webkit-touch-callout` limits it to iOS: other installed apps have no blur. */
+     Installed on an iPhone's Home Screen (iOS 26+), the system blurs and dims a band
+     across the top of the web view that runs about 2rem past the translucent status
+     bar, and a page can't turn it off. So there, content starts 1.5rem lower, and the
+     space above it is painted the way Safari paints its own status bar: the page
+     background, over anything that scrolls up under it. A flat colour under the blur
+     looks unchanged. `min()` keeps both at zero when there is no inset (an opaque
+     status bar), and `-webkit-touch-callout` limits them to iOS, the only installed
+     apps with the blur. */
   :root {
     --safe-top: env(safe-area-inset-top);
   }
@@ -168,6 +172,16 @@
     @supports (-webkit-touch-callout: none) {
       :root {
         --safe-top: calc(env(safe-area-inset-top) + min(1.5rem, env(safe-area-inset-top)));
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0 0 auto;
+        /* Over sticky headers and the tab bar, under dialogs and overlays. */
+        z-index: 45;
+        height: var(--safe-top);
+        background-color: var(--color-background);
+        pointer-events: none;
       }
     }
   }
@@ -1077,7 +1091,7 @@
 
 .explore-radar {
   position: absolute;
-  top: calc(50% + var(--safe-top) / 2);
+  top: 50%;
   right: 2.375rem;
   width: 26rem;
   height: 26rem;
@@ -1298,7 +1312,8 @@
 
 .ranks-hero-word {
   position: absolute;
-  top: 50%;
+  /* Centred on the content, not on the status bar's padding above it. */
+  top: calc(50% + var(--safe-top) / 2);
   right: -0.04em;
   translate: 0 -50%;
   color: transparent;

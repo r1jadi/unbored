@@ -132,7 +132,7 @@ export function FeedItem({ game }: { game: Game }) {
               above the title block, and — on a phone — left of the action rail.
               The "Tap to play" pill sits under the board rather than on it, so
               nothing covers the picture. */}
-          <div className="absolute inset-0 flex flex-col items-center gap-3 pt-[max(8rem,calc(var(--safe-top)+7rem))] pr-[4.5rem] pb-[calc(13.75rem+env(safe-area-inset-bottom))] pl-4 md:px-4 md:pt-16 md:pb-[8.75rem]">
+          <div className="absolute inset-0 flex flex-col items-center gap-3 pt-[calc(var(--safe-top)+8rem)] pr-[4.5rem] pb-[calc(13.75rem+env(safe-area-inset-bottom))] pl-4 md:px-4 md:pt-16 md:pb-[8.75rem]">
             <GamePreview id={game.slug} className="min-h-0 w-full flex-1" />
             <span className="press flex shrink-0 items-center gap-2 rounded-full glass px-5 py-3 text-sm font-semibold group-hover:bg-surface-2">
               {game.playable ? (
@@ -147,7 +147,7 @@ export function FeedItem({ game }: { game: Game }) {
             </span>
           </div>
           {category && (
-            <div className="absolute top-0 inset-x-0 flex items-center p-4 pt-[max(4rem,calc(var(--safe-top)+3rem))] md:pt-4">
+            <div className="absolute top-0 inset-x-0 flex items-center p-4 pt-[calc(var(--safe-top)+4rem)] md:pt-4">
               <span className="rounded-md glass px-2 py-1 text-xs font-medium">{category}</span>
             </div>
           )}

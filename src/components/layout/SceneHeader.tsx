@@ -38,7 +38,12 @@ function SceneHeader({
       )}
       style={style}
     >
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* Starts below the status bar, so a scene is the same size and in the same
+          place in the browser and in the installed app. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-[var(--safe-top)] bottom-0 overflow-hidden"
+      >
         {scene}
       </div>
       <div className="relative flex h-[4.5rem] items-center gap-3 px-4 md:h-28 md:px-7">
