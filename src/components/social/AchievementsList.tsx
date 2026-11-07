@@ -28,7 +28,7 @@ export function AchievementsList({
   }
   if (!userId || read.isPending) {
     return (
-      <div className="grid gap-2 sm:grid-cols-2" aria-busy="true">
+      <div className="mx-4 grid gap-2 sm:grid-cols-2 md:mx-0" aria-busy="true">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="h-20 animate-pulse rounded-xl bg-surface" />
         ))}
@@ -66,7 +66,7 @@ export function AchievementsList({
   }
 
   return (
-    <div>
+    <div className="mx-4 md:mx-0">
       <p className="mb-3 text-sm text-muted-foreground">
         {t("{earned} of {total} earned", { earned: earned.length, total: rows.length })}
       </p>
