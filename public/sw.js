@@ -9,7 +9,9 @@
  *   - **The build** (`/offline-manifest.json`, emitted by `vite.config.ts`): every
  *     script, stylesheet and font, cached on install, so a game whose puzzle bank
  *     is a lazily loaded chunk still has it offline. Hashed file names never
- *     change content, so they are served from the cache first.
+ *     change content, so they are served from the cache first. A launch asks for
+ *     about a hundred of these, so each lookup goes straight to its one cache by
+ *     exact name: scanning every cache, which `caches.match` does, cost 100x more.
  *   - **Pages**: network first, so a visitor online always gets a fresh render;
  *     the copy is kept for when the network is gone. The app warms the play page
  *     of every playable game (`src/lib/offline-warm.ts`), so a game the player has
@@ -63,6 +65,9 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
+      // Lets the page's request start while this worker is still booting, which an
+      // installed app waits on at every launch. Not every browser has it.
+      await self.registration.navigationPreload?.enable();
       const current = await currentBuildCache();
       const names = await caches.keys();
       await Promise.all(
@@ -91,9 +96,15 @@ async function cacheBuild() {
   const name = `${BUILD_CACHE_PREFIX}${manifest.version}`;
   const cache = await caches.open(name);
   const wanted = [...STATIC_FILES, ...manifest.files];
+  // Most files survive a deploy under the same hashed name, so the last build's copy is
+  // taken rather than downloading all of them again while the app is starting.
+  const previous = await previousBuildCache(name);
   const missing = [];
   for (const url of wanted) {
-    if (!(await cache.match(url))) missing.push(url);
+    if (await cache.match(url)) continue;
+    const kept = previous && (await previous.match(url));
+    if (kept) await cache.put(url, kept);
+    else missing.push(url);
   }
   // One file at a time would be slow and all at once can trip a rate limit; a
   // few in parallel is enough. A file that fails is fetched again on use.
@@ -104,6 +115,13 @@ async function cacheBuild() {
     "/__build-version",
     new Response(manifest.version, { headers: { "content-type": "text/plain" } }),
   );
+}
+
+async function previousBuildCache(current) {
+  const names = (await caches.keys()).filter(
+    (name) => name.startsWith(BUILD_CACHE_PREFIX) && name !== current,
+  );
+  return names.length > 0 ? caches.open(names[names.length - 1]) : null;
 }
 
 async function currentBuildCache() {
@@ -119,13 +137,15 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     if (url.origin === self.location.origin && !UNCACHED_PAGES.test(url.pathname)) {
-      event.respondWith(page(request, url));
+      event.respondWith(page(event, url));
+      // Held open so the browser doesn't drop an answer that `page` didn't end up using.
+      event.waitUntil(Promise.resolve(event.preloadResponse).catch(() => undefined));
     }
     return;
   }
 
   if (url.origin === self.location.origin && isBuildFile(url.pathname)) {
-    event.respondWith(buildFile(request));
+    event.respondWith(buildFile(request, url));
     return;
   }
 
@@ -147,10 +167,10 @@ function isCatalogRead(request, url) {
 }
 
 /** A page: the network's render when there is one, else the copy kept for it. */
-async function page(request, url) {
+async function page(event, url) {
   const key = url.pathname;
   try {
-    const response = await fetch(request);
+    const response = (await event.preloadResponse) ?? (await fetch(event.request));
     if (response.ok && (response.headers.get("content-type") ?? "").includes("text/html")) {
       const copy = response.clone();
       caches.open(PAGE_CACHE).then((cache) => cache.put(key, copy));
@@ -163,15 +183,30 @@ async function page(request, url) {
   }
 }
 
-/** A hashed build file never changes, so the cached copy is always right. */
-async function buildFile(request) {
-  const cached = await caches.match(request, { ignoreSearch: true });
+/**
+ * The build's cache, opened once: every file of a launch would otherwise list all
+ * the caches again. A worker lives no longer than the build it installed.
+ */
+let buildCache;
+function openBuildCache() {
+  buildCache ??= currentBuildCache().then((name) =>
+    caches.open(name ?? `${BUILD_CACHE_PREFIX}dev`),
+  );
+  return buildCache;
+}
+
+/**
+ * A hashed build file never changes, so the cached copy is always right. Kept by path,
+ * so a `?v=2` on an icon finds the same copy.
+ */
+async function buildFile(request, url) {
+  const cache = await openBuildCache();
+  const cached = await cache.match(url.pathname, { ignoreVary: true });
   if (cached) return cached;
   const response = await fetch(request);
   if (response.ok) {
-    const name = (await currentBuildCache()) ?? `${BUILD_CACHE_PREFIX}dev`;
     const copy = response.clone();
-    caches.open(name).then((cache) => cache.put(request, copy));
+    cache.put(url.pathname, copy).catch(() => undefined);
   }
   return response;
 }

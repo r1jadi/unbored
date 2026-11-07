@@ -128,7 +128,8 @@ export function LeaderboardPage({ gameId }: { gameId?: string }) {
         </div>
       </header>
 
-      <ScrollStrip className="gap-2.5 px-4 pt-1 pb-4 md:px-0">
+      {/* Room on every side for the selected tile's ring, which the strip would clip. */}
+      <ScrollStrip className="gap-2.5 px-4 pt-2 pb-4 md:px-1">
         <Link
           to="/leaderboards"
           // Exact, or every game's board would count as this chip's page too, and

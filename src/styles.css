@@ -1351,7 +1351,6 @@
 
 .ranks-cartridge:hover .ranks-cartridge-art {
   opacity: 1;
-  transform: translateY(-2px);
 }
 
 .ranks-cartridge-name {
@@ -1374,7 +1373,6 @@
   box-shadow:
     0 0 0 2px var(--background),
     0 0 0 4px var(--foreground);
-  transform: translateY(-2px);
 }
 
 .ranks-segmented {
@@ -1573,6 +1571,11 @@
 
 .ranks-place[data-seat="1"] .ranks-pedestal-rank {
   font-size: 6rem;
+}
+
+/* The shortest pedestal: anything bigger runs into the score above it. */
+.ranks-place[data-seat="3"] .ranks-pedestal-rank {
+  font-size: 2.75rem;
 }
 
 .ranks-place-open .ranks-pedestal {
@@ -1783,6 +1786,53 @@ a.ranks-rung:hover {
 
 .session-pending main {
   visibility: hidden;
+}
+
+/* A slow start shouldn't look like a broken page, but a quick one shows nothing. */
+.session-pending main::after {
+  content: "";
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: -0.75rem 0 0 -0.75rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--muted-foreground);
+  border-radius: 50%;
+  visibility: visible;
+  animation:
+    session-pending-spin 800ms linear infinite,
+    session-pending-show 200ms ease-out 400ms both;
+}
+
+@media (min-width: 48rem) {
+  .session-pending main::after {
+    margin-left: calc(7.5rem - 0.75rem);
+  }
+}
+
+@keyframes session-pending-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes session-pending-show {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Off rather than shortened: the global rule's 1ms would make the spin flicker. */
+@media (prefers-reduced-motion: reduce) {
+  .session-pending main::after {
+    animation: none !important;
+  }
+}
+
+.a11y-reduce-motion.session-pending main::after {
+  animation: none !important;
 }
 
 /* Light theme: same tokens, light surfaces. Applied by the appearance setting
