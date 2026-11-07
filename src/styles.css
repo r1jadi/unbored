@@ -6,6 +6,8 @@
 @import "@fontsource-variable/geist-mono";
 
 @custom-variant dark (&:is(.dark *));
+/* A text field has focus on a touch screen, so the on-screen keyboard is up (src/lib/viewport.ts). */
+@custom-variant keyboard-open (&:where([data-keyboard="open"], [data-keyboard="open"] *));
 
 /*
  * Unbored design system — dark-first graphite surfaces, one signal color (coral)

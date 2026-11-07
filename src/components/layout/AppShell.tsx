@@ -21,6 +21,7 @@ import { useAuth } from "@/lib/auth/session";
 import { useUnreadChats } from "@/lib/messages/store";
 import { useUnreadCount } from "@/lib/notifications/store";
 import { useAdminVisibility } from "@/lib/admin/visibility";
+import { useKeyboardViewport } from "@/lib/viewport";
 import { msg, t } from "@/lib/settings/language";
 
 const mobile: Array<{ to: string; key: string; icon: typeof Home }> = [
@@ -62,6 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const platform = usePlatformSettings();
   const unread = useUnreadCount();
   const showAdmin = useAdminVisibility();
+  useKeyboardViewport();
   const isAnonymous = auth.status === "anonymous";
   // A badge only when the count is known-good and positive. Every other state
   // (anonymous, loading, genuine zero, failure) shows no badge; the failure
@@ -75,6 +77,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       ? path === "/"
       : path.startsWith(to) || (to === "/messages" && path.startsWith("/notifications"));
   const feed = path === "/" || path === "/following";
+  // A conversation is a full screen with its own way back, like any chat app: the
+  // tab bar would only sit between the composer and the keyboard.
+  const thread = /^\/messages\/[^/]+/.test(path);
   // Home while already on the feed refreshes it instead of navigating nowhere.
   const onNavClick = (to: string) => (event: MouseEvent) => {
     if (to !== "/" || path !== "/") return;
@@ -171,12 +176,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           (no-op) on devices without a bottom inset; hidden on desktop. */}
       <div
         aria-hidden
-        className="fixed inset-x-0 bottom-0 z-30 h-[env(safe-area-inset-bottom)] bg-background md:hidden"
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-30 h-[env(safe-area-inset-bottom)] bg-background keyboard-open:hidden md:hidden",
+          thread && "hidden",
+        )}
       />
       <nav
         aria-label={t("Main")}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-40 safe-bottom md:hidden",
+          // Hidden while typing: the keyboard covers it, or worse, lifts it above the keys.
+          "fixed inset-x-0 bottom-0 z-40 safe-bottom keyboard-open:hidden md:hidden",
+          thread && "hidden",
           // Solid outside the feed: a translucent bar over a page of text lets the
           // text show through behind the labels and reads as a rendering bug.
           feed ? "bg-background/80 backdrop-blur-xl" : "border-t border-border bg-background",

@@ -78,9 +78,13 @@ export const Route = createFileRoute("/messages/$username")({
   component: Conversation,
 });
 
-/** Fills the space above the phone's navigation bar, so the composer stays on screen. */
+/**
+ * On a phone the thread is pinned to the part of the screen that is actually visible
+ * (`src/lib/viewport.ts`): the whole screen, or what is left above the keyboard while
+ * typing, so the composer sits right on the keys. There is no tab bar under it here.
+ */
 const FRAME =
-  "mx-auto flex h-[calc(100dvh-4rem-env(safe-area-inset-bottom))] w-full max-w-3xl flex-col md:h-dvh md:px-8";
+  "mx-auto flex w-full max-w-3xl flex-col max-md:fixed max-md:inset-x-0 max-md:top-[var(--viewport-top,0px)] max-md:h-[var(--viewport-height,100dvh)] max-md:bg-background md:h-dvh md:px-8";
 
 function Conversation() {
   const { username } = Route.useParams();
@@ -483,13 +487,13 @@ function Thread({ other }: { other: PublicProfile }) {
       )}
       {state.status === "ready" &&
         (!platform.messagesEnabled ? (
-          <div className="shrink-0 border-t border-border px-4 py-4 text-center text-sm text-muted-foreground">
+          <div className="shrink-0 border-t border-border px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-center text-sm text-muted-foreground md:pb-4">
             {t("Messages are paused for now. You can still read your chats.")}
           </div>
         ) : state.canSend ? (
           <Composer onSend={onSend} onTyping={notifyTyping} onCallOut={() => setCallingOut(true)} />
         ) : (
-          <div className="shrink-0 border-t border-border px-4 py-4 text-center text-sm text-muted-foreground">
+          <div className="shrink-0 border-t border-border px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-center text-sm text-muted-foreground md:pb-4">
             <p>{t("You can't message this account.")}</p>
             <p className="mt-1 text-xs">
               {t("Most players only accept messages from friends: people who follow each other.")}
@@ -721,7 +725,8 @@ function Composer({
 
   return (
     <form
-      className="shrink-0 bg-background px-3 py-2.5 md:rounded-b-2xl md:border md:border-border"
+      // Clear of the home indicator, except while the keyboard is up and covers it.
+      className="shrink-0 bg-background px-3 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] keyboard-open:pb-2.5 md:rounded-b-2xl md:border md:border-border md:pb-2.5"
       onSubmit={(event) => {
         event.preventDefault();
         submit();
