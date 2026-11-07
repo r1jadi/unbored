@@ -1779,60 +1779,13 @@ a.ranks-rung:hover {
 }
 
 /* A reload with a stored session (SESSION_BOOT_SCRIPT): the HTML is the signed-out page,
-   so its sign-in buttons and content stay hidden until the session has been restored. */
-.session-pending .guest-only {
+   so only what asks a signed-in player to sign in stays hidden until the session is back.
+   The rest of the page paints at once: hiding it all left the installed app blank for
+   as long as it took to start. */
+.session-pending .guest-only,
+.session-pending .empty-state:has(a[href^="/login"]),
+.session-pending main a[href^="/login"] {
   display: none;
-}
-
-.session-pending main {
-  visibility: hidden;
-}
-
-/* A slow start shouldn't look like a broken page, but a quick one shows nothing. */
-.session-pending main::after {
-  content: "";
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  width: 1.5rem;
-  height: 1.5rem;
-  margin: -0.75rem 0 0 -0.75rem;
-  border: 2px solid var(--border);
-  border-top-color: var(--muted-foreground);
-  border-radius: 50%;
-  visibility: visible;
-  animation:
-    session-pending-spin 800ms linear infinite,
-    session-pending-show 200ms ease-out 400ms both;
-}
-
-@media (min-width: 48rem) {
-  .session-pending main::after {
-    margin-left: calc(7.5rem - 0.75rem);
-  }
-}
-
-@keyframes session-pending-spin {
-  to {
-    rotate: 360deg;
-  }
-}
-
-@keyframes session-pending-show {
-  from {
-    opacity: 0;
-  }
-}
-
-/* Off rather than shortened: the global rule's 1ms would make the spin flicker. */
-@media (prefers-reduced-motion: reduce) {
-  .session-pending main::after {
-    animation: none !important;
-  }
-}
-
-.a11y-reduce-motion.session-pending main::after {
-  animation: none !important;
 }
 
 /* Light theme: same tokens, light surfaces. Applied by the appearance setting

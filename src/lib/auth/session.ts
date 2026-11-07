@@ -647,7 +647,7 @@ const SESSION_SETTLE_MS = 150;
  * The server can't read this browser's session, so its HTML is always the signed-out
  * page, and that paints before any of the app runs. This runs ahead of the first paint
  * and, if a session is stored, marks the document so `styles.css` holds back the "Get
- * started" buttons and the page's content until `initializeSession` has the answer. It
+ * started" buttons and sign-in prompts until `initializeSession` has the answer. It
  * runs ahead of the app, so it can't import anything, and it lets go by itself if the
  * app never starts, rather than leave a blank page.
  */
