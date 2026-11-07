@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { History, Home, RotateCcw, Trophy } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 import { StreakNote } from "@/components/game/StreakNote";
 import { Button } from "@/components/ui/button";
@@ -34,13 +34,19 @@ export function RunEndActions({
 }) {
   // The player ended this run themselves: it's saved, and the next start offers it.
   const continuable = hasContinuableRun(slug);
+  const play = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // Focused without scrolling: on a short screen the result scrolls, and opening
+    // it scrolled down to the button would hide the score the player came to see.
+    if (autoFocus) play.current?.focus({ preventScroll: true });
+  }, [autoFocus]);
   return (
     <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
       {/* A ranked run is a day played: the streak it just kept goes first. */}
       {ranked && <StreakNote slug={slug} className="pb-1" />}
       {children ||
         (onRestart && (
-          <Button variant="play" size="lg" onClick={onRestart} autoFocus={autoFocus}>
+          <Button ref={play} variant="play" size="lg" onClick={onRestart}>
             {continuable ? <History /> : <RotateCcw />}
             {continuable ? t("Continue or start over") : t("Play again")}
           </Button>

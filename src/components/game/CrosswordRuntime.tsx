@@ -747,7 +747,7 @@ function Finished({
     <div
       className={cn(
         "flex flex-1 flex-col gap-4 overflow-y-auto px-6 pb-[max(1rem,env(safe-area-inset-bottom))] text-center",
-        solved ? "justify-center" : "pt-2",
+        solved ? "justify-center-safe" : "pt-2",
       )}
     >
       <div className="enter flex flex-col items-center gap-2">

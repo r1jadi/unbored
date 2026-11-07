@@ -657,7 +657,7 @@ function Finished({
   onRestart: () => void;
 }) {
   return (
-    <div className="flex flex-1 flex-col justify-center gap-4 px-6 pb-[max(1rem,env(safe-area-inset-bottom))] text-center">
+    <div className="flex flex-1 flex-col justify-center-safe gap-4 overflow-y-auto px-6 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] text-center">
       <div className="enter flex flex-col items-center gap-2">
         <div className="flex size-12 items-center justify-center rounded-full bg-surface-2">
           {result.ranked ? (
