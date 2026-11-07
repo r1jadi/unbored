@@ -243,6 +243,25 @@ describe("finishing", () => {
     expect(screen.getByText(/^Solved · Mini 5×5 · Friday$/)).toBeInTheDocument();
   }, 15000);
 
+  it("offers to check or finish once a full grid is still wrong", async () => {
+    const spy = mockPlayback(resultPayload({ score: 0, clearedColumns: 0 }));
+    await renderRuntime();
+    await startRun();
+
+    // Every square filled, the last one with the wrong letter.
+    const last = WHITE[WHITE.length - 1];
+    for (const index of WHITE.slice(0, -1)) typeAt(index, GRID[index]);
+    typeAt(last, GRID[last] === "A" ? "B" : "A");
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Every square is filled")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Check" })).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Finish" }));
+
+    expect(await screen.findByText("Not solved today")).toBeInTheDocument();
+    expect(completionBody(spy).score).toBe(0);
+  }, 15000);
+
   it("lets the player give up, which scores nothing", async () => {
     const spy = mockPlayback(resultPayload({ score: 0, clearedColumns: 0 }));
     await renderRuntime();

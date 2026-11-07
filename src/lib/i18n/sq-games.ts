@@ -130,6 +130,13 @@ export const sqGames: Record<string, string> = {
   "Here's how it solves": "Ja si zgjidhet",
   "In {durationMs}{n}{n2}.": "Për {durationMs}{n}{n2}.",
   "Keep solving": "Vazhdo zgjidhjen",
+  "Every square is filled": "Çdo kuti është plotësuar",
+  "Some letters aren't right yet, so the crossword isn't solved. Check marks the wrong ones in red (−{penalty}); fix them and it finishes by itself.":
+    "Disa shkronja ende nuk janë të sakta, ndaj fjalëkryqi nuk është zgjidhur. Kontrolli i shënon të gabuarat me të kuqe (−{penalty}); ndreqi dhe përfundon vetë.",
+  "Finishing now scores nothing, and this is today's ranked attempt.":
+    "Nëse përfundon tani nuk merr pikë, dhe kjo është përpjekja jote e renditur për sot.",
+  "Finishing now scores nothing.": "Nëse përfundon tani nuk merr pikë.",
+  Finish: "Përfundo",
   Keyboard: "Tastiera",
   letter: "shkronjë",
   letters: "shkronja",

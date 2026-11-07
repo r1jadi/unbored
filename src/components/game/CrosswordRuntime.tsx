@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   alphabetFor,
@@ -344,6 +344,17 @@ function Board({
   const seconds = Math.max(0, Math.floor((now - startedAt) / 1000));
   const worth = estimate(run, seconds);
   const index = puzzle.entries.indexOf(entry);
+  // Every white square holds a letter. A right grid ends the run by itself, so a
+  // full grid that is still playing has a mistake in it.
+  const full = [...puzzle.solution].every((letter, cell) => letter === "#" || !!run.letters[cell]);
+
+  // Filling the last square without solving it is the moment a player thinks
+  // they are done: say so, and offer to check or finish, instead of nothing.
+  useEffect(() => {
+    if (full && accepting) setConfirming(true);
+    // Only when the grid fills up, not on every change while it stays full.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [full]);
 
   function choose(cell: number) {
     if (puzzle.solution[cell] === "#") return;
@@ -647,9 +658,9 @@ function Board({
           size="sm"
           disabled={!accepting}
           onClick={() => setConfirming(true)}
-          className="px-1 text-xs"
+          className={cn("px-1 text-xs", full && "font-semibold text-primary")}
         >
-          {t("Give up")}
+          {full ? t("Finish") : t("Give up")}
         </Button>
       </div>
 
@@ -691,18 +702,47 @@ function Board({
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("Give up today's crossword?")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {session.ranked
-                ? t("An unsolved crossword scores nothing, and this is today's ranked attempt.")
-                : t("An unsolved crossword scores nothing.")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("Keep solving")}</AlertDialogCancel>
-            <AlertDialogAction onClick={onFinish}>{t("Give up")}</AlertDialogAction>
-          </AlertDialogFooter>
+          {full ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("Every square is filled")}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t(
+                    "Some letters aren't right yet, so the crossword isn't solved. Check marks the wrong ones in red (−{penalty}); fix them and it finishes by itself.",
+                    { penalty: CHECK_PENALTY },
+                  )}{" "}
+                  {session.ranked
+                    ? t("Finishing now scores nothing, and this is today's ranked attempt.")
+                    : t("Finishing now scores nothing.")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t("Keep solving")}</AlertDialogCancel>
+                <AlertDialogAction
+                  className={buttonVariants({ variant: "secondary" })}
+                  onClick={onCheck}
+                >
+                  {t("Check")}
+                </AlertDialogAction>
+                <AlertDialogAction onClick={onFinish}>{t("Finish")}</AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          ) : (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("Give up today's crossword?")}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {session.ranked
+                    ? t("An unsolved crossword scores nothing, and this is today's ranked attempt.")
+                    : t("An unsolved crossword scores nothing.")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t("Keep solving")}</AlertDialogCancel>
+                <AlertDialogAction onClick={onFinish}>{t("Give up")}</AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          )}
         </AlertDialogContent>
       </AlertDialog>
     </div>
