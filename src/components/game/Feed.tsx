@@ -106,7 +106,7 @@ export function Feed({
 export function FeedTabs({ tab }: { tab: "for-you" | "following" }) {
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 z-20 md:left-60 lg:left-64">
-      <div className="pointer-events-auto mx-auto flex max-w-[460px] items-center justify-between px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] md:pt-9">
+      <div className="pointer-events-auto mx-auto flex max-w-[460px] items-center justify-between px-4 pt-[calc(0.75rem+var(--safe-top))] md:pt-9">
         <LogoMark className="size-6 md:invisible" />
         <nav className="flex gap-1 rounded-full glass p-1" aria-label={t("Feed")}>
           {(

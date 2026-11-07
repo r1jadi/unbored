@@ -261,7 +261,7 @@ function AdminDashboard({
 
       <div className="min-w-0 flex-1">
         <div className="sticky top-0 z-40 glass border-x-0 border-t-0 md:hidden">
-          <div className="flex items-center gap-2 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-2">
+          <div className="flex items-center gap-2 px-4 pt-[calc(0.75rem+var(--safe-top))] pb-2">
             <Link
               to="/"
               aria-label={t("Back to Unbored")}

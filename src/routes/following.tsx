@@ -172,7 +172,7 @@ function FollowingPage({ children }: { children: ReactNode }) {
   return (
     <>
       <FeedTabs tab="following" />
-      <Page className="pt-[calc(4.25rem+env(safe-area-inset-top))] md:pt-24">{children}</Page>
+      <Page className="pt-[calc(4.25rem+var(--safe-top))] md:pt-24">{children}</Page>
     </>
   );
 }

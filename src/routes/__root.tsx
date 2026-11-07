@@ -330,8 +330,8 @@ function RootComponent() {
       <Toaster
         position="top-center"
         theme="dark"
-        offset={{ top: "calc(env(safe-area-inset-top) + 24px)" }}
-        mobileOffset={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
+        offset={{ top: "calc(var(--safe-top) + 24px)" }}
+        mobileOffset={{ top: "calc(var(--safe-top) + 12px)" }}
       />
       {analyticsAllowed && <Analytics />}
       {/* Asked once per browser, never over a game or the admin dashboard. */}

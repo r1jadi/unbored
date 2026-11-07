@@ -233,7 +233,7 @@ export function PlaySurface({
   return (
     <RunLeaveContext.Provider value={leave}>
       <div className="fixed inset-0 flex flex-col bg-background">
-        <header className="flex items-center gap-3 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3">
+        <header className="flex items-center gap-3 px-4 pt-[calc(0.75rem+var(--safe-top))] pb-3">
           <Button
             variant="glass"
             size="icon"

@@ -266,7 +266,7 @@ function Thread({ other }: { other: PublicProfile }) {
         subject={`@${other.username}`}
         includeMessages
       />
-      <header className="z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/80 px-2 pt-[env(safe-area-inset-top)] backdrop-blur-xl box-content md:mt-4 md:rounded-t-2xl md:border md:px-2">
+      <header className="z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/80 px-2 pt-[var(--safe-top)] backdrop-blur-xl box-content md:mt-4 md:rounded-t-2xl md:border md:px-2">
         <Button asChild variant="ghost" size="icon" aria-label={t("Back to messages")}>
           <Link to="/messages">
             <ArrowLeft />

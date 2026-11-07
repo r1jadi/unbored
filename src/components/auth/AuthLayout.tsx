@@ -45,7 +45,7 @@ export function AuthLayout({
           {t("Short games. Real scores. Stay unbored.")}
         </p>
       </div>
-      <div className="flex min-h-dvh flex-col px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+      <div className="flex min-h-dvh flex-col px-5 pt-[max(1rem,var(--safe-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <div className="flex h-12 items-center">
           {back && (
             <Button

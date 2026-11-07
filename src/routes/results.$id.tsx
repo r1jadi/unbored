@@ -40,7 +40,7 @@ function Results() {
 
   return (
     <div className="min-h-dvh bg-background">
-      <div className="mx-auto flex min-h-dvh max-w-md flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+      <div className="mx-auto flex min-h-dvh max-w-md flex-col px-4 pt-[max(1rem,var(--safe-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <div className="enter mt-10 flex flex-1 flex-col items-center justify-center gap-4 text-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-surface-2">
             <Clock className="size-5 text-muted-foreground" />

@@ -161,7 +161,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {platform.bannerText && (
           <p
             role="status"
-            className="border-b border-border bg-surface px-4 py-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] text-center text-sm md:pt-2"
+            className="border-b border-border bg-surface px-4 py-2 pt-[calc(var(--safe-top)+0.5rem)] text-center text-sm md:pt-2"
           >
             {platform.bannerText}
           </p>

@@ -33,7 +33,7 @@ function SceneHeader({
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 mb-4 overflow-hidden border-b border-border bg-background pt-[env(safe-area-inset-top)] md:relative md:mt-6 md:mb-6 md:rounded-3xl md:border",
+        "sticky top-0 z-30 mb-4 overflow-hidden border-b border-border bg-background pt-[var(--safe-top)] md:relative md:mt-6 md:mb-6 md:rounded-3xl md:border",
         className,
       )}
       style={style}
