@@ -67,6 +67,8 @@ function OwnProfile() {
 /** The API's profile, mapped onto the fields the view draws. */
 function header(profile: Profile, counts: FollowCountsState): ProfileHeader {
   return {
+    // Tabs that read by account (Achievements) need the id, not just the name.
+    userId: profile.id,
     username: profile.username,
     name: profile.displayName,
     bio: profile.bio,
