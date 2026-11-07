@@ -1,15 +1,70 @@
 import { Link } from "@tanstack/react-router";
+import { ShieldCheck, Trophy } from "lucide-react";
 import { useState } from "react";
+import { GameArt } from "./GameArt";
 import { LeaderboardList, OverallBoardList } from "./Leaderboard";
 import { ScrollStrip } from "./ScrollStrip";
-import { Page, PageHeader } from "@/components/common";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Page } from "@/components/common";
 import { useDocumentTitle } from "@/lib/document-title";
 import { MAX_PAGE_SIZE, useGames } from "@/lib/games/catalog";
 import type { BoardPeriod, BoardScope } from "@/lib/games/sessions";
 import { cn } from "@/lib/utils";
 
 import { t } from "@/lib/settings/language";
+
+/**
+ * A row of choices with a thumb that slides to the picked one. Real radio buttons
+ * underneath, so arrow keys and screen readers work as they do everywhere else.
+ */
+function Segmented<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+  className,
+}: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: ReadonlyArray<{ value: T; label: string }>;
+  className?: string;
+}) {
+  const index = options.findIndex((option) => option.value === value);
+  return (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className={cn("ranks-segmented", className)}
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
+      <span
+        aria-hidden
+        className="ranks-segmented-thumb"
+        style={{
+          width: `calc((100% - 0.5rem) / ${options.length})`,
+          transform: `translateX(${Math.max(index, 0) * 100}%)`,
+        }}
+      />
+      {options.map((option) => (
+        <label
+          key={option.value}
+          className="ranks-segmented-option"
+          data-picked={option.value === value || undefined}
+        >
+          <input
+            type="radio"
+            name={label}
+            className="sr-only"
+            checked={option.value === value}
+            onChange={() => onChange(option.value)}
+          />
+          <span className="truncate">{option.label}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 /**
  * The leaderboard screen.
  *
@@ -43,47 +98,62 @@ export function LeaderboardPage({ gameId }: { gameId?: string }) {
 
   return (
     <Page>
-      <PageHeader
-        // No back arrow: Leaderboards is a top-level tab, and every board is one
-        // tap away in the strip below, so there is no list page to go back to.
-        back={false}
-        title={
-          game
-            ? t("{title} leaderboard", { title: game.title })
-            : gameId
-              ? t("Leaderboards")
-              : t("All games")
-        }
-        subtitle={t("Verified scores only.")}
-      />
-      <ScrollStrip className="gap-2 px-4 pb-4 md:px-0">
+      {/* No back arrow: Ranks is a top-level tab, and every board is one tap away in
+          the strip below, so there is no list page to go back to. */}
+      <header className="ranks-hero">
+        <span aria-hidden className="ranks-hero-word">
+          {t("Ranks")}
+        </span>
+        <div className="relative flex items-center gap-3.5 md:gap-5">
+          <span aria-hidden className="ranks-emblem">
+            {gameId ? (
+              <GameArt id={gameId} className="size-full" />
+            ) : (
+              <Trophy className="size-7 md:size-9" fill="currentColor" />
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <h1 className="line-clamp-2 text-[1.7rem] leading-[1.1] font-black tracking-tight md:text-4xl">
+              {game
+                ? t("{title} leaderboard", { title: game.title })
+                : gameId
+                  ? t("Leaderboards")
+                  : t("All games")}
+            </h1>
+            <p className="mt-1 flex items-center gap-1 text-xs font-medium text-muted-foreground md:text-sm">
+              <ShieldCheck className="size-3.5 shrink-0 text-success" aria-hidden />
+              {t("Verified scores only.")}
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <ScrollStrip className="gap-2.5 px-4 pt-1 pb-4 md:px-0">
         <Link
           to="/leaderboards"
           // Exact, or every game's board would count as this chip's page too, and
           // the strip would centre this chip instead of the selected game.
           activeOptions={{ exact: true }}
-          className={cn(
-            "press shrink-0 rounded-full px-3.5 py-1.5 text-sm",
-            !gameId
-              ? "bg-foreground font-medium text-background"
-              : "bg-surface text-muted-foreground",
-          )}
+          className="ranks-cartridge press"
+          data-active={!gameId || undefined}
         >
-          {t("All games")}
+          <span className="ranks-cartridge-art bg-surface-2 text-foreground">
+            <Trophy className="size-6" aria-hidden />
+          </span>
+          <span className="ranks-cartridge-name">{t("All games")}</span>
         </Link>
         {items.map((g) => (
           <Link
             key={g.slug}
             to="/leaderboards/$id"
             params={{ id: g.slug }}
-            className={cn(
-              "press shrink-0 rounded-full px-3.5 py-1.5 text-sm",
-              gameId === g.slug
-                ? "bg-foreground font-medium text-background"
-                : "bg-surface text-muted-foreground",
-            )}
+            className="ranks-cartridge press"
+            data-active={gameId === g.slug || undefined}
           >
-            {g.title}
+            <span aria-hidden className="ranks-cartridge-art">
+              <GameArt id={g.slug} className="size-full" />
+            </span>
+            <span className="ranks-cartridge-name">{g.title}</span>
           </Link>
         ))}
         {status === "error" && (
@@ -92,26 +162,33 @@ export function LeaderboardPage({ gameId }: { gameId?: string }) {
           </span>
         )}
       </ScrollStrip>
-      <div className="flex items-center justify-between gap-3 px-4 pb-4 md:px-0">
-        <Tabs value={scope} onValueChange={(value) => setScope(value as BoardScope)}>
-          <TabsList>
-            <TabsTrigger value="global">{t("Global")}</TabsTrigger>
-            <TabsTrigger value="friends">{t("Following")}</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <select
-          aria-label={t("Time period")}
+
+      <div className="flex flex-wrap items-center gap-2 px-4 pb-5 md:px-0">
+        <Segmented
+          label={t("Board")}
+          value={scope}
+          onChange={setScope}
+          className="min-w-40 flex-1"
+          options={[
+            { value: "global", label: t("Global") },
+            { value: "friends", label: t("Following") },
+          ]}
+        />
+        <Segmented
+          label={t("Time period")}
           value={period}
-          onChange={(e) => setPeriod(e.target.value as BoardPeriod)}
-          className="h-9 rounded-lg bg-surface px-3 text-sm"
-        >
-          <option value="day">{t("Today")}</option>
-          <option value="week">{t("This week")}</option>
-          <option value="all">{t("All time")}</option>
-        </select>
+          onChange={setPeriod}
+          className="min-w-60 flex-[1.4]"
+          options={[
+            { value: "day", label: t("Today") },
+            { value: "week", label: t("This week") },
+            { value: "all", label: t("All time") },
+          ]}
+        />
       </div>
+
       {gameId ? (
-        <LeaderboardList gameSlug={gameId} scope={scope} period={period} showMe />
+        <LeaderboardList gameSlug={gameId} scope={scope} period={period} showMe arena />
       ) : (
         <OverallBoardList scope={scope} period={period} />
       )}

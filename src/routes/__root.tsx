@@ -21,7 +21,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { SafeAreaDiagnostics } from "@/components/dev/SafeAreaDiagnostics";
 import { Toaster } from "@/components/ui/sonner";
 import { useTwoFactorRequired } from "@/lib/auth/security";
-import { initializeSession, useAuth } from "@/lib/auth/session";
+import { initializeSession, SESSION_BOOT_SCRIPT, useAuth } from "@/lib/auth/session";
 import { applyAnalyticsConsent, identifyUser, resetAnalytics } from "@/lib/analytics";
 import { useConsent } from "@/lib/consent";
 import { CookieConsent } from "@/components/layout/CookieConsent";
@@ -189,7 +189,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { name: "twitter:card", content: "summary_large_image" },
         ...page.meta,
       ],
-      scripts: [{ children: ACCESSIBILITY_BOOT_SCRIPT }, ...(page.scripts ?? [])],
+      scripts: [
+        { children: ACCESSIBILITY_BOOT_SCRIPT },
+        { children: SESSION_BOOT_SCRIPT },
+        ...(page.scripts ?? []),
+      ],
       links: [
         {
           rel: "stylesheet",

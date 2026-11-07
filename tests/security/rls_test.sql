@@ -681,6 +681,26 @@ select rls_test.allow(
   $$update public.notifications set read_at = now() where user_id = '11111111-1111-4111-8111-111111111111'$$,
   'a player can mark their own notifications read'
 );
+select rls_test.allow(
+  $$update public.notifications set dismissed_at = now() where user_id = '11111111-1111-4111-8111-111111111111'$$,
+  'a player can delete a notification from their own list'
+);
+select rls_test.allow(
+  $$update public.notifications set dismissed_at = null where user_id = '11111111-1111-4111-8111-111111111111'$$,
+  'a player can undo deleting a notification'
+);
+select rls_test.blocked(
+  $$update public.notifications set dismissed_at = now() where user_id = '22222222-2222-4222-8222-222222222222'$$,
+  'a notification belonging to another user cannot be deleted'
+);
+select rls_test.denied(
+  $$delete from public.notifications where user_id = '11111111-1111-4111-8111-111111111111'$$,
+  'a notification row is never really deleted, because the rate limits read it'
+);
+select rls_test.denied(
+  $$update public.notifications set payload = '{}' where user_id = '11111111-1111-4111-8111-111111111111'$$,
+  'a player cannot rewrite what a notification says'
+);
 
 -- Storage
 select rls_test.denied(

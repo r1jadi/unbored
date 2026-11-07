@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { CircleSlash, Users } from "lucide-react";
+import { CircleSlash, HelpCircle, Users } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { EmptyState, ErrorState, ListSkeleton, UserAvatar } from "@/components/common";
+import { RanksArena, RanksSkeleton, RanksYouBar } from "@/components/game/RanksArena";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/session";
 import { fetchProfilesByIds, listFollowees } from "@/lib/social/follows";
@@ -63,6 +64,7 @@ export function LeaderboardList({
   period = "all",
   scope = "global",
   showMe = false,
+  arena = false,
 }: {
   /** The game's slug. A board only exists for a game. */
   gameSlug?: string;
@@ -70,6 +72,8 @@ export function LeaderboardList({
   period?: BoardPeriod;
   scope?: BoardScope;
   showMe?: boolean;
+  /** Draws the board as the Ranks page does: a podium, then a ladder. */
+  arena?: boolean;
 }) {
   // The following board reads the global board itself, so this one is not asked for.
   const state = useLeaderboard(scope === "friends" ? "" : (gameSlug ?? ""), {
@@ -89,10 +93,12 @@ export function LeaderboardList({
   }
 
   if (scope === "friends") {
-    return <FollowingBoard gameSlug={gameSlug} period={period} />;
+    return <FollowingBoard gameSlug={gameSlug} period={period} arena={arena} />;
   }
 
-  if (state.status === "loading") return <ListSkeleton rows={limit ?? 7} />;
+  if (state.status === "loading") {
+    return arena ? <RanksSkeleton /> : <ListSkeleton rows={limit ?? 7} />;
+  }
 
   if (state.status === "error") {
     return (
@@ -122,6 +128,21 @@ export function LeaderboardList({
   // it twice, or under a rank they do not hold, would be a different claim.
   const lastVisibleRank = entries[entries.length - 1].rank;
   const pinMe = showMe && me !== null && me.rank > lastVisibleRank;
+
+  if (arena) {
+    return (
+      <div>
+        <RanksArena
+          rows={entries.map((row) => ({
+            rank: row.rank,
+            username: row.username || null,
+            value: points(row.score),
+          }))}
+        />
+        {pinMe && me && <RanksYouBar rank={me.rank} value={points(me.score)} />}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -204,7 +225,15 @@ function useFollowedUsernames(userId: string | undefined): FollowedState & { ret
  * top of the global board is looked through, which is where a comparison between
  * friends is interesting.
  */
-function FollowingBoard({ gameSlug, period }: { gameSlug: string; period: BoardPeriod }) {
+function FollowingBoard({
+  gameSlug,
+  period,
+  arena,
+}: {
+  gameSlug: string;
+  period: BoardPeriod;
+  arena: boolean;
+}) {
   const auth = useAuth();
   const userId = auth.status === "authenticated" ? auth.session.userId : undefined;
   const followed = useFollowedUsernames(userId);
@@ -214,7 +243,9 @@ function FollowingBoard({ gameSlug, period }: { gameSlug: string; period: BoardP
     limit: FOLLOWING_SCAN,
   });
 
-  if (auth.status === "restoring") return <ListSkeleton rows={5} />;
+  const loading = arena ? <RanksSkeleton /> : <ListSkeleton rows={5} />;
+
+  if (auth.status === "restoring") return loading;
 
   if (!userId) {
     return (
@@ -247,7 +278,7 @@ function FollowingBoard({ gameSlug, period }: { gameSlug: string; period: BoardP
   }
 
   if (followed.status === "loading" || board.status === "loading") {
-    return <ListSkeleton rows={5} />;
+    return loading;
   }
 
   if (followed.following === 0) {
@@ -277,6 +308,18 @@ function FollowingBoard({ gameSlug, period }: { gameSlug: string; period: BoardP
         body={t(
           "Nobody you follow is on this board yet. Their best runs show up here once they're verified.",
         )}
+      />
+    );
+  }
+
+  if (arena) {
+    return (
+      <RanksArena
+        rows={rows.map((row) => ({
+          rank: row.rank,
+          username: row.username,
+          value: points(row.score),
+        }))}
       />
     );
   }
@@ -324,7 +367,7 @@ export function OverallBoardList({
     enabled: !following || userId !== undefined,
   });
 
-  if (following && auth.status === "restoring") return <ListSkeleton rows={5} />;
+  if (following && auth.status === "restoring") return <RanksSkeleton />;
 
   if (following && !userId) {
     return (
@@ -357,7 +400,7 @@ export function OverallBoardList({
   }
 
   if (state.status === "loading" || (following && followed.status === "loading")) {
-    return <ListSkeleton rows={7} />;
+    return <RanksSkeleton />;
   }
 
   const { entries, me, minGames } = state.board;
@@ -372,21 +415,21 @@ export function OverallBoardList({
 
   return (
     <div>
-      <p className="px-4 pb-3 text-xs text-muted-foreground md:px-2">
-        {t(
-          "Your best score in each game becomes a percentile of everyone who played it, up to 100 per game. Your rating adds them up. Play {minGames} games to get ranked.",
-          { minGames },
-        )}
-      </p>
-
       {gamesLeft > 0 && me && (
-        <div className="mx-4 mb-3 rounded-lg border border-primary/30 bg-surface px-3 py-2.5 text-sm md:mx-2">
-          {t("You're rated in")} {me.games} of {minGames} {t("games (")}
-          {me.rating} {t("points).")}{" "}
-          {gamesLeft === 1
-            ? t("Play 1 more game")
-            : t("Play {gamesLeft} more games", { gamesLeft })}{" "}
-          {t("to get on the board.")}
+        <div className="ranks-progress">
+          <span aria-hidden className="ranks-progress-pips">
+            {Array.from({ length: minGames }, (_, index) => (
+              <span key={index} data-done={index < me.games || undefined} />
+            ))}
+          </span>
+          <p className="text-sm">
+            {t("You're rated in")} {me.games} of {minGames} {t("games (")}
+            {me.rating} {t("points).")}{" "}
+            {gamesLeft === 1
+              ? t("Play 1 more game")
+              : t("Play {gamesLeft} more games", { gamesLeft })}{" "}
+            {t("to get on the board.")}
+          </p>
         </div>
       )}
 
@@ -406,42 +449,30 @@ export function OverallBoardList({
           )}
         />
       ) : (
-        <ol className="divide-y divide-border">
-          {rows.map((row) => (
-            <li key={`${row.rank}-${row.username}`} className="enter">
-              <PlayerRow username={row.username}>
-                <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
-                  {row.rank}
-                </span>
-                <UserAvatar username={row.username} size="sm" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">
-                    {row.username ? `@${row.username}` : t("A former player")}
-                  </span>
-                  <span className="block text-xs text-muted-foreground">
-                    {row.games === 1 ? t("1 game") : t("{games} games", { games: row.games })}
-                  </span>
-                </span>
-                <span className="font-semibold tabular">{row.rating}</span>
-              </PlayerRow>
-            </li>
-          ))}
-        </ol>
+        <RanksArena
+          rows={rows.map((row) => ({
+            rank: row.rank,
+            username: row.username || null,
+            value: row.rating,
+            detail: row.games === 1 ? t("1 game") : t("{games} games", { games: row.games }),
+          }))}
+        />
       )}
 
-      {pinMe && me && (
-        <Link
-          to="/profile"
-          aria-label={t("View your profile")}
-          className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] mt-3 flex items-center gap-3 border-y border-primary/30 bg-surface px-4 py-3 md:bottom-0 md:rounded-lg md:border md:px-2"
-        >
-          <span className="w-6 text-center font-mono text-sm tabular text-muted-foreground">
-            {me.rank}
-          </span>
-          <span className="flex-1 text-sm font-medium">{t("You")}</span>
-          <span className="font-semibold tabular">{me.rating}</span>
-        </Link>
-      )}
+      {pinMe && me?.rank != null && <RanksYouBar rank={me.rank} value={me.rating} />}
+
+      <details className="ranks-explainer">
+        <summary>
+          <HelpCircle className="size-3.5" aria-hidden />
+          {t("How ratings work")}
+        </summary>
+        <p>
+          {t(
+            "Your best score in each game becomes a percentile of everyone who played it, up to 100 per game. Your rating adds them up. Play {minGames} games to get ranked.",
+            { minGames },
+          )}
+        </p>
+      </details>
     </div>
   );
 }

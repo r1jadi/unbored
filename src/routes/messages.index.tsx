@@ -1,15 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Bell, ChevronRight, Gamepad2, MessageCircle, PenSquare, Swords } from "lucide-react";
 import { useState } from "react";
-import {
-  EmptyState,
-  ErrorState,
-  ListSkeleton,
-  Page,
-  PageHeader,
-  UserAvatar,
-} from "@/components/common";
+import { toast } from "sonner";
+import { EmptyState, ErrorState, ListSkeleton, Page, UserAvatar } from "@/components/common";
+import { InboxHeader } from "@/components/layout/SceneHeader";
 import { PlayerPicker } from "@/components/social/PlayerPicker";
+import { SwipeRow } from "@/components/social/SwipeRow";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatAgo } from "@/lib/admin/api";
@@ -32,7 +28,7 @@ export const Route = createFileRoute("/messages/")({
  * the navigation opens this, and a chat or the notifications list is one step further.
  */
 function Messages() {
-  const { state, retry } = useInbox();
+  const { state, retry, deleteChat } = useInbox();
   const [composing, setComposing] = useState(false);
   const navigate = useNavigate();
   const title = t("Inbox");
@@ -40,7 +36,7 @@ function Messages() {
   if (state.status === "anonymous") {
     return (
       <Page>
-        <PageHeader title={title} />
+        <InboxHeader title={title} />
         <EmptyState
           icon={MessageCircle}
           title={t("Sign in to see your messages")}
@@ -65,17 +61,22 @@ function Messages() {
 
   return (
     <Page>
-      <PageHeader
+      <InboxHeader
         title={title}
+        unread={
+          state.status === "ready"
+            ? state.entries.reduce((total, entry) => total + entry.unreadCount, 0)
+            : undefined
+        }
         actions={
-          <Button
-            size="icon"
-            className="dm-gradient rounded-full"
+          <button
+            type="button"
+            className="inbox-compose press"
             aria-label={t("New message")}
             onClick={() => setComposing(true)}
           >
-            <PenSquare />
-          </Button>
+            <PenSquare className="size-5" aria-hidden />
+          </button>
         }
       />
 
@@ -100,7 +101,15 @@ function Messages() {
         ) : (
           <ul className="space-y-0.5 px-2 md:px-0">
             {state.entries.map((entry) => (
-              <InboxRow key={entry.conversationId} entry={entry} />
+              <InboxRow
+                key={entry.conversationId}
+                entry={entry}
+                onDelete={() => {
+                  deleteChat(entry.conversationId).catch(() => {
+                    toast.error(t("Couldn't delete this chat. Try again."));
+                  });
+                }}
+              />
             ))}
           </ul>
         ))}
@@ -237,15 +246,26 @@ function Preview({ entry, mine }: { entry: InboxEntry; mine: boolean }) {
   return <>{mine ? t("You: {body}", { body: entry.lastBody }) : entry.lastBody}</>;
 }
 
-function InboxRow({ entry }: { entry: InboxEntry }) {
+function InboxRow({ entry, onDelete }: { entry: InboxEntry; onDelete: () => void }) {
   const unread = entry.unreadCount > 0;
   const mine = entry.lastSenderId === getSessionUserId();
   return (
-    <li className="enter">
+    <SwipeRow
+      className="enter rounded-2xl"
+      deleteLabel={t("Delete chat with @{username}", { username: entry.username })}
+      confirmSwipe
+      confirm={{
+        title: t("Delete this chat?"),
+        body: t("It disappears for you only. @{username} keeps their copy.", {
+          username: entry.username,
+        }),
+      }}
+      onDelete={onDelete}
+    >
       <Link
         to="/messages/$username"
         params={{ username: entry.username }}
-        className="press flex items-center gap-3 rounded-2xl px-2 py-2.5 hover:bg-surface"
+        className="flex items-center gap-3 rounded-2xl px-2 py-2.5 transition-colors hover:bg-surface [@media(pointer:fine)]:pr-12"
       >
         <AvatarRing active={unread}>
           <UserAvatar username={entry.username} path={entry.avatarPath} />
@@ -277,6 +297,6 @@ function InboxRow({ entry }: { entry: InboxEntry }) {
           </span>
         )}
       </Link>
-    </li>
+    </SwipeRow>
   );
 }

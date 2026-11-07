@@ -88,10 +88,10 @@ describe("the new game card", () => {
 
   it("only shines while it's new", async () => {
     await renderCard(note());
-    expect(screen.getByRole("listitem").className).toContain("new-game-shine");
+    expect(document.querySelector(".new-game-shine")).not.toBeNull();
     document.body.innerHTML = "";
 
     await renderCard(note({ readAt: "2026-11-04T01:00:00Z" }));
-    expect(screen.getByRole("listitem").className).not.toContain("new-game-shine");
+    expect(document.querySelector(".new-game-shine")).toBeNull();
   });
 });

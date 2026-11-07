@@ -1,6 +1,17 @@
 /** Albanian for the app around the games: navigation, accounts, settings, social and legal. */
 export const sqApp: Record<string, string> = {
   // Shell and common
+  "No unread chats": "Asnjë bisedë e palexuar",
+  "Delete notification": "Fshi njoftimin",
+  "Delete this notification?": "Ta fshish këtë njoftim?",
+  "It's removed from your list.": "Hiqet nga lista jote.",
+  "Notification deleted": "Njoftimi u fshi",
+  "Couldn't delete this notification. Try again.": "Ky njoftim nuk mund të fshihej. Provo sërish.",
+  "Couldn't bring that back. Try again.": "Nuk mund të kthehej. Provo sërish.",
+  "Delete chat with @{username}": "Fshi bisedën me @{username}",
+  "It disappears for you only. @{username} keeps their copy.":
+    "Zhduket vetëm për ty. @{username} e ruan kopjen e vet.",
+  "How ratings work": "Si funksionon vlerësimi",
   "Continue with Google": "Vazhdo me Google",
   "Go back": "Kthehu",
   "View profile picture": "Shiko foton e profilit",

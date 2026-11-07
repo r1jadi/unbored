@@ -31,9 +31,9 @@ export function NewGameCard({ item }: { item: AppNotification }) {
   if (!game) return null;
   const tagline = translateContent(game.tagline);
   return (
-    <li
+    <div
       className={cn(
-        "enter relative mx-4 my-2 list-none overflow-hidden rounded-2xl bg-surface p-3 ring-1 md:mx-0",
+        "enter relative overflow-hidden rounded-2xl bg-surface p-3 ring-1 ring-inset",
         item.readAt ? "ring-border" : "new-game-shine ring-primary/50",
       )}
     >
@@ -73,6 +73,6 @@ export function NewGameCard({ item }: { item: AppNotification }) {
           </Link>
         </Button>
       </div>
-    </li>
+    </div>
   );
 }

@@ -341,7 +341,11 @@ export type InboxState =
   | { status: "ready"; entries: InboxEntry[] }
   | { status: "error"; message: string };
 
-export function useInbox(): { state: InboxState; retry: () => void; remove: (id: string) => void } {
+export function useInbox(): {
+  state: InboxState;
+  retry: () => void;
+  deleteChat: (conversationId: string) => Promise<void>;
+} {
   const account = useAccount();
   const live = useLive();
   const [state, setState] = useState<InboxState>(() =>
@@ -349,6 +353,8 @@ export function useInbox(): { state: InboxState; retry: () => void; remove: (id:
   );
   // Only the newest read counts, however the answers arrive.
   const sequence = useRef(0);
+  // Chats being deleted: a read that started first must not put them back on screen.
+  const deleting = useRef(new Set<string>());
 
   const read = useCallback((background: boolean) => {
     if (!sessionUser()) return;
@@ -356,7 +362,11 @@ export function useInbox(): { state: InboxState; retry: () => void; remove: (id:
     if (!background) setState({ status: "loading" });
     fetchInbox()
       .then((entries) => {
-        if (mine === sequence.current) setState({ status: "ready", entries });
+        if (mine !== sequence.current) return;
+        setState({
+          status: "ready",
+          entries: entries.filter((entry) => !deleting.current.has(entry.conversationId)),
+        });
       })
       .catch((error: unknown) => {
         if (mine !== sequence.current) return;
@@ -388,14 +398,29 @@ export function useInbox(): { state: InboxState; retry: () => void; remove: (id:
   useVisiblePolling(() => read(true), live ? SLOW_POLL_MS : INBOX_POLL_MS);
 
   const retry = useCallback(() => read(false), [read]);
-  const remove = useCallback((id: string) => {
-    setState((current) =>
-      current.status === "ready"
-        ? { ...current, entries: current.entries.filter((e) => e.conversationId !== id) }
-        : current,
-    );
-  }, []);
-  return { state, retry, remove };
+  /** Deletes a chat for this player. It leaves the list at once and returns if that failed. */
+  const deleteChat = useCallback(
+    async (conversationId: string) => {
+      deleting.current.add(conversationId);
+      setState((current) =>
+        current.status === "ready"
+          ? {
+              ...current,
+              entries: current.entries.filter((e) => e.conversationId !== conversationId),
+            }
+          : current,
+      );
+      try {
+        await clearConversation(conversationId);
+      } finally {
+        // Either way, the database says what is true now.
+        deleting.current.delete(conversationId);
+        read(true);
+      }
+    },
+    [read],
+  );
+  return { state, retry, deleteChat };
 }
 
 function timeOf(message: ChatMessage): number {

@@ -24,11 +24,12 @@ import {
   GridSkeleton,
   ListSkeleton,
   Page,
-  PageHeader,
   Stat,
   UserName,
 } from "@/components/common";
+import { ProfileSceneHeader } from "@/components/layout/SceneHeader";
 import type { Game } from "@/lib/games/catalog";
+import { playerRandom } from "@/lib/social/player-art";
 import { ShareSheet } from "@/components/social/Sheets";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,15 +92,6 @@ export type ProfileHeader = {
   onRetryStats?: () => void;
 };
 
-/** A small, stable hash, so a player's banner is the same on every visit. */
-function hashOf(text: string): number {
-  let hash = 2166136261;
-  for (const char of text) {
-    hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
-  }
-  return hash >>> 0;
-}
-
 const BOARD_COLUMNS = 40;
 const BOARD_ROWS = 10;
 const BOARD_CELL = 10;
@@ -111,12 +103,7 @@ const BOARD_CELL = 10;
  */
 function PlayerBoard({ username }: { username: string }) {
   const { hue, cells } = useMemo(() => {
-    let state = hashOf(username);
-    const next = () => {
-      state = Math.imul(state ^ (state >>> 15), state | 1);
-      state ^= state + Math.imul(state ^ (state >>> 7), state | 61);
-      return ((state ^ (state >>> 14)) >>> 0) / 4294967296;
-    };
+    const next = playerRandom(username);
     const base = next() * 360;
     const lit: Array<{ x: number; y: number; opacity: number; accent: boolean }> = [];
     for (let y = 0; y < BOARD_ROWS; y += 1) {
@@ -454,13 +441,15 @@ export function ProfileView({
 
   return (
     <Page>
-      <PageHeader
+      <ProfileSceneHeader
         back={!self}
+        username={user.username}
         // The signed-in header is the display name, which is unknown until the
         // profile arrives; "Your profile" is what the tab and the page title say.
         title={self ? user.name || t("Your profile") : `@${user.username}`}
+        subtitle={self ? (user.username ? `@${user.username}` : undefined) : user.name}
         actions={
-          <div className="flex">
+          <div className="glass flex rounded-full">
             {user.username !== "" && (
               <Button
                 variant="ghost"

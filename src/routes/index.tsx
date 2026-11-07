@@ -69,8 +69,12 @@ function ForYou() {
       <Feed
         tab="for-you"
         items={ranked}
+        // Everything `ranked` waits for. Anything left out shows "Nothing here yet" for
+        // the moment between the list being empty and the first card arriving.
         loading={
-          status === "loading" || (status === "ready" && !complete) || viewer.status === "loading"
+          status === "loading" ||
+          (status === "ready" && (!complete || featured.isPending)) ||
+          viewer.status === "loading"
         }
         error={status === "error" ? error : undefined}
         onRetry={retry}

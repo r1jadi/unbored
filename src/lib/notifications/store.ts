@@ -20,6 +20,8 @@ import { t } from "@/lib/settings/language";
  * chat isn't announced twice and marking this inbox read can't re-arm the next push.
  */
 const NOT_MESSAGES = "kind=neq.message";
+/** What the player's list holds: a row they deleted stays in the table, not on screen. */
+const LISTED = `${NOT_MESSAGES}&dismissed_at=is.null`;
 
 export type NotificationKind = "follow" | "comment" | "like" | "score" | "moderation" | "system";
 
@@ -67,7 +69,7 @@ export async function fetchNotifications(limit = 50): Promise<AppNotification[]>
   }
   try {
     const rows = await restGet<Row[]>(
-      `notifications?${NOT_MESSAGES}&select=id,kind,payload,read_at,created_at&order=created_at.desc&limit=${limit}`,
+      `notifications?${LISTED}&select=id,kind,payload,read_at,created_at&order=created_at.desc&limit=${limit}`,
       token,
     );
     return rows.map(toNotification);
@@ -84,7 +86,7 @@ export async function fetchUnreadCount(): Promise<number> {
   }
   try {
     const rows = await restGet<Array<{ id: string }>>(
-      `notifications?${NOT_MESSAGES}&select=id&read_at=is.null&limit=100`,
+      `notifications?${LISTED}&select=id&read_at=is.null&limit=100`,
       token,
     );
     return rows.length;
@@ -125,6 +127,34 @@ export async function markRead(id: string): Promise<void> {
   }
 }
 
+async function setDismissed(id: string, fields: Record<string, string | null>): Promise<void> {
+  const token = getAccessToken();
+  if (!token || getAuthState().status !== "authenticated") {
+    throw new ApiError(t("Sign in to view notifications."), { code: "unauthorized", status: 401 });
+  }
+  try {
+    await restMutate(`notifications?id=eq.${encodeURIComponent(id)}`, "PATCH", token, fields);
+  } catch (error) {
+    throw toApiError(error);
+  }
+  announceUnread(null);
+}
+
+/**
+ * Deletes a notification from the player's list. The row stays behind, because the
+ * follow and score rate limits read it (see the `notification_dismissal` migration),
+ * and an unread one counts as read so a digest can't bring it back up.
+ */
+export function dismissNotification(item: AppNotification): Promise<void> {
+  const now = new Date().toISOString();
+  return setDismissed(item.id, { dismissed_at: now, ...(item.readAt ? {} : { read_at: now }) });
+}
+
+/** Undoes `dismissNotification`. */
+export function restoreNotification(item: AppNotification): Promise<void> {
+  return setDismissed(item.id, { dismissed_at: null });
+}
+
 // Every mounted unread badge listens here, so the inbox can clear them all the
 // moment it is opened rather than leaving a stale number until the next reload.
 const unreadListeners = new Set<(count: number | null) => void>();
@@ -155,7 +185,15 @@ export type NotificationsState =
   | { status: "ready"; items: AppNotification[] }
   | { status: "error"; error: ApiError };
 
-export function useNotifications(): NotificationsState & { retry: () => void } {
+type NotificationsControls = {
+  retry: () => void;
+  /** Takes a row off the screen, for a deletion that is on its way to the server. */
+  drop: (id: string) => void;
+  /** Puts a row back where it belongs, for a deletion that failed or was undone. */
+  bringBack: (item: AppNotification) => void;
+};
+
+export function useNotifications(): NotificationsState & NotificationsControls {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<NotificationsState>(() =>
     getAuthState().status === "authenticated" ? { status: "loading" } : { status: "anonymous" },
@@ -198,7 +236,26 @@ export function useNotifications(): NotificationsState & { retry: () => void } {
   );
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
-  return { ...state, retry } as NotificationsState & { retry: () => void };
+  const drop = useCallback((id: string) => {
+    setState((current) =>
+      current.status === "ready"
+        ? { ...current, items: current.items.filter((item) => item.id !== id) }
+        : current,
+    );
+  }, []);
+  const bringBack = useCallback((item: AppNotification) => {
+    setState((current) =>
+      current.status === "ready"
+        ? {
+            ...current,
+            items: [...current.items.filter((other) => other.id !== item.id), item].sort((a, b) =>
+              b.createdAt.localeCompare(a.createdAt),
+            ),
+          }
+        : current,
+    );
+  }, []);
+  return { ...state, retry, drop, bringBack } as NotificationsState & NotificationsControls;
 }
 
 /**

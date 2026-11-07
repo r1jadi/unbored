@@ -133,7 +133,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           )}
           {isAnonymous && (
-            <div className="flex flex-col gap-2 px-3 pt-3">
+            <div className="guest-only flex flex-col gap-2 px-3 pt-3">
               <Link
                 to="/welcome"
                 className="flex h-10 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90"

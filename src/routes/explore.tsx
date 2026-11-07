@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, Search } from "lucide-react";
 import type { ReactNode } from "react";
-import { EmptyState, GridSkeleton, Page, PageHeader, Section } from "@/components/common";
+import { EmptyState, GridSkeleton, Page, Section } from "@/components/common";
 import { DailyWidget } from "@/components/game/DailyWidget";
 import { GameCard } from "@/components/game/GameCard";
-import { Button } from "@/components/ui/button";
+import { ExploreHeader } from "@/components/layout/SceneHeader";
 import { MAX_PAGE_SIZE, mostPlayed, useCategories, useGames } from "@/lib/games/catalog";
 import { pickBySlug, useFeaturedSlugs, useTrending } from "@/lib/games/rankings";
 import { DAILY_LIMIT, prefetchExplore } from "@/lib/prefetch";
@@ -78,15 +78,13 @@ export function Explore() {
 
   return (
     <Page className="max-w-5xl">
-      <PageHeader
+      <ExploreHeader
         title={t("Explore")}
         subtitle={t("Find your next game.")}
         actions={
-          <Button asChild variant="ghost" size="icon" aria-label={t("Search")}>
-            <Link to="/search">
-              <Search />
-            </Link>
-          </Button>
+          <Link to="/search" aria-label={t("Search")} className="explore-search press">
+            <Search className="size-5" aria-hidden />
+          </Link>
         }
       />
       <div className="px-4 md:px-0">

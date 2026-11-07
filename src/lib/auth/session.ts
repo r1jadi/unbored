@@ -622,13 +622,41 @@ export function initializeSession(): Promise<void> {
   if (restoreTask && restoreTask.generation === generation) return restoreTask.promise;
   watchForResume();
   const stored = readStoredSession();
-  if (!stored) return Promise.resolve();
+  if (!stored) {
+    endSessionPending();
+    return Promise.resolve();
+  }
   const startedAt = generation;
   const promise = restoreSession(stored, startedAt).finally(() => {
     if (restoreTask?.promise === promise) restoreTask = undefined;
   });
+  // The restore has published its answer, or `restoring`, by this line, but screens that
+  // read the session through their own effects are one update behind it and would still
+  // draw their signed-out state. A busy main thread holds this timer back with them.
+  window.setTimeout(endSessionPending, SESSION_SETTLE_MS);
   restoreTask = { generation: startedAt, promise };
   return promise;
+}
+
+const SESSION_PENDING_CLASS = "session-pending";
+const SESSION_SETTLE_MS = 150;
+
+/**
+ * Keeps a returning player from seeing the signed-out app on a reload.
+ *
+ * The server can't read this browser's session, so its HTML is always the signed-out
+ * page, and that paints before any of the app runs. This runs ahead of the first paint
+ * and, if a session is stored, marks the document so `styles.css` holds back the "Get
+ * started" buttons and the page's content until `initializeSession` has the answer. It
+ * runs ahead of the app, so it can't import anything, and it lets go by itself if the
+ * app never starts, rather than leave a blank page.
+ */
+export const SESSION_BOOT_SCRIPT = `(function(){try{var s=localStorage,c=document.documentElement.classList;if(s.getItem(${JSON.stringify(SESSION_STORAGE_KEY)})||s.getItem(${JSON.stringify(LEGACY_SESSION_STORAGE_KEY)})){c.add(${JSON.stringify(SESSION_PENDING_CLASS)});setTimeout(function(){c.remove(${JSON.stringify(SESSION_PENDING_CLASS)})},8000)}}catch(e){}})()`;
+
+function endSessionPending(): void {
+  if (typeof document !== "undefined") {
+    document.documentElement.classList.remove(SESSION_PENDING_CLASS);
+  }
 }
 
 async function restoreSession(stored: StoredSession, startedAt: number): Promise<void> {

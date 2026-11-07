@@ -2,13 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bell, Heart, MessageCircle, Settings, Trophy, UserPlus, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { EmptyState, ErrorState, ListSkeleton, Page, PageHeader } from "@/components/common";
+import { toast } from "sonner";
 import { NewGameCard } from "@/components/game/NewGameCard";
+import { SwipeRow } from "@/components/social/SwipeRow";
 import { Button } from "@/components/ui/button";
 import {
   announcementOf,
   describeNotification,
+  dismissNotification,
   newGameOf,
   openInbox,
+  restoreNotification,
   useNotifications,
   type AppNotification,
 } from "@/lib/notifications/store";
@@ -121,6 +125,30 @@ function Notifications() {
   const list = state.items.filter((item) => matchesFilter(item, filter));
   const fresh = state.items.filter((item) => !item.readAt).length;
 
+  /** Off the screen at once, back if that failed, and undoable for a few seconds. */
+  async function remove(item: AppNotification) {
+    state.drop(item.id);
+    try {
+      await dismissNotification(item);
+    } catch {
+      state.bringBack(item);
+      toast.error(t("Couldn't delete this notification. Try again."));
+      return;
+    }
+    toast(t("Notification deleted"), {
+      action: {
+        label: t("Undo"),
+        onClick: () => {
+          state.bringBack(item);
+          restoreNotification(item).catch(() => {
+            state.drop(item.id);
+            toast.error(t("Couldn't bring that back. Try again."));
+          });
+        },
+      },
+    });
+  }
+
   return (
     <Page>
       <PageHeader
@@ -167,7 +195,21 @@ function Notifications() {
       ) : (
         <ul className="divide-y divide-border md:space-y-1 md:divide-y-0">
           {list.map((item) => {
-            if (newGameOf(item)) return <NewGameCard key={item.id} item={item} />;
+            const row = {
+              deleteLabel: t("Delete notification"),
+              confirm: {
+                title: t("Delete this notification?"),
+                body: t("It's removed from your list."),
+              },
+              onDelete: () => void remove(item),
+            };
+            if (newGameOf(item)) {
+              return (
+                <SwipeRow key={item.id} {...row} className="mx-4 my-2 rounded-2xl md:mx-0">
+                  <NewGameCard item={item} />
+                </SwipeRow>
+              );
+            }
             const Icon = icon[item.kind];
             const announcement = announcementOf(item);
             const actor =
@@ -179,49 +221,52 @@ function Notifications() {
                 ? (item.payload["game"] as string)
                 : undefined;
             return (
-              <li
-                key={item.id}
-                className={cn(
-                  "enter flex items-center gap-3 px-4 py-3.5 md:rounded-lg md:px-3",
-                  !item.readAt && "bg-surface",
-                )}
-              >
-                <div className="relative">
-                  <span className="flex size-10 items-center justify-center rounded-full bg-surface-2">
-                    <Icon className="size-4" />
-                  </span>
-                </div>
-                <p className="min-w-0 flex-1 text-sm">
-                  {actor && (
-                    <Link to="/u/$username" params={{ username: actor }} className="font-medium">
-                      @{actor}{" "}
-                    </Link>
+              <SwipeRow key={item.id} {...row} className="md:rounded-lg">
+                <div
+                  className={cn(
+                    "enter flex items-center gap-3 px-4 py-3.5 md:px-3 [@media(pointer:fine)]:pr-12",
+                    !item.readAt && "bg-surface",
                   )}
-                  {announcement && <span className="block font-medium">{announcement.title}</span>}
-                  <span className={actor ? "text-muted-foreground" : ""}>
-                    {describeNotification(item)}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {" "}
-                    · {formatAgo(item.createdAt) ?? "recently"}
-                  </span>
-                </p>
-                {game && (
-                  <Button asChild size="sm" variant="secondary">
-                    <Link to="/games/$id" params={{ id: game }}>
-                      {t("Open")}
-                    </Link>
-                  </Button>
-                )}
-                {announcement?.link && (
-                  <Button asChild size="sm" variant="secondary">
-                    <Link to={announcement.link}>{t("Open")}</Link>
-                  </Button>
-                )}
-                {!item.readAt && (
-                  <span className="size-2 rounded-full bg-primary" aria-label={t("New")} />
-                )}
-              </li>
+                >
+                  <div className="relative">
+                    <span className="flex size-10 items-center justify-center rounded-full bg-surface-2">
+                      <Icon className="size-4" />
+                    </span>
+                  </div>
+                  <p className="min-w-0 flex-1 text-sm">
+                    {actor && (
+                      <Link to="/u/$username" params={{ username: actor }} className="font-medium">
+                        @{actor}{" "}
+                      </Link>
+                    )}
+                    {announcement && (
+                      <span className="block font-medium">{announcement.title}</span>
+                    )}
+                    <span className={actor ? "text-muted-foreground" : ""}>
+                      {describeNotification(item)}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {formatAgo(item.createdAt) ?? "recently"}
+                    </span>
+                  </p>
+                  {game && (
+                    <Button asChild size="sm" variant="secondary">
+                      <Link to="/games/$id" params={{ id: game }}>
+                        {t("Open")}
+                      </Link>
+                    </Button>
+                  )}
+                  {announcement?.link && (
+                    <Button asChild size="sm" variant="secondary">
+                      <Link to={announcement.link}>{t("Open")}</Link>
+                    </Button>
+                  )}
+                  {!item.readAt && (
+                    <span className="size-2 rounded-full bg-primary" aria-label={t("New")} />
+                  )}
+                </div>
+              </SwipeRow>
             );
           })}
         </ul>
