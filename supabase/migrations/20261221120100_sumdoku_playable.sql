@@ -8,6 +8,10 @@
 --   2. deploy the service that routes `sumdoku@1` completions to the new verifier
 --      and the client that plays the game;
 --   3. apply this migration.
+--
+-- Guesswork shipped in the same change, and a database can reach this migration
+-- with Guesswork already in the catalogue (its migration applied first), so the
+-- guard below allows it too.
 
 insert into public.games (
   slug, title, tagline, description, instructions, category_id,
@@ -50,12 +54,12 @@ begin
        'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle',
        'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku',
        'scatter', 'huedini', 'cascade', 'checkmate', 'bolted', 'fusebox', 'minefield',
-       'sumdoku'
+       'sumdoku', 'guesswork'
      )
        and is_official
        and (playable or runtime is not null)
   ) then
-    raise exception 'an official game other than the twenty-five shipped runtimes is playable: runtimes ship one game at a time';
+    raise exception 'an official game other than the shipped runtimes is playable: runtimes ship one game at a time';
   end if;
 end
 $$;
