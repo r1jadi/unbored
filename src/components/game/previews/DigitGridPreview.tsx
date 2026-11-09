@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { cn } from "@/lib/utils";
 
 import { FADE_MS, FloatingPoints, PreviewStage, type Beat } from "./shared";
@@ -43,7 +45,7 @@ export function digitGridBeats(
   return beats;
 }
 
-/** Sudoku and Mini Sudoku share a look: a boxed grid over a number pad. */
+/** Sudoku, Mini Sudoku and Sumdoku share a look: a boxed grid over a number pad. */
 export function DigitGridPreview({
   name,
   side,
@@ -52,6 +54,7 @@ export function DigitGridPreview({
   open,
   beats,
   playing,
+  decorate,
 }: {
   name: string;
   side: number;
@@ -60,6 +63,8 @@ export function DigitGridPreview({
   open: readonly number[];
   beats: readonly DigitGridBeat[];
   playing: boolean;
+  /** Drawn inside each cell, over its background: Sumdoku's cages. */
+  decorate?: (cell: number, selected: number | null) => ReactNode;
 }) {
   const index = useBeats(beats, playing);
   const beat = beats[index];
@@ -95,7 +100,7 @@ export function DigitGridPreview({
                 borderBottomColor: (row + 1) % boxRows === 0 ? BOX_EDGE : CELL_EDGE,
               }}
               className={cn(
-                "flex items-center justify-center leading-none tabular",
+                "relative flex items-center justify-center leading-none tabular",
                 side > 6 ? "text-[min(4.4cqw,4.4cqh,1.05rem)]" : "text-[min(6cqw,6cqh,1.4rem)]",
                 open.includes(cell) ? "font-medium text-primary" : "font-semibold text-foreground",
                 related(cell) ? "bg-surface-2" : "bg-surface",
@@ -103,6 +108,7 @@ export function DigitGridPreview({
                 cell === beat.selected && "bg-primary/25",
               )}
             >
+              {decorate?.(cell, beat.selected)}
               {value !== 0 ? value : ""}
             </div>
           );

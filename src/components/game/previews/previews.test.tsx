@@ -17,6 +17,8 @@ import { CHECKMATE_BANK } from "@/lib/games/checkmate-bank";
 import { CROSSWORD_MIDIS, CROSSWORD_MINIS } from "@/lib/games/crossword-bank";
 import { DECANT_DEPTH, isSolved as isDecantSolved, pourAmount } from "@/lib/games/decant";
 import { canPlace, place } from "@/lib/games/gridburst";
+import { GUESSWORK_ANSWERS, GUESSWORK_GUESSES } from "@/lib/games/guesswork-bank";
+import { marksFor, wordSet } from "@/lib/games/guesswork";
 import { HUEDINI_BANK } from "@/lib/games/huedini-bank";
 import { conflicts as miniConflicts, isSolved as isMiniSolved } from "@/lib/games/mini-sudoku";
 import { MINI_SUDOKU_BANK } from "@/lib/games/mini-sudoku-bank";
@@ -27,6 +29,14 @@ import {
   type SudokuDigit,
 } from "@/lib/games/sudoku";
 import { SUDOKU_BANK } from "@/lib/games/sudoku-bank";
+import {
+  candidates as sumdokuCandidates,
+  conflicts as sumdokuConflicts,
+  isSolved as isSumdokuSolved,
+  type SumdokuBoard,
+  type SumdokuDigit,
+} from "@/lib/games/sumdoku";
+import { SUMDOKU_BANK } from "@/lib/games/sumdoku-bank";
 import { conflicts as tangoConflicts, solutions as tangoSolutions } from "@/lib/games/tango";
 import {
   columnAt,
@@ -77,6 +87,12 @@ import {
   GridburstPreview,
   gridburstPreviewStart,
 } from "./GridburstPreview";
+import {
+  GUESSWORK_PREVIEW_ANSWER,
+  GUESSWORK_PREVIEW_BEATS,
+  GUESSWORK_PREVIEW_GUESSES,
+  GuessworkPreview,
+} from "./GuessworkPreview";
 import { HUEDINI_PREVIEW_BEATS, HUEDINI_PREVIEW_CODE, HuediniPreview } from "./HuediniPreview";
 import { MEMORY_FLASH_PREVIEW_BEATS, MemoryFlashPreview } from "./MemoryFlashPreview";
 import {
@@ -115,6 +131,12 @@ import {
   SUDOKU_PREVIEW_SOLVED,
   SudokuPreview,
 } from "./SudokuPreview";
+import {
+  SUMDOKU_PREVIEW_BEATS,
+  SUMDOKU_PREVIEW_BOARD,
+  SUMDOKU_PREVIEW_OPEN,
+  SumdokuPreview,
+} from "./SumdokuPreview";
 import {
   TANGO_PREVIEW_BEATS,
   TANGO_PREVIEW_SIGNS,
@@ -163,6 +185,7 @@ const SCRIPTED: Row[] = [
   { name: "dont-touch-the-black", beats: DONT_TOUCH_PREVIEW_BEATS, Preview: DontTouchPreview },
   { name: "fusebox", beats: FUSEBOX_PREVIEW_BEATS, Preview: FuseboxPreview },
   { name: "gridburst", beats: GRIDBURST_PREVIEW_BEATS, Preview: GridburstPreview },
+  { name: "guesswork", beats: GUESSWORK_PREVIEW_BEATS, Preview: GuessworkPreview },
   { name: "huedini", beats: HUEDINI_PREVIEW_BEATS, Preview: HuediniPreview },
   { name: "memory-flash", beats: MEMORY_FLASH_PREVIEW_BEATS, Preview: MemoryFlashPreview },
   { name: "minefield", beats: MINEFIELD_PREVIEW_BEATS, Preview: MinefieldPreview },
@@ -171,6 +194,7 @@ const SCRIPTED: Row[] = [
   { name: "scatter", beats: SCATTER_PREVIEW_BEATS, Preview: ScatterPreview },
   { name: "stack-10", beats: STACK10_PREVIEW_BEATS, Preview: Stack10Preview },
   { name: "sudoku", beats: SUDOKU_PREVIEW_BEATS, Preview: SudokuPreview },
+  { name: "sumdoku", beats: SUMDOKU_PREVIEW_BEATS, Preview: SumdokuPreview },
   { name: "sun-and-moon", beats: TANGO_PREVIEW_BEATS, Preview: TangoPreview },
   { name: "trail", beats: ZIP_PREVIEW_BEATS, Preview: ZipPreview },
 ];
@@ -422,6 +446,53 @@ describe("the Mini Sudoku preview", () => {
     expect(isMiniSolved(grid)).toBe(true);
     expect(MINI_SUDOKU_BANK).not.toContain(MINI_SUDOKU_PREVIEW_BEATS[0].cells.join(""));
     expect(new Set(MINI_SUDOKU_PREVIEW_OPEN).size).toBe(MINI_SUDOKU_PREVIEW_OPEN.length);
+  });
+});
+
+/** Every way to finish a Sumdoku board from `cells`, up to `limit`. */
+function sumdokuSolutions(board: SumdokuBoard, cells: SumdokuDigit[], limit = 2): string[] {
+  const open = cells.indexOf(0);
+  if (open < 0) return isSumdokuSolved(board, cells) ? [cells.join("")] : [];
+  const found: string[] = [];
+  for (const digit of sumdokuCandidates(board, cells, open)) {
+    const next = [...cells];
+    next[open] = digit;
+    found.push(...sumdokuSolutions(board, next, limit - found.length));
+    if (found.length >= limit) break;
+  }
+  return found;
+}
+
+describe("the Sumdoku preview", () => {
+  it("is a real solved board with one answer, not one the bank deals", () => {
+    const board = SUMDOKU_PREVIEW_BOARD;
+    expect(sumdokuConflicts(board, board.solution).size).toBe(0);
+    expect(isSumdokuSolved(board, board.solution)).toBe(true);
+    expect(SUMDOKU_BANK.map((puzzle) => puzzle.slice(0, 36))).not.toContain(
+      board.solution.join(""),
+    );
+    expect(SUMDOKU_PREVIEW_BEATS[0].cells).toEqual(board.start);
+    expect(sumdokuSolutions(board, [...board.start])).toEqual([board.solution.join("")]);
+    expect(new Set(SUMDOKU_PREVIEW_OPEN).size).toBe(SUMDOKU_PREVIEW_OPEN.length);
+    const end = SUMDOKU_PREVIEW_BEATS[SUMDOKU_PREVIEW_BEATS.length - 1];
+    expect(end.cells).toEqual(board.solution);
+  });
+});
+
+describe("the Guesswork preview", () => {
+  it("guesses list words, marked by the real rules, onto a word no day uses", () => {
+    expect(GUESSWORK_ANSWERS).not.toContain(GUESSWORK_PREVIEW_ANSWER);
+    const isWord = wordSet(GUESSWORK_ANSWERS, GUESSWORK_GUESSES);
+    expect(GUESSWORK_PREVIEW_GUESSES.every(isWord)).toBe(true);
+    const end = GUESSWORK_PREVIEW_BEATS[GUESSWORK_PREVIEW_BEATS.length - 1];
+    expect(end.rows.map((row) => row.letters)).toEqual([...GUESSWORK_PREVIEW_GUESSES]);
+    end.rows.forEach((row) =>
+      expect(row.marks).toEqual(marksFor(row.letters, GUESSWORK_PREVIEW_ANSWER)),
+    );
+    expect(end.rows[end.rows.length - 1].letters).toBe(GUESSWORK_PREVIEW_ANSWER);
+    expect(GUESSWORK_PREVIEW_BEATS.filter((beat) => beat.gain !== null)).toEqual([
+      expect.objectContaining({ gain: 40 }),
+    ]);
   });
 });
 

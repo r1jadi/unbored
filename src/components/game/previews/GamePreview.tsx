@@ -27,6 +27,7 @@ const LOADERS: Record<string, Loader> = {
     import("./DontTouchPreview").then((m) => ({ default: m.DontTouchPreview })),
   fusebox: () => import("./FuseboxPreview").then((m) => ({ default: m.FuseboxPreview })),
   gridburst: () => import("./GridburstPreview").then((m) => ({ default: m.GridburstPreview })),
+  guesswork: () => import("./GuessworkPreview").then((m) => ({ default: m.GuessworkPreview })),
   huedini: () => import("./HuediniPreview").then((m) => ({ default: m.HuediniPreview })),
   "memory-flash": () =>
     import("./MemoryFlashPreview").then((m) => ({ default: m.MemoryFlashPreview })),
@@ -37,6 +38,7 @@ const LOADERS: Record<string, Loader> = {
   scatter: () => import("./ScatterPreview").then((m) => ({ default: m.ScatterPreview })),
   "stack-10": () => import("./Stack10Preview").then((m) => ({ default: m.Stack10Preview })),
   sudoku: () => import("./SudokuPreview").then((m) => ({ default: m.SudokuPreview })),
+  sumdoku: () => import("./SumdokuPreview").then((m) => ({ default: m.SumdokuPreview })),
   "sun-and-moon": () => import("./TangoPreview").then((m) => ({ default: m.TangoPreview })),
   trail: () => import("./ZipPreview").then((m) => ({ default: m.ZipPreview })),
   updraft: () => import("./UpdraftPreview").then((m) => ({ default: m.UpdraftPreview })),
