@@ -342,7 +342,7 @@ end $$;
 -- Sumdoku: the board a seed deals a level, starting cells (0 empty) then solution
 -- ─────────────────────────────────────────────────────────────────────────────
 
-do $
+do $$
 declare
   v record;
   got text;
@@ -373,13 +373,13 @@ begin
     end if;
     raise notice 'ok   Sumdoku seed % board %: the verifier deals the engine''s board', v.seed, v.level;
   end loop;
-end $;
+end $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Guesswork and Gjeje: the word a day number gives, in each language
 -- ─────────────────────────────────────────────────────────────────────────────
 
-do $
+do $$
 declare
   v record;
   got text;
@@ -407,7 +407,7 @@ begin
     end if;
     raise notice 'ok   % day %: the verifier picks the engine''s word', v.rules, v.day;
   end loop;
-end $;
+end $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- The speed bonus: points, par, elapsed, bonus
