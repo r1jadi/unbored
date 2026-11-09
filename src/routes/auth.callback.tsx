@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth/session";
 import { seo } from "@/lib/seo";
 
+import { sanitizeNext } from "@/lib/auth/next";
 import { t } from "@/lib/settings/language";
 const searchSchema = z.object({
   code: z.string().optional(),
@@ -210,11 +211,6 @@ function Callback() {
       </div>
     </AuthLayout>
   );
-}
-
-function sanitizeNext(value: string | undefined): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
-  return value;
 }
 
 function parseFragment(hash: string): Record<string, string> {

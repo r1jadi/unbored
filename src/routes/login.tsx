@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api/client";
 import { authErrorMessage, signIn } from "@/lib/auth/session";
 import { seo } from "@/lib/seo";
 
+import { sanitizeNext } from "@/lib/auth/next";
 import { t } from "@/lib/settings/language";
 const searchSchema = z.object({
   email: z.string().optional(),
@@ -113,11 +114,6 @@ function Login() {
       </form>
     </AuthLayout>
   );
-}
-
-function sanitizeNext(value: string | undefined): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
-  return value;
 }
 
 /**

@@ -7038,6 +7038,131 @@ select rls_test.ok(
   (select count(*) = 0 from public.challenges where 'e1e1e1e1-2026-4120-8720-e1e1e1e1e1e1' in (challenger_id, opponent_id)),
   'deleting an account deletes its challenges');
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Score rows are private: the table answers for the owner and for staff only
+-- (20261223120000_scores_private_rows.sql). Everyone else reads scores through
+-- the board and profile functions, which apply the player's privacy choices.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- An earlier section's administrator bridge flag would make every caller staff.
+select set_config('app.admin_bridge_actor', '', true);
+
+-- A fixture of their own, so the counts below do not depend on earlier sections.
+insert into auth.users (id, email) values
+  ('5c0e5c0e-2026-4123-8123-5c0e5c0e0001', 'score-owner@example.com'),
+  ('5c0e5c0e-2026-4123-8123-5c0e5c0e0002', 'score-visitor@example.com');
+insert into public.game_sessions (id, game_id, user_id)
+select '5c0e5c0e-2026-4123-8123-5c0e5c0e00aa', g.id, '5c0e5c0e-2026-4123-8123-5c0e5c0e0001'
+  from public.games g where g.status = 'published' order by g.slug limit 1;
+insert into public.scores (session_id, game_id, user_id, score)
+select gs.id, gs.game_id, gs.user_id, 4242
+  from public.game_sessions gs where gs.id = '5c0e5c0e-2026-4123-8123-5c0e5c0e00aa';
+
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+set local role anon;
+select rls_test.visible(
+  $$select 1 from public.scores$$, 0,
+  'a visitor reads no score rows from the table');
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', '5c0e5c0e-2026-4123-8123-5c0e5c0e0002', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.visible(
+  $$select 1 from public.scores$$, 0,
+  'a signed-in player reads nobody else''s score rows');
+select rls_test.visible(
+  $$select 1 from public.scores where user_id = '5c0e5c0e-2026-4123-8123-5c0e5c0e0001'$$, 0,
+  'and cannot ask for another player''s rows by id');
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', '5c0e5c0e-2026-4123-8123-5c0e5c0e0001', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.visible(
+  $$select 1 from public.scores$$, 1,
+  'a player reads exactly their own score rows');
+reset role;
+
+-- The public surfaces still answer, for a visitor, from the same rows.
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+set local role anon;
+select rls_test.ok(
+  (select count(*) >= 1
+     from public.game_leaderboard(
+       (select g.slug::text from public.games g where g.status = 'published' order by g.slug limit 1),
+       null, 100, 0) b
+    where b.user_id = '5c0e5c0e-2026-4123-8123-5c0e5c0e0001' and b.score = 4242),
+  'the public board still lists the score for a visitor');
+select rls_test.ok(
+  (select jsonb_array_length(public.profile_showcase('5c0e5c0e-2026-4123-8123-5c0e5c0e0001')->'scores') = 1),
+  'and the profile showcase still shows it, while the player allows it');
+reset role;
+
+-- A standing answers strangers only while the player is on the boards
+-- (20261223120100_standings_respect_opt_out.sql).
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+set local role anon;
+select rls_test.ok(
+  (select count(*) = 1
+     from public.game_standing(
+       (select g.slug::text from public.games g where g.status = 'published' order by g.slug limit 1),
+       '5c0e5c0e-2026-4123-8123-5c0e5c0e0001', null) s
+    where s.score = 4242),
+  'a visitor can read the standing of a player who is on the boards');
+select rls_test.denied(
+  $$select * from public.game_standing_unchecked('x', '5c0e5c0e-2026-4123-8123-5c0e5c0e0001', null)$$,
+  'a visitor cannot call the unchecked standing');
+select rls_test.denied(
+  $$select * from public.overall_standing_unchecked('5c0e5c0e-2026-4123-8123-5c0e5c0e0001', null)$$,
+  'nor the unchecked all-games standing');
+reset role;
+
+insert into public.user_preferences (user_id, show_on_leaderboards)
+  values ('5c0e5c0e-2026-4123-8123-5c0e5c0e0001', false)
+  on conflict (user_id) do update set show_on_leaderboards = false;
+
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+set local role anon;
+select rls_test.ok(
+  (select count(*) = 0
+     from public.game_standing(
+       (select g.slug::text from public.games g where g.status = 'published' order by g.slug limit 1),
+       '5c0e5c0e-2026-4123-8123-5c0e5c0e0001', null)),
+  'a visitor gets no standing for a player who left the boards');
+select rls_test.ok(
+  (select count(*) = 0 from public.overall_standing('5c0e5c0e-2026-4123-8123-5c0e5c0e0001', null)),
+  'nor their all-games standing');
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', '5c0e5c0e-2026-4123-8123-5c0e5c0e0002', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.ok(
+  (select count(*) = 0
+     from public.game_standing(
+       (select g.slug::text from public.games g where g.status = 'published' order by g.slug limit 1),
+       '5c0e5c0e-2026-4123-8123-5c0e5c0e0001', null)),
+  'another signed-in player gets none either');
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', '5c0e5c0e-2026-4123-8123-5c0e5c0e0001', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.ok(
+  (select count(*) = 1
+     from public.game_standing(
+       (select g.slug::text from public.games g where g.status = 'published' order by g.slug limit 1),
+       '5c0e5c0e-2026-4123-8123-5c0e5c0e0001', null) s
+    where s.score = 4242),
+  'the player who left the boards still reads their own standing');
+select rls_test.ok(
+  (select count(*) = 1 and min(best_score) = 4242
+     from public.my_game_stats(
+       (select g.slug::text from public.games g where g.status = 'published' order by g.slug limit 1))),
+  'and their own stats for the game');
+reset role;
+
 rollback;
 
 \echo 'RLS suite passed.'

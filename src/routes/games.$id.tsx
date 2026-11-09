@@ -23,16 +23,25 @@ import {
 } from "@/lib/games/catalog";
 import { useGameEngagement } from "@/lib/social/engagement";
 import { useDocumentTitle } from "@/lib/document-title";
+import { requireGame } from "@/lib/games/catalog-exists";
 import { prefetchGamePage } from "@/lib/prefetch";
 import { breadcrumbJsonLd, seo, videoGameJsonLd } from "@/lib/seo";
 
 import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/games/$id")({
-  loader: ({ context, params }) => prefetchGamePage(context.queryClient, params.id),
+  // The prefetch never blocks. The existence check does, on the server only, so
+  // an unknown slug is answered with a 404 status instead of a 200 shell.
+  loader: async ({ context, params }) => {
+    prefetchGamePage(context.queryClient, params.id);
+    await requireGame(params.id);
+  },
   // Document metadata is built before the record arrives, so the title comes from
   // the URL. It is the same title the API will report, and nothing is claimed
   // that is not known: no description, no category, no metrics.
-  head: ({ params }) => {
+  head: ({ params, match }) => {
+    if (match.status === "notFound") {
+      return seo(t("Game not found"), t("No such game"), { indexable: false });
+    }
     const title = titleFromSlug(params.id);
     return seo(title, `${title} on Unbored.`, {
       type: "video.other",
@@ -46,18 +55,33 @@ export const Route = createFileRoute("/games/$id")({
     });
   },
   component: GameDetails,
+  notFoundComponent: GameNotFound,
 });
+
+function GameNotFound() {
+  useDocumentTitle(t("Game not found"));
+  return (
+    <Page className="max-w-5xl">
+      <PageHeader back title={t("Game not found")} />
+      <EmptyState
+        title={t("No such game")}
+        body={t(
+          "This game is not in the catalogue. It may not be published, or the link may be wrong.",
+        )}
+        action={
+          <Button asChild variant="secondary">
+            <Link to="/explore">{t("Browse games")}</Link>
+          </Button>
+        }
+      />
+    </Page>
+  );
+}
 
 function GameDetails() {
   const { id } = Route.useParams();
   const state = useGame(id);
-  useDocumentTitle(
-    state.status === "ready"
-      ? state.game.title
-      : state.status === "missing"
-        ? t("Game not found")
-        : undefined,
-  );
+  useDocumentTitle(state.status === "ready" ? state.game.title : undefined);
 
   if (state.status === "loading") {
     return (
@@ -68,24 +92,7 @@ function GameDetails() {
     );
   }
 
-  if (state.status === "missing") {
-    return (
-      <Page className="max-w-5xl">
-        <PageHeader back title={t("Game not found")} />
-        <EmptyState
-          title={t("No such game")}
-          body={t(
-            "This game is not in the catalogue. It may not be published, or the link may be wrong.",
-          )}
-          action={
-            <Button asChild variant="secondary">
-              <Link to="/explore">{t("Browse games")}</Link>
-            </Button>
-          }
-        />
-      </Page>
-    );
-  }
+  if (state.status === "missing") return <GameNotFound />;
 
   if (state.status === "error") {
     return (

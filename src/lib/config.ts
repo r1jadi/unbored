@@ -35,9 +35,17 @@ function readEnv(value: unknown): string {
  * When the page itself is not on localhost, such a value is ignored in favour
  * of same-origin. This is a client-side guard only — the deployment must still
  * set `VITE_API_BASE_URL` correctly (see `.env.example`).
+ *
+ * Plain `http:` is only ever right for a local gateway. Anywhere else it is a
+ * misconfiguration that merely happens to work in a browser — the document's
+ * `upgrade-insecure-requests` rewrites it — while any other caller (the server,
+ * a browser that ignores the directive) would send the request, and a signed-in
+ * visitor's token, in the clear before being redirected. So a non-local `http:`
+ * base is upgraded to `https:` here, once, for every caller.
  */
 function isLocalHost(host: string): boolean {
-  const h = host.toLowerCase();
+  // `URL.hostname` keeps the brackets of an IPv6 literal.
+  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
   return h === "localhost" || h === "127.0.0.1" || h === "::1" || h.endsWith(".localhost");
 }
 
@@ -49,18 +57,21 @@ function currentHost(): string {
   }
 }
 
-function resolveApiBaseUrl(): string {
-  const raw = readEnv(import.meta.env?.["VITE_API_BASE_URL"]);
+/**
+ * Exported for tests. `raw` is the configured value; `pageHost` is the host the
+ * visitor is on, empty on the server.
+ */
+export function resolveApiBaseUrl(raw: string, pageHost: string = currentHost()): string {
   if (raw === "") return DEFAULT_API_PATH;
-  if (raw.startsWith("/")) return raw.replace(/\/+$/, "");
+  if (raw.startsWith("/")) return raw.replace(/\/+$/, "") || DEFAULT_API_PATH;
   try {
     const url = new URL(raw);
     if (url.protocol !== "https:" && url.protocol !== "http:") return DEFAULT_API_PATH;
+    const local = isLocalHost(url.hostname);
     // A localhost API URL is only usable from a localhost page. Production
     // visitors would otherwise see every API call fail as a network error.
-    if (isLocalHost(url.hostname) && currentHost() !== "" && !isLocalHost(currentHost())) {
-      return DEFAULT_API_PATH;
-    }
+    if (local && pageHost !== "" && !isLocalHost(pageHost)) return DEFAULT_API_PATH;
+    if (!local) url.protocol = "https:";
     return url.href.replace(/\/+$/, "");
   } catch {
     return DEFAULT_API_PATH;
@@ -71,7 +82,7 @@ export const publicConfig = {
   /** Canonical origin, used for canonical links, OG tags and the sitemap. */
   siteUrl: SITE_URL,
   /** Versioned API base (`/api/v1` by default — see docs/architecture/api.md). */
-  apiBaseUrl: resolveApiBaseUrl(),
+  apiBaseUrl: resolveApiBaseUrl(readEnv(import.meta.env?.["VITE_API_BASE_URL"])),
   supabase: {
     url: readEnv(import.meta.env?.["VITE_SUPABASE_URL"]),
     /**

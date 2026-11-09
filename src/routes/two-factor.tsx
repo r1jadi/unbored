@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api/client";
 import { listTwoFactorMethods, verifyTwoFactorCode } from "@/lib/auth/security";
 import { signOut } from "@/lib/auth/session";
 import { seo } from "@/lib/seo";
+import { isSafeNext } from "@/lib/auth/next";
 import { t } from "@/lib/settings/language";
 import { clearProfile } from "@/lib/users/profile";
 
@@ -13,9 +14,7 @@ export const Route = createFileRoute("/two-factor")({
   validateSearch: (search: Record<string, unknown>): { next?: string } => {
     const { next } = search;
     // A path inside the app only, so this can't be used to send someone elsewhere.
-    return typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
-      ? { next }
-      : {};
+    return isSafeNext(next) ? { next } : {};
   },
   head: () => seo(t("Two-step verification"), t("Enter the code from your authenticator app.")),
   component: TwoFactor,

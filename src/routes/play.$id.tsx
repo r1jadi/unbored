@@ -220,15 +220,17 @@ export function PlaySurface({
   // Leaving replaces this screen instead of stacking on top of it: the feed is
   // where the player asked to be, and Back from it must not land back in the
   // game they just quit.
-  function quit() {
+  const quit = useCallback(() => {
     if (calloutWith) {
       void nav({ to: "/messages/$username", params: { username: calloutWith }, replace: true });
       return;
     }
     void nav({ to: "/", search: { game: id }, replace: true });
-  }
+  }, [calloutWith, id, nav]);
 
-  const leave = useMemo(() => ({ resumable, leave: quit }), [resumable]);
+  // `quit` is a dependency: this screen stays mounted when the route's game
+  // changes, and a stale one would leave to the previous game's place in the feed.
+  const leave = useMemo(() => ({ resumable, leave: quit }), [resumable, quit]);
 
   return (
     <RunLeaveContext.Provider value={leave}>

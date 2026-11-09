@@ -106,6 +106,16 @@ func New(cfg *config.Config, logger *slog.Logger) *Proxy {
 			Rewrite: func(pr *httputil.ProxyRequest) {
 				pr.SetURL(target)
 				pr.Out.Host = target.Host
+				// Rewrite starts the outbound request with no X-Forwarded-For, and
+				// SetXForwarded only appends the peer it sees — here, the platform's
+				// own proxy. Without the inbound chain every service behind the
+				// gateway would meter all visitors as that one address: one
+				// client could spend the sign-in budget for everybody. Keeping the
+				// chain keeps its first entry, the client the edge reported, which
+				// is what httpx.ClientKey reads. A bucketing hint only, as there.
+				if prior := pr.In.Header.Values("X-Forwarded-For"); len(prior) > 0 {
+					pr.Out.Header["X-Forwarded-For"] = prior
+				}
 				pr.SetXForwarded()
 				if requestID := httpx.RequestIDFrom(pr.In.Context()); requestID != "" {
 					pr.Out.Header.Set("X-Request-ID", requestID)

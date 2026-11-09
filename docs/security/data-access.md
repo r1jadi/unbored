@@ -36,7 +36,7 @@ moderator or admin role.
 | `profiles`           | select public columns                                                             | select public columns, update own presentation columns                                                                   | all                   |
 | `user_roles`         | —                                                                                 | select own, select staff                                                                                                 | all (the only writer) |
 | `game_sessions`      | —                                                                                 | select own (**no insert**: the server issues the row, the seed and the timestamps)                                       | all                   |
-| `scores`             | select (visible games)                                                            | select (visible games)                                                                                                   | all (the only writer) |
+| `scores`             | — (no rows: boards and profiles are functions)                                    | select own rows; staff select all                                                                                        | all (the only writer) |
 | `game_stats` (view)  | select aggregates (`slug`, `plays`, `players`, `best_score`, `last_completed_at`) | select aggregates                                                                                                        | all                   |
 | `comments`           | select (not hidden)                                                               | select (not hidden + own + staff), insert own (published games; a reply needs a visible top-level parent on the same game), update own body, delete own or staff                    | all (hides comments)  |
 | `likes`              | select                                                                            | select, insert own, delete own                                                                                           | all                   |
@@ -85,14 +85,17 @@ moderator or admin role.
 - **Profile privacy is a page rule, not a data rule.** `profile_showcase` (security
   definer, callable by anon and authenticated) applies a player's private-profile,
   scores and recent-games choices to their profile page, and returns nothing to a
-  viewer they blocked. It does not hide data: `scores`, `profiles` and `follows`
-  stay publicly readable through the Data API, because profile pages, follow lists
-  and direct reads are served from them.
+  viewer they blocked. Score rows themselves are private (owner and staff only,
+  `20261223120000_scores_private_rows.sql`), so the function is the only way a
+  visitor sees another player's scores or recent games. `profiles`, `follows`
+  and `likes` stay publicly readable through the Data API, because profile
+  pages, follow lists and like counts are served from them: who follows whom and
+  who liked which game are public facts here, whatever the profile setting.
 - **Leaderboard opt-out applies to the boards, not the rows.** `game_leaderboard`
   and `overall_leaderboard` (security definer, because `user_preferences` is
   owner-only) leave out a player who turned off "Show on leaderboards", before
-  ranking. `game_standing` and `overall_standing` still answer for that player,
-  and their rows stay readable in `scores`.
+  ranking. `game_standing` and `overall_standing` still answer for that player;
+  their rows in `scores` are readable only by them and by staff.
 - **Push subscriptions are credentials.** `push_subscriptions` has RLS with no
   policies and no client grants: a player reaches it only through
   `register_push_subscription` and `unregister_push_subscription`, and the outbox is

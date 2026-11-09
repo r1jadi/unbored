@@ -59,3 +59,6 @@ dist-ssr
 # /brag launch videos and their render scratch
 brag-output*/
 brand*/
+
+# Local scratch: throwaway stubs, a temporary Postgres data directory, logs.
+.tmp-*

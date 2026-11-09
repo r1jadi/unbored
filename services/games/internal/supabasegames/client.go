@@ -553,7 +553,42 @@ func sinceArgument(query BoardQuery) any {
 // are invoker-security, so Row Level Security still decides what a visitor may
 // see, and the standing function only ever answers with a name and a score that
 // are already on the public board.
+type callerTokenKey struct{}
+
+// WithCallerToken returns a context whose database reads are made as the caller:
+// their verified access token rides along as the Authorization header, so the
+// database knows who is asking (`auth.uid()`) instead of only being told an id.
+// A standing needs that — a player who left the boards is answered to
+// themself and to nobody else. An empty token leaves the context unchanged.
+func WithCallerToken(ctx context.Context, token string) context.Context {
+	if token == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, callerTokenKey{}, token)
+}
+
+func callerToken(ctx context.Context) string {
+	token, _ := ctx.Value(callerTokenKey{}).(string)
+	return token
+}
+
+// rpc calls a function, as the caller when the context carries their token. The
+// gateway already verified that token, but the database checks it again with
+// its own clock: one that expired in between is refused there. That must not
+// fail a page the anonymous answer can still serve, so a refusal of the token
+// is retried once without it.
 func (c *Client) rpc(ctx context.Context, op, function string, payload any, dst any) error {
+	token := callerToken(ctx)
+	err := c.rpcAs(ctx, op, function, payload, dst, token)
+	var failure *Error
+	if token != "" && errors.As(err, &failure) &&
+		(failure.Status == http.StatusUnauthorized || failure.Status == http.StatusForbidden) {
+		return c.rpcAs(ctx, op, function, payload, dst, "")
+	}
+	return err
+}
+
+func (c *Client) rpcAs(ctx context.Context, op, function string, payload any, dst any, token string) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return &Error{Op: op, cause: err}
@@ -568,6 +603,9 @@ func (c *Client) rpc(ctx context.Context, op, function string, payload any, dst 
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("X-Client-Info", "unbored-games-service")
+	if token != "" {
+		request.Header.Set("Authorization", "Bearer "+token)
+	}
 
 	response, err := c.http.Do(request)
 	if err != nil {

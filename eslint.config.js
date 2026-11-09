@@ -6,8 +6,23 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  // brag-output* is the launch-video scratch, git-ignored and generated.
-  { ignores: ["dist", ".output", ".vinxi", "brag-output*"] },
+  // Build output and local tool state: all git-ignored and generated. `.vercel`
+  // and `.wrangler` hold whole compiled bundles after a local `vercel build` or
+  // `wrangler deploy`, which would otherwise be linted (and Prettier-checked)
+  // file by file. brag-output* is the launch-video scratch.
+  {
+    ignores: [
+      "dist",
+      ".output",
+      ".vinxi",
+      ".vercel",
+      ".wrangler",
+      ".tanstack",
+      ".nitro",
+      ".tmp-pg",
+      "brag-output*",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

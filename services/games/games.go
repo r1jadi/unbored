@@ -602,7 +602,7 @@ func (s *service) leaderboard(w http.ResponseWriter, r *http.Request) {
 	// this response does. An anonymous caller is served the board with a null
 	// `me` rather than refused.
 	if id, ok := identity.FromContext(r.Context()); ok && !id.Anonymous && id.UserID != "" {
-		standing, ranked, standingErr := s.backend.Standing(r.Context(), slug, id.UserID, query.BoardQuery)
+		standing, ranked, standingErr := s.backend.Standing(asCaller(r), slug, id.UserID, query.BoardQuery)
 		if standingErr != nil {
 			s.dataFailure(w, r, "read a standing", standingErr)
 			return
@@ -661,7 +661,7 @@ func (s *service) overallLeaderboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if id, ok := identity.FromContext(r.Context()); ok && !id.Anonymous && id.UserID != "" {
-		standing, found, standingErr := s.backend.OverallStanding(r.Context(), id.UserID, query.BoardQuery)
+		standing, found, standingErr := s.backend.OverallStanding(asCaller(r), id.UserID, query.BoardQuery)
 		if standingErr != nil {
 			s.dataFailure(w, r, "read an all-games standing", standingErr)
 			return
@@ -1004,4 +1004,11 @@ func Options() servicekit.Options {
 			newService(backend, logger).register(router)
 		},
 	}
+}
+
+// asCaller is the request's context for a read the database must answer as the
+// caller: a standing is the player's own, and a player who left the boards is
+// answered to themself only. The token is the one the identity was verified from.
+func asCaller(r *http.Request) context.Context {
+	return supabasegames.WithCallerToken(r.Context(), authn.BearerToken(r.Header.Get("Authorization")))
 }

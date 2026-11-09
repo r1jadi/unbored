@@ -538,6 +538,50 @@ func TestLeaderboardRequiresAPositiveLimit(t *testing.T) {
 	}
 }
 
+// A standing is read as the caller, so the database can tell the player from a
+// stranger asking about them.
+func TestStandingIsReadAsTheCaller(t *testing.T) {
+	var authorization []string
+	client, _ := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
+		authorization = append(authorization, r.Header.Get("Authorization"))
+		writeJSON(w, http.StatusOK, `[{"rank":1,"score":10,"achieved_at":"2026-10-12T09:30:00+00:00","plays":1}]`)
+	})
+
+	ctx := WithCallerToken(context.Background(), "caller.jwt.token")
+	if _, found, err := client.Standing(ctx, "stack-10", testUserID, BoardQuery{}); err != nil || !found {
+		t.Fatalf("Standing: found = %v, err = %v", found, err)
+	}
+	if _, _, err := client.Standing(context.Background(), "stack-10", testUserID, BoardQuery{}); err != nil {
+		t.Fatalf("Standing without a token: %v", err)
+	}
+	if len(authorization) != 2 || authorization[0] != "Bearer caller.jwt.token" || authorization[1] != "" {
+		t.Fatalf("Authorization headers = %q; want the caller's token, then none", authorization)
+	}
+}
+
+// The database re-checks the token with its own clock. One it refuses must not
+// fail the board: the read is repeated as an anonymous caller.
+func TestStandingFallsBackWhenTheTokenIsRefused(t *testing.T) {
+	var authorization []string
+	client, _ := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
+		authorization = append(authorization, r.Header.Get("Authorization"))
+		if r.Header.Get("Authorization") != "" {
+			writeJSON(w, http.StatusUnauthorized, `{"code":"PGRST301","message":"JWT expired"}`)
+			return
+		}
+		writeJSON(w, http.StatusOK, `[{"rank":2,"score":7,"achieved_at":"2026-10-12T09:30:00+00:00","plays":1}]`)
+	})
+
+	ctx := WithCallerToken(context.Background(), "expired.jwt.token")
+	standing, found, err := client.Standing(ctx, "stack-10", testUserID, BoardQuery{})
+	if err != nil || !found || standing.Rank != 2 {
+		t.Fatalf("standing = %#v, found = %v, err = %v", standing, found, err)
+	}
+	if len(authorization) != 2 || authorization[1] != "" {
+		t.Fatalf("Authorization headers = %q; want one attempt with the token and one without", authorization)
+	}
+}
+
 func TestStandingReadsOnePlayersPlace(t *testing.T) {
 	client, requests := stubServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, `[{"rank":4,"score":88,"achieved_at":"2026-10-12T09:30:00+00:00","plays":2}]`)

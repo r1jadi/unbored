@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/r1jadi/unbored/packages/go/platform/config"
@@ -87,6 +88,27 @@ func TestForwardsToConfiguredUpstream(t *testing.T) {
 	}
 	if got := upstream.lastHeader.Get("X-Forwarded-For"); got == "" {
 		t.Error("X-Forwarded-For missing on the upstream request")
+	}
+}
+
+// The services meter anonymous callers by the first X-Forwarded-For entry. The
+// gateway must hand them the client the edge reported, not just its own peer,
+// or every visitor shares one rate-limit bucket.
+func TestForwardedForKeepsTheClientTheEdgeReported(t *testing.T) {
+	upstream := newRecorder(t)
+	handler := proxyHandler(t, map[string]string{"games": upstream.server.URL})
+
+	do(t, handler, http.MethodGet, "/api/v1/games", map[string]string{
+		"X-Forwarded-For": "203.0.113.7",
+	})
+
+	got := upstream.lastHeader.Get("X-Forwarded-For")
+	first, rest, chained := strings.Cut(got, ",")
+	if strings.TrimSpace(first) != "203.0.113.7" {
+		t.Fatalf("X-Forwarded-For = %q; the first entry must be the reported client", got)
+	}
+	if !chained || strings.TrimSpace(rest) == "" {
+		t.Fatalf("X-Forwarded-For = %q; the gateway's own peer must be appended", got)
 	}
 }
 
