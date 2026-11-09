@@ -1,1 +1,0 @@
-{"code":"PGRST100","details":"unexpected \",\" expecting field name (* or [a..z0..9_$]), negation operator (not) or logic operator (and, or)","hint":null,"message":"\"failed to parse logic tree ((username.ilike.*a,,b*,display_name.ilike.*a,,b*))\" (line 1, column 22)"}
