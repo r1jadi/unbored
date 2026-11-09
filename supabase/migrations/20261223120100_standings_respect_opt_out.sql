@@ -24,10 +24,20 @@
 -- id). Applied first, nothing breaks for a player who is on the boards; a player
 -- who opted out would briefly not see their own "your rank" line.
 
-alter function public.game_standing(text, uuid, timestamptz)
-  rename to game_standing_unchecked;
-alter function public.overall_standing(uuid, timestamptz)
-  rename to overall_standing_unchecked;
+-- Re-runnable: rename only while the `_unchecked` name is still free, so a
+-- second run (or a run after a partial apply) does not rename the wrapper.
+do $$
+begin
+  if to_regprocedure('public.game_standing_unchecked(text, uuid, timestamptz)') is null then
+    alter function public.game_standing(text, uuid, timestamptz)
+      rename to game_standing_unchecked;
+  end if;
+  if to_regprocedure('public.overall_standing_unchecked(uuid, timestamptz)') is null then
+    alter function public.overall_standing(uuid, timestamptz)
+      rename to overall_standing_unchecked;
+  end if;
+end
+$$;
 
 revoke all on function public.game_standing_unchecked(text, uuid, timestamptz)
   from public, anon, authenticated;
@@ -55,7 +65,7 @@ comment on function public.standing_visible(uuid) is
 
 revoke all on function public.standing_visible(uuid) from public, anon, authenticated;
 
-create function public.game_standing(
+create or replace function public.game_standing(
   p_game_slug text,
   p_user_id   uuid,
   p_since     timestamptz
@@ -83,7 +93,7 @@ revoke all on function public.game_standing(text, uuid, timestamptz) from public
 grant execute on function public.game_standing(text, uuid, timestamptz)
   to anon, authenticated, service_role;
 
-create function public.overall_standing(
+create or replace function public.overall_standing(
   p_user_id uuid,
   p_since   timestamptz
 )
