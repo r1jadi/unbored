@@ -339,6 +339,77 @@ begin
 end $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Sumdoku: the board a seed deals a level, starting cells (0 empty) then solution
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $
+declare
+  v record;
+  got text;
+begin
+  for v in select * from (values
+    -- vectors:sumdoku:begin
+    ('1', '1', '000000001300000000000020400060000005342156561342253614614523435261126435'),
+    ('1', '2', '300000006002000000000040000000500030325614146352654123231546413265562431'),
+    ('1', '4', '000002000500000100000000000000000000154632632514346125215346521463463251'),
+    ('1', '7', '000000000000000000000000000000000000256134314265631542425316563421142653'),
+    ('1', '12', '000000000000000000000000000000000000635124124563351246246315413652562431'),
+    ('42', '1', '000200400000300400000000030040000000156234423165362451514623231546645312'),
+    ('42', '2', '000400000000005003004600006000000000531462642531265143314625126354453216'),
+    ('42', '4', '000000006000000001000060000000000000315426246153632541154362423615561234'),
+    ('42', '7', '000000000000000000000000000000000000653421214356132564546132321645465213'),
+    ('42', '12', '000000000000000000000000000000000000143562625413214356356241431625562134'),
+    ('9223372036854775807', '1', '000000000000300060002003004030000000146325235146351264462513514632623451'),
+    ('9223372036854775807', '2', '010030000000002000000200500300000000214536653412432651165243521364346125'),
+    ('9223372036854775807', '4', '000000000000000020000000000600003000136245425361361524542136214653653412'),
+    ('9223372036854775807', '7', '000000000000000000000000000000000000123456564231316524245163432615651342'),
+    ('9223372036854775807', '12', '000000000000000000000000000000000000261354354621123465645132516243432516')
+    -- vectors:sumdoku:end
+  ) as vectors(seed, level, cells) loop
+    got := array_to_string(public.sumdoku_board(v.seed::bigint, v.level::integer), '');
+    if got is distinct from v.cells then
+      raise exception 'ASSERTION FAILED: Sumdoku seed % board % — the database deals %, the engine %',
+        v.seed, v.level, got, v.cells;
+    end if;
+    raise notice 'ok   Sumdoku seed % board %: the verifier deals the engine''s board', v.seed, v.level;
+  end loop;
+end $;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Guesswork and Gjeje: the word a day number gives, in each language
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $
+declare
+  v record;
+  got text;
+begin
+  for v in select * from (values
+    -- vectors:guesswork:begin
+    ('guesswork@1', '0', 'FALSE'),
+    ('gjeje@1', '0', 'DARKË'),
+    ('guesswork@1', '1', 'ALARM'),
+    ('gjeje@1', '1', 'FJALI'),
+    ('guesswork@1', '20766', 'FLUTE'),
+    ('gjeje@1', '20766', 'FORTË'),
+    ('guesswork@1', '20767', 'RAPID'),
+    ('gjeje@1', '20767', 'TIGAN'),
+    ('guesswork@1', '25000', 'TRADE'),
+    ('gjeje@1', '25000', 'SORRË')
+    -- vectors:guesswork:end
+  ) as vectors(rules, day, word) loop
+    got := public.guesswork_answer(
+      case v.rules when 'gjeje@1' then public.gjeje_answers() else public.guesswork_answers() end,
+      v.day::bigint);
+    if got is distinct from v.word then
+      raise exception 'ASSERTION FAILED: % day % — the database gives %, the engine %',
+        v.rules, v.day, got, v.word;
+    end if;
+    raise notice 'ok   % day %: the verifier picks the engine''s word', v.rules, v.day;
+  end loop;
+end $;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- The speed bonus: points, par, elapsed, bonus
 -- ─────────────────────────────────────────────────────────────────────────────
 

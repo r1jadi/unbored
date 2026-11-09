@@ -72,6 +72,8 @@ export function GameArt({
       {id === "huedini" && <Huedini />}
       {id === "fusebox" && <Fusebox />}
       {id === "minefield" && <Minefield />}
+      {id === "sumdoku" && <Sumdoku />}
+      {id === "guesswork" && <Guesswork />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </GameStage>
   );
@@ -141,6 +143,8 @@ const KNOWN = new Set([
   "huedini",
   "fusebox",
   "minefield",
+  "sumdoku",
+  "guesswork",
 ]);
 
 /**
@@ -696,6 +700,76 @@ function Fusebox() {
       ))}
       <div className="absolute left-1/2 top-[20%] h-[60%] w-[min(1cqw,1cqh,0.25rem)] -translate-x-1/2 rounded-full bg-foreground" />
       <div className="absolute left-[20%] top-1/2 h-[min(1cqw,1cqh,0.25rem)] w-[60%] -translate-y-1/2 rounded-full bg-foreground" />
+    </div>
+  );
+}
+
+function Guesswork() {
+  // Three guesses down: a few letters found, a few elsewhere, the rest faded.
+  const rows: [string, number[]][] = [
+    ["CRANE", [0, 1, 0, 0, 2]],
+    ["SLOPE", [0, 0, 1, 1, 2]],
+    ["PROBE", [2, 2, 2, 2, 2]],
+  ];
+  return (
+    <div className="grid w-[86%] gap-[min(1.5cqw,1.5cqh,0.4rem)]">
+      {rows.map(([word, marks]) => (
+        <div key={word} className="grid grid-cols-5 gap-[min(1.5cqw,1.5cqh,0.4rem)]">
+          {[...word].map((letter, i) => (
+            <div
+              key={i}
+              className={cn(
+                "flex aspect-square items-center justify-center rounded-[min(1.5cqw,1.5cqh,0.4rem)] border-[min(0.5cqw,0.5cqh,0.125rem)] text-[min(7cqw,7cqh,1.8rem)] font-bold leading-none",
+                marks[i] === 2 && "border-primary bg-primary text-primary-foreground",
+                marks[i] === 1 && "border-dashed border-primary bg-primary/10 text-primary",
+                marks[i] === 0 && "border-transparent bg-foreground/10 text-foreground/50",
+              )}
+            >
+              {letter}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Sumdoku() {
+  // A corner of a board: four cages in dashed outlines, their totals in the corner,
+  // and a few digits placed.
+  const cage = [0, 0, 1, 2, 2, 1, 3, 3, 1];
+  const totals: Record<number, number> = { 0: 7, 1: 9, 2: 11, 3: 5 };
+  const digits = [4, 3, 0, 6, 0, 2, 0, 0, 0];
+  const same = (a: number, b: number) => b >= 0 && b < 9 && cage[a] === cage[b];
+  return (
+    <div className="grid aspect-square h-[78%] grid-cols-3 grid-rows-3 overflow-hidden rounded-xl bg-surface-2 p-[min(1cqw,1cqh,0.25rem)]">
+      {cage.map((id, cell) => {
+        const column = cell % 3;
+        const edge = "min(0.6cqw,0.6cqh,0.15rem) dashed var(--primary)";
+        const first = cage.indexOf(id) === cell;
+        return (
+          <div
+            key={cell}
+            className="relative flex items-center justify-center border border-foreground/10 bg-surface text-[min(9cqw,9cqh,2.2rem)] font-semibold leading-none"
+          >
+            <span
+              className="absolute inset-[8%]"
+              style={{
+                borderTop: same(cell, cell - 3) ? undefined : edge,
+                borderBottom: same(cell, cell + 3) ? undefined : edge,
+                borderLeft: column > 0 && same(cell, cell - 1) ? undefined : edge,
+                borderRight: column < 2 && same(cell, cell + 1) ? undefined : edge,
+              }}
+            />
+            {first && (
+              <span className="absolute top-[12%] left-[14%] text-[min(3.6cqw,3.6cqh,0.85rem)] text-primary">
+                {totals[id]}
+              </span>
+            )}
+            {digits[cell] || ""}
+          </div>
+        );
+      })}
     </div>
   );
 }

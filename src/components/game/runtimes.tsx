@@ -11,6 +11,7 @@ import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
 import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
 import { FuseboxRuntime } from "@/components/game/FuseboxRuntime";
 import { GridburstRuntime } from "@/components/game/GridburstRuntime";
+import { GuessworkRuntime } from "@/components/game/GuessworkRuntime";
 import { HuediniRuntime } from "@/components/game/HuediniRuntime";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
 import { MinefieldRuntime } from "@/components/game/MinefieldRuntime";
@@ -20,6 +21,7 @@ import { QueensRuntime } from "@/components/game/QueensRuntime";
 import { ScatterRuntime } from "@/components/game/ScatterRuntime";
 import { SevenSecondRuntime } from "@/components/game/SevenSecondRuntime";
 import { Stack10Runtime } from "@/components/game/Stack10Runtime";
+import { SumdokuRuntime } from "@/components/game/SumdokuRuntime";
 import { SudokuRuntime } from "@/components/game/SudokuRuntime";
 import { TangoRuntime } from "@/components/game/TangoRuntime";
 import { UpdraftRuntime } from "@/components/game/UpdraftRuntime";
@@ -35,6 +37,7 @@ import { DONT_TOUCH_RUNTIME } from "@/lib/games/dont-touch";
 import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
 import { FUSEBOX_RUNTIME } from "@/lib/games/fusebox";
 import { GRIDBURST_RUNTIME } from "@/lib/games/gridburst";
+import { GUESSWORK_RUNTIME } from "@/lib/games/guesswork";
 import { HUEDINI_RUNTIME } from "@/lib/games/huedini";
 import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
 import { MINEFIELD_RUNTIME } from "@/lib/games/minefield";
@@ -45,6 +48,7 @@ import { SCATTER_RUNTIME } from "@/lib/games/scatter";
 import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
 import { STACK10_RUNTIME } from "@/lib/games/stack10";
 import { SUDOKU_RUNTIME } from "@/lib/games/sudoku";
+import { SUMDOKU_RUNTIME } from "@/lib/games/sumdoku";
 import { TANGO_RUNTIME } from "@/lib/games/tango";
 import { UPDRAFT_RUNTIME } from "@/lib/games/updraft";
 import { ZIP_RUNTIME } from "@/lib/games/zip";
@@ -90,4 +94,6 @@ export const RUNTIMES: Readonly<Record<string, ComponentType<RuntimeProps>>> = {
   [BOLTED_RUNTIME]: BoltedRuntime,
   [FUSEBOX_RUNTIME]: FuseboxRuntime,
   [MINEFIELD_RUNTIME]: MinefieldRuntime,
+  [SUMDOKU_RUNTIME]: SumdokuRuntime,
+  [GUESSWORK_RUNTIME]: GuessworkRuntime,
 };

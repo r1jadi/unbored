@@ -195,4 +195,11 @@ export const sqContent: Record<string, string> = {
   moderator: "moderator",
   admin: "administrator",
   unmeasured: "e pamatur",
+  // Guesswork (Gjeje)
+  Guesswork: "Gjeje",
+  "One hidden word a day. Six tries.": "Një fjalë e fshehur në ditë. Gjashtë përpjekje.",
+  "Find the day's five-letter word in six guesses. Every guess shows which letters are in the right place, which are in the word somewhere else, and which are not in it at all. The same word for everyone, in English or, in Albanian, as Gjeje.":
+    "Gjej fjalën e ditës me pesë shkronja në gjashtë përpjekje. Çdo përpjekje tregon cilat shkronja janë në vendin e duhur, cilat janë në fjalë diku tjetër dhe cilat nuk janë fare. E njëjta fjalë për të gjithë, me fjalë shqipe kur loja është në shqip.",
+  "Type a five-letter word and press Enter. Each letter is marked: filled for the right place, outlined for in the word but elsewhere, faded for not in the word. Every guess must be a real word from the list. Solve it in fewer guesses for more points: 600 on the first guess down to 100 on the sixth. One ranked play a day; a new word arrives at midnight, your time.":
+    "Shkruaj një fjalë me pesë shkronja dhe shtyp Dërgo. Çdo shkronjë shënohet: e mbushur për vendin e duhur, me kontur për në fjalë por diku tjetër, e zbehur për jo në fjalë. Çdo përpjekje duhet të jetë fjalë e vërtetë nga lista. Gjeje me më pak përpjekje për më shumë pikë: 600 në përpjekjen e parë deri në 100 në të gjashtën. Një lojë e renditur në ditë; fjala e re vjen në mesnatë, sipas orës tënde.",
 };

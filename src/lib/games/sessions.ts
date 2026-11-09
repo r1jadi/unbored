@@ -245,6 +245,26 @@ import {
   replay as replayMiniSudokuRun,
 } from "@/lib/games/mini-sudoku";
 import {
+  createRun as createSumdokuRun,
+  finish as finishSumdokuRun,
+  place as placeSumdoku,
+  submission as sumdokuSubmission,
+  SUMDOKU_RULES_VERSION,
+  type SumdokuRun,
+  replay as replaySumdokuRun,
+} from "@/lib/games/sumdoku";
+import {
+  answerForDay as guessworkAnswerForDay,
+  createRun as createGuessworkRun,
+  finish as finishGuesswork,
+  GJEJE_RULES_VERSION,
+  guess as guessGuesswork,
+  GUESSWORK_RULES_VERSION,
+  submission as guessworkSubmission,
+  wordSet as guessworkWordSet,
+  type GuessworkRun,
+} from "@/lib/games/guesswork";
+import {
   CASCADE_RULES_VERSION,
   createRun as createCascadeRun,
   finish as finishCascadeRun,
@@ -3214,6 +3234,274 @@ export function useMiniSudokuRun(gameSlug: string, autoStart = false): MiniSudok
   return { ...state, signedIn, continueRun, newRun, begin, place, finish, restart, retry };
 }
 
+// ── A run of Sumdoku, from Start to score ─────────────────────────────────────
+
+export type SumdokuRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: SumdokuRun; playedMs: number }
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | {
+      status: "playing";
+      session: PlaySession;
+      run: SumdokuRun;
+      /** When the run started, as a `Date.now()` timestamp. */
+      startedAt: number;
+    }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: SumdokuRun; startedAt: number }
+  | { status: "finished"; session: PlaySession; run: SumdokuRun; result: RunResult }
+  | {
+      status: "error";
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: SumdokuRun;
+    };
+
+export type SumdokuRunControls = SumdokuRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for a session, and the run starts when it arrives. */
+  begin: () => void;
+  /** Puts a digit in a cell, or clears it with 0. Ignored unless the run is live and the cell is not a given. */
+  place: (cell: number, digit: number) => void;
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
+  /** Back to the rules, for a fresh run. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of Sumdoku against the session API.
+ *
+ * The rules first, a session issued on Start, boards dealt from its seed, and
+ * verification once the player ends the run. There is no clock to lose to, but the
+ * server times the speed bonus from the session, so it has to wait for Start.
+ */
+export function useSumdokuRun(gameSlug: string, autoStart = false): SumdokuRunControls {
+  // Tap to play skips the rules: the first render is already "starting", so the
+  // rules never paint for a frame before an effect could press Start for them.
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<SumdokuRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
+  const startedAt = useRef(0);
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
+  const signedIn = !!getAccessToken();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // A session is requested only once Start has been pressed (`attempt` > 0).
+  useEffect(() => {
+    const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, SUMDOKU_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replaySumdokuRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, SUMDOKU_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replaySumdokuRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: SUMDOKU_RULES_VERSION,
+        });
+      })
+      .then((session) => {
+        if (!session || controller.signal.aborted) return;
+        const run = createSumdokuRun(session.seed);
+        startedAt.current = Date.now();
+        setState({
+          status: "playing",
+          session,
+          run,
+          startedAt: startedAt.current,
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // Verification: once, when a run has ended.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run } = state;
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run, startedAt: startedAt.current });
+
+    completeRun(
+      session.id,
+      { ...sumdokuSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const place = useCallback((cell: number, digit: number) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = placeSumdoku(current.run, cell, digit);
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishSumdokuRun(current.run);
+      if (next === current.run) return current;
+      endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The run's time carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({
+          status: "playing",
+          session: resumed.session,
+          run,
+          startedAt: startedAt.current,
+        });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...sumdokuSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: sumdokuSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    // Tap to play skips the rules on Play again too: straight to a new session.
+    if (autoStart) {
+      setState({ status: "starting" });
+      setAttempt((n) => n + 1);
+    } else {
+      setState({ status: "intro" });
+      setAttempt(0);
+    }
+  }, [autoStart]);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again.
+      submitting.current = false;
+      setState({
+        status: "playing",
+        session: state.session,
+        run: state.run,
+        startedAt: startedAt.current,
+      });
+      return;
+    }
+
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, signedIn, continueRun, newRun, begin, place, finish, restart, retry };
+}
+
 // ── A run of Cascade, from Start to score ─────────────────────────────────────────
 
 export type CascadeRunState =
@@ -3996,6 +4284,187 @@ export function useCrosswordRun(gameSlug: string, autoStart = false): CrosswordR
   }, [state]);
 
   return { ...state, signedIn, begin, enter, check, reveal, finish, restart, retry };
+}
+
+// ── A run of Guesswork, from Start to score ─────────────────────────────────────
+
+/** A language's words: whether a guess is in the list. */
+type GuessworkWords = (word: string) => boolean;
+
+export type GuessworkRunState =
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | { status: "playing"; session: PlaySession; run: GuessworkRun; isWord: GuessworkWords }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: GuessworkRun; isWord: GuessworkWords }
+  | { status: "finished"; session: PlaySession; run: GuessworkRun; result: RunResult }
+  | {
+      status: "error";
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: GuessworkRun;
+      isWord?: GuessworkWords;
+    };
+
+export type GuessworkRunControls = GuessworkRunState & {
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for today's session. */
+  begin: () => void;
+  /** Plays a guess. Ignored unless the run is live and the word is in the list. */
+  guess: (word: string) => void;
+  /** Gives up: the run is submitted unsolved, and scores nothing. */
+  finish: () => void;
+  /** Back to the rules. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/** A language's bank, by the rules version that plays it. */
+function guessworkBank(rulesVersion: string) {
+  return import("@/lib/games/guesswork-bank").then((bank) =>
+    rulesVersion === GJEJE_RULES_VERSION
+      ? { answers: bank.GJEJE_ANSWERS, guesses: bank.GJEJE_GUESSES }
+      : { answers: bank.GUESSWORK_ANSWERS, guesses: bank.GUESSWORK_GUESSES },
+  );
+}
+
+/**
+ * Plays the day's Guesswork against the session API, as the crossword plays: the
+ * session is issued on Start with the player's day as its seed, the words come from
+ * the bank, loaded only now, and a finished run is submitted at once. In Albanian
+ * the game is Gjeje, under its own rules version and words. A signed-in player who
+ * has played today is told so by the server (`already_played`).
+ */
+export function useGuessworkRun(gameSlug: string, autoStart = false): GuessworkRunControls {
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<GuessworkRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
+  const startedAt = useRef(0);
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  const signedIn = !!getAccessToken();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (attempt === 0) return;
+    const controller = new AbortController();
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    const rulesVersion = currentLanguage() === "sq" ? GJEJE_RULES_VERSION : GUESSWORK_RULES_VERSION;
+    startSession(gameSlug, { signal: controller.signal, rulesVersion })
+      // The session's rules decide the words.
+      .then((session) => guessworkBank(session.rulesVersion).then((bank) => ({ session, bank })))
+      .then(({ session, bank }) => {
+        if (controller.signal.aborted) return;
+        startedAt.current = Date.now();
+        setState({
+          status: "playing",
+          session,
+          run: createGuessworkRun(
+            session.seed,
+            guessworkAnswerForDay(Number(session.seed), bank.answers),
+            session.rulesVersion,
+          ),
+          isWord: guessworkWordSet(bank.answers, bank.guesses),
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // Verification: once, when a run has ended — solved, out of guesses, or given up.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run, isWord } = state;
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run, isWord });
+
+    completeRun(
+      session.id,
+      { ...guessworkSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({
+          status: "error",
+          stage: "submit",
+          error: asApiError(error),
+          session,
+          run,
+          isWord,
+        });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const play = useCallback((move: (run: GuessworkRun, isWord: GuessworkWords) => GuessworkRun) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = move(current.run, current.isWord);
+      if (next === current.run) return current;
+      if (next.outcome !== "playing") endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const guess = useCallback(
+    (word: string) => play((run, isWord) => guessGuesswork(run, word, isWord)),
+    [play],
+  );
+  const finish = useCallback(() => play((run) => finishGuesswork(run)), [play]);
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    setState({ status: "intro" });
+  }, []);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+    if (state.stage === "submit" && state.session && state.run && state.isWord) {
+      // The identical submission, sent again.
+      submitting.current = false;
+      setState({
+        status: "playing",
+        session: state.session,
+        run: state.run,
+        isWord: state.isWord,
+      });
+      return;
+    }
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, signedIn, begin, guess, finish, restart, retry };
 }
 
 // ── A run of Color Merge, from session to score ────────────────────────────

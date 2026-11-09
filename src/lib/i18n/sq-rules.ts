@@ -283,4 +283,33 @@ export const sqRules: Record<string, string> = {
     "ndaj radha ka rëndësi: lëviz njërin mënjanë për t'i hapur rrugë një tjetri. Zhbëj ose rinis tabelën kur të duash.",
   "starts at 75 seconds. Clear a board for 10 points per block and time for the next one; boards grow trickier, and the time they add tightens as the run goes. The run ends when the clock does.":
     "nis me 75 sekonda. Pastro një tabelë për 10 pikë për bllok dhe kohë për tjetrën; tabelat vështirësohen, dhe koha që shtojnë ngushtohet ndërsa loja vazhdon. Loja mbaron kur mbaron ora.",
+  // Sumdoku
+  "Add it up": "Mblidhi",
+  "Sudoku where the sums are the clues. Be quick for a bonus.":
+    "Sudoku ku shumat janë të dhënat. Ji i shpejtë për bonus.",
+  "so that every row, every column and every 2×3 box holds the digits 1 to 6 once each.":
+    "që çdo rresht, çdo kolonë dhe çdo kuti 2×3 të ketë shifrat nga 1 te 6 nga një herë.",
+  "Mind the cages": "Kujdes kafazet",
+  "— the dashed outlines. The digits in a cage add up to the small total in its corner, and never repeat inside it. Early boards give a few digits away; later ones give you only the sums. Every board has exactly one solution.":
+    "— konturet me vija të ndërprera. Shifrat në një kafaz mblidhen sa totali i vogël në cep të tij dhe nuk përsëriten brenda tij. Tabelat e para të japin disa shifra; të mëvonshmet të japin vetëm shumat. Çdo tabelë ka saktësisht një zgjidhje.",
+  "and tap a number, or Erase to clear it. You can also type 1 to 6 and move with the arrow keys. A repeated digit, or a cage that goes over its total, is marked in red.":
+    "dhe prek një numër, ose Fshi për ta pastruar. Mund të shkruash edhe 1 deri në 6 dhe të lëvizësh me shigjeta. Një shifër e përsëritur, ose një kafaz që kalon totalin e tij, shënohet me të kuqe.",
+  "Turn on Notes (or press N) to jot candidates in a cell; placing a digit tidies them away. Undo (Ctrl+Z) steps back.":
+    "Ndiz Shënimet (ose shtyp N) për të shënuar kandidatët në një kuti; vendosja e një shifre i pastron ato. Zhbëj (Ctrl+Z) kthehet një hap pas.",
+  // Guesswork (Gjeje)
+  "Today's word": "Fjala e ditës",
+  "One hidden five-letter word a day. Six guesses to find it.":
+    "Një fjalë e fshehur me pesë shkronja çdo ditë. Gjashtë përpjekje për ta gjetur.",
+  "Type a word": "Shkruaj një fjalë",
+  "of five letters and press Enter. It has to be a real word from the list; on a keyboard you can just type.":
+    "me pesë shkronja dhe shtyp Enter. Duhet të jetë fjalë e vërtetë nga lista; në tastierë mjafton të shkruash.",
+  "Read the marks": "Lexo shenjat",
+  "on every letter: filled means the right place, a dashed outline means it's in the word somewhere else, and faded means it isn't in the word. A letter you guess twice is only marked as often as the word holds it.":
+    "në çdo shkronjë: e mbushur do të thotë vendi i duhur, me vijë të ndërprerë do të thotë që është në fjalë por diku tjetër, dhe e zbehur do të thotë që nuk është në fjalë. Një shkronjë që e provon dy herë shënohet vetëm aq herë sa e ka fjala.",
+  "Fewer guesses, more points": "Më pak përpjekje, më shumë pikë",
+  "— 600 for the first guess, down to 100 on the sixth. Not found, or given up, scores nothing.":
+    "— 600 për përpjekjen e parë, deri në 100 në të gjashtën. Pa e gjetur, ose duke u dorëzuar, nuk fiton asgjë.",
+  "One word a day": "Një fjalë në ditë",
+  "for everyone, and one ranked play. In Albanian it's Gjeje, with Albanian words: Ç and Ë are letters of their own, and SH or GJ take two squares. A new word arrives at midnight, your time.":
+    "për të gjithë, dhe një lojë e renditur. Në shqip quhet Gjeje, me fjalë shqipe: Ç dhe Ë janë shkronja më vete, ndërsa SH ose GJ zënë dy kuti. Fjala e re vjen në mesnatë, sipas orës tënde.",
 };

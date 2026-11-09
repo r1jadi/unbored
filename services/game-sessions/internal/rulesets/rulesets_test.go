@@ -17,6 +17,9 @@ func TestLookupRoutesEachFamilyToItsVerifier(t *testing.T) {
 		"sudoku@4":      "complete_sudoku_speed_run",
 		"mini-sudoku@1": "complete_mini_sudoku_run",
 		"mini-sudoku@2": "complete_mini_sudoku_speed_run",
+		"sumdoku@1":     "complete_sumdoku_run",
+		"guesswork@1":   "complete_guesswork_run",
+		"gjeje@1":       "complete_gjeje_run",
 	} {
 		if got := Lookup(version).Verifier; got != verifier {
 			t.Errorf("Lookup(%q).Verifier = %q, want %q", version, got, verifier)

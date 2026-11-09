@@ -92,4 +92,20 @@ export const sqHints: Record<string, string> = {
     "Këtu përshtatet vetëm {digit}: rreshti, kolona dhe kutia e saj kanë tashmë shifrat e tjera.",
   "This is the only place in {name} where a {digit} fits.":
     "Ky është i vetmi vend në {name} ku përshtatet {digit}.",
+  // Sumdoku
+  "its cage": "kafazi i saj",
+  "This {digit} can't stay: there's already a {digit2} in {where}.":
+    "Ky {digit} nuk mund të qëndrojë: ka tashmë një {digit2} në {where}.",
+  "This cage adds up to {sum} already, past its {total}. This {digit} has to go.":
+    "Ky kafaz bën tashmë {sum}, mbi totalin {total}. Ky {digit} duhet hequr.",
+  "This cage is full but adds up to {sum}, not {total}. This {digit} has to go.":
+    "Ky kafaz është plot por bën {sum}, jo {total}. Ky {digit} duhet hequr.",
+  "This cage adds up to {total} and already holds {sum}, so the last cell is a {digit}.":
+    "Ky kafaz bën {total} dhe ka tashmë {sum}, ndaj kutia e fundit është {digit}.",
+  "Only a {digit} fits here: its row, column and box rule out the rest, and its cage total does the others.":
+    "Këtu përshtatet vetëm {digit}: rreshti, kolona dhe kutia përjashtojnë të tjerat, dhe totali i kafazit pjesën tjetër.",
+  "{n} all fit here, but only a {digit} lets the board be finished.":
+    "Këtu përshtaten {n}, por vetëm {digit} lejon që tabela të mbarojë.",
+  "This cage of {size} adds up to {total}; a {digit} goes here.":
+    "Ky kafaz me {size} bën {total}; këtu shkon {digit}.",
 };

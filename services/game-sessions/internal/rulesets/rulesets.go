@@ -91,6 +91,13 @@ var families = map[string]Ruleset{
 	"fusebox": {Verifier: "complete_fusebox_run", MaxActions: 4096, ActionCodes: 36},
 	// Minefield opens a cell of a board up to 10×10, or flags one as 100 + cell.
 	"minefield": {Verifier: "complete_minefield_run", MaxActions: 4096, ActionCodes: 200},
+	// Sumdoku: cell × 10 + digit on the 6×6 board, 0 to 356, as Mini Sudoku.
+	"sumdoku": {Verifier: "complete_sumdoku_run", MaxActions: 8192, ActionCodes: 360},
+	// Guesswork and Gjeje (the Albanian Guesswork) carry a day's guesses, six at
+	// most: five letters packed five bits each, so every code is below 32⁵. The
+	// verifiers refuse a code that is not a listed word.
+	"guesswork": {Verifier: "complete_guesswork_run", MaxActions: 6, ActionCodes: 1 << 25},
+	"gjeje":     {Verifier: "complete_gjeje_run", MaxActions: 6, ActionCodes: 1 << 25},
 }
 
 // overrides are the versions whose bounds differ from their family's: the

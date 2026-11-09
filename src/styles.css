@@ -240,6 +240,29 @@
   animation: enter 200ms var(--ease-out) both;
 }
 
+/* A refused guess: the row shakes once. Still for reduced motion. */
+@utility shake {
+  animation: shake 320ms var(--ease-out) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+
 @utility tabular {
   font-variant-numeric: tabular-nums;
 }

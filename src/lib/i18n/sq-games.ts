@@ -768,4 +768,59 @@ export const sqGames: Record<string, string> = {
     "{days}, në një ditë pushimi. Dje nuk luajte, ndaj luaj sot për ta shpëtuar.",
   "{streak}-day streak": "{streak} ditë rresht",
   "1-day streak": "1 ditë rresht",
+  // Sumdoku
+  "Board {level}, {SUMDOKU_SIDE} by {SUMDOKU_SIDE2}":
+    "Tabela {level}, {SUMDOKU_SIDE} me {SUMDOKU_SIDE2}",
+  "Board {n} solved, +{SUMDOKU_POINTS_PER_BOARD}. Board {level} is {level2}.":
+    "Tabela {n} u zgjidh, +{SUMDOKU_POINTS_PER_BOARD}. Tabela {level} është {level2}.",
+  "Fewer digits given from here: let the cage totals do the work.":
+    "Nga këtu jepen më pak shifra: lëri totalet e kafazeve të bëjnë punën.",
+  "No digits given from here: only the sums. A cage of two adding to 3 can only be 1 and 2.":
+    "Nga këtu nuk jepet asnjë shifër: vetëm shumat. Një kafaz me dy kuti që bën 3 mund të jetë vetëm 1 dhe 2.",
+  "Hard boards from here: bigger cages. Pencil notes help.":
+    "Tabela të vështira nga këtu: kafaze më të mëdha. Shënimet ndihmojnë.",
+  "Something's off: a red digit repeats, or a red cage misses its total.":
+    "Diçka nuk shkon: një shifër e kuqe përsëritet, ose një kafaz i kuq nuk e arrin totalin.",
+  "This cell's cage is just itself: it's a {total}.":
+    "Kafazi i kësaj kutie është vetëm ajo: është {total}.",
+  "This cage: {size} cells adding to {total}. {sum} so far.":
+    "Ky kafaz: {size} kuti që bëjnë {total}. Deri tani {sum}.",
+  "This cage: {size} cells adding to {total}, no repeats.":
+    "Ky kafaz: {size} kuti që bëjnë {total}, pa përsëritje.",
+  ", cage of {size} adding to {total}": ", kafaz me {size} që bën {total}",
+  // Guesswork (Gjeje)
+  "Couldn't start today's word": "Fjala e ditës nuk u nis",
+  Elsewhere: "Diku tjetër",
+  Enter: "Dërgo",
+  "Fetching today's word…": "Po merret fjala e ditës…",
+  "Five letters, please.": "Pesë shkronja, të lutem.",
+  "Give up today's word?": "Dorëzohesh për fjalën e sotme?",
+  "Guess {n} of {max}": "Përpjekja {n} nga {max}",
+  "Guess {n}: {letters}": "Përpjekja {n}: {letters}",
+  Guesses: "Përpjekjet",
+  "Keep guessing": "Vazhdo të provosh",
+  "Not in it": "Nuk është",
+  "Play today's word": "Luaj fjalën e ditës",
+  Points: "Pikë",
+  "Right place": "Vendi i duhur",
+  "Signed in: one ranked play a day": "I identifikuar: një lojë e renditur në ditë",
+  "Solved in {n} of {max}": "U gjet në {n} nga {max}",
+  "The next word arrives in {n}{minutes} min.": "Fjala tjetër vjen pas {n}{minutes} min.",
+  "The word is shown and the run scores nothing. There is one play a day.":
+    "Fjala shfaqet dhe loja nuk fiton pikë. Ka një lojë në ditë.",
+  "The word: {word}": "Fjala: {word}",
+  "Today's word was": "Fjala e sotme ishte",
+  "Type a five-letter word, then Enter.": "Shkruaj një fjalë me pesë shkronja, pastaj Dërgo.",
+  "Verified by replaying your guesses on the server, then saved to the leaderboard.":
+    "U verifikua duke riluajtur përpjekjet në server, pastaj u ruajt në renditje.",
+  "Verified by replaying your guesses on the server. This was a guest run, so it is not on the leaderboard.":
+    "U verifikua duke riluajtur përpjekjet në server. Kjo ishte lojë si mysafir, ndaj nuk është në renditje.",
+  "You've played today's word": "E ke luajtur fjalën e sotme",
+  guess: "përpjekje",
+  guesses: "përpjekje",
+  "{n} {guesses} left.": "Të mbeten {n} {guesses}.",
+  "{word} isn't in the word list.": "{word} nuk është në listën e fjalëve.",
+  "right place": "vendi i duhur",
+  elsewhere: "diku tjetër",
+  "not in the word": "nuk është në fjalë",
 };

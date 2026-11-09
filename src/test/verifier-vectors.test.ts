@@ -13,6 +13,9 @@ import {
 } from "@/lib/games/minefield";
 import { replay as queensReplay } from "@/lib/games/queens";
 import { speedBonus } from "@/lib/games/speed";
+import { board as sumdokuBoard } from "@/lib/games/sumdoku";
+import { GJEJE_ANSWERS, GUESSWORK_ANSWERS } from "@/lib/games/guesswork-bank";
+import { answerForDay } from "@/lib/games/guesswork";
 import { board as fuseboxBoard, boardCode, replay as fuseboxReplay } from "@/lib/games/fusebox";
 
 /**
@@ -153,6 +156,26 @@ describe("the verifier vectors", () => {
       expect(String(run.opened), `seed ${seed}`).toBe(opened);
       expect(String(run.hits), `seed ${seed}`).toBe(hits);
       expect(minefieldCells(run.cells), `seed ${seed}`).toBe(cells);
+    }
+  });
+
+  it("are Sumdoku's boards as the engine deals them", () => {
+    const cases = vectors("sumdoku");
+    expect(cases.length).toBeGreaterThanOrEqual(3);
+    for (const [seed, level, cells] of cases) {
+      const drawn = sumdokuBoard(seed!, Number(level));
+      expect(drawn.start.join("") + drawn.solution.join(""), `seed ${seed}, board ${level}`).toBe(
+        cells,
+      );
+    }
+  });
+
+  it("are Guesswork's daily words as the engine picks them, in both languages", () => {
+    const cases = vectors("guesswork");
+    expect(cases.length).toBeGreaterThanOrEqual(4);
+    for (const [rules, day, word] of cases) {
+      const answers = rules === "gjeje@1" ? GJEJE_ANSWERS : GUESSWORK_ANSWERS;
+      expect(answerForDay(Number(day), answers), `${rules} day ${day}`).toBe(word);
     }
   });
 

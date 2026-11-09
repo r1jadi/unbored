@@ -352,6 +352,72 @@ export const GAME_RULES = {
       },
     ],
   },
+  sumdoku: {
+    heading: msg("Add it up"),
+    summary: msg("Sudoku where the sums are the clues. Be quick for a bonus."),
+    rules: [
+      {
+        lead: msg("Fill the grid"),
+        text: msg(
+          "so that every row, every column and every 2×3 box holds the digits 1 to 6 once each.",
+        ),
+      },
+      {
+        lead: msg("Mind the cages"),
+        text: msg(
+          "— the dashed outlines. The digits in a cage add up to the small total in its corner, and never repeat inside it. Early boards give a few digits away; later ones give you only the sums. Every board has exactly one solution.",
+        ),
+      },
+      {
+        lead: msg("Pick a cell"),
+        text: msg(
+          "and tap a number, or Erase to clear it. You can also type 1 to 6 and move with the arrow keys. A repeated digit, or a cage that goes over its total, is marked in red.",
+        ),
+      },
+      {
+        lead: msg("Notes and Undo"),
+        text: msg(
+          "Turn on Notes (or press N) to jot candidates in a cell; placing a digit tidies them away. Undo (Ctrl+Z) steps back.",
+        ),
+      },
+      {
+        lead: msg("No clock"),
+        text: msg(
+          "to lose to. Boards start gentle and get harder, and every solved board scores 600 points. Beating a board's par time earns a speed bonus when the run ends, up to double. You end the run when you like.",
+        ),
+      },
+    ],
+  },
+  guesswork: {
+    heading: msg("Today's word"),
+    summary: msg("One hidden five-letter word a day. Six guesses to find it."),
+    rules: [
+      {
+        lead: msg("Type a word"),
+        text: msg(
+          "of five letters and press Enter. It has to be a real word from the list; on a keyboard you can just type.",
+        ),
+      },
+      {
+        lead: msg("Read the marks"),
+        text: msg(
+          "on every letter: filled means the right place, a dashed outline means it's in the word somewhere else, and faded means it isn't in the word. A letter you guess twice is only marked as often as the word holds it.",
+        ),
+      },
+      {
+        lead: msg("Fewer guesses, more points"),
+        text: msg(
+          "— 600 for the first guess, down to 100 on the sixth. Not found, or given up, scores nothing.",
+        ),
+      },
+      {
+        lead: msg("One word a day"),
+        text: msg(
+          "for everyone, and one ranked play. In Albanian it's Gjeje, with Albanian words: Ç and Ë are letters of their own, and SH or GJ take two squares. A new word arrives at midnight, your time.",
+        ),
+      },
+    ],
+  },
   crossword: {
     heading: msg("Today's crossword"),
     summary: msg("One puzzle a day, the same for everyone. Solve it fast."),
