@@ -379,7 +379,7 @@ end $$;
 -- Whittle: the board a seed deals a level — 25 numbers, 5 row targets, 5 column targets
 -- ─────────────────────────────────────────────────────────────────────────────
 
-do $
+do $$
 declare
   v record;
   got text;
@@ -410,7 +410,7 @@ begin
     end if;
     raise notice 'ok   Whittle seed % board %: the verifier deals the engine''s board', v.seed, v.level;
   end loop;
-end $;
+end $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Guesswork and Gjeje: the word a day number gives, in each language
