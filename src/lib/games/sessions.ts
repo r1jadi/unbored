@@ -254,6 +254,15 @@ import {
   replay as replaySumdokuRun,
 } from "@/lib/games/sumdoku";
 import {
+  createRun as createWhittleRun,
+  finish as finishWhittleRun,
+  mark as markWhittle,
+  submission as whittleSubmission,
+  WHITTLE_RULES_VERSION,
+  type WhittleRun,
+  replay as replayWhittleRun,
+} from "@/lib/games/whittle";
+import {
   answerForDay as guessworkAnswerForDay,
   createRun as createGuessworkRun,
   finish as finishGuesswork,
@@ -3500,6 +3509,274 @@ export function useSumdokuRun(gameSlug: string, autoStart = false): SumdokuRunCo
   }, [state]);
 
   return { ...state, signedIn, continueRun, newRun, begin, place, finish, restart, retry };
+}
+
+// ── A run of Whittle, from Start to score ─────────────────────────────────────
+
+export type WhittleRunState =
+  /** A run the player left or ended, on their account: continue it, or start over. */
+  | { status: "saved"; session: PlaySession; run: WhittleRun; playedMs: number }
+  /** The rules are showing. No session exists yet: it is issued on Start. */
+  | { status: "intro" }
+  | { status: "starting" }
+  | {
+      status: "playing";
+      session: PlaySession;
+      run: WhittleRun;
+      /** When the run started, as a `Date.now()` timestamp. */
+      startedAt: number;
+    }
+  /** A finished run is being verified. No score is shown yet. */
+  | { status: "submitting"; session: PlaySession; run: WhittleRun; startedAt: number }
+  | { status: "finished"; session: PlaySession; run: WhittleRun; result: RunResult }
+  | {
+      status: "error";
+      stage: "start" | "submit";
+      error: ApiError;
+      session?: PlaySession;
+      run?: WhittleRun;
+    };
+
+export type WhittleRunControls = WhittleRunState & {
+  /** Continues the saved run, where it was left. */
+  continueRun: () => void;
+  /** Leaves the saved run with its score, and starts a new one. */
+  newRun: () => void;
+  /** Whether a run started now would be ranked: the player is signed in. */
+  signedIn: boolean;
+  /** Presses Start: asks the server for a session, and the run starts when it arrives. */
+  begin: () => void;
+  /** Sets a cell's mark: 0 none, 1 crossed out, 2 circled. Ignored unless the run is live. */
+  mark: (cell: number, mark: number) => void;
+  /** Ends the run where it stands and submits it, keeping its score. */
+  finish: () => void;
+  /** Back to the rules, for a fresh run. */
+  restart: () => void;
+  /** Retries whichever step failed — a new session, or the same submission. */
+  retry: () => void;
+};
+
+/**
+ * Plays one run of Whittle against the session API.
+ *
+ * The rules first, a session issued on Start, boards drawn from its seed, and
+ * verification once the player ends the run. There is no clock to lose to, but the
+ * server times the speed bonus from the session, so it has to wait for Start.
+ */
+export function useWhittleRun(gameSlug: string, autoStart = false): WhittleRunControls {
+  // Tap to play skips the rules: the first render is already "starting", so the
+  // rules never paint for a frame before an effect could press Start for them.
+  const [attempt, setAttempt] = useState(autoStart ? 1 : 0);
+  const [state, setState] = useState<WhittleRunState>(
+    autoStart ? { status: "starting" } : { status: "intro" },
+  );
+  const startedAt = useRef(0);
+  const endedAt = useRef(0);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  // Set by New run: the next start skips the saved run and begins afresh.
+  const skipSaved = useRef(false);
+  const signedIn = !!getAccessToken();
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // A session is requested only once Start has been pressed (`attempt` > 0).
+  useEffect(() => {
+    const controller = new AbortController();
+    const fresh = skipSaved.current;
+    skipSaved.current = false;
+    // While the rules show, a run to continue takes their place.
+    if (attempt === 0) {
+      void fetchSavedRun(gameSlug, WHITTLE_RULES_VERSION).then((saved) => {
+        if (saved && !controller.signal.aborted) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayWhittleRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+        }
+      });
+      return () => controller.abort();
+    }
+    startedAt.current = 0;
+    endedAt.current = 0;
+    submitting.current = false;
+    setState({ status: "starting" });
+
+    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, WHITTLE_RULES_VERSION))
+      .then((saved) => {
+        if (controller.signal.aborted) return null;
+        if (saved) {
+          setState({
+            status: "saved",
+            session: saved.session,
+            run: replayWhittleRun(saved.session.seed, saved.actions),
+            playedMs: saved.playedMs,
+          });
+          return null;
+        }
+        return startSession(gameSlug, {
+          signal: controller.signal,
+          rulesVersion: WHITTLE_RULES_VERSION,
+        });
+      })
+      .then((session) => {
+        if (!session || controller.signal.aborted) return;
+        const run = createWhittleRun(session.seed);
+        startedAt.current = Date.now();
+        setState({
+          status: "playing",
+          session,
+          run,
+          startedAt: startedAt.current,
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+
+    return () => controller.abort();
+  }, [gameSlug, attempt]);
+
+  // Verification: once, when a run has ended.
+  useEffect(() => {
+    if (state.status !== "playing" || state.run.outcome === "playing") return;
+    if (submitting.current) return;
+    submitting.current = true;
+
+    const { session, run } = state;
+    if (startedAt.current === 0) startedAt.current = Date.now();
+    if (endedAt.current === 0) endedAt.current = Date.now();
+    const durationMs = Math.max(1, Math.round(endedAt.current - startedAt.current));
+    setState({ status: "submitting", session, run, startedAt: startedAt.current });
+
+    completeRun(
+      session.id,
+      { ...whittleSubmission(run), rulesVersion: session.rulesVersion },
+      durationMs,
+      {
+        endedByPlayer: endedByPlayer(run),
+      },
+    )
+      .then((result) => {
+        if (!mounted.current) return;
+        setState({ status: "finished", session, run, result });
+      })
+      .catch((error: unknown) => {
+        if (!mounted.current) return;
+        setState({ status: "error", stage: "submit", error: asApiError(error), session, run });
+      })
+      .finally(() => {
+        submitting.current = false;
+      });
+  }, [state]);
+
+  const mark = useCallback((cell: number, to: number) => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = markWhittle(current.run, cell, to);
+      return next === current.run ? current : { ...current, run: next };
+    });
+  }, []);
+
+  const finish = useCallback(() => {
+    setState((current) => {
+      if (current.status !== "playing") return current;
+      const next = finishWhittleRun(current.run);
+      if (next === current.run) return current;
+      endedAt.current = Date.now();
+      return { ...current, run: next };
+    });
+  }, []);
+
+  const continueRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run } = state;
+    setState({ status: "starting" });
+    resumeRun(session)
+      .then((resumed) => {
+        if (!mounted.current) return;
+        // The run's time carries on from where it stopped, here as on the server.
+        startedAt.current = Date.now() - resumed.playedMs;
+        endedAt.current = 0;
+        submitting.current = false;
+        setState({
+          status: "playing",
+          session: resumed.session,
+          run,
+          startedAt: startedAt.current,
+        });
+      })
+      .catch((error: unknown) => {
+        if (mounted.current)
+          setState({ status: "error", stage: "start", error: asApiError(error) });
+      });
+  }, [state]);
+
+  const newRun = useCallback(() => {
+    if (state.status !== "saved") return;
+    const { session, run, playedMs } = state;
+    setState({ status: "starting" });
+    closeSavedRun(
+      session,
+      { ...whittleSubmission(run), rulesVersion: session.rulesVersion },
+      Math.max(1, playedMs),
+    )
+      .catch(() => undefined)
+      .finally(() => {
+        skipSaved.current = true;
+        setAttempt((n) => n + 1);
+      });
+  }, [state]);
+
+  // A signed-in player's live run is kept on their account as it is played.
+  useSaveProgress(
+    state.status === "playing" && state.run.outcome === "playing"
+      ? { session: state.session, actions: whittleSubmission(state.run).actions }
+      : null,
+    startedAt,
+  );
+
+  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+
+  const restart = useCallback(() => {
+    submitting.current = false;
+    // Tap to play skips the rules on Play again too: straight to a new session.
+    if (autoStart) {
+      setState({ status: "starting" });
+      setAttempt((n) => n + 1);
+    } else {
+      setState({ status: "intro" });
+      setAttempt(0);
+    }
+  }, [autoStart]);
+
+  const retry = useCallback(() => {
+    if (state.status !== "error") return;
+
+    if (state.stage === "submit" && state.session && state.run) {
+      // The identical submission, sent again.
+      submitting.current = false;
+      setState({
+        status: "playing",
+        session: state.session,
+        run: state.run,
+        startedAt: startedAt.current,
+      });
+      return;
+    }
+
+    setAttempt((n) => n + 1);
+  }, [state]);
+
+  return { ...state, signedIn, continueRun, newRun, begin, mark, finish, restart, retry };
 }
 
 // ── A run of Cascade, from Start to score ─────────────────────────────────────────

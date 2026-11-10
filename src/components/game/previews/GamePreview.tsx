@@ -42,6 +42,7 @@ const LOADERS: Record<string, Loader> = {
   "sun-and-moon": () => import("./TangoPreview").then((m) => ({ default: m.TangoPreview })),
   trail: () => import("./ZipPreview").then((m) => ({ default: m.ZipPreview })),
   updraft: () => import("./UpdraftPreview").then((m) => ({ default: m.UpdraftPreview })),
+  whittle: () => import("./WhittlePreview").then((m) => ({ default: m.WhittlePreview })),
 };
 
 /** One lazy component per game, made once. A failed download shows the still art. */

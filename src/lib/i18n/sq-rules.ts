@@ -312,4 +312,19 @@ export const sqRules: Record<string, string> = {
   "One word a day": "Një fjalë në ditë",
   "for everyone, and one ranked play. In Albanian it's Gjeje, with Albanian words: Ç and Ë are letters of their own, and SH or GJ take two squares. A new word arrives at midnight, your time.":
     "për të gjithë, dhe një lojë e renditur. Në shqip quhet Gjeje, me fjalë shqipe: Ç dhe Ë janë shkronja më vete, ndërsa SH ose GJ zënë dy kuti. Fjala e re vjen në mesnatë, sipas orës tënde.",
+  // Whittle
+  "Cross it out": "Hiqe",
+  "Cross numbers out until every row and column hits its target.":
+    "Hiq numra derisa çdo rresht dhe kolonë të arrijë objektivin e vet.",
+  "Hit every target": "Arri çdo objektiv",
+  "— the number at the end of each row and under each column. The numbers you leave in that row or column must add up to it.":
+    "— numri në fund të çdo rreshti dhe poshtë çdo kolone. Numrat që lë në atë rresht ose kolonë duhet të mblidhen sa ai.",
+  "Tap a number": "Prek një numër",
+  "to cross it out. Tap it again to circle it as one you are sure stays, and once more to clear it. A target lights up when its line adds up; the small number under it is what the line makes now.":
+    "për ta hequr. Preke sërish për ta rrethuar si një që je i sigurt se rri, dhe edhe një herë për ta pastruar. Objektivi ndizet kur vija e tij mblidhet saktë; numri i vogël poshtë tij është sa bën vija tani.",
+  "On a keyboard": "Në tastierë",
+  "move with the arrow keys, press X to cross out, C to circle and Backspace to clear. Undo (Ctrl+Z) steps back.":
+    "lëviz me shigjeta, shtyp X për të hequr, C për të rrethuar dhe Backspace për të pastruar. Zhbëj (Ctrl+Z) kthehet një hap pas.",
+  "to lose to. The numbers get bigger as you go, and every solved board scores 500 points. Beating a board's par time earns a speed bonus when the run ends, up to double. You end the run when you like.":
+    "për të humbur. Numrat rriten ndërsa vazhdon, dhe çdo tabelë e zgjidhur jep 500 pikë. Po ta mundësh kohën par të një tabele fiton bonus shpejtësie kur mbaron loja, deri në dyfish. Lojën e mbyll kur të duash.",
 };

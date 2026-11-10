@@ -108,4 +108,23 @@ export const sqHints: Record<string, string> = {
     "Këtu përshtaten {n}, por vetëm {digit} lejon që tabela të mbarojë.",
   "This cage of {size} adds up to {total}; a {digit} goes here.":
     "Ky kafaz me {size} bën {total}; këtu shkon {digit}.",
+  // Whittle
+  "Row {n} is under its target of {target}: bring this {number} back.":
+    "Rreshti {n} është nën objektivin {target}: ktheje këtë {number}.",
+  "Column {n} is under its target of {target}: bring this {number} back.":
+    "Kolona {n} është nën objektivin {target}: ktheje këtë {number}.",
+  "This {number} has to stay: the board can't be finished with it crossed out.":
+    "Ky {number} duhet të rrijë: tabela nuk mbaron dot me të të hequr.",
+  "This circled {number} can't stay: the board can't be finished around it.":
+    "Ky {number} i rrethuar nuk mund të rrijë: tabela nuk mbaron dot me të.",
+  "This {number} is bigger than row {n}'s target of {target}, so it has to go.":
+    "Ky {number} është më i madh se objektivi {target} i rreshtit {n}, ndaj duhet hequr.",
+  "This {number} is bigger than column {n}'s target of {target}, so it has to go.":
+    "Ky {number} është më i madh se objektivi {target} i kolonës {n}, ndaj duhet hequr.",
+  "Row {n} adds up to {sum} and needs {target}: cross out this {number}.":
+    "Rreshti {n} bën {sum} dhe i duhet {target}: hiqe këtë {number}.",
+  "Column {n} adds up to {sum} and needs {target}: cross out this {number}.":
+    "Kolona {n} bën {sum} dhe i duhet {target}: hiqe këtë {number}.",
+  "Row {n} is {over} over its target of {target}. This {number} is part of what goes.":
+    "Rreshti {n} është {over} mbi objektivin {target}. Ky {number} është pjesë e asaj që hiqet.",
 };

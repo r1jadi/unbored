@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Twenty-six games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Twenty-seven games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Sumdoku**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword** and **Guesswork**, the daily word. Twenty-three of them — all but 7 Second, the crossword and Guesswork, the three
+**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword** and **Guesswork**, the daily word. Twenty-four of them — all but 7 Second, the crossword and Guesswork, the three
 daily games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -1669,6 +1669,85 @@ first board starts `000000001300000000000020400060000005` with solution
 `342156561342253614614523435261126435`; the two lines in
 [`src/lib/games/sumdoku.test.ts`](../../src/lib/games/sumdoku.test.ts) fill seed 1's
 first two boards for **60** and **120** points.
+
+## Whittle
+
+A 5×5 grid with a number in every cell, a target beside every row and a target
+under every column. Cross numbers out until what is left in each row and each
+column adds up to its target. It plays as Sumdoku does: endless, no clock to lose
+to, and a speed bonus for beating par.
+
+### The board
+
+| Thing   | Value                                                                           |
+| ------- | ------------------------------------------------------------------------------- |
+| Board   | 5×5 numbers, five row targets, five column targets                              |
+| Boards  | drawn from the seed: there is no bank                                           |
+| Tiers   | boards 1–3 easy (numbers 1–9), 4–7 medium (1–14), then hard (1–19)              |
+| Par     | 60, 75 and 90 s a board by tier; ahead of par earns up to double (`speed.ts`)   |
+| Moves   | 8192 at most in one submission: a request bound, not a level                    |
+| Rules   | `whittle@1`                                                                    |
+| Runtime | `whittle` (the catalogue's `games.runtime` value)                              |
+
+### A board: numbers, and the targets one answer leaves
+
+```
+stateₙ, draw()  as Mini Sudoku (seed → state₀, the outer LCG once per level)
+for each cell in reading order:
+  number  = draw() mod max + 1        // max is 9, 14 or 19 by tier
+  crossed = draw() mod 5 < 2          // two chances in five
+for i = 0..4: if row i or column i has nothing left standing, cell (i, i) stands
+if nothing is crossed: the second cell is
+target(line) = the sum of the line's numbers that are not crossed
+```
+
+The targets come from an answer, so every board can be solved; the first fix keeps
+every target above zero and the second keeps a board from starting solved. **A
+board can have more than one answer** (about one in a hundred does), and any of
+them solves it: a board is solved when every row and every column adds up to its
+target, whichever numbers were crossed out to get there. The answer the board was
+drawn from never leaves the client; the hints and the end-of-run review enumerate
+the answers (`solutions`) and follow the one nearest the player's own crosses.
+
+### A move and scoring
+
+A move is **cell × 10 + mark**, so moves run from 0 to 242: mark 0 clears the
+cell, 1 crosses its number out, 2 circles it. A circle is the player's note that
+a number stays — it counts exactly as an unmarked number — but it is a move like
+any other, so a saved run comes back with its circles. A cell off the board, a
+mark above 2 or a move that leaves the cell as it was is not a move. On screen a
+tap steps a cell through crossed, circled and clear. A solved board scores
+**fifty points** (the screen shows 500). The run ends when the player ends it, and
+the server adds `speed_bonus(points, par of the solved boards, time since the
+session started)`.
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261224120000_whittle_sessions.sql`.
+
+- `public.whittle_board(seed, level)` returns a board's 25 numbers, then its 5
+  row targets and 5 column targets (35 values); `whittle_tier(level)` and
+  `whittle_par_ms(cleared)` are the tiers and the par.
+- `public.complete_whittle_run(session, actions, score, duration)` runs
+  `speed_run_gate`, replays the moves keeping each line's sum, compares the claim
+  (the points before the bonus) and records the score with `speed_run_finish`. The
+  Go service routes `whittle@` runs to it and accepts up to 8192 moves from 0 to
+  249.
+- The migration adds the (`whittle`, `whittle@1`) row to `public.game_runtimes`
+  and `whittle@1` to `public.run_resumable`, so a run can be saved and continued.
+- `20261224120100_whittle_playable.sql` inserts the catalogue record (Puzzle). It
+  lands last, after the service and the client are deployed.
+
+### Test vectors
+
+`tests/security/verifier_vectors.sql` asserts fifteen boards (three seeds, five
+levels across every tier) that `public.whittle_board` deals, and
+`src/test/verifier-vectors.test.ts` asserts the engine deals the same. Seed 1's
+first board is `8 6 4 6 7 / 4 9 1 3 3 / 4 2 3 1 1 / 4 7 1 8 8 / 3 7 9 6 4` with row
+targets `21 13 8 19 7` and column targets `16 29 4 3 16`; the two lines in
+[`src/lib/games/whittle.test.ts`](../../src/lib/games/whittle.test.ts) solve seed
+1's first two boards for **50** and **100** points.
 
 ## Daily Crossword
 

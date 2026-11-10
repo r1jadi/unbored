@@ -50,6 +50,7 @@ const DYNAMIC_PATHS = [
     "minefield",
     "mini-sudoku",
     "sumdoku",
+    "whittle",
     "guesswork",
   ].map((id) => `/games/${id}`),
 ];

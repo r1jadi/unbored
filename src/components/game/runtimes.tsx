@@ -25,6 +25,7 @@ import { SumdokuRuntime } from "@/components/game/SumdokuRuntime";
 import { SudokuRuntime } from "@/components/game/SudokuRuntime";
 import { TangoRuntime } from "@/components/game/TangoRuntime";
 import { UpdraftRuntime } from "@/components/game/UpdraftRuntime";
+import { WhittleRuntime } from "@/components/game/WhittleRuntime";
 import { ZipRuntime } from "@/components/game/ZipRuntime";
 import { BOLTED_RUNTIME } from "@/lib/games/bolted";
 import { CASCADE_RUNTIME } from "@/lib/games/cascade";
@@ -49,6 +50,7 @@ import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
 import { STACK10_RUNTIME } from "@/lib/games/stack10";
 import { SUDOKU_RUNTIME } from "@/lib/games/sudoku";
 import { SUMDOKU_RUNTIME } from "@/lib/games/sumdoku";
+import { WHITTLE_RUNTIME } from "@/lib/games/whittle";
 import { TANGO_RUNTIME } from "@/lib/games/tango";
 import { UPDRAFT_RUNTIME } from "@/lib/games/updraft";
 import { ZIP_RUNTIME } from "@/lib/games/zip";
@@ -95,5 +97,6 @@ export const RUNTIMES: Readonly<Record<string, ComponentType<RuntimeProps>>> = {
   [FUSEBOX_RUNTIME]: FuseboxRuntime,
   [MINEFIELD_RUNTIME]: MinefieldRuntime,
   [SUMDOKU_RUNTIME]: SumdokuRuntime,
+  [WHITTLE_RUNTIME]: WhittleRuntime,
   [GUESSWORK_RUNTIME]: GuessworkRuntime,
 };

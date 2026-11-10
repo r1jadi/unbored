@@ -73,6 +73,7 @@ export function GameArt({
       {id === "fusebox" && <Fusebox />}
       {id === "minefield" && <Minefield />}
       {id === "sumdoku" && <Sumdoku />}
+      {id === "whittle" && <Whittle />}
       {id === "guesswork" && <Guesswork />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </GameStage>
@@ -144,6 +145,7 @@ const KNOWN = new Set([
   "fusebox",
   "minefield",
   "sumdoku",
+  "whittle",
   "guesswork",
 ]);
 
@@ -728,6 +730,48 @@ function Guesswork() {
               {letter}
             </div>
           ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Whittle() {
+  // A corner of a board: three rows of numbers with two crossed out, their targets
+  // down the right and under the columns, the met ones lit.
+  const numbers = [7, 4, 2, 5, 9, 3, 6, 1, 8];
+  const crossed = new Set([1, 5]);
+  const rows = [9, 14, 9];
+  const columns = [12, 10, 10];
+  const lit = "bg-primary text-primary-foreground";
+  const target =
+    "flex items-center justify-center rounded-[min(1.6cqw,1.6cqh,0.4rem)] text-[min(6cqw,6cqh,1.5rem)] font-semibold leading-none";
+  return (
+    <div className="grid aspect-square h-[78%] grid-cols-4 grid-rows-4 gap-[min(1.5cqw,1.5cqh,0.4rem)]">
+      {[0, 1, 2].flatMap((row) => [
+        ...[0, 1, 2].map((column) => {
+          const cell = row * 3 + column;
+          return (
+            <div
+              key={cell}
+              className="relative flex items-center justify-center rounded-[min(1.6cqw,1.6cqh,0.4rem)] bg-surface text-[min(8cqw,8cqh,2rem)] font-semibold leading-none"
+            >
+              <span className={cn(crossed.has(cell) && "opacity-30")}>{numbers[cell]}</span>
+              {crossed.has(cell) && (
+                <span className="absolute text-[min(11cqw,11cqh,2.75rem)] font-normal text-foreground/70">
+                  ×
+                </span>
+              )}
+            </div>
+          );
+        }),
+        <div key={`row-${row}`} className={cn(target, row < 2 ? lit : "bg-surface-2")}>
+          {rows[row]}
+        </div>,
+      ])}
+      {columns.map((sum, column) => (
+        <div key={column} className={cn(target, column !== 0 ? lit : "bg-surface-2")}>
+          {sum}
         </div>
       ))}
     </div>

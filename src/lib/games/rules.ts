@@ -352,6 +352,36 @@ export const GAME_RULES = {
       },
     ],
   },
+  whittle: {
+    heading: msg("Cross it out"),
+    summary: msg("Cross numbers out until every row and column hits its target."),
+    rules: [
+      {
+        lead: msg("Hit every target"),
+        text: msg(
+          "— the number at the end of each row and under each column. The numbers you leave in that row or column must add up to it.",
+        ),
+      },
+      {
+        lead: msg("Tap a number"),
+        text: msg(
+          "to cross it out. Tap it again to circle it as one you are sure stays, and once more to clear it. A target lights up when its line adds up; the small number under it is what the line makes now.",
+        ),
+      },
+      {
+        lead: msg("On a keyboard"),
+        text: msg(
+          "move with the arrow keys, press X to cross out, C to circle and Backspace to clear. Undo (Ctrl+Z) steps back.",
+        ),
+      },
+      {
+        lead: msg("No clock"),
+        text: msg(
+          "to lose to. The numbers get bigger as you go, and every solved board scores 500 points. Beating a board's par time earns a speed bonus when the run ends, up to double. You end the run when you like.",
+        ),
+      },
+    ],
+  },
   sumdoku: {
     heading: msg("Add it up"),
     summary: msg("Sudoku where the sums are the clues. Be quick for a bonus."),

@@ -2536,11 +2536,11 @@ select rls_test.visible(
 );
 -- `fixture-%` are this suite's own playable games (the ones the refusal paths
 -- need), so the claim is about the catalogue: of the games this repository
--- ships, only the twenty-six with runtimes are playable.
+-- ships, only the twenty-seven with runtimes are playable.
 select rls_test.visible(
   $$select 1 from public.games
-     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku', 'scatter', 'huedini', 'cascade', 'checkmate', 'bolted', 'fusebox', 'minefield', 'sumdoku', 'guesswork') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
-  0, 'no shipped game besides the twenty-six runtimes is marked playable'
+     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku', 'scatter', 'huedini', 'cascade', 'checkmate', 'bolted', 'fusebox', 'minefield', 'sumdoku', 'guesswork', 'whittle') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
+  0, 'no shipped game besides the twenty-seven runtimes is marked playable'
 );
 select rls_test.says_field(
   $$public.start_game_session('stack-10', 'stack-10@1', 'test/1.0')$$,

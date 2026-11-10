@@ -14,6 +14,7 @@ import {
 import { replay as queensReplay } from "@/lib/games/queens";
 import { speedBonus } from "@/lib/games/speed";
 import { board as sumdokuBoard } from "@/lib/games/sumdoku";
+import { board as whittleBoard, boardCode as whittleCode } from "@/lib/games/whittle";
 import { GJEJE_ANSWERS, GUESSWORK_ANSWERS } from "@/lib/games/guesswork-bank";
 import { answerForDay } from "@/lib/games/guesswork";
 import { board as fuseboxBoard, boardCode, replay as fuseboxReplay } from "@/lib/games/fusebox";
@@ -156,6 +157,16 @@ describe("the verifier vectors", () => {
       expect(String(run.opened), `seed ${seed}`).toBe(opened);
       expect(String(run.hits), `seed ${seed}`).toBe(hits);
       expect(minefieldCells(run.cells), `seed ${seed}`).toBe(cells);
+    }
+  });
+
+  it("are Whittle's boards as the engine deals them", () => {
+    const cases = vectors("whittle");
+    expect(cases.length).toBeGreaterThanOrEqual(3);
+    for (const [seed, level, cells] of cases) {
+      expect(whittleCode(whittleBoard(seed!, Number(level))), `seed ${seed}, board ${level}`).toBe(
+        cells,
+      );
     }
   });
 

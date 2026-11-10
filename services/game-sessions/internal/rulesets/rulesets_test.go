@@ -18,6 +18,7 @@ func TestLookupRoutesEachFamilyToItsVerifier(t *testing.T) {
 		"mini-sudoku@1": "complete_mini_sudoku_run",
 		"mini-sudoku@2": "complete_mini_sudoku_speed_run",
 		"sumdoku@1":     "complete_sumdoku_run",
+		"whittle@1":     "complete_whittle_run",
 		"guesswork@1":   "complete_guesswork_run",
 		"gjeje@1":       "complete_gjeje_run",
 	} {

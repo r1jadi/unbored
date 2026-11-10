@@ -121,6 +121,19 @@ import {
   MINEFIELD_PREVIEW_MINES,
   MinefieldPreview,
 } from "./MinefieldPreview";
+import {
+  WHITTLE_PREVIEW_BEATS,
+  WHITTLE_PREVIEW_BOARD,
+  WHITTLE_PREVIEW_DONE,
+  WHITTLE_PREVIEW_TAPS,
+  WhittlePreview,
+} from "./WhittlePreview";
+import {
+  CROSSED,
+  WHITTLE_POINTS_PER_BOARD,
+  isSolved as isWhittleSolved,
+  solutions as whittleSolutions,
+} from "@/lib/games/whittle";
 import { SCATTER_PREVIEW_BEATS, ScatterPreview } from "./ScatterPreview";
 import { FLAGGED, OPEN } from "@/lib/games/minefield";
 import { SEVEN_SECOND_PREVIEW_BEATS, SevenSecondPreview } from "./SevenSecondPreview";
@@ -197,6 +210,7 @@ const SCRIPTED: Row[] = [
   { name: "sumdoku", beats: SUMDOKU_PREVIEW_BEATS, Preview: SumdokuPreview },
   { name: "sun-and-moon", beats: TANGO_PREVIEW_BEATS, Preview: TangoPreview },
   { name: "trail", beats: ZIP_PREVIEW_BEATS, Preview: ZipPreview },
+  { name: "whittle", beats: WHITTLE_PREVIEW_BEATS, Preview: WhittlePreview },
 ];
 
 const loopMs = (beats: readonly { ms: number }[]) => beats.reduce((sum, beat) => sum + beat.ms, 0);
@@ -384,6 +398,27 @@ describe("the Minefield preview", () => {
     expect(gains.reduce((sum, gain) => sum + gain, 0)).toBe(
       last.cells.filter((state) => state === OPEN).length,
     );
+  });
+});
+
+describe("the Whittle preview", () => {
+  it("crosses out exactly the one answer of a board, and floats a board's points", () => {
+    const board = WHITTLE_PREVIEW_BOARD;
+    expect(whittleSolutions(board)).toHaveLength(1);
+    expect(WHITTLE_PREVIEW_BEATS.filter((beat) => beat.pressed !== null)).toHaveLength(
+      WHITTLE_PREVIEW_TAPS.length,
+    );
+    const first = WHITTLE_PREVIEW_BEATS[0]!;
+    expect(first.marks.flatMap((mark, cell) => (mark === CROSSED ? [cell] : []))).toEqual(
+      [...WHITTLE_PREVIEW_DONE].sort((a, b) => a - b),
+    );
+    expect(isWhittleSolved(board, first.marks)).toBe(false);
+    const last = WHITTLE_PREVIEW_BEATS[WHITTLE_PREVIEW_BEATS.length - 1]!;
+    expect(isWhittleSolved(board, last.marks)).toBe(true);
+    expect(last.marks.map((mark) => mark === CROSSED)).toEqual(board.crossed);
+    expect(
+      WHITTLE_PREVIEW_BEATS.flatMap((beat) => (beat.gain === null ? [] : [beat.gain])),
+    ).toEqual([WHITTLE_POINTS_PER_BOARD]);
   });
 });
 

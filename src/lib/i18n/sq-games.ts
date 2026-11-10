@@ -823,4 +823,34 @@ export const sqGames: Record<string, string> = {
   "right place": "vendi i duhur",
   elsewhere: "diku tjetër",
   "not in the word": "nuk është në fjalë",
+  // Whittle
+  "Bigger numbers from here: up to 14.": "Nga këtu numra më të mëdhenj: deri në 14.",
+  "Hard boards from here: numbers up to 19.": "Tabela të vështira nga këtu: numra deri në 19.",
+  "{met} of {total} targets met": "{met} nga {total} objektiva të arritura",
+  "Board {level}, {side} by {side2}": "Tabela {level}, {side} me {side2}",
+  "Board {n} solved, +{gain}. Board {level} is {tier}.":
+    "Tabela {n} u zgjidh, +{gain}. Tabela {level} është {tier}.",
+  "Tap a number to cross it out. Each row and column must add up to its target.":
+    "Prek një numër për ta hequr. Çdo rresht dhe kolonë duhet të mblidhet sa objektivi i vet.",
+  "Tap again to circle a number you're keeping, and once more to clear it.":
+    "Prek sërish për të rrethuar një numër që po e mban, dhe edhe një herë për ta pastruar.",
+  "Row {row} column {column}, {number}{mark}": "Rreshti {row} kolona {column}, {number}{mark}",
+  ", crossed out": ", i hequr",
+  ", circled": ", i rrethuar",
+  "{line} {n} target {target}, met": "{line} {n} objektivi {target}, i arritur",
+  "{line} {n} target {target}, now {sum}": "{line} {n} objektivi {target}, tani {sum}",
+  Column: "Kolona",
+  "{wrong} {n} crossed out that had to stay, and {missed} still to cross out.":
+    "{wrong} {n} të hequr që duhej të rrinin, dhe {missed} ende për t'u hequr.",
+  "No wrong crosses: {missed} {n} still to cross out when the run ended.":
+    "Asnjë heqje e gabuar: {missed} {n} ende për t'u hequr kur mbaroi loja.",
+  number: "numër",
+  numbers: "numra",
+  "number was": "numër ishte",
+  "numbers were": "numra ishin",
+  "The answer to board {level}": "Përgjigjja e tabelës {level}",
+  "Board {level} with its answer. {summary}": "Tabela {level} me përgjigjen e saj. {summary}",
+  "Crossed: has to go": "I hequr: duhet të ikë",
+  "Red: you crossed it, it stays": "I kuq: e hoqe, por rri",
+  "Faint: not found yet": "I zbehtë: ende i pagjetur",
 };
