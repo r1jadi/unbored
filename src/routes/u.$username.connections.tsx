@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Users } from "lucide-react";
+import { Lock, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as z from "zod";
 import {
@@ -19,6 +19,8 @@ import {
   resolveUserId,
 } from "@/lib/social/follows";
 import type { PublicProfile } from "@/lib/social/follows";
+import { getAccessToken } from "@/lib/auth/session";
+import { restGet } from "@/lib/supabase/rest";
 import { cn } from "@/lib/utils";
 
 import { t, msg } from "@/lib/settings/language";
@@ -50,14 +52,27 @@ function Connections() {
   const { tab = "followers" } = Route.useSearch();
   const [list, setList] = useState<PublicProfile[] | undefined>(undefined);
   const [error, setError] = useState<string>();
+  const [isPrivate, setIsPrivate] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setList(undefined);
     setError(undefined);
+    setIsPrivate(false);
     (async () => {
       const userId = await resolveUserId(username);
       if (!userId) throw new Error(`@${username} doesn't exist.`);
+      // A private account's lists are hidden by the database (`follow_visible`),
+      // so say so instead of showing an empty list as if nobody followed them.
+      const showcase = await restGet<{ private: boolean }>(
+        "rpc/profile_showcase",
+        getAccessToken() ?? undefined,
+        { method: "POST", body: JSON.stringify({ p_user_id: userId }) },
+      ).catch(() => ({ private: false }));
+      if (showcase.private) {
+        if (!cancelled) setIsPrivate(true);
+        return [];
+      }
       const ids = tab === "followers" ? await listFollowers(userId) : await listFollowees(userId);
       const profiles = await fetchProfilesByIds(ids);
       return profiles;
@@ -107,6 +122,8 @@ function Connections() {
           body={error}
           onRetry={() => window.location.reload()}
         />
+      ) : isPrivate ? (
+        <EmptyState icon={Lock} title={t("This account is private")} />
       ) : list.length === 0 ? (
         <EmptyState icon={Users} title={t("No one here yet")} />
       ) : (

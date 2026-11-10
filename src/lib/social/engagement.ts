@@ -160,11 +160,22 @@ export async function resolveGameIds(slugs: string[]): Promise<Map<string, strin
 
 // ── Likes ───────────────────────────────────────────────────────────────────
 
-/** How many players like one game. Public: no token needed. */
+/**
+ * How many players like one game. Public: no token needed. Who liked it is not:
+ * `likes` rows are readable by their owner only, so the count comes from a
+ * function that counts without showing rows. Until that function is deployed
+ * (404), the old row count is the fallback.
+ */
 export async function fetchLikeCount(gameId: string): Promise<number> {
-  return restCount(
-    `likes?target_kind=eq.game&target_id=eq.${encodeURIComponent(gameId)}&select=user_id`,
-  );
+  const id = encodeURIComponent(gameId);
+  try {
+    return await restGet<number>(`rpc/game_like_count?p_game_id=${id}`);
+  } catch (error) {
+    if (error instanceof SupabaseRestError && error.status === 404) {
+      return restCount(`likes?target_kind=eq.game&target_id=eq.${id}&select=user_id`);
+    }
+    throw error;
+  }
 }
 
 /** Whether the signed-in caller likes one game. Anonymous callers like nothing. */

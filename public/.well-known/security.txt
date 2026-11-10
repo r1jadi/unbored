@@ -1,0 +1,7 @@
+# Unbored vulnerability disclosure (RFC 9116).
+# Please report security issues privately to the address below, not in public
+# issues. Include steps to reproduce; we reply within a few working days.
+Contact: mailto:contactunbored@gmail.com
+Expires: 2027-11-01T00:00:00.000Z
+Preferred-Languages: en, sq
+Canonical: https://unbored.lol/.well-known/security.txt

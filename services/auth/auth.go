@@ -859,6 +859,7 @@ func credentialRateLimit() config.RateLimit {
 		Enabled:           true,
 		RequestsPerMinute: config.EnvInt("AUTH_RATE_LIMIT_REQUESTS_PER_MINUTE", 10),
 		Burst:             config.EnvInt("AUTH_RATE_LIMIT_BURST", 5),
+		Shared:            config.SharedRateLimitFromEnv("auth-credentials"),
 	}
 }
 

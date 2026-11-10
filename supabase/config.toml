@@ -54,6 +54,20 @@ minimum_password_length = 10
 enable_anonymous_sign_ins = false
 # Settings -> Connected accounts links Google to an existing account.
 enable_manual_linking = true
+# Every refresh hands out a new refresh token and retires the old one; reusing a
+# retired token outside the short grace window revokes the whole session family.
+# The hosted project does not read this file: see
+# docs/security/supabase-dashboard.md for the matching dashboard settings.
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+
+# Two-step verification with an authenticator app (Settings → Security).
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
 
 [auth.email]
 enable_signup = true

@@ -154,7 +154,7 @@ export async function searchProfiles(query: string, limit = 8): Promise<PublicPr
  * `max_rows` (1000 here), so counting a fetched list silently reported 1000 for
  * every account past that — a wrong number presented as a real one.
  *
- * Both directions are public (the follow graph is), so this works signed out;
+ * The numbers are public (the lists are not, for private accounts), so this works signed out;
  * the caller's token is still forwarded when present so RLS sees the same
  * identity as the rest of the page.
  */
@@ -170,6 +170,16 @@ export async function getFollowCounts(
   }
   const id = encodeURIComponent(userId);
   const read = async (withToken: string | undefined): Promise<FollowCounts> => {
+    try {
+      // The lists behind these numbers are not public for every account
+      // (`follow_visible`), so the numbers come from a function that counts
+      // every row without showing any.
+      const counts = await restGet<FollowCounts>(`rpc/follow_counts?p_user_id=${id}`, withToken);
+      return { followers: counts.followers, following: counts.following };
+    } catch (error) {
+      // Not deployed yet: count the rows this caller can see, as before.
+      if (!(error instanceof SupabaseRestError && error.status === 404)) throw error;
+    }
     const [followers, following] = await Promise.all([
       restCount(`follows?followee_id=eq.${id}&select=follower_id`, withToken),
       restCount(`follows?follower_id=eq.${id}&select=followee_id`, withToken),
@@ -179,7 +189,7 @@ export async function getFollowCounts(
   try {
     return await read(token);
   } catch (error) {
-    // The graph is public, so a lapsed access token must not make a profile's
+    // The counts are public, so a lapsed access token must not make a profile's
     // numbers unreadable. The anonymous view of the same rows is the answer.
     if (token && error instanceof SupabaseRestError && error.status === 401) {
       return read(undefined);

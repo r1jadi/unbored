@@ -26,6 +26,7 @@ import { applyAnalyticsConsent, identifyUser, resetAnalytics } from "@/lib/analy
 import { useConsent } from "@/lib/consent";
 import { CookieConsent } from "@/components/layout/CookieConsent";
 import { ACCESSIBILITY_BOOT_SCRIPT, restoreAccessibility } from "@/lib/settings/accessibility";
+import { STYLE_NONCE_BOOT_SCRIPT } from "@/lib/csp";
 import { currentLanguage, LanguageProvider, t } from "@/lib/settings/language";
 import { ThemeProvider } from "@/lib/settings/theme";
 import { startPushSync } from "@/lib/notifications/push";
@@ -190,9 +191,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         ...page.meta,
       ],
       scripts: [
+        // First, so libraries that add <style> at load get the CSP nonce.
+        { children: STYLE_NONCE_BOOT_SCRIPT },
         { children: ACCESSIBILITY_BOOT_SCRIPT },
         { children: SESSION_BOOT_SCRIPT },
         ...(page.scripts ?? []),
+        // Google AdSense. Gets the CSP nonce like every head script, and
+        // `'strict-dynamic'` lets it load the ad scripts it needs. The hosts it
+        // talks to are allowed in src/lib/csp.ts.
+        {
+          src: "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4469987351010196",
+          async: true,
+          crossOrigin: "anonymous",
+        },
       ],
       links: [
         {

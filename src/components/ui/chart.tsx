@@ -1,5 +1,6 @@
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
+import { useRouter } from "@tanstack/react-router";
 
 import { cn } from "@/lib/utils";
 
@@ -62,6 +63,9 @@ const ChartContainer = React.forwardRef<
 ChartContainer.displayName = "Chart";
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
+  // `style-src-elem` needs the response nonce on a server-rendered <style>.
+  const router = useRouter({ warn: false }) as ReturnType<typeof useRouter> | undefined;
+  const styleNonce = router?.options.ssr?.nonce;
   const colorConfig = Object.entries(config).filter(([, config]) => config.theme || config.color);
 
   if (!colorConfig.length) {
@@ -70,6 +74,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 
   return (
     <style
+      nonce={styleNonce}
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(

@@ -7163,6 +7163,75 @@ select rls_test.ok(
   'and their own stats for the game');
 reset role;
 
+
+-- ── Likes and follows are not public row by row ─────────────────────────────
+-- Who liked what is private to each player; counts come from functions. A
+-- follow is hidden from third parties when either account is private.
+reset role;
+insert into public.user_preferences (user_id, private_account)
+values ('33333333-3333-4333-8333-333333333333', true)
+on conflict (user_id) do update set private_account = true;
+insert into public.user_preferences (user_id, private_account)
+values ('22222222-2222-4222-8222-222222222222', false)
+on conflict (user_id) do update set private_account = false;
+insert into public.likes (user_id, target_kind, target_id)
+values ('22222222-2222-4222-8222-222222222222', 'game', :'published_game')
+on conflict do nothing;
+insert into public.follows (follower_id, followee_id)
+values ('22222222-2222-4222-8222-222222222222', '33333333-3333-4333-8333-333333333333')
+on conflict do nothing;
+
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+set local role anon;
+select rls_test.visible($$select 1 from public.likes$$, 0,
+  'an anonymous visitor reads no like rows');
+select rls_test.ok(
+  public.game_like_count(:'published_game') >= 1,
+  'an anonymous visitor still gets a game''s like count');
+select rls_test.ok(
+  (select like_count >= 1 from public.game_engagement_counts where game_id = :'published_game'),
+  'the engagement view still counts likes for a visitor');
+select rls_test.visible(
+  $$select 1 from public.follows where followee_id = '33333333-3333-4333-8333-333333333333'$$, 0,
+  'an anonymous visitor cannot list a private account''s followers');
+select rls_test.ok(
+  (public.follow_counts('33333333-3333-4333-8333-333333333333') ->> 'followers')::int >= 1,
+  'a private account''s follower count is still public');
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', '11111111-1111-4111-8111-111111111111', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.visible(
+  $$select 1 from public.likes where user_id = '22222222-2222-4222-8222-222222222222'$$, 0,
+  'a signed-in player cannot read another player''s likes');
+select rls_test.visible(
+  $$select 1 from public.follows where follower_id = '22222222-2222-4222-8222-222222222222'
+      and followee_id = '33333333-3333-4333-8333-333333333333'$$, 0,
+  'a third party cannot see a follow involving a private account');
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', '22222222-2222-4222-8222-222222222222', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.ok(
+  rls_test.count_rows($$select 1 from public.likes where user_id = '22222222-2222-4222-8222-222222222222'$$) >= 1,
+  'a player still reads their own likes');
+select rls_test.visible(
+  $$select 1 from public.follows where follower_id = '22222222-2222-4222-8222-222222222222'
+      and followee_id = '33333333-3333-4333-8333-333333333333'$$, 1,
+  'a player still sees their own follow of a private account');
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', '33333333-3333-4333-8333-333333333333', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select rls_test.visible(
+  $$select 1 from public.follows where followee_id = '33333333-3333-4333-8333-333333333333'
+      and follower_id = '22222222-2222-4222-8222-222222222222'$$, 1,
+  'a private account still sees who follows it');
+reset role;
+
 rollback;
 
 \echo 'RLS suite passed.'

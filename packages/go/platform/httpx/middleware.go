@@ -241,6 +241,11 @@ type RateLimiter struct {
 	rate    float64
 	burst   float64
 	now     func() time.Time
+
+	// Optional shared budget across instances (config.RateLimit.Shared).
+	shared    sharedCounter
+	namespace string
+	perMinute int
 }
 
 type bucket struct {
@@ -250,16 +255,31 @@ type bucket struct {
 
 // NewRateLimiter builds a limiter from configuration.
 func NewRateLimiter(cfg config.RateLimit) *RateLimiter {
-	return &RateLimiter{
-		buckets: make(map[string]*bucket),
-		rate:    float64(cfg.RequestsPerMinute) / 60.0,
-		burst:   float64(max(cfg.Burst, 1)),
-		now:     time.Now,
+	l := &RateLimiter{
+		buckets:   make(map[string]*bucket),
+		rate:      float64(cfg.RequestsPerMinute) / 60.0,
+		burst:     float64(max(cfg.Burst, 1)),
+		now:       time.Now,
+		namespace: cfg.Shared.Namespace,
+		perMinute: cfg.RequestsPerMinute,
 	}
+	if cfg.Shared.Configured() {
+		l.shared = newUpstashCounter(cfg.Shared)
+	}
+	return l
 }
 
-// Allow reports whether a client may make a request now.
+// Allow reports whether a client may make a request now: within this
+// instance's token bucket and, when a shared store is configured, within the
+// client's per-minute budget across every instance.
 func (l *RateLimiter) Allow(client string) bool {
+	if !l.allowLocal(client) {
+		return false
+	}
+	return l.sharedAllow(client)
+}
+
+func (l *RateLimiter) allowLocal(client string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 

@@ -39,6 +39,13 @@ function countResponse(total: number) {
   });
 }
 
+/** The `follow_counts` function's answer. */
+function countsResponse(followers: number, following = followers) {
+  return jsonResponse({ followers, following });
+}
+
+const isCountsCall = (url: string) => url.includes("/rest/v1/rpc/follow_counts");
+
 function mockFetch(handler: (url: string, init?: RequestInit) => Response) {
   const spy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
     handler(String(input), init),
@@ -61,10 +68,29 @@ afterEach(() => {
 });
 
 describe("getFollowCounts", () => {
-  it("asks for the exact total instead of downloading the rows", async () => {
+  it("reads both numbers from follow_counts, which counts without showing rows", async () => {
     const spy = mockFetch((url) =>
-      url.includes("/auth/sign-in") ? jsonResponse(sessionPayload()) : countResponse(42),
+      url.includes("/auth/sign-in") ? jsonResponse(sessionPayload()) : countsResponse(42, 7),
     );
+    await signInAs();
+
+    await expect(getFollowCounts(otherUserID)).resolves.toEqual({
+      followers: 42,
+      following: 7,
+    });
+
+    const calls = spy.mock.calls.slice(1).map(([input]) => new URL(String(input)));
+    expect(calls).toHaveLength(1);
+    expect(calls[0].pathname).toBe("/rest/v1/rpc/follow_counts");
+    expect(calls[0].searchParams.get("p_user_id")).toBe(otherUserID);
+  });
+
+  it("falls back to exact row counts until follow_counts is deployed", async () => {
+    const spy = mockFetch((url) => {
+      if (url.includes("/auth/sign-in")) return jsonResponse(sessionPayload());
+      if (isCountsCall(url)) return jsonResponse({ message: "not found" }, 404);
+      return countResponse(42);
+    });
     await signInAs();
 
     await expect(getFollowCounts(otherUserID)).resolves.toEqual({
@@ -72,7 +98,7 @@ describe("getFollowCounts", () => {
       following: 42,
     });
 
-    const [followers, following] = spy.mock.calls.slice(1).map(([input, init]) => ({
+    const [followers, following] = spy.mock.calls.slice(2).map(([input, init]) => ({
       url: new URL(String(input)),
       headers: new Headers(init?.headers),
     }));
@@ -89,18 +115,18 @@ describe("getFollowCounts", () => {
     const spy = mockFetch((url, init) => {
       if (url.includes("/auth/sign-in")) return jsonResponse(sessionPayload());
       const token = new Headers(init?.headers).get("Authorization");
-      return token ? jsonResponse({ message: "JWT expired" }, 401) : countResponse(6);
+      return token ? jsonResponse({ message: "JWT expired" }, 401) : countsResponse(6);
     });
     await signInAs();
 
-    // The follow graph is public, so a token the server refuses must not turn a
+    // The counts are public, so a token the server refuses must not turn a
     // measurable count into an error.
     await expect(getFollowCounts(otherUserID)).resolves.toEqual({ followers: 6, following: 6 });
 
     const anonymous = spy.mock.calls
       .slice(1)
       .filter(([, init]) => new Headers(init?.headers).get("Authorization") === null);
-    expect(anonymous).toHaveLength(2);
+    expect(anonymous).toHaveLength(1);
   });
 
   it("reports a failed count instead of a zero", async () => {
@@ -132,8 +158,7 @@ describe("useFollowCounts", () => {
         follows -= 1;
         return new Response(null, { status: 204 });
       }
-      const parsed = new URL(url);
-      return countResponse(parsed.searchParams.get("followee_id") ? 2 + follows : 5);
+      return countsResponse(2 + follows, 5);
     });
     await signInAs();
 
@@ -159,7 +184,7 @@ describe("useFollowCounts", () => {
 
     await waitFor(() => expect(result.current.counts?.followers).toBe(2));
     expect(result.current.counts?.following).toBe(5);
-    expect(spy.mock.calls.length).toBeGreaterThan(6);
+    expect(spy.mock.calls.length).toBeGreaterThan(3);
   });
 
   it("keeps the last known numbers and reports a failed refresh", async () => {
@@ -172,7 +197,7 @@ describe("useFollowCounts", () => {
           headers: { "Content-Type": "application/json" },
         });
       }
-      return countResponse(4);
+      return countsResponse(4);
     });
     await signInAs();
 

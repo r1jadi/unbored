@@ -50,6 +50,32 @@ type RateLimit struct {
 	Enabled           bool
 	RequestsPerMinute int
 	Burst             int
+	// Shared, when set, also meters every client in one store all instances
+	// share, so the budget no longer multiplies with the instance count. The
+	// in-process bucket still applies first.
+	Shared SharedRateLimit
+}
+
+// SharedRateLimit points at an Upstash Redis database over its REST API.
+// Namespace keeps limiters with different budgets apart in the same database.
+type SharedRateLimit struct {
+	RESTURL   string
+	RESTToken string
+	Namespace string
+}
+
+// Configured reports whether a shared store is set up.
+func (s SharedRateLimit) Configured() bool { return s.RESTURL != "" && s.RESTToken != "" }
+
+// SharedRateLimitFromEnv reads the shared store from UPSTASH_REDIS_REST_URL and
+// UPSTASH_REDIS_REST_TOKEN (the names Upstash and Vercel's integration use).
+// Both unset means no shared store: in-process limits only.
+func SharedRateLimitFromEnv(namespace string) SharedRateLimit {
+	return SharedRateLimit{
+		RESTURL:   strings.TrimRight(Getenv("UPSTASH_REDIS_REST_URL"), "/"),
+		RESTToken: Getenv("UPSTASH_REDIS_REST_TOKEN"),
+		Namespace: namespace,
+	}
 }
 
 // Supabase holds the project metadata used to verify access tokens.
@@ -144,6 +170,7 @@ func Load(service string) (*Config, error) {
 				Enabled:           EnvInt("RATE_LIMIT_ENABLED", 1) == 1,
 				RequestsPerMinute: EnvInt("RATE_LIMIT_REQUESTS_PER_MINUTE", 600),
 				Burst:             EnvInt("RATE_LIMIT_BURST", 60),
+				Shared:            SharedRateLimitFromEnv("api"),
 			},
 		},
 		Supabase: Supabase{
@@ -224,6 +251,12 @@ func (c *Config) Validate() error {
 		// An environment flag that removes abuse protection is a footgun; make it
 		// impossible to ship.
 		problems = append(problems, errors.New("RATE_LIMIT_ENABLED=0 is not allowed in production"))
+	}
+	if shared := c.HTTP.RateLimit.Shared; (shared.RESTURL == "") != (shared.RESTToken == "") {
+		// Half a configuration silently means "per-instance only"; say so instead.
+		problems = append(problems, errors.New("UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set together"))
+	} else if shared.RESTURL != "" && !strings.HasPrefix(shared.RESTURL, "https://") && !c.Environment.IsDevelopment() {
+		problems = append(problems, errors.New("UPSTASH_REDIS_REST_URL must use https"))
 	}
 
 	for _, origin := range c.CORSAllowedOrigins {

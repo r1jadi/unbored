@@ -183,7 +183,20 @@ export async function startTwoFactorEnrollment(name: string): Promise<TwoFactorE
     id: string;
     totp: { qr_code: string; secret: string };
   };
-  return { id: body.id, qrCode: body.totp.qr_code, secret: body.totp.secret };
+  return { id: body.id, qrCode: qrCodeDataUrl(body.totp.qr_code), secret: body.totp.secret };
+}
+
+/**
+ * Supabase hands the QR code back as raw SVG markup, either bare or behind a
+ * `data:image/svg+xml;utf-8,` prefix with nothing escaped. Browsers (Safari above
+ * all) won't decode that, so re-encode the SVG into a data URL they can read.
+ */
+function qrCodeDataUrl(qrCode: string): string {
+  const trimmed = qrCode.trim();
+  const svgStart = trimmed.indexOf("<svg");
+  if (svgStart === -1) return trimmed;
+  const svg = trimmed.slice(svgStart);
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
 /**

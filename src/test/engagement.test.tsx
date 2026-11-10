@@ -210,6 +210,13 @@ function createSupabaseDouble() {
         }));
       return jsonResponse(rows);
     }
+    if (table === "rpc/game_like_count" && method === "GET") {
+      // Counts only: who liked the game is not part of the answer.
+      const id = params.get("p_game_id");
+      return jsonResponse(
+        db.likes.filter((r) => r.target_kind === "game" && r.target_id === id).length,
+      );
+    }
     if (table === "game_stats" && method === "GET") {
       return jsonResponse(db.stats);
     }

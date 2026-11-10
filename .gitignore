@@ -62,3 +62,8 @@ brand*/
 
 # Local scratch: throwaway stubs, a temporary Postgres data directory, logs.
 .tmp-*
+
+# bun.lock is the only lockfile (docs/decisions/0006-dependency-and-lockfile-policy.md).
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

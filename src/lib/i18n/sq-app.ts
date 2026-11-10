@@ -1160,6 +1160,7 @@ export const sqApp: Record<string, string> = {
   "Couldn't load connections.": "Lidhjet nuk mund të ngarkoheshin.",
   "Followers and following of @{username}.": "Ndjekësit dhe të ndjekurit e @{username}.",
   "No one here yet": "Ende askush këtu",
+  "This account is private": "Kjo llogari është private",
   "@{username} — Unbored": "@{username} — Unbored",
   "@{username} doesn't exist.": "@{username} nuk ekziston.",
   "Account not found": "Llogaria nuk u gjet",

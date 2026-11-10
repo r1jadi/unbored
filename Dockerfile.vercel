@@ -56,4 +56,14 @@ COPY --from=build /out/gateway /gateway
 ENV PORT=80
 EXPOSE 80
 
+# Run as an unprivileged user, not root. A scratch image has no /etc/passwd, so
+# the user is numeric: 65532 is the conventional "nonroot" id (distroless uses
+# the same). The binary and the CA bundle are world-readable, and the gateway
+# writes nothing to disk. Binding port 80 without root relies on the runtime
+# allowing unprivileged low ports, which Docker does by default
+# (net.ipv4.ip_unprivileged_port_start=0 in the container's namespace). If a
+# deployment ever fails to bind, set the project's PORT to 8080 rather than
+# dropping this line.
+USER 65532:65532
+
 ENTRYPOINT ["/gateway"]
