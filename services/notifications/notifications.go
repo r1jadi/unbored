@@ -342,6 +342,7 @@ func Options() servicekit.Options {
 			var backend Backend
 			var feedbackBackend FeedbackBackend
 			var pushBackend PushBackend
+			var recapBackend RecapBackend
 			client, err := supabasedigest.New(cfg)
 			if err != nil {
 				// Booting anyway is deliberate: the service still serves its
@@ -352,11 +353,13 @@ func Options() servicekit.Options {
 				backend = client
 				feedbackBackend = client
 				pushBackend = client
+				recapBackend = client
 			}
 			mailer := email.NewFromEnv()
 			secret := os.Getenv("CRON_SECRET")
 			newService(backend, mailer, logger, secret, siteURL()).register(router)
 			newFeedbackService(feedbackBackend, mailer, logger, secret, os.Getenv("FEEDBACK_EMAIL_TO")).register(router)
+			newRecapService(recapBackend, mailer, logger, secret, siteURL()).register(router)
 			subject := strings.TrimSpace(os.Getenv("VAPID_SUBJECT"))
 			if subject == "" {
 				subject = siteURL()

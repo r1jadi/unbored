@@ -147,7 +147,7 @@ export function FeedItem({ game }: { game: Game }) {
             </span>
           </div>
           {category && (
-            <div className="absolute top-0 inset-x-0 flex items-center p-4 pt-[calc(var(--safe-top)+4rem)] md:pt-4">
+            <div className="absolute top-0 inset-x-0 flex items-center p-4 pt-[calc(var(--safe-top)+4rem)] md:pt-16">
               <span className="rounded-md glass px-2 py-1 text-xs font-medium">{category}</span>
             </div>
           )}

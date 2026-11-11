@@ -29,6 +29,10 @@ export type UserPreferences = {
   /** Announcements sent by the Unbored team. */
   notifyAnnouncements: boolean;
   notifyMessages: boolean;
+  /** The evening push before a streak would end. */
+  notifyStreakReminders: boolean;
+  /** A Sunday email about the player's own week. Opt-in: it is email. */
+  notifyWeeklyRecap: boolean;
   /** Who can start a chat. Someone this player has already written to can always reply. */
   allowMessagesFrom: MessagePrivacy;
   /** "Seen" in chats. It goes both ways: off, this player neither shows nor sees it. */
@@ -55,6 +59,8 @@ export const defaultPreferences: UserPreferences = {
   notifyGameReleases: true,
   notifyAnnouncements: true,
   notifyMessages: true,
+  notifyStreakReminders: true,
+  notifyWeeklyRecap: false,
   allowMessagesFrom: "friends",
   showReadReceipts: true,
   language: null,
@@ -77,6 +83,8 @@ type Row = {
   notify_game_releases: boolean;
   notify_announcements: boolean;
   notify_messages: boolean;
+  notify_streak_reminders: boolean;
+  notify_weekly_recap: boolean;
   allow_messages_from: MessagePrivacy;
   show_read_receipts: boolean;
   language: string | null;
@@ -99,6 +107,8 @@ function toPreferences(row: Row): UserPreferences {
     notifyGameReleases: row.notify_game_releases,
     notifyAnnouncements: row.notify_announcements ?? true,
     notifyMessages: row.notify_messages,
+    notifyStreakReminders: row.notify_streak_reminders ?? true,
+    notifyWeeklyRecap: row.notify_weekly_recap ?? false,
     allowMessagesFrom: row.allow_messages_from,
     showReadReceipts: row.show_read_receipts,
     language: row.language,
@@ -123,6 +133,8 @@ function toRow(prefs: UserPreferences, userId: string): Row {
     notify_game_releases: prefs.notifyGameReleases,
     notify_announcements: prefs.notifyAnnouncements,
     notify_messages: prefs.notifyMessages,
+    notify_streak_reminders: prefs.notifyStreakReminders,
+    notify_weekly_recap: prefs.notifyWeeklyRecap,
     allow_messages_from: prefs.allowMessagesFrom,
     show_read_receipts: prefs.showReadReceipts,
     language: prefs.language,

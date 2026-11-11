@@ -31,6 +31,8 @@ import { useOnline } from "@/lib/service-worker";
 
 import { t } from "@/lib/settings/language";
 import { absoluteUrl, gameImage } from "@/lib/seo";
+import { isArchiveDay, releaseArchiveDay, setArchiveDay } from "@/lib/games/archive";
+import { dayDate } from "@/lib/games/share";
 import { streakStatus, useMyGameStreak } from "@/lib/games/streaks";
 import { cn } from "@/lib/utils";
 /**
@@ -43,6 +45,8 @@ type PlaySearch = {
   /** A callout this run belongs to, and the friend's username to go back to. */
   challenge?: string;
   with?: string;
+  /** A past day of a daily game, from the archive: practice only. */
+  day?: number;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -53,8 +57,10 @@ export const Route = createFileRoute("/play/$id")({
     const start = search["start"] === 1 || search["start"] === "1" || search["start"] === true;
     const challenge = search["challenge"];
     const rival = search["with"];
+    const day = Number(search["day"]);
     return {
       ...(start ? { start: true } : {}),
+      ...(isArchiveDay(day) ? { day } : {}),
       ...(typeof challenge === "string" &&
       UUID.test(challenge) &&
       typeof rival === "string" &&
@@ -104,11 +110,16 @@ export const Route = createFileRoute("/play/$id")({
  */
 function PlayScreen() {
   const { id } = Route.useParams();
-  const { start, challenge, with: rival } = Route.useSearch();
+  const { start, challenge, with: rival, day } = Route.useSearch();
   const nav = useNavigate();
   // Set while rendering: a runtime's first effect starts its run, and children's effects
   // run before this component's. The server has no runs to start and shares this module.
-  if (typeof window !== "undefined") setActiveChallenge(challenge ?? null);
+  if (typeof window !== "undefined") {
+    setActiveChallenge(challenge ?? null);
+    setArchiveDay(challenge ? null : (day ?? null));
+  }
+  // Leaving the screen ends the archive day, so the next game is today's again.
+  useEffect(() => () => releaseArchiveDay(), []);
   useEffect(() => {
     if (!challenge || !rival) return;
     setActiveChallenge(challenge);
@@ -128,6 +139,7 @@ function PlayScreen() {
       id={id}
       autoStart={start === true || challenge !== undefined}
       calloutWith={challenge ? rival : undefined}
+      archiveDay={challenge ? undefined : day}
     />
   );
 }
@@ -141,11 +153,14 @@ export function Play({
   id,
   autoStart = false,
   calloutWith,
+  archiveDay,
 }: {
   id: string;
   autoStart?: boolean;
   /** This run is a callout against this username: quitting goes back to the chat. */
   calloutWith?: string;
+  /** A past day of a daily game, played as practice. */
+  archiveDay?: number;
 }) {
   // Whether a run is live, and how to end it, reported by the runtime below.
   const [progress, setProgress] = useState<{
@@ -170,6 +185,7 @@ export function Play({
         resumable={progress.resumable === true && !calloutWith}
         autoStart={autoStart}
         calloutWith={calloutWith}
+        archiveDay={archiveDay}
       />
     </RunProgressContext.Provider>
   );
@@ -193,6 +209,7 @@ export function PlaySurface({
   resumable = false,
   autoStart = false,
   calloutWith,
+  archiveDay,
 }: {
   id: string;
   progress: boolean;
@@ -202,6 +219,7 @@ export function PlaySurface({
   /** Start the run without the rules screen (`?start=1`). */
   autoStart?: boolean;
   calloutWith?: string;
+  archiveDay?: number;
 }) {
   const state = useGame(id);
   const title = state.status === "ready" ? state.game.title : titleFromSlug(id);
@@ -260,6 +278,11 @@ export function PlaySurface({
             )}
             {!online && (
               <p className="text-[11px] text-muted-foreground/80">{t("Offline · practice only")}</p>
+            )}
+            {archiveDay !== undefined && (
+              <p className="text-[11px] font-medium text-primary">
+                {t("Past puzzle · {date} · practice", { date: dayDate(archiveDay) })}
+              </p>
             )}
           </div>
           <SoundToggle />

@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { FeedItem, FeedSkeleton } from "./FeedItem";
 import { EmptyState, ErrorState } from "@/components/common";
+import { DailyStreakChip } from "@/components/game/DailyStreakChip";
 import { LogoMark } from "@/components/layout/Logo";
 import { requestFeedRefresh, useFeedRefresh } from "@/lib/feed-refresh";
 import { catalogErrorMessage, type Game } from "@/lib/games/catalog";
@@ -26,6 +27,7 @@ export function Feed({
   onRetry,
   onRefresh,
   landOn,
+  lead,
   empty = {
     title: t("Nothing here yet"),
     body: t("As soon as games are published they show up in this feed."),
@@ -40,6 +42,8 @@ export function Feed({
   onRefresh?: () => void;
   /** The slug of the game to open on, rather than the first. */
   landOn?: string;
+  /** A slide before the games, like For You's "Continue" card. */
+  lead?: ReactNode;
   empty?: { title: string; body?: string };
 }) {
   const scroller = useRef<HTMLDivElement>(null);
@@ -95,7 +99,12 @@ export function Feed({
             <EmptyState title={empty.title} body={empty.body} />
           </div>
         ) : (
-          items.map((game) => <FeedItem key={game.slug} game={game} />)
+          <>
+            {lead}
+            {items.map((game) => (
+              <FeedItem key={game.slug} game={game} />
+            ))}
+          </>
         )}
       </div>
     </div>
@@ -107,7 +116,12 @@ export function FeedTabs({ tab }: { tab: "for-you" | "following" }) {
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 z-20 md:left-60 lg:left-64">
       <div className="pointer-events-auto mx-auto flex max-w-[460px] items-center justify-between px-4 pt-[calc(0.75rem+var(--safe-top))] md:pt-9">
-        <LogoMark className="size-6 md:invisible" />
+        {/* Equal sides keep the pill centred whatever the streak's width. */}
+        <div className="flex flex-1 items-center gap-2">
+          {/* The narrowest phones give the logo's room to the streak. */}
+          <LogoMark className="size-6 max-[379px]:hidden md:hidden" />
+          <DailyStreakChip />
+        </div>
         <nav className="flex gap-1 rounded-full glass p-1" aria-label={t("Feed")}>
           {(
             [
@@ -132,13 +146,15 @@ export function FeedTabs({ tab }: { tab: "for-you" | "following" }) {
             </Link>
           ))}
         </nav>
-        <Link
-          to="/search"
-          aria-label={t("Search")}
-          className="press flex size-9 items-center justify-center rounded-full glass md:invisible"
-        >
-          <Search className="size-[18px]" />
-        </Link>
+        <div className="flex flex-1 justify-end">
+          <Link
+            to="/search"
+            aria-label={t("Search")}
+            className="press flex size-9 items-center justify-center rounded-full glass md:invisible"
+          >
+            <Search className="size-[18px]" />
+          </Link>
+        </div>
       </div>
     </div>
   );

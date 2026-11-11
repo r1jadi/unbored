@@ -411,6 +411,15 @@ function Body({ section, category }: { section: string; category?: "bug" }) {
               checked={prefs.notifyMessages}
               onChange={(v) => void update({ ...prefs, notifyMessages: v })}
             />
+            <Toggle
+              id="n-streak"
+              label={t("Streak reminders")}
+              desc={t(
+                "One push at 7pm on a day you haven't played yet, when a streak is on the line",
+              )}
+              checked={prefs.notifyStreakReminders}
+              onChange={(v) => void update({ ...prefs, notifyStreakReminders: v })}
+            />
           </Group>
           <Group title={t("Email")}>
             <Toggle
@@ -421,6 +430,13 @@ function Body({ section, category }: { section: string; category?: "bug" }) {
               )}
               checked={prefs.notifyNewGames}
               onChange={(v) => void update({ ...prefs, notifyNewGames: v })}
+            />
+            <Toggle
+              id="n-recap"
+              label={t("Weekly recap")}
+              desc={t("A Sunday email about your week: games played, new bests and your streak.")}
+              checked={prefs.notifyWeeklyRecap}
+              onChange={(v) => void update({ ...prefs, notifyWeeklyRecap: v })}
             />
           </Group>
           <Group title={t("Push")}>

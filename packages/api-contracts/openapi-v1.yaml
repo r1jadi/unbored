@@ -741,7 +741,14 @@ paths:
         - name: period
           in: query
           description: The window over the scores, by their recorded time.
-          schema: { type: string, enum: [all, day, week], default: all }
+          schema: { type: string, enum: [all, day, week, this-week], default: all }
+        - name: timeZone
+          in: query
+          description: |
+            The caller's IANA time zone (`Europe/Tirane`), used by `this-week` so
+            the week starts at Monday 00:00 on their own clock. Unknown or absent
+            means UTC.
+          schema: { type: string, maxLength: 64 }
       responses:
         "200":
           description: One page of the all-games board, plus the caller's own rating.
@@ -804,8 +811,16 @@ paths:
           in: query
           description: |
             The window over the scores, by their recorded time: `all` (the
-            default), the last 24 hours, or the last 7 days.
-          schema: { type: string, enum: [all, day, week], default: all }
+            default), the last 24 hours, the last 7 days, or `this-week` (from
+            Monday 00:00 in `timeZone`).
+          schema: { type: string, enum: [all, day, week, this-week], default: all }
+        - name: timeZone
+          in: query
+          description: |
+            The caller's IANA time zone (`Europe/Tirane`), used by `this-week` so
+            the week starts at Monday 00:00 on their own clock. Unknown or absent
+            means UTC.
+          schema: { type: string, maxLength: 64 }
       responses:
         "200":
           description: One page of the board, plus the caller's own standing.
@@ -2539,7 +2554,7 @@ components:
       properties:
         gameSlug: { type: string, pattern: "^[a-z0-9-]{2,48}$" }
         scope: { type: string, enum: [global] }
-        period: { type: string, enum: [all, day, week] }
+        period: { type: string, enum: [all, day, week, this-week] }
         entries:
           type: array
           items: { $ref: "#/components/schemas/LeaderboardEntry" }
@@ -2560,7 +2575,7 @@ components:
       description: The all-games ranking, as `GET /games/leaderboard` returns it.
       properties:
         scope: { type: string, enum: [global] }
-        period: { type: string, enum: [all, day, week] }
+        period: { type: string, enum: [all, day, week, this-week] }
         minGames:
           type: integer
           minimum: 1

@@ -31,6 +31,7 @@ import { STYLE_NONCE_BOOT_SCRIPT } from "@/lib/csp";
 import { currentLanguage, LanguageProvider, t } from "@/lib/settings/language";
 import { ThemeProvider } from "@/lib/settings/theme";
 import { startPushSync } from "@/lib/notifications/push";
+import { startTimeZoneSync } from "@/lib/time-zone-sync";
 import { startInstallCapture } from "@/lib/engagement/ask";
 import { registerServiceWorker } from "@/lib/service-worker";
 
@@ -270,6 +271,7 @@ function RootComponent() {
     void initializeSession();
     registerServiceWorker();
     startPushSync();
+    startTimeZoneSync();
   }, []);
 
   // PostHog identity follows the session: the account id once signed in, a

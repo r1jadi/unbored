@@ -6,7 +6,7 @@ import { EmptyState, ErrorState, ListSkeleton, UserAvatar } from "@/components/c
 import { RanksArena, RanksSkeleton, RanksYouBar } from "@/components/game/RanksArena";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/session";
-import { fetchProfilesByIds, listFollowees } from "@/lib/social/follows";
+import { FOLLOWING_SCAN, useFollowedUsernames } from "@/lib/social/followed";
 import {
   playErrorMessage,
   useLeaderboard,
@@ -177,44 +177,6 @@ export function LeaderboardList({
       )}
     </div>
   );
-}
-
-/** How many rows of the global board the following view looks through. */
-const FOLLOWING_SCAN = 100;
-
-type FollowedState =
-  | { status: "loading" }
-  | { status: "ready"; usernames: Set<string>; following: number }
-  | { status: "error" };
-
-/** The usernames of the signed-in player and everyone they follow. */
-function useFollowedUsernames(userId: string | undefined): FollowedState & { retry: () => void } {
-  const [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<FollowedState>({ status: "loading" });
-
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    setState({ status: "loading" });
-    listFollowees(userId)
-      .then(async (ids) => {
-        const profiles = await fetchProfilesByIds([userId, ...ids]);
-        if (cancelled) return;
-        setState({
-          status: "ready",
-          usernames: new Set(profiles.map((profile) => profile.username)),
-          following: ids.length,
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setState({ status: "error" });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, attempt]);
-
-  return { ...state, retry: () => setAttempt((n) => n + 1) };
 }
 
 /**

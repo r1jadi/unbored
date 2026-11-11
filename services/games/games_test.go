@@ -1000,6 +1000,31 @@ func TestFriendBoardIsRefusedWithAReason(t *testing.T) {
 	}
 }
 
+func TestThisWeekStartsOnTheCallersMonday(t *testing.T) {
+	tirane := callerZone("Europe/Tirane")
+	for _, testCase := range []struct {
+		now  string
+		zone *time.Location
+		want string
+	}{
+		{"2026-11-11T15:04:05Z", time.UTC, "2026-11-09T00:00:00Z"}, // a Wednesday
+		{"2026-11-09T00:00:00Z", time.UTC, "2026-11-09T00:00:00Z"}, // Monday at midnight
+		{"2026-11-15T23:59:59Z", time.UTC, "2026-11-09T00:00:00Z"}, // Sunday night
+		// 00:30 Monday in Tirana is still Sunday in UTC: the week already reset there.
+		{"2026-11-15T23:30:00Z", tirane, "2026-11-15T23:00:00Z"},
+		// In summer Tirana is two hours ahead.
+		{"2026-06-14T22:30:00Z", tirane, "2026-06-14T22:00:00Z"},
+	} {
+		now, _ := time.Parse(time.RFC3339, testCase.now)
+		if got := weekStart(now, testCase.zone).UTC().Format(time.RFC3339); got != testCase.want {
+			t.Errorf("weekStart(%s, %s) = %s, want %s", testCase.now, testCase.zone, got, testCase.want)
+		}
+	}
+	if callerZone("Not/AZone") != time.UTC || callerZone("") != time.UTC {
+		t.Error("an unknown or missing zone must fall back to UTC")
+	}
+}
+
 func TestBoardWindowsBecomeASinceBoundary(t *testing.T) {
 	for _, testCase := range []struct {
 		period string

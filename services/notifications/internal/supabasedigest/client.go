@@ -223,3 +223,40 @@ func (c *Client) MarkFeedbackEmailed(ctx context.Context, id string) error {
 func (c *Client) WakePush(ctx context.Context) error {
 	return c.call(ctx, "wake_push_dispatch_once", map[string]any{}, nil)
 }
+
+// RecapRecipient is one player owed this week's recap, with their week in numbers.
+type RecapRecipient struct {
+	UserID string `json:"user_id"`
+	// WeekStart is the Monday the player's week began on their own clock, YYYY-MM-DD.
+	WeekStart     string `json:"week_start"`
+	Email         string `json:"email"`
+	DisplayName   string `json:"display_name"`
+	Language      string `json:"language"`
+	GamesPlayed   int    `json:"games_played"`
+	GamesDistinct int    `json:"games_distinct"`
+	TopGameSlug   string `json:"top_game_slug"`
+	TopGameTitle  string `json:"top_game_title"`
+	NewBests      int    `json:"new_bests"`
+	PassedBy      int    `json:"passed_by"`
+	Streak        int    `json:"streak"`
+}
+
+// RecapRecipients returns at most limit players whose recap is due now on their
+// own clock, each with their week.
+func (c *Client) RecapRecipients(ctx context.Context, limit int) ([]RecapRecipient, error) {
+	var recipients []RecapRecipient
+	payload := map[string]any{"p_limit": limit}
+	if err := c.call(ctx, "weekly_recap_due", payload, &recipients); err != nil {
+		return nil, err
+	}
+	return recipients, nil
+}
+
+// RecordRecap marks one player's recap sent (failure empty) or failed, once.
+func (c *Client) RecordRecap(ctx context.Context, week, userID, failure string) error {
+	payload := map[string]any{"p_week": week, "p_user_id": userID}
+	if failure != "" {
+		payload["p_failure"] = failure
+	}
+	return c.call(ctx, "record_weekly_recap_delivery", payload, nil)
+}

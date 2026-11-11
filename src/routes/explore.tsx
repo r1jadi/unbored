@@ -3,6 +3,7 @@ import { ChevronRight, Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { EmptyState, GridSkeleton, Page, Section } from "@/components/common";
 import { DailyWidget } from "@/components/game/DailyWidget";
+import { WeeklyLeagueCard } from "@/components/game/WeeklyLeagueCard";
 import { GameCard } from "@/components/game/GameCard";
 import { ExploreHeader } from "@/components/layout/SceneHeader";
 import { MAX_PAGE_SIZE, mostPlayed, useCategories, useGames } from "@/lib/games/catalog";
@@ -102,7 +103,10 @@ export function Explore() {
             </SectionError>
           </div>
         ) : (
-          <DailyWidget games={daily.items} />
+          <>
+            <DailyWidget games={daily.items} />
+            <WeeklyLeagueCard />
+          </>
         )}
       </div>
 

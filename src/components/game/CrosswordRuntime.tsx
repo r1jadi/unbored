@@ -58,7 +58,8 @@ import {
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
 import { useGameSounds } from "@/lib/sound";
-import { offlineResultNote } from "@/lib/games/offline";
+import { offlineResultNote, practiceLabel } from "@/lib/games/offline";
+import { getArchiveDay } from "@/lib/games/archive";
 
 import { t, msg } from "@/lib/settings/language";
 /** This game's rules, shared with the feed's How to play sheet. */
@@ -490,7 +491,7 @@ function Board({
               {t("Ranked")}
             </span>
           ) : session.offline ? (
-            <span className="rounded-full bg-surface-2 px-2 py-1">{t("Offline practice")}</span>
+            <span className="rounded-full bg-surface-2 px-2 py-1">{practiceLabel()}</span>
           ) : null}
         </div>
       </div>
@@ -800,7 +801,11 @@ function Finished({
           )}
         </div>
         <p className="text-sm text-muted-foreground">
-          {solved ? t("Solved · {day}", { day: dayLabel(run.puzzle.day) }) : t("Not solved today")}
+          {solved
+            ? t("Solved · {day}", { day: dayLabel(run.puzzle.day) })
+            : getArchiveDay() !== null
+              ? t("Not solved")
+              : t("Not solved today")}
         </p>
         <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         {solved && (
@@ -859,6 +864,7 @@ function Finished({
         ranked={result.ranked}
         score={result.score}
         daily={crosswordShare(run)}
+        sessionId={result.sessionId}
         onRestart={onRestart}
         autoFocus
       >

@@ -25,6 +25,8 @@ export type DailyShare = {
   result?: string;
   /** Emoji rows, joined by newlines. */
   grid: string;
+  /** How much of today's field this run beat, once enough people have played. */
+  beatPercent?: number;
 };
 
 /** The score as the result screen shows it. */
@@ -32,9 +34,13 @@ function shownScore(score: number): string {
   return points(score).toLocaleString(currentLanguage());
 }
 
-/** The game's public page, carrying the score to beat. */
-export function beatMeUrl(slug: string, score: number): string {
-  return `${absoluteUrl(`/games/${slug}`)}?beat=${points(score)}`;
+/**
+ * The game's public page, carrying the score to beat and, when the player is
+ * signed in, their username, so the page can name them and offer to follow them.
+ */
+export function beatMeUrl(slug: string, score: number, from?: string): string {
+  const base = `${absoluteUrl(`/games/${slug}`)}?beat=${points(score)}`;
+  return from ? `${base}&from=${encodeURIComponent(from)}` : base;
 }
 
 /** A day number as a short date ("11 Nov"), in the player's language. */
@@ -52,13 +58,16 @@ export function shareText({
   title,
   score,
   daily,
+  from,
 }: {
   slug: string;
   title: string;
   score: number;
   daily?: DailyShare;
+  /** The sharer's username, when signed in. */
+  from?: string;
 }): string {
-  const url = beatMeUrl(slug, score);
+  const url = beatMeUrl(slug, score, from);
   if (daily) {
     const head = [title, daily.day !== null ? dayDate(daily.day) : null, daily.result]
       .filter(Boolean)
@@ -66,6 +75,9 @@ export function shareText({
     return [
       `${head} — ${t("{score} points", { score: shownScore(score) })}`,
       daily.grid,
+      ...(daily.beatPercent !== undefined
+        ? [t("Better than {percent}% of today's players.", { percent: daily.beatPercent })]
+        : []),
       t("Can you beat me? {url}", { url }),
     ].join("\n\n");
   }

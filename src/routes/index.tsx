@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ContinueSlide } from "@/components/game/ContinueSlide";
 import { Feed } from "@/components/game/Feed";
 import { WelcomeMoment } from "@/components/layout/WelcomeMoment";
 import { useEffect, useMemo, useState } from "react";
@@ -68,6 +69,8 @@ function ForYou() {
     <>
       <Feed
         tab="for-you"
+        // Opening on a particular game skips straight to it, past any saved run.
+        lead={landOn ? undefined : <ContinueSlide />}
         items={ranked}
         // Everything `ranked` waits for. Anything left out shows "Nothing here yet" for
         // the moment between the list being empty and the first card arriving.

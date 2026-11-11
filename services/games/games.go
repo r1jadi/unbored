@@ -27,6 +27,9 @@
 package games
 
 import (
+	// Time zones for the weekly league, built in: the deployment image has no zoneinfo.
+	_ "time/tzdata"
+
 	"context"
 	"encoding/base64"
 	"errors"
@@ -107,11 +110,16 @@ const (
 	periodAll        = "all"
 	periodDay        = "day"
 	periodWeek       = "week"
+	// periodThisWeek is the calendar week, from Monday 00:00 on the caller's own
+	// clock (`timeZone`, UTC without one): the weekly league's window, which resets
+	// at the player's midnight like the daily games, unlike "week" (the last seven
+	// days).
+	periodThisWeek = "this-week"
 )
 
 var (
 	boardScopes  = map[string]bool{boardScopeGlobal: true}
-	boardPeriods = map[string]bool{periodAll: true, periodDay: true, periodWeek: true}
+	boardPeriods = map[string]bool{periodAll: true, periodDay: true, periodWeek: true, periodThisWeek: true}
 )
 
 // supportedSort is the only ordering the catalogue can compute from real data.
@@ -762,7 +770,7 @@ func parseBoardQuery(r *http.Request, now time.Time) (boardQuery, error) {
 	if raw := strings.TrimSpace(values.Get("period")); raw != "" {
 		if !boardPeriods[raw] {
 			return query, httpx.NewError(httpx.CodeBadRequest,
-				"period must be one of all, day or week.",
+				"period must be one of all, day, week or this-week.",
 				apierr.Detail{Field: "period", Rule: "unsupported"})
 		}
 		query.Period = raw
@@ -771,6 +779,8 @@ func parseBoardQuery(r *http.Request, now time.Time) (boardQuery, error) {
 			query.Since, query.HasSince = now.Add(-24*time.Hour), true
 		case periodWeek:
 			query.Since, query.HasSince = now.Add(-7*24*time.Hour), true
+		case periodThisWeek:
+			query.Since, query.HasSince = weekStart(now, callerZone(values.Get("timeZone"))), true
 		}
 	}
 
@@ -1011,4 +1021,26 @@ func Options() servicekit.Options {
 // answered to themself only. The token is the one the identity was verified from.
 func asCaller(r *http.Request) context.Context {
 	return supabasegames.WithCallerToken(r.Context(), authn.BearerToken(r.Header.Get("Authorization")))
+}
+
+// weekStart is the Monday 00:00 in zone that begins now's calendar week there.
+func weekStart(now time.Time, zone *time.Location) time.Time {
+	year, month, day := now.In(zone).Date()
+	midnight := time.Date(year, month, day, 0, 0, 0, 0, zone)
+	sinceMonday := (int(midnight.Weekday()) + 6) % 7
+	return midnight.AddDate(0, 0, -sinceMonday)
+}
+
+// callerZone is the IANA zone the app sent (`Europe/Tirane`), or UTC when it sent
+// none or one this server doesn't know, as the database's own day functions do.
+func callerZone(raw string) *time.Location {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || len(raw) > 64 {
+		return time.UTC
+	}
+	zone, err := time.LoadLocation(raw)
+	if err != nil {
+		return time.UTC
+	}
+	return zone
 }

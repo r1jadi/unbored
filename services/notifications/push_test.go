@@ -424,3 +424,32 @@ func (f *fakePushBackend) WakePush(context.Context) error {
 	f.wakes++
 	return nil
 }
+
+func TestRenderPushWordsTheStreakReminderInTheDevicesLanguage(t *testing.T) {
+	for language, want := range map[string]pushMessage{
+		"en": {"Your 12-day streak ends at midnight", "One game keeps it going.", "/", "streak"},
+		"sq": {"Seria jote prej 12 ditësh mbaron në mesnatë", "Një lojë mjafton për ta mbajtur.", "/", "streak"},
+	} {
+		encoded, ok := renderPush(supabasedigest.PushDelivery{
+			Kind:     "system",
+			Payload:  []byte(`{"reason":"streak_reminder","streak":12}`),
+			Language: language,
+		})
+		var message pushMessage
+		if ok {
+			if err := json.Unmarshal(encoded, &message); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if !ok || message != want {
+			t.Errorf("%s: streak reminder = %+v, %v", language, message, ok)
+		}
+	}
+
+	// A reminder without a streak says nothing worth waking a phone for.
+	if _, ok := renderPush(supabasedigest.PushDelivery{
+		Kind: "system", Payload: []byte(`{"reason":"streak_reminder"}`), Language: "en",
+	}); ok {
+		t.Error("a streak reminder without a streak was sent")
+	}
+}

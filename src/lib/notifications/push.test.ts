@@ -130,7 +130,28 @@ describe("turning push on", () => {
       p_p256dh: "public-key",
       p_auth: "secret",
       p_language: "en",
+      // For the evening streak reminder, at 19:00 on this device's clock.
+      p_time_zone: expect.any(String),
     });
+  });
+
+  it("still turns on against a database that doesn't take a time zone yet", async () => {
+    const { enablePush } = await loadPush();
+    vi.mocked(restMutate).mockRejectedValueOnce(new Error("function not found"));
+
+    expect(await enablePush()).toBe("on");
+
+    expect(restMutate).toHaveBeenLastCalledWith(
+      "rpc/register_push_subscription",
+      "POST",
+      "token-1",
+      {
+        p_endpoint: "https://fcm.googleapis.com/fcm/send/device",
+        p_p256dh: "public-key",
+        p_auth: "secret",
+        p_language: "en",
+      },
+    );
   });
 
   it("treats a declined prompt as a choice: nothing is subscribed", async () => {

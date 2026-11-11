@@ -40,6 +40,7 @@ import {
 import { points } from "@/lib/format";
 import { useGameSounds } from "@/lib/sound";
 import { offlineResultNote } from "@/lib/games/offline";
+import { getArchiveDay } from "@/lib/games/archive";
 
 import { t } from "@/lib/settings/language";
 /**
@@ -331,7 +332,9 @@ function Table({
             {session.ranked
               ? t("Signed in: this is today's ranked attempt")
               : session.offline
-                ? t("Offline practice: not verified or ranked — practise as often as you like")
+                ? getArchiveDay() !== null
+                  ? t("Past puzzle: practice, not verified or ranked")
+                  : t("Offline practice: not verified or ranked — practise as often as you like")
                 : t("Guest run: verified, but not ranked — practise as often as you like")}
           </p>
         </div>
@@ -543,6 +546,7 @@ function Finished({
         ranked={result.ranked}
         score={result.score}
         daily={sevenSecondShare(run)}
+        sessionId={result.sessionId}
         onRestart={onRestart}
         autoFocus
       >

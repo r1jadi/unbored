@@ -203,8 +203,10 @@ type pushCopy struct {
 	messageTitle, messageBody             string
 	calloutTitle, calloutBody             string
 	calloutResultTitle, calloutResultBody string
-	someone                               string
-	aGame                                 string
+	// %[1]d is the streak's length in days.
+	streakTitle, streakBody string
+	someone                 string
+	aGame                   string
 }
 
 var pushCopies = map[string]pushCopy{
@@ -216,6 +218,7 @@ var pushCopies = map[string]pushCopy{
 		messageTitle: "New message", messageBody: "@%[1]s sent you a message",
 		calloutTitle: "You got called out", calloutBody: "@%[1]s called you out on %[2]s",
 		calloutResultTitle: "Callout settled", calloutResultBody: "Your callout with @%[1]s on %[2]s is settled",
+		streakTitle: "Your %[1]d-day streak ends at midnight", streakBody: "One game keeps it going.",
 		someone: "someone", aGame: "a game",
 	},
 	"sq": {
@@ -226,6 +229,7 @@ var pushCopies = map[string]pushCopy{
 		messageTitle: "Mesazh i ri", messageBody: "@%[1]s të dërgoi një mesazh",
 		calloutTitle: "Të sfiduan", calloutBody: "@%[1]s të sfidoi te %[2]s",
 		calloutResultTitle: "Sfida u mbyll", calloutResultBody: "Sfida jote me @%[1]s te %[2]s u mbyll",
+		streakTitle: "Seria jote prej %[1]d ditësh mbaron në mesnatë", streakBody: "Një lojë mjafton për ta mbajtur.",
 		someone: "dikush", aGame: "një lojë",
 	},
 }
@@ -247,6 +251,7 @@ func renderPush(row supabasedigest.PushDelivery) ([]byte, bool) {
 		Text      string `json:"text"`
 		Link      string `json:"link"`
 		Broadcast string `json:"broadcast"`
+		Streak    int    `json:"streak"`
 	}
 	if err := json.Unmarshal(row.Payload, &payload); err != nil {
 		return nil, false
@@ -297,8 +302,22 @@ func renderPush(row supabasedigest.PushDelivery) ([]byte, bool) {
 			message.URL = "/leaderboards/" + payload.Game
 		}
 	case "system":
-		// Announcements only, and worded by whoever sent them. Every other system row
-		// belongs in the app's inbox, not on a lock screen.
+		// The evening streak reminder, worded here like the social kinds. It opens the
+		// feed, where one game keeps the streak.
+		if payload.Reason == "streak_reminder" {
+			if payload.Streak < 1 {
+				return nil, false
+			}
+			message = pushMessage{
+				Title: fmt.Sprintf(words.streakTitle, payload.Streak),
+				Body:  words.streakBody,
+				URL:   "/",
+				Tag:   "streak",
+			}
+			break
+		}
+		// Otherwise announcements only, worded by whoever sent them. Every other system
+		// row belongs in the app's inbox, not on a lock screen.
 		if payload.Reason != "announcement" || payload.Title == "" || payload.Text == "" {
 			return nil, false
 		}

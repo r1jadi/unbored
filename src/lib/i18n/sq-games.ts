@@ -228,6 +228,57 @@ export const sqGames: Record<string, string> = {
     "Rezultati yt prej {score} pikësh ruhet dhe dërgohet për verifikim.",
   "Finish later": "Përfundoje më vonë",
   "Share result": "Ndaj rezultatin",
+  "Give up this word?": "Dorëzohesh për këtë fjalë?",
+  "The word is shown. It's practice, so nothing is lost.":
+    "Fjala shfaqet. Është ushtrim, ndaj s'humbet asgjë.",
+  "The word was": "Fjala ishte",
+  "Not solved": "Pa zgjidhur",
+  "Past puzzles": "Enigmat e kaluara",
+  "Missed a day? Play it as practice. Only today's puzzle counts for the leaderboard.":
+    "Humbe një ditë? Luaje si ushtrim. Vetëm enigma e sotme llogaritet në renditje.",
+  "Past puzzle · {date} · practice": "Enigmë e kaluar · {date} · ushtrim",
+  "Past puzzle · practice": "Enigmë e kaluar · ushtrim",
+  "Past puzzle: practice, not verified or ranked":
+    "Enigmë e kaluar: ushtrim, pa verifikim dhe pa renditje",
+  "A past puzzle is practice: it was not verified or saved, and it is not on the leaderboard. Today's puzzle is the one that counts.":
+    "Një enigmë e kaluar është ushtrim: nuk u verifikua as u ruajt dhe nuk është në renditje. Llogaritet enigma e sotme.",
+  "@{username} scored {score} in {title}. Can you beat it?":
+    "@{username} bëri {score} pikë te {title}. A mund ta mundësh?",
+  "Start a weekly league": "Nis një ligë javore",
+  "Follow a few players and race them every week. It resets on Monday.":
+    "Ndiq disa lojtarë dhe garo me ta çdo javë. Rinis të hënën.",
+  "This week's league": "Liga e kësaj jave",
+  "#{position} of {size} in your league": "#{position} nga {size} në ligën tënde",
+  "Play any game to join this week's table.":
+    "Luaj cilëndo lojë për t'u futur në tabelën e kësaj jave.",
+  "@{username} is {gap} ahead.": "@{username} është {gap} përpara.",
+  "You're top. Stay there.": "Je i pari. Qëndro aty.",
+  "Resets in {time}": "Rinis pas {time}",
+  "Weekly recap": "Përmbledhja javore",
+  "A Sunday email about your week: games played, new bests and your streak.":
+    "Një email të dielën për javën tënde: lojërat, rekordet e reja dhe seria jote.",
+  "Better than {percent}% of today's players.": "Më mirë se {percent}% e lojtarëve të sotëm.",
+  "You beat {percent}% of today's {players} players.":
+    "Kalove {percent}% të {players} lojtarëve të sotëm.",
+  "{done} of {total} done today": "{done} nga {total} të kryera sot",
+  "All done. New ones in {time}": "Të gjitha u kryen. Të reja pas {time}",
+  "Continue where you left off": "Vazhdo aty ku e le",
+  "Saved {when}": "Ruajtur {when}",
+  "Continue {title}": "Vazhdo {title}",
+  "Swipe for new games": "Rrëshqit për lojëra të reja",
+  "{days}. Play one game today to keep it.": "{days}. Luaj një lojë sot për ta mbajtur.",
+  "Play any game today to keep it going.": "Luaj cilëndo lojë sot për ta vazhduar.",
+  "Today's game is in. Come back tomorrow to add a day.":
+    "Loja e sotme u luajt. Kthehu nesër për të shtuar një ditë.",
+  "Miss one day and it waits for you. Every 7 days earns a freeze for a longer break.":
+    "Nëse humbet një ditë, të pret. Çdo 7 ditë fiton një ngrirje për një pushim më të gjatë.",
+  "1 freeze saved: it covers one more missed day.":
+    "1 ngrirje e ruajtur: mbulon edhe një ditë të humbur.",
+  "{n} freezes saved: they cover {n} more missed days.":
+    "{n} ngrirje të ruajtura: mbulojnë edhe {n} ditë të humbura.",
+  "Streak reminders": "Kujtesat e serisë",
+  "One push at 7pm on a day you haven't played yet, when a streak is on the line":
+    "Një njoftim në orën 19:00 në një ditë kur s'ke luajtur ende, kur seria është në rrezik",
   "{days} · play today to keep it": "{days} · luaj sot për ta mbajtur",
   "Keep Unbored close": "Mbaje Unbored pranë",
   "Open it in one tap, and hear when a friend beats your score.":

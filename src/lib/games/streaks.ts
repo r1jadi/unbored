@@ -94,3 +94,56 @@ export function streakLine(streak: GameStreak): string | null {
       return null;
   }
 }
+
+/**
+ * The streak across every game (`public.my_daily_streak`). Any verified score
+ * counts for the day. One missed day is a free rest day, as in a single game, and
+ * each further missed day spends a freeze: one is earned for every seven days of
+ * streak, and two at most are saved.
+ */
+export type DailyStreak = GameStreak & {
+  /** Freezes saved for the days a rest day doesn't cover. */
+  readonly freezes: number;
+};
+
+type DailyStreakRow = StreakRow & { freezes: number };
+
+export async function fetchMyDailyStreak(): Promise<DailyStreak | null> {
+  const token = getAccessToken();
+  if (!token || getAuthState().status !== "authenticated") return null;
+  const response = await restMutate("rpc/my_daily_streak", "POST", token, {
+    p_time_zone: deviceTimeZone(),
+  });
+  const row = ((await response.json()) as DailyStreakRow[])[0];
+  if (!row) return null;
+  return {
+    streak: Number(row.streak),
+    lastPlayedOn: row.last_played_on,
+    today: row.today,
+    freezes: Number(row.freezes),
+  };
+}
+
+/** The signed-in player's streak across every game; null data for a guest. */
+export function useMyDailyStreak() {
+  const signedIn = useAuth().status === "authenticated";
+  return useQuery(
+    {
+      queryKey: ["my-daily-streak", signedIn],
+      queryFn: fetchMyDailyStreak,
+      enabled: signedIn,
+      staleTime: 60_000,
+    },
+    getQueryClient(),
+  );
+}
+
+/**
+ * Whether today is already in: `none` with no streak, `done` once a game has been
+ * played today, and otherwise `owed`, one game away from keeping it. The server has
+ * already decided whether the streak is still alive, rest day and freezes included.
+ */
+export function dailyStreakStatus(streak: DailyStreak): "none" | "done" | "owed" {
+  if (streak.streak === 0) return "none";
+  return streak.lastPlayedOn === streak.today ? "done" : "owed";
+}

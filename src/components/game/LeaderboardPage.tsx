@@ -81,9 +81,18 @@ function Segmented<T extends string>({
  * `/leaderboards` is the all-games board: every player's per-game percentiles,
  * summed, so one ranking covers games whose scores are on different scales.
  */
-export function LeaderboardPage({ gameId }: { gameId?: string }) {
-  const [scope, setScope] = useState<BoardScope>("global");
-  const [period, setPeriod] = useState<BoardPeriod>("all");
+export function LeaderboardPage({
+  gameId,
+  initialScope = "global",
+  initialPeriod = "all",
+}: {
+  gameId?: string;
+  /** Where the page opens: the league card opens it on Following, this week. */
+  initialScope?: BoardScope;
+  initialPeriod?: BoardPeriod;
+}) {
+  const [scope, setScope] = useState<BoardScope>(initialScope);
+  const [period, setPeriod] = useState<BoardPeriod>(initialPeriod);
   // Every game, not a first page: a game left out of this strip has no other way to
   // reach its board, and its own board could not name it in the title.
   const { status, items } = useGames({ limit: MAX_PAGE_SIZE });
@@ -182,7 +191,8 @@ export function LeaderboardPage({ gameId }: { gameId?: string }) {
           className="min-w-60 flex-[1.4]"
           options={[
             { value: "day", label: t("Today") },
-            { value: "week", label: t("This week") },
+            // The calendar week, from Monday: what the weekly league counts.
+            { value: "this-week", label: t("This week") },
             { value: "all", label: t("All time") },
           ]}
         />

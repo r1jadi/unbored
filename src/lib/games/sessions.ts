@@ -31,6 +31,7 @@
  */
 
 import { noteGameFinished } from "@/lib/engagement/ask";
+import { getArchiveDay } from "@/lib/games/archive";
 import { deviceTimeZone } from "@/lib/time-zone";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -48,6 +49,7 @@ import {
   isOfflineSession,
   isUnreachable,
   offlineResult,
+  archiveSession,
   offlineSession,
 } from "@/lib/games/offline";
 import {
@@ -336,7 +338,8 @@ const CLIENT = "web/1.0";
 /** The contract's board paging and windows. */
 export const DEFAULT_BOARD_SIZE = 20;
 export type BoardScope = "global" | "friends";
-export type BoardPeriod = "all" | "day" | "week";
+/** `week` is the last seven days; `this-week` the calendar week from Monday 00:00 UTC. */
+export type BoardPeriod = "all" | "day" | "week" | "this-week";
 
 /** An issued run, as `POST /sessions` answers with it. */
 export type PlaySession = {
@@ -445,6 +448,10 @@ export function startSession(gameSlug: string, options: RequestOptions = {}): Pr
   // offline practice in its place.
   const challenge = getActiveChallenge();
   if (challenge) return startChallengeRun(challenge, rulesVersion, CLIENT, options.signal);
+  // A past day from the archive is practice, dealt here: today's run is untouched.
+  const day = getArchiveDay();
+  const archived = day === null ? null : archiveSession(gameSlug, rulesVersion, day);
+  if (archived) return Promise.resolve(archived);
   if (browserOffline()) return Promise.resolve(offlineSession(gameSlug, rulesVersion));
   const token = getAccessToken();
   return apiFetch<PlaySession>(Routes.sessions, {
@@ -508,6 +515,8 @@ export function completeRun(
       void client.invalidateQueries({ queryKey: ["games"] });
       void client.invalidateQueries({ queryKey: ["my-game-stats", result.gameSlug] });
       void client.invalidateQueries({ queryKey: ["my-game-streak", result.gameSlug] });
+      void client.invalidateQueries({ queryKey: ["my-daily-streak"] });
+      void client.invalidateQueries({ queryKey: ["my-saved-runs"] });
       // A resent submission is the same game, not another one.
       if (!result.duplicate) noteGameFinished();
       if (challenge) announceChallengeRunDone(result.score);
@@ -575,6 +584,8 @@ export function fetchLeaderboard(
       period: query.period,
       limit: query.limit,
       offset: query.offset,
+      // "This week" starts at Monday midnight on this device's clock.
+      timeZone: query.period === "this-week" ? deviceTimeZone() : undefined,
     },
     token,
     signal: options.signal,

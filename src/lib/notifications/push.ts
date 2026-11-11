@@ -15,6 +15,7 @@ import { getAccessToken, getAuthState, subscribe as subscribeToAuth } from "@/li
 import { publicConfig } from "@/lib/config";
 import { currentLanguage, t } from "@/lib/settings/language";
 import { restMutate } from "@/lib/supabase/rest";
+import { deviceTimeZone } from "@/lib/time-zone";
 
 export type PushStatus =
   /** Can't be used here, and nothing the player does in the app changes that. */
@@ -88,12 +89,23 @@ export function vapidKeyBytes(key: string): Uint8Array<ArrayBuffer> {
 
 async function saveSubscription(subscription: PushSubscription, token: string): Promise<void> {
   const { endpoint, keys } = subscription.toJSON();
-  await restMutate("rpc/register_push_subscription", "POST", token, {
+  const device = {
     p_endpoint: endpoint,
     p_p256dh: keys?.["p256dh"],
     p_auth: keys?.["auth"],
     p_language: currentLanguage() === "sq" ? "sq" : "en",
-  });
+  };
+  try {
+    // The evening streak reminder is sent at 19:00 on this device's clock.
+    await restMutate("rpc/register_push_subscription", "POST", token, {
+      ...device,
+      p_time_zone: deviceTimeZone(),
+    });
+  } catch {
+    // A database without the time-zone migration yet still takes the device:
+    // push works, and only the reminder waits.
+    await restMutate("rpc/register_push_subscription", "POST", token, device);
+  }
 }
 
 /**

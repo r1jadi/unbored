@@ -54,7 +54,8 @@ import {
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
 import { useGameSounds } from "@/lib/sound";
-import { offlineResultNote } from "@/lib/games/offline";
+import { offlineResultNote, practiceLabel } from "@/lib/games/offline";
+import { getArchiveDay } from "@/lib/games/archive";
 
 import { msg, t } from "@/lib/settings/language";
 
@@ -409,7 +410,7 @@ function Board({
           </span>
         ) : (
           <span className="rounded-full bg-surface-2 px-2 py-1">
-            {session.offline ? t("Offline practice") : t("Guest run")}
+            {session.offline ? practiceLabel() : t("Guest run")}
           </span>
         )}
       </div>
@@ -527,9 +528,13 @@ function Board({
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("Give up today's word?")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {getArchiveDay() !== null ? t("Give up this word?") : t("Give up today's word?")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {t("The word is shown and the run scores nothing. There is one play a day.")}
+              {getArchiveDay() !== null
+                ? t("The word is shown. It's practice, so nothing is lost.")
+                : t("The word is shown and the run scores nothing. There is one play a day.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -558,7 +563,9 @@ function Finished({ slug, run, result }: { slug: string; run: GuessworkRun; resu
         <p className="text-sm text-muted-foreground">
           {solved
             ? t("Solved in {n} of {max}", { n: run.guesses.length, max: MAX_GUESSES })
-            : t("Today's word was")}
+            : getArchiveDay() !== null
+              ? t("The word was")
+              : t("Today's word was")}
         </p>
         <div className="flex gap-1.5" aria-label={t("The word: {word}", { word: run.answer })}>
           {lettersOf(run.answer).map((letter, index) => (
@@ -617,6 +624,7 @@ function Finished({ slug, run, result }: { slug: string; run: GuessworkRun; resu
         ranked={result.ranked}
         score={result.score}
         daily={guessworkShare(run)}
+        sessionId={result.sessionId}
         autoFocus
       />
     </div>

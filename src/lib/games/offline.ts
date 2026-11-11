@@ -19,6 +19,7 @@
 import { ApiError } from "@/lib/api/client";
 import { t } from "@/lib/settings/language";
 
+import { archiveSeed, getArchiveDay } from "@/lib/games/archive";
 import { localDayNumber } from "@/lib/games/crossword";
 import type { PlaySession, RunResult, RunSubmission } from "@/lib/games/sessions";
 
@@ -68,6 +69,26 @@ export function offlineSession(gameSlug: string, rulesVersion: string): PlaySess
   };
 }
 
+/**
+ * A past day's board from the archive (`lib/games/archive.ts`), dealt here like
+ * offline practice: never ranked, never submitted. Null for a game that isn't daily.
+ */
+export function archiveSession(
+  gameSlug: string,
+  rulesVersion: string,
+  day: number,
+): PlaySession | null {
+  const seed = archiveSeed(rulesVersion, day);
+  if (seed === null) return null;
+  const session = offlineSession(gameSlug, rulesVersion);
+  return { ...session, seed };
+}
+
+/** What a practice run is called on its board: a past puzzle, or offline practice. */
+export function practiceLabel(): string {
+  return getArchiveDay() !== null ? t("Past puzzle · practice") : t("Offline practice");
+}
+
 /** A non-zero 31-bit seed, as the decimal string the API would send. */
 function randomSeed(): string {
   const value = new Uint32Array(1);
@@ -110,6 +131,11 @@ export function offlineResult(
 
 /** The result screens' note for an offline run, in place of "Verified by replaying…". */
 export function offlineResultNote(): string {
+  if (getArchiveDay() !== null) {
+    return t(
+      "A past puzzle is practice: it was not verified or saved, and it is not on the leaderboard. Today's puzzle is the one that counts.",
+    );
+  }
   return t(
     "You played this offline, so it was a practice run: it was not verified or saved, and it is not on the leaderboard.",
   );

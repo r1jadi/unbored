@@ -1,13 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import { History, Home, RotateCcw, Share2, Trophy } from "lucide-react";
+import { History, Home, RotateCcw, Share2, Trophy, Users } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 
 import { InstallAsk } from "@/components/game/InstallAsk";
 import { StreakNote } from "@/components/game/StreakNote";
 import { Button } from "@/components/ui/button";
 import { titleFromSlug, useGame } from "@/lib/games/catalog";
+import { useMyDailyRank } from "@/lib/games/daily-rank";
 import { hasContinuableRun } from "@/lib/games/saved-runs";
 import { shareResult, shareText, type DailyShare } from "@/lib/games/share";
+import { useProfile } from "@/lib/users/profile";
 
 import { t } from "@/lib/settings/language";
 /**
@@ -34,6 +36,7 @@ export function RunEndActions({
   children,
   score,
   daily,
+  sessionId,
 }: {
   slug: string;
   ranked: boolean;
@@ -44,7 +47,12 @@ export function RunEndActions({
   score?: number;
   /** A daily game's day, short result and spoiler-free grid. */
   daily?: DailyShare;
+  /** A daily run's session, to say where it stands among today's players. */
+  sessionId?: string;
 }) {
+  // Everyone plays the same daily board, so a ranked daily run can be compared.
+  const rank = useMyDailyRank(sessionId, ranked && daily !== undefined).data ?? null;
+  const shared = daily && rank ? { ...daily, beatPercent: rank.percent } : daily;
   // The player ended this run themselves: it's saved, and the next start offers it.
   const continuable = hasContinuableRun(slug);
   const play = useRef<HTMLButtonElement>(null);
@@ -57,6 +65,15 @@ export function RunEndActions({
     <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
       {/* A ranked run is a day played: the streak it just kept goes first. */}
       {ranked && <StreakNote slug={slug} className="pb-1" />}
+      {rank && (
+        <p className="inline-flex items-center justify-center gap-1.5 pb-1 text-sm">
+          <Users className="size-4 shrink-0 text-primary" aria-hidden />
+          {t("You beat {percent}% of today's {players} players.", {
+            percent: rank.percent,
+            players: rank.players.toLocaleString(),
+          })}
+        </p>
+      )}
       {children}
       {!children && onRestart ? (
         <div className="flex gap-2">
@@ -65,12 +82,12 @@ export function RunEndActions({
             {continuable ? t("Continue or start over") : t("Play again")}
           </Button>
           {score !== undefined && (
-            <ShareResultButton slug={slug} score={score} daily={daily} variant="secondary" />
+            <ShareResultButton slug={slug} score={score} daily={shared} variant="secondary" />
           )}
         </div>
       ) : (
         score !== undefined && (
-          <ShareResultButton slug={slug} score={score} daily={daily} variant="play" />
+          <ShareResultButton slug={slug} score={score} daily={shared} variant="play" />
         )
       )}
       <div className="grid grid-cols-2 gap-2">
@@ -130,12 +147,15 @@ function ShareResultButton({
 }) {
   // The play screen has already loaded this game, so the title is in the cache.
   const game = useGame(slug);
+  // Signed in, the link names the sharer, so a friend can follow them from it.
+  const profile = useProfile();
+  const from = profile.status === "ready" ? profile.profile.username : undefined;
   const title = game.status === "ready" ? game.game.title : titleFromSlug(slug);
   return (
     <Button
       variant={variant}
       size="lg"
-      onClick={() => void shareResult(title, shareText({ slug, title, score, daily }))}
+      onClick={() => void shareResult(title, shareText({ slug, title, score, daily, from }))}
     >
       <Share2 />
       {variant === "play" ? t("Share result") : t("Share")}

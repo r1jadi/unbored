@@ -5,6 +5,7 @@ import { ApiError, apiFetch } from "@/lib/api/client";
 import { getAccessToken, getSessionUserId } from "@/lib/auth/session";
 import { getQueryClient } from "@/lib/query";
 import { DEFAULT_BOARD_SIZE, type BoardPeriod } from "@/lib/games/sessions";
+import { deviceTimeZone } from "@/lib/time-zone";
 
 import { t } from "@/lib/settings/language";
 /**
@@ -49,7 +50,13 @@ export function fetchOverallBoard(
   options: { signal?: AbortSignal } = {},
 ): Promise<OverallBoard> {
   return apiFetch<OverallBoard>("/games/leaderboard", {
-    query: { period: query.period, limit: query.limit, offset: query.offset },
+    query: {
+      period: query.period,
+      limit: query.limit,
+      offset: query.offset,
+      // "This week" starts at Monday midnight on this device's clock.
+      timeZone: query.period === "this-week" ? deviceTimeZone() : undefined,
+    },
     token: getAccessToken(),
     signal: options.signal,
   });
