@@ -11,7 +11,6 @@ import {
   type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Loader2 } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
 
 import appCss from "../styles.css?url";
@@ -25,7 +24,9 @@ import { initializeSession, SESSION_BOOT_SCRIPT, useAuth } from "@/lib/auth/sess
 import { applyAnalyticsConsent, identifyUser, resetAnalytics } from "@/lib/analytics";
 import { useConsent } from "@/lib/consent";
 import { CookieConsent } from "@/components/layout/CookieConsent";
+import { LogoLoader } from "@/components/layout/Logo";
 import { ACCESSIBILITY_BOOT_SCRIPT, restoreAccessibility } from "@/lib/settings/accessibility";
+import { NEW_YEAR_BOOT_SCRIPT, restoreNewYearTheme } from "@/lib/settings/new-year";
 import { STYLE_NONCE_BOOT_SCRIPT } from "@/lib/csp";
 import { currentLanguage, LanguageProvider, t } from "@/lib/settings/language";
 import { ThemeProvider } from "@/lib/settings/theme";
@@ -47,6 +48,7 @@ const BARE = [
   "/account-created",
   "/auth/callback",
   "/two-factor",
+  "/og-card",
 ];
 
 /**
@@ -194,6 +196,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         // First, so libraries that add <style> at load get the CSP nonce.
         { children: STYLE_NONCE_BOOT_SCRIPT },
         { children: ACCESSIBILITY_BOOT_SCRIPT },
+        { children: NEW_YEAR_BOOT_SCRIPT },
         { children: SESSION_BOOT_SCRIPT },
         ...(page.scripts ?? []),
         // Google AdSense. Gets the CSP nonce like every head script, and
@@ -252,6 +255,7 @@ function RootComponent() {
 
   useEffect(() => {
     restoreAccessibility();
+    restoreNewYearTheme();
   }, []);
 
   // Restore a persisted session after hydration, never during SSR: the server
@@ -309,24 +313,12 @@ function RootComponent() {
       {auth.status === "restoring" ? (
         // A stored session is being checked with the server: show neither the
         // signed-in nor the signed-out screens until that answer arrives.
-        <div
-          className="flex min-h-dvh items-center justify-center bg-background"
-          role="status"
-          aria-label={t("Restoring your session")}
-        >
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        </div>
+        <LogoLoader label={t("Restoring your session")} />
       ) : finishingSignup ? (
         // Registration is incomplete: neither the app nor the signed-out
         // screens are the right thing to show for the one tick before the
         // redirect above lands.
-        <div
-          className="flex min-h-dvh items-center justify-center bg-background"
-          role="status"
-          aria-label={t("Finishing your sign-up")}
-        >
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        </div>
+        <LogoLoader label={t("Finishing your sign-up")} />
       ) : bare ? (
         <Outlet />
       ) : (
@@ -346,7 +338,9 @@ function RootComponent() {
       />
       {analyticsAllowed && <Analytics />}
       {/* Asked once per browser, never over a game or the admin dashboard. */}
-      {!path.startsWith("/play") && !path.startsWith("/admin") && <CookieConsent />}
+      {!path.startsWith("/play") && !path.startsWith("/admin") && !path.startsWith("/og-card") && (
+        <CookieConsent />
+      )}
     </QueryClientProvider>
   );
 }

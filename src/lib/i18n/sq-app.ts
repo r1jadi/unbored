@@ -928,6 +928,10 @@ export const sqApp: Record<string, string> = {
   // Settings
   "Connected accounts": "Llogaritë e lidhura",
   "Dark, light, system": "E errët, e çelët, sistemi",
+  "Dark, light, system, New Year's": "E errët, e çelët, sistemi, Viti i Ri",
+  Seasonal: "Sezonale",
+  "New Year's theme": "Tema e Vitit të Ri",
+  "Red and gold, on top of your mode": "E kuqe dhe ar, mbi modalitetin tënd",
   "Email & password": "Email dhe fjalëkalim",
   "English, Shqip": "English, Shqip",
   "FAQ and contact": "Pyetje të shpeshta dhe kontakt",

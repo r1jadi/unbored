@@ -1,4 +1,13 @@
-import { Loader2, RotateCcw, ShieldCheck, Trophy, TriangleAlert, Undo2, X } from "lucide-react";
+import {
+  Eraser,
+  Loader2,
+  RotateCcw,
+  ShieldCheck,
+  Trophy,
+  TriangleAlert,
+  Undo2,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { ErrorState } from "@/components/common";
@@ -395,6 +404,21 @@ function Board({
     cellRefs.current[step.cell]?.focus();
   }
 
+  /** Takes every mark off this board, one move per cell; Undo puts them back. */
+  function clearBoard() {
+    if (!accepting) return;
+    const cleared = run.marks.flatMap((previous, cell) =>
+      previous === UNMARKED ? [] : [{ cell, previous }],
+    );
+    if (cleared.length === 0) return;
+    setHistory((steps) => [...steps, ...cleared]);
+    for (const { cell } of cleared) onMark(cell, UNMARKED);
+    setSelected(0);
+    cellRefs.current[0]?.focus();
+  }
+
+  const hasMarks = run.marks.some((mark) => mark !== UNMARKED);
+
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const row = Math.floor(selected / WHITTLE_SIDE);
     const column = selected % WHITTLE_SIDE;
@@ -560,7 +584,7 @@ function Board({
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-2 pt-2">
+      <div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-1 pt-2">
         <Button
           type="button"
           variant="ghost"
@@ -570,6 +594,16 @@ function Board({
         >
           <Undo2 />
           {t("Undo")}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={!accepting || !hasMarks}
+          onClick={clearBoard}
+        >
+          <Eraser />
+          {t("Clear board")}
         </Button>
         <HintButton offered={hints.offered} waitSeconds={hints.waitSeconds} onAsk={hints.ask} />
         <Button variant="ghost" size="sm" disabled={!accepting} onClick={() => setConfirming(true)}>
@@ -704,7 +738,13 @@ function Finished({
         {result.duplicate && t(" This run was already recorded, so nothing was counted twice.")}
       </p>
 
-      <RunEndActions slug={slug} ranked={result.ranked} onRestart={onRestart} autoFocus />
+      <RunEndActions
+        slug={slug}
+        ranked={result.ranked}
+        score={result.score}
+        onRestart={onRestart}
+        autoFocus
+      />
     </div>
   );
 }

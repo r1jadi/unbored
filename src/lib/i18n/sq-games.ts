@@ -227,6 +227,15 @@ export const sqGames: Record<string, string> = {
   "Your score of {score} is kept and sent for verification.":
     "Rezultati yt prej {score} pikësh ruhet dhe dërgohet për verifikim.",
   "Finish later": "Përfundoje më vonë",
+  "Share result": "Ndaj rezultatin",
+  "{score} points": "{score} pikë",
+  "I scored {score} in {title} on Unbored.": "Bëra {score} pikë te {title} në Unbored.",
+  "Can you beat me? {url}": "A mund të më mundësh? {url}",
+  "Result copied. Paste it anywhere.": "Rezultati u kopjua. Ngjite kudo.",
+  "Couldn't copy your result.": "Rezultati nuk u kopjua.",
+  "not solved": "pa zgjidhur",
+  "Someone scored {score} in {title}. Can you beat it?":
+    "Dikush bëri {score} pikë te {title}. A mund ta mundësh?",
   "Finish later and the run is waiting for you next time — or end it now and your score of {score} is kept and sent for verification.":
     "Përfundoje më vonë dhe loja të pret herën tjetër — ose mbylle tani dhe rezultati yt prej {score} pikësh ruhet dhe dërgohet për verifikim.",
 

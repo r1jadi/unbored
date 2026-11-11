@@ -17,6 +17,7 @@ import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
 import { RulesList } from "@/components/game/RulesList";
 import { RunEndActions } from "@/components/game/RunEndActions";
+import { guessworkShare } from "@/lib/games/share";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -611,7 +612,13 @@ function Finished({ slug, run, result }: { slug: string; run: GuessworkRun; resu
       </p>
       <p className="text-xs text-muted-foreground">{nextWordIn()}</p>
 
-      <RunEndActions slug={slug} ranked={result.ranked} autoFocus />
+      <RunEndActions
+        slug={slug}
+        ranked={result.ranked}
+        score={result.score}
+        daily={guessworkShare(run)}
+        autoFocus
+      />
     </div>
   );
 }

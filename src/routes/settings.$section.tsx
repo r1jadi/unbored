@@ -24,6 +24,7 @@ import {
 import { offeredLanguages, useLanguage, t, msg } from "@/lib/settings/language";
 import { useTheme, type Appearance } from "@/lib/settings/theme";
 import { useAccessibility } from "@/lib/settings/accessibility";
+import { useNewYearTheme } from "@/lib/settings/new-year";
 import { hapticsSupported, useHapticsEnabled } from "@/lib/haptics";
 import { useSoundEnabled } from "@/lib/sound";
 import {
@@ -246,6 +247,7 @@ function Body({ section, category }: { section: string; category?: "bug" }) {
   const { language, setLanguage } = useLanguage();
   const { choice, setChoice } = useTheme();
   const { prefs: a11y, setPrefs: setA11y } = useAccessibility();
+  const [newYearOn, setNewYearOn] = useNewYearTheme();
   const [soundOn, setSoundOn] = useSoundEnabled();
   const [hapticsOn, setHapticsOn] = useHapticsEnabled();
 
@@ -470,28 +472,39 @@ function Body({ section, category }: { section: string; category?: "bug" }) {
         system: t("System"),
       };
       return (
-        <div className="grid gap-2 px-4 md:px-0" role="radiogroup" aria-label={t("Appearance")}>
-          {options.map((option) => (
-            <button
-              key={option.value}
-              role="radio"
-              aria-checked={choice === option.value}
-              onClick={() => setChoice(option.value)}
-              className={cn(
-                "press flex items-center gap-3 rounded-xl border p-4 text-left",
-                choice === option.value
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-surface",
-              )}
-            >
-              <span className="flex-1">
-                <span className="block text-sm font-medium">{labels[option.value]}</span>
-                <span className="text-xs text-muted-foreground">{option.desc}</span>
-              </span>
-              {choice === option.value && <Check className="size-4 text-primary" />}
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="grid gap-2 px-4 md:px-0" role="radiogroup" aria-label={t("Appearance")}>
+            {options.map((option) => (
+              <button
+                key={option.value}
+                role="radio"
+                aria-checked={choice === option.value}
+                onClick={() => setChoice(option.value)}
+                className={cn(
+                  "press flex items-center gap-3 rounded-xl border p-4 text-left",
+                  choice === option.value
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-surface",
+                )}
+              >
+                <span className="flex-1">
+                  <span className="block text-sm font-medium">{labels[option.value]}</span>
+                  <span className="text-xs text-muted-foreground">{option.desc}</span>
+                </span>
+                {choice === option.value && <Check className="size-4 text-primary" />}
+              </button>
+            ))}
+          </div>
+          <Group title={t("Seasonal")}>
+            <Toggle
+              id="appearance-new-year"
+              label={t("New Year's theme")}
+              desc={t("Red and gold, on top of your mode")}
+              checked={newYearOn}
+              onChange={setNewYearOn}
+            />
+          </Group>
+        </>
       );
     }
     case "accessibility":

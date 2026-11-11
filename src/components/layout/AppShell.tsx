@@ -90,7 +90,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh md:flex">
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar px-3 py-5 md:flex lg:w-64">
-        <Link to="/" className="mb-6 px-3" aria-label={t("Unbored home")}>
+        <Link to="/" className="ny-lights relative mb-6 px-3" aria-label={t("Unbored home")}>
           <Logo />
         </Link>
         <nav className="flex flex-1 flex-col gap-0.5" aria-label={t("Main")}>
@@ -185,7 +185,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         aria-label={t("Main")}
         className={cn(
           // Hidden while typing: the keyboard covers it, or worse, lifts it above the keys.
-          "fixed inset-x-0 bottom-0 z-40 safe-bottom keyboard-open:hidden md:hidden",
+          "ny-lights fixed inset-x-0 bottom-0 z-40 safe-bottom keyboard-open:hidden md:hidden",
           thread && "hidden",
           // Solid outside the feed: a translucent bar over a page of text lets the
           // text show through behind the labels and reads as a rendering bug.
@@ -200,7 +200,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 onClick={onNavClick(to)}
                 className={cn(
                   "press relative flex h-full flex-col items-center justify-center gap-1 text-[11px] text-muted-foreground",
-                  isActive(to) && "text-foreground",
+                  isActive(to) && "ny-tab-active text-foreground",
                 )}
               >
                 <Icon className="size-[22px]" strokeWidth={isActive(to) ? 2.1 : 1.75} />

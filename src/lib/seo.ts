@@ -10,6 +10,7 @@
  * domain is an environment change, not a code change.
  */
 
+import { OG_IMAGE_SLUGS } from "@/lib/games/og-images";
 import { currentLanguage, msg, t } from "@/lib/settings/language";
 
 const DEFAULT_SITE_URL = "https://unbored.lol";
@@ -36,6 +37,22 @@ export const SITE_URL = resolveSiteUrl();
 
 /** A square brand icon is the placeholder social image until a 1200x630 asset exists. */
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/icon-512.png`;
+
+/** The size of every game's link preview image. */
+const GAME_IMAGE_SIZE = { width: 1200, height: 630 } as const;
+
+/**
+ * A game's own link preview (`public/og/<slug>.png`, drawn by
+ * `scripts/generate-og-images.mjs`), or nothing when it has none yet, so the page
+ * falls back to the site icon rather than a broken image.
+ */
+export function gameImage(
+  slug: string,
+): { image: string; imageSize: { width: number; height: number } } | undefined {
+  return OG_IMAGE_SLUGS.has(slug)
+    ? { image: `/og/${slug}.png`, imageSize: GAME_IMAGE_SIZE }
+    : undefined;
+}
 
 /** Absolute URL for a route path. */
 export function absoluteUrl(path: string): string {
@@ -89,6 +106,8 @@ export type SeoOptions = {
   indexable?: boolean;
   /** Override the social image (absolute URL or site-relative path). */
   image?: string;
+  /** The image's pixel size, which lets chat apps draw the large preview at once. */
+  imageSize?: { width: number; height: number };
   /** Open Graph object type. Defaults to `website`. */
   type?: "website" | "article" | "video.other" | "profile";
   /** One or more JSON-LD documents describing this page. */
@@ -111,6 +130,12 @@ export function seo(title: string, description: string, options: SeoOptions = {}
     { property: "og:type", content: options.type ?? "website" },
     { property: "og:image", content: image },
     { property: "og:image:alt", content: `${SITE_NAME} — ${title}` },
+    ...(options.imageSize
+      ? [
+          { property: "og:image:width", content: String(options.imageSize.width) },
+          { property: "og:image:height", content: String(options.imageSize.height) },
+        ]
+      : []),
     { name: "twitter:card", content: "summary_large_image" },
     { name: "twitter:title", content: fullTitle },
     { name: "twitter:description", content: description },

@@ -17,6 +17,16 @@
         ".output/server/index.mjs"
       ],
       "port": 3000
+    },
+    {
+      "name": "stack",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/dev-stack.mjs",
+        "--gateway-port",
+        "8090"
+      ],
+      "port": 8081
     }
   ]
 }

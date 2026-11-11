@@ -1887,6 +1887,231 @@ a.ranks-rung:hover {
   --queens-9: oklch(0.86 0.08 345);
 }
 
+/* Optional New Year's theme (Settings → Appearance, `.theme-new-year` on <html>).
+   Red and gold over either mode: deep wine surfaces with a gold signal colour in the
+   dark, warm cream with a wine-red one in the light. Gold buttons in the dark keep
+   the error red (destructive) telling apart from the brand colour. Decorations are
+   CSS only, hold still under Reduce motion, and never take a tap. Game hues are
+   untouched. */
+.theme-new-year {
+  --background: oklch(0.165 0.03 18);
+  --surface: oklch(0.205 0.045 18);
+  --surface-2: oklch(0.25 0.055 18);
+  --card: oklch(0.205 0.045 18);
+  --popover: oklch(0.215 0.045 18);
+  --secondary: oklch(0.26 0.055 18);
+  --muted: oklch(0.235 0.05 18);
+  --accent: oklch(0.27 0.06 18);
+  --glass: oklch(0.2 0.04 18 / 0.62);
+  --scrim: oklch(0.12 0.03 18 / 0.92);
+  --scrim-clear: oklch(0.12 0.03 18 / 0);
+  --sidebar: oklch(0.155 0.03 18);
+  --primary: oklch(0.83 0.13 85);
+  --primary-foreground: oklch(0.22 0.06 18);
+  --ring: oklch(0.83 0.13 85);
+  --sidebar-primary: oklch(0.83 0.13 85);
+  --sidebar-primary-foreground: oklch(0.22 0.06 18);
+  --chart-1: oklch(0.83 0.13 85);
+  --ny-red: oklch(0.6 0.21 27);
+  --ny-gold: oklch(0.83 0.13 85);
+  --ny-white: oklch(0.97 0.01 85);
+  --ny-wire: oklch(0.45 0.05 85 / 0.7);
+  --sparkle: oklch(0.85 0.12 85 / 0.22);
+  --snow: oklch(0.98 0.005 85 / 0.5);
+  --ny-hat: var(--ny-red);
+  --ny-hat-stripe: var(--ny-white);
+  --ny-hat-pom: var(--ny-gold);
+}
+
+.light.theme-new-year {
+  --background: oklch(0.975 0.012 70);
+  --surface: oklch(0.945 0.02 40);
+  --surface-2: oklch(0.9 0.03 35);
+  --card: oklch(0.965 0.014 60);
+  --popover: oklch(0.975 0.012 70);
+  --secondary: oklch(0.925 0.022 40);
+  --muted: oklch(0.935 0.018 45);
+  --accent: oklch(0.9 0.03 35);
+  --glass: oklch(0.99 0.01 70 / 0.72);
+  --scrim: oklch(0.975 0.012 70 / 0.94);
+  --scrim-clear: oklch(0.975 0.012 70 / 0);
+  --sidebar: oklch(0.955 0.016 50);
+  --primary: oklch(0.45 0.16 22);
+  --primary-foreground: oklch(0.97 0.03 85);
+  --ring: oklch(0.45 0.16 22);
+  --sidebar-primary: oklch(0.45 0.16 22);
+  --sidebar-primary-foreground: oklch(0.97 0.03 85);
+  --chart-1: oklch(0.45 0.16 22);
+  --ny-red: oklch(0.55 0.21 27);
+  --ny-gold: oklch(0.74 0.15 80);
+  --ny-white: oklch(1 0 0);
+  --ny-wire: oklch(0.55 0.05 60 / 0.6);
+  --sparkle: oklch(0.7 0.14 80 / 0.3);
+  /* Snow on cream is invisible: in the light it falls as faint gold glitter. */
+  --snow: oklch(0.74 0.15 80 / 0.35);
+}
+
+/* A faint, still scatter of gold sparkles behind the page. */
+.theme-new-year body {
+  background-image:
+    radial-gradient(circle at 12% 18%, var(--sparkle) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 78% 9%, var(--sparkle) 0 1px, transparent 2px),
+    radial-gradient(circle at 42% 64%, var(--sparkle) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 88% 72%, var(--sparkle) 0 1px, transparent 2px),
+    radial-gradient(circle at 25% 88%, var(--sparkle) 0 1px, transparent 2px),
+    radial-gradient(circle at 63% 33%, var(--sparkle) 0 1px, transparent 2px);
+  background-size: 340px 340px;
+  background-attachment: fixed;
+}
+
+/* Light snowfall: two layers of flakes at different sizes and speeds. Over the
+   page, under the tab bar, dialogs and toasts. */
+.theme-new-year body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 20% 30%, var(--snow) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 70% 10%, var(--snow) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 45% 80%, var(--snow) 0 1.2px, transparent 1.7px),
+    radial-gradient(circle at 85% 55%, var(--snow) 0 2px, transparent 2.5px),
+    radial-gradient(circle at 10% 70%, var(--snow) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 55% 45%, var(--snow) 0 1.6px, transparent 2.1px);
+  background-size:
+    260px 260px,
+    260px 260px,
+    260px 260px,
+    400px 400px,
+    400px 400px,
+    400px 400px;
+  animation: ny-snow 28s linear infinite;
+}
+
+@keyframes ny-snow {
+  from {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      30px 260px,
+      30px 260px,
+      30px 260px,
+      -40px 400px,
+      -40px 400px,
+      -40px 400px;
+  }
+}
+
+/* New Year's decorations drawn in markup (the hat on the logo): hidden unless the
+   theme is on. */
+.ny-deco {
+  display: none;
+}
+.theme-new-year .ny-deco {
+  display: inline;
+}
+
+/* A string of lights: red, gold and white bulbs on a thin wire. Hung along the top
+   of the phone tab bar and under the logo in the desktop sidebar. */
+.theme-new-year .ny-lights::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 8px 6px, var(--ny-red) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 24px 6px, var(--ny-gold) 0 3px, transparent 3.5px),
+    radial-gradient(circle at 40px 6px, var(--ny-white) 0 3px, transparent 3.5px),
+    linear-gradient(var(--ny-wire), var(--ny-wire));
+  background-size:
+    48px 10px,
+    48px 10px,
+    48px 10px,
+    100% 1px;
+  background-repeat: repeat-x;
+  background-position:
+    0 0,
+    0 0,
+    0 0,
+    0 3px;
+  animation: ny-glow 3s ease-in-out infinite;
+}
+.theme-new-year nav.ny-lights::before {
+  top: -4px;
+}
+.theme-new-year a.ny-lights::before {
+  top: calc(100% + 0.6rem);
+}
+
+@keyframes ny-glow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* A small gold star twinkling over the active tab. */
+.theme-new-year .ny-tab-active::before {
+  content: "";
+  position: absolute;
+  top: 0.55rem;
+  left: calc(50% + 0.55rem);
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--ny-gold);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: ny-twinkle 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes ny-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.7) rotate(45deg);
+  }
+}
+
+/* Confetti scattered around an empty state's icon. */
+.theme-new-year .empty-state-icon::before {
+  content: "";
+  position: absolute;
+  inset: -0.9rem;
+  background:
+    radial-gradient(circle at 8% 30%, var(--ny-gold) 0 2px, transparent 2.5px),
+    radial-gradient(circle at 92% 22%, var(--ny-red) 0 2px, transparent 2.5px),
+    radial-gradient(circle at 18% 88%, var(--ny-white) 0 1.6px, transparent 2.1px),
+    radial-gradient(circle at 86% 80%, var(--ny-gold) 0 1.6px, transparent 2.1px),
+    radial-gradient(circle at 50% 2%, var(--ny-red) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 0% 62%, var(--ny-white) 0 1.4px, transparent 1.9px);
+  pointer-events: none;
+}
+
+/* Reduce motion: the decorations hold still. The global rule below would shorten
+   these endless loops to 1ms each, which flickers, so they are switched off here. */
+.a11y-reduce-motion.theme-new-year body::after,
+.a11y-reduce-motion.theme-new-year .ny-lights::before,
+.a11y-reduce-motion.theme-new-year .ny-tab-active::before {
+  animation: none !important;
+}
+
 /* Accessibility preferences applied by the settings store. */
 .a11y-reduce-motion *,
 .a11y-reduce-motion *::before,
@@ -1914,4 +2139,12 @@ a.ranks-rung:hover {
 .light.a11y-contrast {
   --muted-foreground: oklch(0.3 0.01 270);
   --border: oklch(0.2 0.006 270 / 0.28);
+}
+
+.theme-new-year.a11y-contrast {
+  --ring: oklch(0.9 0.14 85);
+}
+
+.light.theme-new-year.a11y-contrast {
+  --ring: oklch(0.35 0.16 22);
 }

@@ -79,7 +79,7 @@ export const settingsGroups: { label: string; items: SettingsItem[] }[] = [
       {
         slug: "appearance",
         title: msg("Appearance"),
-        desc: msg("Dark, light, system"),
+        desc: msg("Dark, light, system, New Year's"),
         icon: Palette,
       },
       {

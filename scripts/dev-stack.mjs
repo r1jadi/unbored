@@ -18,6 +18,7 @@
  *
  *   node scripts/dev-stack.mjs            # everything
  *   node scripts/dev-stack.mjs --api      # the API only, no web server
+ *   node scripts/dev-stack.mjs --gateway-port 8090   # when 8080 is taken
  *
  * Ctrl+C stops every process; if one exits, the rest are stopped too.
  */
@@ -30,7 +31,15 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const servicesDir = join(root, "services");
 const apiOnly = process.argv.includes("--api");
 
-const PORTS = { web: 8081, gateway: 8080, auth: 8091, users: 8092, games: 8093 };
+// `--gateway-port 8090` moves the gateway when something else already holds 8080.
+const gatewayFlag = process.argv.indexOf("--gateway-port");
+const gatewayPort = gatewayFlag === -1 ? 8080 : Number(process.argv[gatewayFlag + 1]);
+if (!Number.isInteger(gatewayPort) || gatewayPort <= 0) {
+  console.error("--gateway-port needs a port number, e.g. --gateway-port 8090");
+  process.exit(1);
+}
+
+const PORTS = { web: 8081, gateway: gatewayPort, auth: 8091, users: 8092, games: 8093 };
 
 /** `.env.local` as an object: KEY=VALUE lines, quotes and `export` allowed. */
 function readEnvFile(path) {

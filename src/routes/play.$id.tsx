@@ -30,6 +30,7 @@ import { prefetchPlay } from "@/lib/prefetch";
 import { useOnline } from "@/lib/service-worker";
 
 import { t } from "@/lib/settings/language";
+import { absoluteUrl, gameImage } from "@/lib/seo";
 /**
  * `?start=1` starts the run straight away instead of showing the game's rules
  * first: the feed's Tap to play sends it, because a player who tapped Play has
@@ -68,6 +69,9 @@ export const Route = createFileRoute("/play/$id")({
         { title: t("{title} — Unbored", { title }) },
         { name: "description", content: `${title} on Unbored.` },
         { property: "og:title", content: `${title} — Unbored` },
+        ...(gameImage(params.id)
+          ? [{ property: "og:image", content: absoluteUrl(`/og/${params.id}.png`) }]
+          : []),
       ],
     };
   },

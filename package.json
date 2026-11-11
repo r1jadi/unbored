@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "sitemap:check": "node scripts/generate-sitemap.mjs --check",
+    "og-images": "node scripts/generate-og-images.mjs",
     "env:supabase": "node scripts/env-from-supabase.mjs"
   },
   "overrides": {

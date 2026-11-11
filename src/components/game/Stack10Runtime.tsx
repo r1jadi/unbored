@@ -433,7 +433,12 @@ function Finished({
           " " + t("This run was already recorded, so nothing was counted twice.")}
       </p>
 
-      <RunEndActions slug={slug} ranked={result.ranked} onRestart={onRestart} />
+      <RunEndActions
+        slug={slug}
+        ranked={result.ranked}
+        score={result.score}
+        onRestart={onRestart}
+      />
     </div>
   );
 }

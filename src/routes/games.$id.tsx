@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Bookmark, Clock, Flag, Heart, MessageCircle, Play, Share2 } from "lucide-react";
+import { Bookmark, Clock, Flag, Heart, MessageCircle, Play, Share2, Trophy } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Page, PageHeader, Section } from "@/components/common";
@@ -25,10 +25,15 @@ import { useGameEngagement } from "@/lib/social/engagement";
 import { useDocumentTitle } from "@/lib/document-title";
 import { requireGame } from "@/lib/games/catalog-exists";
 import { prefetchGamePage } from "@/lib/prefetch";
-import { breadcrumbJsonLd, seo, videoGameJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, gameImage, seo, videoGameJsonLd } from "@/lib/seo";
 
 import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/games/$id")({
+  // `?beat=1240` arrives from a shared result: the score someone is daring you to beat.
+  validateSearch: (search: Record<string, unknown>): { beat?: number } => {
+    const beat = Number(search["beat"]);
+    return Number.isInteger(beat) && beat > 0 && beat < 1_000_000_000 ? { beat } : {};
+  },
   // The prefetch never blocks. The existence check does, on the server only, so
   // an unknown slug is answered with a 404 status instead of a 200 shell.
   loader: async ({ context, params }) => {
@@ -45,6 +50,7 @@ export const Route = createFileRoute("/games/$id")({
     const title = titleFromSlug(params.id);
     return seo(title, `${title} on Unbored.`, {
       type: "video.other",
+      ...gameImage(params.id),
       jsonLd: [
         videoGameJsonLd({ id: params.id, title }),
         breadcrumbJsonLd([
@@ -111,6 +117,7 @@ function GameDetails() {
 }
 
 function Detail({ game }: { game: Game }) {
+  const { beat } = Route.useSearch();
   const [comments, setComments] = useState(false);
   const [share, setShare] = useState(false);
   const nav = useNavigate();
@@ -139,6 +146,17 @@ function Detail({ game }: { game: Game }) {
   return (
     <Page className="max-w-5xl pb-40 md:pb-12">
       <PageHeader back title={game.title} />
+      {beat !== undefined && (
+        <p className="mx-4 mb-4 flex items-center gap-3 rounded-xl bg-primary/10 p-3 text-sm md:mx-0">
+          <Trophy className="size-5 shrink-0 text-primary" />
+          <span>
+            {t("Someone scored {score} in {title}. Can you beat it?", {
+              score: beat.toLocaleString(),
+              title: game.title,
+            })}
+          </span>
+        </p>
+      )}
       <div className="md:grid md:grid-cols-[minmax(0,1fr)_340px] md:gap-8">
         <div>
           <GameArt

@@ -20,6 +20,7 @@ import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
 import { RulesList } from "@/components/game/RulesList";
 import { RunEndActions } from "@/components/game/RunEndActions";
+import { crosswordShare } from "@/lib/games/share";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -853,7 +854,14 @@ function Finished({
         {result.duplicate && t(" This solve was already recorded, so nothing was counted twice.")}
       </p>
 
-      <RunEndActions slug={slug} ranked={result.ranked} onRestart={onRestart} autoFocus>
+      <RunEndActions
+        slug={slug}
+        ranked={result.ranked}
+        score={result.score}
+        daily={crosswordShare(run)}
+        onRestart={onRestart}
+        autoFocus
+      >
         {result.ranked && (
           <p className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-surface px-3 py-2 text-xs text-muted-foreground">
             <Clock className="size-3.5" />

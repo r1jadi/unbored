@@ -55,6 +55,7 @@ import { Route as LeaderboardsIndexRouteImport } from './routes/leaderboards.ind
 import { Route as LeaderboardsIdRouteImport } from './routes/leaderboards.$id'
 import { Route as MessagesIndexRouteImport } from './routes/messages.index'
 import { Route as MessagesUsernameRouteImport } from './routes/messages.$username'
+import { Route as OgCardIdRouteImport } from './routes/og-card.$id'
 import { Route as PlayIdRouteImport } from './routes/play.$id'
 import { Route as ResultsIdRouteImport } from './routes/results.$id'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
@@ -292,6 +293,11 @@ const MessagesUsernameRoute = MessagesUsernameRouteImport.update({
   path: '/messages/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OgCardIdRoute = OgCardIdRouteImport.update({
+  id: '/og-card/$id',
+  path: '/og-card/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlayIdRoute = PlayIdRouteImport.update({
   id: '/play/$id',
   path: '/play/$id',
@@ -366,6 +372,7 @@ export interface FileRoutesByFullPath {
   '/games/$id': typeof GamesIdRoute
   '/leaderboards/$id': typeof LeaderboardsIdRoute
   '/messages/$username': typeof MessagesUsernameRoute
+  '/og-card/$id': typeof OgCardIdRoute
   '/play/$id': typeof PlayIdRoute
   '/results/$id': typeof ResultsIdRoute
   '/settings/$section': typeof SettingsSectionRoute
@@ -419,6 +426,7 @@ export interface FileRoutesByTo {
   '/games/$id': typeof GamesIdRoute
   '/leaderboards/$id': typeof LeaderboardsIdRoute
   '/messages/$username': typeof MessagesUsernameRoute
+  '/og-card/$id': typeof OgCardIdRoute
   '/play/$id': typeof PlayIdRoute
   '/results/$id': typeof ResultsIdRoute
   '/settings/$section': typeof SettingsSectionRoute
@@ -474,6 +482,7 @@ export interface FileRoutesById {
   '/games/$id': typeof GamesIdRoute
   '/leaderboards/$id': typeof LeaderboardsIdRoute
   '/messages/$username': typeof MessagesUsernameRoute
+  '/og-card/$id': typeof OgCardIdRoute
   '/play/$id': typeof PlayIdRoute
   '/results/$id': typeof ResultsIdRoute
   '/settings/$section': typeof SettingsSectionRoute
@@ -530,6 +539,7 @@ export interface FileRouteTypes {
     | '/games/$id'
     | '/leaderboards/$id'
     | '/messages/$username'
+    | '/og-card/$id'
     | '/play/$id'
     | '/results/$id'
     | '/settings/$section'
@@ -583,6 +593,7 @@ export interface FileRouteTypes {
     | '/games/$id'
     | '/leaderboards/$id'
     | '/messages/$username'
+    | '/og-card/$id'
     | '/play/$id'
     | '/results/$id'
     | '/settings/$section'
@@ -637,6 +648,7 @@ export interface FileRouteTypes {
     | '/games/$id'
     | '/leaderboards/$id'
     | '/messages/$username'
+    | '/og-card/$id'
     | '/play/$id'
     | '/results/$id'
     | '/settings/$section'
@@ -680,6 +692,7 @@ export interface RootRouteChildren {
   GamesIdRoute: typeof GamesIdRoute
   LeaderboardsIdRoute: typeof LeaderboardsIdRoute
   MessagesUsernameRoute: typeof MessagesUsernameRoute
+  OgCardIdRoute: typeof OgCardIdRoute
   PlayIdRoute: typeof PlayIdRoute
   ResultsIdRoute: typeof ResultsIdRoute
   SettingsSectionRoute: typeof SettingsSectionRoute
@@ -1015,6 +1028,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MessagesUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/og-card/$id': {
+      id: '/og-card/$id'
+      path: '/og-card/$id'
+      fullPath: '/og-card/$id'
+      preLoaderRoute: typeof OgCardIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/play/$id': {
       id: '/play/$id'
       path: '/play/$id'
@@ -1125,6 +1145,7 @@ const rootRouteChildren: RootRouteChildren = {
   GamesIdRoute: GamesIdRoute,
   LeaderboardsIdRoute: LeaderboardsIdRoute,
   MessagesUsernameRoute: MessagesUsernameRoute,
+  OgCardIdRoute: OgCardIdRoute,
   PlayIdRoute: PlayIdRoute,
   ResultsIdRoute: ResultsIdRoute,
   SettingsSectionRoute: SettingsSectionRoute,

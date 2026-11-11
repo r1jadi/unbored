@@ -1,0 +1,138 @@
+#!/usr/bin/env node
+/**
+ * Draws every game's link preview: `public/og/<slug>.png`, 1200×630.
+ *
+ * Each image is a screenshot of the dev-only `/og-card/<slug>` page (the game's own
+ * artwork beside its name), taken with a headless Chrome, Edge or Chromium already
+ * on the machine, so no image library is needed. It also writes
+ * `src/lib/games/og-images.ts`, the list of games that have an image: a game page
+ * names its own image only when one exists, and falls back to the site icon.
+ *
+ * Needs the app and the API running (`npm run dev:stack`). Run it again when a game
+ * is added or its artwork changes, and commit the PNGs.
+ *
+ *   node scripts/generate-og-images.mjs
+ *   node scripts/generate-og-images.mjs --web http://localhost:8081 --api http://localhost:8090/api/v1
+ *   node scripts/generate-og-images.mjs whittle sudoku     # only these games
+ *
+ * CHROME_PATH picks the browser when it is somewhere unusual.
+ */
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const OUT_DIR = join(root, "public/og");
+const MANIFEST = join(root, "src/lib/games/og-images.ts");
+
+function flag(name, fallback) {
+  const index = process.argv.indexOf(name);
+  return index === -1 ? fallback : process.argv[index + 1];
+}
+
+const web = flag("--web", "http://localhost:8081").replace(/\/+$/, "");
+const api = flag("--api", "http://localhost:8080/api/v1").replace(/\/+$/, "");
+const only = process.argv
+  .slice(2)
+  .filter((arg, i, all) => !arg.startsWith("--") && !all[i - 1]?.startsWith("--"));
+
+function findBrowser() {
+  const candidates = [
+    process.env.CHROME_PATH,
+    "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+    "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+    "C:/Program Files/Microsoft/Edge/Application/msedge.exe",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/microsoft-edge",
+  ];
+  const found = candidates.find((path) => path && existsSync(path));
+  if (!found) {
+    console.error("No Chrome, Edge or Chromium found. Set CHROME_PATH to one.");
+    process.exit(1);
+  }
+  return found;
+}
+
+/** Every published game's slug, following the catalogue's cursor. */
+async function catalogueSlugs() {
+  const slugs = [];
+  let cursor = null;
+  do {
+    const url = `${api}/games?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+    const response = await fetch(url).catch(() => null);
+    if (!response?.ok) {
+      console.error(`Couldn't read the catalogue at ${url}. Is the API running?`);
+      process.exit(1);
+    }
+    const page = await response.json();
+    slugs.push(...page.items.map((game) => game.slug));
+    cursor = page.nextCursor ?? null;
+  } while (cursor);
+  return slugs;
+}
+
+async function main() {
+  const browser = findBrowser();
+  const all = await catalogueSlugs();
+  const slugs = only.length ? all.filter((slug) => only.includes(slug)) : all;
+  mkdirSync(OUT_DIR, { recursive: true });
+  // A throwaway profile: no extensions, no saved theme, nothing from the person's own browser.
+  const profile = mkdtempSync(join(tmpdir(), "unbored-og-"));
+
+  const failed = [];
+  try {
+    for (const slug of slugs) {
+      const out = join(OUT_DIR, `${slug}.png`);
+      rmSync(out, { force: true });
+      spawnSync(
+        browser,
+        [
+          "--headless=new",
+          "--disable-gpu",
+          "--hide-scrollbars",
+          "--no-first-run",
+          "--no-default-browser-check",
+          `--user-data-dir=${profile}`,
+          "--force-device-scale-factor=1",
+          "--window-size=1200,630",
+          // Time for the app to load, the catalogue to answer and the fonts to arrive.
+          "--virtual-time-budget=15000",
+          `--screenshot=${out}`,
+          `${web}/og-card/${slug}`,
+        ],
+        { stdio: "ignore", timeout: 60_000 },
+      );
+      if (existsSync(out) && statSync(out).size > 0) {
+        console.log(`  ${slug}`);
+      } else {
+        failed.push(slug);
+        console.error(`  ${slug}: no screenshot`);
+      }
+    }
+  } finally {
+    rmSync(profile, { recursive: true, force: true });
+  }
+
+  // The list covers every image on disk for a known game, including ones kept from
+  // an earlier run when only some games were redrawn.
+  const withImage = all.filter((slug) => existsSync(join(OUT_DIR, `${slug}.png`))).sort();
+  writeFileSync(
+    MANIFEST,
+    `// Generated by scripts/generate-og-images.mjs. Do not edit by hand.\n\n` +
+      `/** Games with a link preview image at \`/og/<slug>.png\`. */\n` +
+      `export const OG_IMAGE_SLUGS: ReadonlySet<string> = new Set([\n` +
+      withImage.map((slug) => `  ${JSON.stringify(slug)},\n`).join("") +
+      `]);\n`,
+  );
+  console.log(`${slugs.length - failed.length} of ${slugs.length} drawn into public/og/.`);
+  if (failed.length) process.exit(1);
+}
+
+await main();
