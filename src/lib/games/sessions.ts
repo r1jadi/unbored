@@ -30,6 +30,7 @@
  * should not leave behind on a shared machine.
  */
 
+import { noteGameFinished } from "@/lib/engagement/ask";
 import { deviceTimeZone } from "@/lib/time-zone";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -483,6 +484,7 @@ export function completeRun(
   options: RequestOptions = {},
 ): Promise<RunResult> {
   if (isOfflineSession(sessionId)) {
+    noteGameFinished();
     return Promise.resolve(offlineResult(sessionId, submissionBody, durationMs));
   }
   const token = getAccessToken();
@@ -506,6 +508,8 @@ export function completeRun(
       void client.invalidateQueries({ queryKey: ["games"] });
       void client.invalidateQueries({ queryKey: ["my-game-stats", result.gameSlug] });
       void client.invalidateQueries({ queryKey: ["my-game-streak", result.gameSlug] });
+      // A resent submission is the same game, not another one.
+      if (!result.duplicate) noteGameFinished();
       if (challenge) announceChallengeRunDone(result.score);
       return result;
     }),

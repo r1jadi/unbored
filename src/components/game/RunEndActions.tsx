@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { History, Home, RotateCcw, Share2, Trophy } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 
+import { InstallAsk } from "@/components/game/InstallAsk";
 import { StreakNote } from "@/components/game/StreakNote";
 import { Button } from "@/components/ui/button";
 import { titleFromSlug, useGame } from "@/lib/games/catalog";
@@ -86,6 +87,8 @@ export function RunEndActions({
           </Link>
         </Button>
       </div>
+      {/* After a third finished game: add to the Home Screen, turn on push. */}
+      <InstallAsk />
       {/* A guest's run is over and was not ranked: the moment an account means
           most. This run cannot be claimed afterwards (a guest session has no
           owner), so the offer is about the next one, said plainly. */}

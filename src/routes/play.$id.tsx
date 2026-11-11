@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Clock, Volume2, VolumeX, X } from "lucide-react";
+import { Clock, Flame, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -31,6 +31,8 @@ import { useOnline } from "@/lib/service-worker";
 
 import { t } from "@/lib/settings/language";
 import { absoluteUrl, gameImage } from "@/lib/seo";
+import { streakStatus, useMyGameStreak } from "@/lib/games/streaks";
+import { cn } from "@/lib/utils";
 /**
  * `?start=1` starts the run straight away instead of showing the game's rules
  * first: the feed's Tap to play sends it, because a player who tapped Play has
@@ -250,6 +252,7 @@ export function PlaySurface({
           </Button>
           <div className="flex-1 text-center">
             <p className="text-xs text-muted-foreground">{title}</p>
+            <StreakChip slug={id} />
             {calloutWith && (
               <p className="text-[11px] font-medium text-primary">
                 {t("Callout with @{username} · one attempt", { username: calloutWith })}
@@ -381,6 +384,34 @@ export function PlaySurface({
         </AlertDialog>
       </div>
     </RunLeaveContext.Provider>
+  );
+}
+
+/**
+ * The streak in this game, kept in view for the whole run: how many days, and
+ * whether today still has to be played to keep it. Nothing for a guest or a
+ * player with no streak. It refreshes when a run is verified.
+ */
+function StreakChip({ slug }: { slug: string }) {
+  const streak = useMyGameStreak(slug);
+  if (!streak.data) return null;
+  const status = streakStatus(streak.data);
+  if (status === "none") return null;
+  const days =
+    streak.data.streak === 1
+      ? t("1-day streak")
+      : t("{streak}-day streak", { streak: streak.data.streak });
+  const owed = status !== "done";
+  return (
+    <p
+      className={cn(
+        "inline-flex items-center gap-1 text-[11px] font-medium tabular",
+        owed ? "text-primary" : "text-muted-foreground",
+      )}
+    >
+      <Flame className="size-3 text-primary" aria-hidden />
+      {owed ? t("{days} · play today to keep it", { days }) : days}
+    </p>
   );
 }
 

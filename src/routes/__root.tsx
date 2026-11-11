@@ -31,7 +31,11 @@ import { STYLE_NONCE_BOOT_SCRIPT } from "@/lib/csp";
 import { currentLanguage, LanguageProvider, t } from "@/lib/settings/language";
 import { ThemeProvider } from "@/lib/settings/theme";
 import { startPushSync } from "@/lib/notifications/push";
+import { startInstallCapture } from "@/lib/engagement/ask";
 import { registerServiceWorker } from "@/lib/service-worker";
+
+// The browser's own install bar would show on arrival; it waits for a third game instead.
+if (typeof window !== "undefined") startInstallCapture();
 
 // Full-screen flows rendered without the main navigation.
 const BARE = [

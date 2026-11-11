@@ -228,6 +228,20 @@ export const sqGames: Record<string, string> = {
     "Rezultati yt prej {score} pikësh ruhet dhe dërgohet për verifikim.",
   "Finish later": "Përfundoje më vonë",
   "Share result": "Ndaj rezultatin",
+  "{days} · play today to keep it": "{days} · luaj sot për ta mbajtur",
+  "Keep Unbored close": "Mbaje Unbored pranë",
+  "Open it in one tap, and hear when a friend beats your score.":
+    "Hape me një prekje dhe merr vesh kur një shok të kalon rezultatin.",
+  "Open it in one tap, like any other app.": "Hape me një prekje, si çdo aplikacion tjetër.",
+  "Tap Share in Safari's toolbar, then Add to Home Screen.":
+    "Prek Ndaj në shiritin e Safarit, pastaj Shto në ekranin bazë.",
+  "Add to Home Screen": "Shto në ekranin bazë",
+  "Turn on notifications": "Aktivizo njoftimet",
+  "Not now": "Jo tani",
+  "Notifications are on.": "Njoftimet janë aktive.",
+  "Notifications are blocked for Unbored in your browser settings.":
+    "Njoftimet për Unbored janë bllokuar në cilësimet e shfletuesit.",
+  "Couldn't turn on push notifications.": "Njoftimet nuk u aktivizuan.",
   "{score} points": "{score} pikë",
   "I scored {score} in {title} on Unbored.": "Bëra {score} pikë te {title} në Unbored.",
   "Can you beat me? {url}": "A mund të më mundësh? {url}",
