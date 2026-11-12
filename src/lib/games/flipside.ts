@@ -24,8 +24,15 @@
 /** The `runtime` value the catalogue must carry for these rules to play a game. */
 export const FLIPSIDE_RUNTIME = "flipside";
 
-/** The rules the server can verify. Sent with every run and pinned to a session. */
-export const FLIPSIDE_RULES_VERSION = "flipside@1";
+/**
+ * The rules new runs play, sent with every run and pinned to its session. Since
+ * `flipside@2` the tunnel is faster: it scrolls 600 a tick from the start and up
+ * to 900, gravity is twice as strong so a flip takes about 0.43 s, and the first
+ * hazard arrives within a second. `flipside@1` is still replayed, for a session
+ * opened before the change.
+ */
+export const FLIPSIDE_RULES_VERSION = "flipside@2";
+export const FLIPSIDE_RULES_V1 = "flipside@1";
 
 /** Ticks per second. A tick is the world's only unit of time. */
 export const FLIPSIDE_TICK_RATE = 60;
@@ -61,10 +68,49 @@ export const FLIPSIDE_ON_CEILING = FLIPSIDE_CEILING + FLIPSIDE_HALF;
 const FELL_BELOW = FLIPSIDE_FLOOR + FLIPSIDE_HALF;
 const FELL_ABOVE = FLIPSIDE_CEILING - FLIPSIDE_HALF;
 
-/** Gravity, units per tick per tick; the fastest fall; the push a flip starts with. */
-export const FLIPSIDE_GRAVITY = 110;
-export const FLIPSIDE_MAX_FALL = 2_600;
-export const FLIPSIDE_KICK = 300;
+/**
+ * What a rules version changes: gravity (units per tick per tick), the fastest
+ * fall, the push a flip starts with, where the first hazard starts, and the scroll
+ * speed — `speedBase` a tick, `speedStep` more for every hazard passed, up to
+ * `speedMax`. Everything else is shared.
+ */
+export type FlipsidePhysics = {
+  readonly gravity: number;
+  readonly maxFall: number;
+  readonly kick: number;
+  readonly first: number;
+  readonly speedBase: number;
+  readonly speedStep: number;
+  readonly speedMax: number;
+};
+
+const PHYSICS: Readonly<Record<string, FlipsidePhysics>> = {
+  [FLIPSIDE_RULES_V1]: {
+    gravity: 110,
+    maxFall: 2_600,
+    kick: 300,
+    first: 90_000,
+    speedBase: 420,
+    speedStep: 5,
+    speedMax: 620,
+  },
+  [FLIPSIDE_RULES_VERSION]: {
+    gravity: 220,
+    maxFall: 4_200,
+    kick: 600,
+    first: 60_000,
+    speedBase: 600,
+    speedStep: 6,
+    speedMax: 900,
+  },
+};
+
+/** The physics a rules version plays; an unknown version is refused. */
+export function physicsFor(rulesVersion: string): FlipsidePhysics {
+  const physics = PHYSICS[rulesVersion];
+  if (!physics) throw new RangeError(`no Flipside rules named ${rulesVersion}`);
+  return physics;
+}
 
 /**
  * How many ticks a tap waits for the runner to land. A tap in mid-air is not
@@ -77,13 +123,13 @@ export const FLIPSIDE_SPIKE = 4_000;
 /** Passing spikes this close or closer without touching them is a near miss. */
 export const FLIPSIDE_GRAZE = 3_000;
 
-/** Where the first hazard starts, and the least room from one hazard's start to the next. */
-export const FLIPSIDE_FIRST = 90_000;
+/** The least room from one hazard's start to the next. */
 export const FLIPSIDE_SPACING = 38_000;
 
-/** The scroll speed: 420 a tick, five more for every hazard passed, up to 620. */
-export function speedFor(passed: number): number {
-  return Math.min(620, 420 + 5 * passed);
+/** The scroll speed after `passed` hazards, under a rules version. */
+export function speedFor(passed: number, rulesVersion: string = FLIPSIDE_RULES_VERSION): number {
+  const { speedBase, speedStep, speedMax } = physicsFor(rulesVersion);
+  return Math.min(speedMax, speedBase + speedStep * passed);
 }
 
 export type FlipsideSurface = "floor" | "ceiling";
@@ -175,14 +221,21 @@ const layouts = new Map<string, { state: bigint; hazards: FlipsideHazard[] }>();
  *
  * The width starts at 12 000 and grows 200 a hazard to 20 000, so the widest is
  * 24 000 and the narrowest stretch of clear rock between two hazards 14 000 —
- * room to land and flip again at full speed.
+ * room to land and flip again at full speed. Only where the first hazard stands
+ * depends on the rules version.
  */
-export function hazardAt(seed: string | number | bigint, k: number): FlipsideHazard {
+export function hazardAt(
+  seed: string | number | bigint,
+  k: number,
+  rulesVersion: string = FLIPSIDE_RULES_VERSION,
+): FlipsideHazard {
   if (!Number.isInteger(k) || k < 0) throw new RangeError("a Flipside hazard index starts at zero");
-  const key = toBigInt(seed).toString();
+  const first = physicsFor(rulesVersion).first;
+  const seedKey = toBigInt(seed).toString();
+  const key = `${rulesVersion}:${seedKey}`;
   let layout = layouts.get(key);
   if (!layout) {
-    layout = { state: initialState(key), hazards: [] };
+    layout = { state: initialState(seedKey), hazards: [] };
     if (layouts.size > 16) layouts.clear();
     layouts.set(key, layout);
   }
@@ -193,7 +246,7 @@ export function hazardAt(seed: string | number | bigint, k: number): FlipsideHaz
     const previous = layout.hazards[index - 1];
     const room = ((draw >> 8) % 13) * 1000;
     layout.hazards.push({
-      x: previous ? previous.x + FLIPSIDE_SPACING + room : FLIPSIDE_FIRST,
+      x: previous ? previous.x + FLIPSIDE_SPACING + room : first,
       width: Math.min(20_000, 12_000 + 200 * index) + (((draw >> 4) & 15) % 9) * 500,
       surface: (draw & 1) === 0 ? "floor" : "ceiling",
       kind: index >= 3 && ((draw >> 1) & 7) < 3 ? "spikes" : "hole",
@@ -202,11 +255,18 @@ export function hazardAt(seed: string | number | bigint, k: number): FlipsideHaz
   return layout.hazards[k];
 }
 
-/** A fresh run: the runner on the floor, waiting for the first tap. */
-export function createRun(seed: string | number | bigint): FlipsideRun {
+/**
+ * A fresh run: the runner on the floor, waiting for the first tap. The rules
+ * version is the session's: a session opened under `flipside@1` plays it.
+ */
+export function createRun(
+  seed: string | number | bigint,
+  rulesVersion: string = FLIPSIDE_RULES_VERSION,
+): FlipsideRun {
+  physicsFor(rulesVersion);
   return {
     seed: toBigInt(seed).toString(),
-    rulesVersion: FLIPSIDE_RULES_VERSION,
+    rulesVersion,
     tick: 0,
     y: FLIPSIDE_ON_FLOOR,
     vy: 0,
@@ -244,8 +304,8 @@ export function grounded(run: FlipsideRun): boolean {
  * Runs one tick:
  *
  *   1. a waiting tap flips gravity if the runner stands on its surface, giving it
- *      a push of `FLIPSIDE_KICK` away; otherwise the tap waits one tick less;
- *   2. gravity pulls, up to `FLIPSIDE_MAX_FALL`, and the runner moves;
+ *      a push of the rules' `kick` away; otherwise the tap waits one tick less;
+ *   2. gravity pulls, up to the rules' `maxFall`, and the runner moves;
  *   3. the tunnel scrolls by the current speed;
  *   4. crossing a surface lands on it — unless a hole lies wholly under the
  *      runner, when it falls in. Fallen in, it crashes into the hole's far wall
@@ -257,6 +317,7 @@ export function grounded(run: FlipsideRun): boolean {
  */
 export function step(run: FlipsideRun): FlipsideRun {
   if (run.outcome !== "playing") return run;
+  const physics = physicsFor(run.rulesVersion);
 
   let gravity = run.gravity;
   let vy = run.vy;
@@ -264,18 +325,18 @@ export function step(run: FlipsideRun): FlipsideRun {
   if (buffer > 0) {
     if (grounded(run)) {
       gravity = gravity === 1 ? -1 : 1;
-      vy = gravity * FLIPSIDE_KICK;
+      vy = gravity * physics.kick;
       buffer = 0;
     } else {
       buffer -= 1;
     }
   }
-  vy = Math.max(-FLIPSIDE_MAX_FALL, Math.min(FLIPSIDE_MAX_FALL, vy + gravity * FLIPSIDE_GRAVITY));
+  vy = Math.max(-physics.maxFall, Math.min(physics.maxFall, vy + gravity * physics.gravity));
   let y = run.y + vy;
-  const distance = run.distance + speedFor(run.passed);
+  const distance = run.distance + speedFor(run.passed, run.rulesVersion);
   const tick = run.tick + 1;
 
-  const hazard = hazardAt(run.seed, run.passed);
+  const hazard = hazardAt(run.seed, run.passed, run.rulesVersion);
   const left = hazard.x - distance;
   const right = left + hazard.width;
   const alongside = left < RUNNER_RIGHT && right > RUNNER_LEFT;
@@ -377,8 +438,12 @@ export function finish(run: FlipsideRun): FlipsideRun {
 }
 
 /** Replays a list of actions from the seed, the way the verifier does. */
-export function replay(seed: string | number | bigint, actions: readonly number[]): FlipsideRun {
-  let run = createRun(seed);
+export function replay(
+  seed: string | number | bigint,
+  actions: readonly number[],
+  rulesVersion: string = FLIPSIDE_RULES_VERSION,
+): FlipsideRun {
+  let run = createRun(seed, rulesVersion);
   let index = 0;
   while (run.outcome === "playing") {
     const action = actions[index];

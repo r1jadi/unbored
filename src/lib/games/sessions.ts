@@ -5665,7 +5665,12 @@ export function useFlipsideRun(gameSlug: string): FlipsideRunControls {
     })
       .then((session) => {
         if (controller.signal.aborted) return;
-        setState({ status: "playing", session, run: createFlipsideRun(session.seed) });
+        setState({
+          status: "playing",
+          session,
+          // The session's own rules: one opened under flipside@1 still plays it.
+          run: createFlipsideRun(session.seed, session.rulesVersion),
+        });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;

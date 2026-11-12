@@ -2647,7 +2647,7 @@ sixty-a-second ticks and whole-number physics, and a server replays every run.
 | Field   | 75 000 × 100 000 world units; ceiling at 12 000, floor 88 000 |
 | Clock   | 60 ticks a second; at most 108 000 ticks (thirty minutes)     |
 | Actions | at most 8192: `2 × tick` a tap, `2 × tick + 1` a stop         |
-| Rules   | `flipside@1`                                                  |
+| Rules   | `flipside@2` (the verifier still replays `flipside@1`)        |
 | Runtime | `flipside` (the catalogue's `games.runtime` value)            |
 
 ### A tick
@@ -2656,13 +2656,13 @@ The runner is a square of half-size **3000** at x = **22 000**, resting at
 y = 85 000 on the floor or 15 000 on the ceiling.
 
 1. A waiting tap flips gravity if the runner stands on its surface, with a push of
-   **300** away from it; otherwise the tap waits one tick less. A tap waits at most
+   **600** away from it; otherwise the tap waits one tick less. A tap waits at most
    **6** ticks, so a tap made just before landing is not lost, and mashing in
    mid-air does nothing: a tap made while one waits is the same tap.
-2. Gravity adds **110** towards the current surface, up to **2600** a tick, and the
-   runner moves.
-3. The tunnel scrolls **420** a tick, plus **5** for every hazard passed, up to
-   **620** from the fortieth on.
+2. Gravity adds **220** towards the current surface, up to **4200** a tick, and the
+   runner moves: a flip from floor to ceiling takes about 0.43 s.
+3. The tunnel scrolls **600** a tick, plus **6** for every hazard passed, up to
+   **900** from the fiftieth on.
 4. Crossing a surface lands on it — unless a hole lies wholly under the runner, when
    it falls in. Fallen in, it hits the hole's far wall or drops out of the tunnel.
 5. Spikes stand **4000** tall. Touching them ends the run; passing within **3000**
@@ -2682,7 +2682,7 @@ bits 1–3     spikes when under 3 (of 8), from hazard 3 on; otherwise a hole
 bits 4–7     extra width: (bits mod 9) × 500
 bits 8–15    extra room before it: (bits mod 13) × 1000
 
-hazard 0:  x = 90 000
+hazard 0:  x = 60 000
 hazard k:  x = x(k−1) + 38 000 + room
 width      = min(20 000, 12 000 + 200 k) + extra
 ```
@@ -2690,7 +2690,24 @@ width      = min(20 000, 12 000 + 200 k) + extra
 So the widest hazard is 24 000 and the clear rock between two hazards is never
 under 14 000 — wider than the runner, so only the next hazard can ever touch it, and
 room to land and flip again at full speed. A pilot that flips on the last tick a
-flip still lands safely clears 250 hazards on every seed the suite tries.
+flip still lands safely clears 250 hazards on every seed the suite tries (300 on
+each of 40 seeds when the faster rules were tuned).
+
+### Faster: flipside@1 → flipside@2
+
+Players found the first version slow, so `flipside@2` retunes only the speed:
+
+| Thing          | `flipside@1`          | `flipside@2`          |
+| -------------- | --------------------- | --------------------- |
+| Scroll         | 420 a tick, +5, ≤ 620 | 600 a tick, +6, ≤ 900 |
+| Gravity        | 110, falls ≤ 2600     | 220, falls ≤ 4200     |
+| Flip push      | 300                   | 600                   |
+| First hazard   | x = 90 000            | x = 60 000            |
+| A floor-to-ceiling flip | ~0.65 s      | ~0.43 s               |
+
+Hazards, scoring, near misses and the tap buffer are the same. New sessions pin
+`flipside@2`; a session opened under `flipside@1` is still replayed under it
+(`supabase/migrations/20270101120000_flipside_faster.sql`).
 
 ### Verified scores
 
@@ -2713,10 +2730,11 @@ Asserted in [`src/lib/games/flipside.test.ts`](../../src/lib/games/flipside.test
 and pinned to the verifier by `tests/security/verifier_vectors.sql`
 (`vectors:flipside`), which `src/test/verifier-vectors.test.ts` recomputes.
 
-1. **Seed 1's first six hazards** — floor holes at 90 000, 131 000 and 181 000,
-   ceiling spikes at 230 000, floor spikes at 280 000, a floor hole at 321 000.
-2. **Seed 1, no taps** — the runner falls into the first hole on tick **179**,
-   scoring 0.
+1. **Seed 1's first six hazards** — floor holes at 60 000, 101 000 and 151 000,
+   ceiling spikes at 200 000, floor spikes at 250 000, a floor hole at 291 000
+   (each 30 000 further out under `flipside@1`).
+2. **Seed 1, no taps** — the runner falls into the first hole on tick **75**
+   (tick **179** under `flipside@1`), scoring 0.
 3. **An immediate stop** — `[1]` records a run of zero ticks and zero points.
 
 ## Decant

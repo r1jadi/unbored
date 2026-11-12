@@ -5,10 +5,12 @@ import { TunnelHazard, TunnelRock } from "@/components/game/FlipsideScene";
 import {
   createRun,
   FLIPSIDE_HALF,
+  FLIPSIDE_RULES_VERSION,
   FLIPSIDE_RUNNER_X,
   FLIPSIDE_TICK_MS,
   grounded,
   hazardAt,
+  physicsFor,
   step,
   tap,
   type FlipsideRun,
@@ -30,7 +32,7 @@ const FADE_TICKS = 14;
 /** Enough hazards to fill the loop. */
 export const FLIPSIDE_PREVIEW_HAZARDS = 8;
 /** Starts close to the first hazard: the real run opens with empty tunnel. */
-const START_DISTANCE = 40_000;
+const START_DISTANCE = physicsFor(FLIPSIDE_RULES_VERSION).first - 50_000;
 
 function survives(run: FlipsideRun, ticks: number): boolean {
   let next = run;

@@ -11,7 +11,7 @@ import {
   minesOn,
   replay as minefieldReplay,
 } from "@/lib/games/minefield";
-import { replay as flipsideReplay } from "@/lib/games/flipside";
+import { FLIPSIDE_RULES_V1, replay as flipsideReplay } from "@/lib/games/flipside";
 import { replay as queensReplay } from "@/lib/games/queens";
 import { speedBonus } from "@/lib/games/speed";
 import { board as sumdokuBoard } from "@/lib/games/sumdoku";
@@ -166,7 +166,25 @@ describe("the verifier vectors", () => {
     expect(cases.length).toBeGreaterThanOrEqual(3);
     for (const [seed, actions, score, ticks, passed, taps, ending] of cases) {
       const line = actions === "" ? [] : actions!.split(",").map(Number);
+      const run = flipsideReplay(seed!, line, FLIPSIDE_RULES_V1);
+      expect(run.actions.join(","), `seed ${seed}: every action is a tap that counted`).toBe(
+        actions,
+      );
+      expect(String(run.score), `seed ${seed}`).toBe(score);
+      expect(String(run.tick), `seed ${seed}`).toBe(ticks);
+      expect(String(run.passed), `seed ${seed}`).toBe(passed);
+      expect(String(line.filter((a) => a % 2 === 0).length), `seed ${seed}`).toBe(taps);
+      expect(run.stopped ? "stop" : run.endReason, `seed ${seed}`).toBe(ending);
+    }
+  });
+
+  it("are Flipside@2's lines as the engine plays them", () => {
+    const cases = vectors("flipside2");
+    expect(cases.length).toBeGreaterThanOrEqual(3);
+    for (const [seed, actions, score, ticks, passed, taps, ending] of cases) {
+      const line = actions === "" ? [] : actions!.split(",").map(Number);
       const run = flipsideReplay(seed!, line);
+      expect(run.rulesVersion).toBe("flipside@2");
       expect(run.actions.join(","), `seed ${seed}: every action is a tap that counted`).toBe(
         actions,
       );

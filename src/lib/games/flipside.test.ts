@@ -5,10 +5,12 @@ import {
   FLIPSIDE_BUFFER,
   FLIPSIDE_ON_CEILING,
   FLIPSIDE_ON_FLOOR,
+  FLIPSIDE_RULES_V1,
   finish,
   grounded,
   hazardAt,
   replay,
+  speedFor,
   step,
   submission,
   tap,
@@ -70,6 +72,18 @@ describe("the tunnel", () => {
   it("lays out seed 1's first hazards", () => {
     const first = Array.from({ length: 6 }, (_, k) => hazardAt(1, k));
     expect(first.map((h) => [h.x, h.width, h.surface, h.kind])).toEqual([
+      [60_000, 16_000, "floor", "hole"],
+      [101_000, 16_200, "floor", "hole"],
+      [151_000, 12_900, "floor", "hole"],
+      [200_000, 16_100, "ceiling", "spikes"],
+      [250_000, 15_800, "floor", "spikes"],
+      [291_000, 13_000, "floor", "hole"],
+    ]);
+  });
+
+  it("still lays out flipside@1's tunnel, 30 000 further out", () => {
+    const first = Array.from({ length: 6 }, (_, k) => hazardAt(1, k, FLIPSIDE_RULES_V1));
+    expect(first.map((h) => [h.x, h.width, h.surface, h.kind])).toEqual([
       [90_000, 16_000, "floor", "hole"],
       [131_000, 16_200, "floor", "hole"],
       [181_000, 12_900, "floor", "hole"],
@@ -77,6 +91,13 @@ describe("the tunnel", () => {
       [280_000, 15_800, "floor", "spikes"],
       [321_000, 13_000, "floor", "hole"],
     ]);
+  });
+
+  it("is faster under flipside@2", () => {
+    expect(speedFor(0)).toBe(600);
+    expect(speedFor(50)).toBe(900);
+    expect(speedFor(0, FLIPSIDE_RULES_V1)).toBe(420);
+    expect(speedFor(50, FLIPSIDE_RULES_V1)).toBe(620);
   });
 
   it("never lets two hazards touch", () => {
@@ -138,7 +159,18 @@ describe("a run", () => {
   it("crashes on seed 1 with no taps", () => {
     const run = replay(1, []);
     expect(run.endReason).toBe("crash");
-    expect({ tick: run.tick, score: run.score }).toEqual({ tick: 179, score: 0 });
+    expect({ tick: run.tick, score: run.score }).toEqual({ tick: 75, score: 0 });
+    // The same line under flipside@1 crashes later: the tunnel was slower.
+    const old = replay(1, [], FLIPSIDE_RULES_V1);
+    expect({ tick: old.tick, score: old.score, rules: old.rulesVersion }).toEqual({
+      tick: 179,
+      score: 0,
+      rules: FLIPSIDE_RULES_V1,
+    });
+  });
+
+  it("refuses rules it does not know", () => {
+    expect(() => createRun(1, "flipside@9")).toThrow(RangeError);
   });
 
   it("replays to the same run", () => {

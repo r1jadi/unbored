@@ -279,7 +279,9 @@ function Field({
 
   // The hazards on screen: the one alongside and the next few coming in.
   const onScreen = Math.ceil(FLIPSIDE_WIDTH / FLIPSIDE_SPACING) + 2;
-  const hazards = Array.from({ length: onScreen }, (_, i) => hazardAt(run.seed, run.passed + i));
+  const hazards = Array.from({ length: onScreen }, (_, i) =>
+    hazardAt(run.seed, run.passed + i, run.rulesVersion),
+  );
   const grazeAge = run.lastGraze < 0 ? Infinity : run.tick - run.lastGraze;
 
   return (

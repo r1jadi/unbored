@@ -520,4 +520,46 @@ begin
   end loop;
 end $$;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Flipside, faster (flipside@2): the same kind of lines under the new physics.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  r record;
+begin
+  for v in select * from (values
+    -- vectors:flipside2:begin
+    ('1', '', '0', '75', '0', '0', 'crash'),
+    ('1', '1', '0', '0', '0', '0', 'stop'),
+    ('2', '0,136,262,416,796,940,1174,1730,2114,2486,2844,2946,3360,3456,3881', '36', '1940', '30', '14', 'stop'),
+    ('42', '0,136,428,566,1226,1534,1678,2242,2354,2624,2726,3244,3344,3472,3790,4004,4224,4340,4428,4558,4872,4966,5418,5528,5824,5932,6016,6202,6294,6412,6512,6588,6694,6910,7090,7198,7474,7944,8019', '93', '4009', '70', '38', 'stop'),
+    ('7919', '0,406,678,824,980,1364,1506,2034,2152,2258,2630,3328,3526,3636,3874,3990,4104,4440,4536,4836,5274,5548,5772,5874,5941', '67', '2970', '50', '24', 'stop'),
+    ('123456789', '0,136,272,410,688,846,966,1130,1278,1412,2184,2326,2678,2836,2960,3088,3377', '32', '1688', '25', '16', 'stop'),
+    ('42', '0,136,428,566,1226,1534,1678,2242,2354,2624,2726', '27', '1629', '23', '11', 'crash')
+    -- vectors:flipside2:end
+  ) as vectors(seed, actions, score, ticks, passed, taps, ending) loop
+    select * into r from public.flipside_replay(
+      v.seed::bigint, coalesce(nullif(string_to_array(v.actions, ','), '{}'), '{}')::integer[], 'flipside@2');
+    if not r.valid
+       or r.score::text is distinct from v.score
+       or r.ticks::text is distinct from v.ticks
+       or r.passed::text is distinct from v.passed
+       or r.placed::text is distinct from v.taps
+       or r.ending is distinct from v.ending then
+      raise exception 'ASSERTION FAILED: Flipside@2 seed % — the database replays score %, % ticks, % passed, % taps, %; the engine score %, % ticks, % passed, % taps, %',
+        v.seed, r.score, r.ticks, r.passed, r.placed, r.ending,
+        v.score, v.ticks, v.passed, v.taps, v.ending;
+    end if;
+    raise notice 'ok   Flipside@2 seed %: the verifier replays the engine''s line', v.seed;
+  end loop;
+
+  begin
+    perform public.flipside_replay(1, '{}', 'flipside@9');
+    raise exception 'ASSERTION FAILED: Flipside replayed rules that do not exist';
+  exception when invalid_parameter_value then null;
+  end;
+end $$;
+
 rollback;
