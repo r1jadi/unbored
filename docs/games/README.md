@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Twenty-seven games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Twenty-eight games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword** and **Guesswork**, the daily word. Twenty-four of them — all but 7 Second, the crossword and Guesswork, the three
+**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword** and **Guesswork**, the daily word. Twenty-five of them — all but 7 Second, the crossword and Guesswork, the three
 daily games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -39,8 +39,8 @@ A signed-in player keeps more than their scores:
   run**, which submits the saved run as it was left (keeping its score, like any
   ended run) and starts a fresh one. A saved run stays open for twelve hours after
   its last save. Trail, 8 Puzzle, Sun & Moon, Sudoku, Mini Sudoku, Decant, Huedini, 7 Second, Don't
-  Touch the Black and Flutter do not resume:
-  their clocks, conveyors or gliders cannot pause.
+  Touch the Black, Flutter and Flipside do not resume:
+  their clocks, conveyors, gliders or runners cannot pause.
 - **Stats per game**, on the game's page: runs played, best score, rank, total
   points and when they last played, from their verified scores.
 
@@ -2630,6 +2630,93 @@ the verifier was checked against the engine on 72 flights across six seeds
 1. **Seed 1's first six gap tops** — `25496, 34200, 43246, 36086, 15398, 34216`.
 2. **Seed 1, no flaps** — the glider falls from 44 000 and hits the ground on tick
    **33**, scoring 0.
+3. **An immediate stop** — `[1]` records a run of zero ticks and zero points.
+
+## Flipside
+
+A runner tears along a tunnel, standing on the floor. A tap flips gravity: it falls
+up onto the ceiling, and the next tap brings it back down. Holes cut through the
+floor and the ceiling, and rows of spikes stand on them: fall into a hole or touch
+a spike and the run is over. **There is no last hazard**: the tunnel speeds up and
+the holes widen until the player slips or chooses to stop. Like Flutter, it is a
+one-button game whose time is part of the rules, so it runs on the same fixed
+sixty-a-second ticks and whole-number physics, and a server replays every run.
+
+| Thing   | Value                                                         |
+| ------- | ------------------------------------------------------------- |
+| Field   | 75 000 × 100 000 world units; ceiling at 12 000, floor 88 000 |
+| Clock   | 60 ticks a second; at most 108 000 ticks (thirty minutes)     |
+| Actions | at most 8192: `2 × tick` a tap, `2 × tick + 1` a stop         |
+| Rules   | `flipside@1`                                                  |
+| Runtime | `flipside` (the catalogue's `games.runtime` value)            |
+
+### A tick
+
+The runner is a square of half-size **3000** at x = **22 000**, resting at
+y = 85 000 on the floor or 15 000 on the ceiling.
+
+1. A waiting tap flips gravity if the runner stands on its surface, with a push of
+   **300** away from it; otherwise the tap waits one tick less. A tap waits at most
+   **6** ticks, so a tap made just before landing is not lost, and mashing in
+   mid-air does nothing: a tap made while one waits is the same tap.
+2. Gravity adds **110** towards the current surface, up to **2600** a tick, and the
+   runner moves.
+3. The tunnel scrolls **420** a tick, plus **5** for every hazard passed, up to
+   **620** from the fortieth on.
+4. Crossing a surface lands on it — unless a hole lies wholly under the runner, when
+   it falls in. Fallen in, it hits the hole's far wall or drops out of the tunnel.
+5. Spikes stand **4000** tall. Touching them ends the run; passing within **3000**
+   of their tips without touching is a **near miss**.
+6. A crash ends the run before any score this tick.
+7. A hazard wholly behind the runner is passed: one point. Spikes that were grazed
+   add the combo: one more for each near miss in a row (+1, +2, +3…). Spikes passed
+   without a graze reset it; holes leave it alone. Every point shows as 10.
+
+### The hazards
+
+One draw per hazard, from the generator every game uses, read from bit 16 up:
+
+```
+bit 0        the surface: floor (0) or ceiling (1)
+bits 1–3     spikes when under 3 (of 8), from hazard 3 on; otherwise a hole
+bits 4–7     extra width: (bits mod 9) × 500
+bits 8–15    extra room before it: (bits mod 13) × 1000
+
+hazard 0:  x = 90 000
+hazard k:  x = x(k−1) + 38 000 + room
+width      = min(20 000, 12 000 + 200 k) + extra
+```
+
+So the widest hazard is 24 000 and the clear rock between two hazards is never
+under 14 000 — wider than the runner, so only the next hazard can ever touch it, and
+room to land and flip again at full speed. A pilot that flips on the last tick a
+flip still lands safely clears 250 hazards on every seed the suite tries.
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20261230120000_flipside_sessions.sql`.
+
+- `public.flipside_replay(seed, actions)` replays a line tick by tick and reports
+  whether it is valid, its score, ticks, hazards passed, taps and its ending.
+- `public.complete_flipside_run(session, actions, score, duration)` runs the shared
+  session checks (`speed_run_gate`), replays, refuses a run that lasted longer than
+  its session has been open (plus two seconds), compares the claim, then records.
+- The (`flipside`, `flipside@1`) row in `public.game_runtimes` opens two-hour
+  sessions with the 8192-action bound. A run does not resume: it cannot pause.
+- The Go service routes `flipside@` to the verifier and refuses an action past
+  `2 × 108 000 + 1` before it reaches the database.
+
+### Test vectors
+
+Asserted in [`src/lib/games/flipside.test.ts`](../../src/lib/games/flipside.test.ts)
+and pinned to the verifier by `tests/security/verifier_vectors.sql`
+(`vectors:flipside`), which `src/test/verifier-vectors.test.ts` recomputes.
+
+1. **Seed 1's first six hazards** — floor holes at 90 000, 131 000 and 181 000,
+   ceiling spikes at 230 000, floor spikes at 280 000, a floor hole at 321 000.
+2. **Seed 1, no taps** — the runner falls into the first hole on tick **179**,
+   scoring 0.
 3. **An immediate stop** — `[1]` records a run of zero ticks and zero points.
 
 ## Decant

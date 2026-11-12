@@ -67,6 +67,7 @@ export function GameArt({
       {id === "crossword" && <Crossword />}
       {id === "gridburst" && <Gridburst />}
       {id === "updraft" && <Updraft />}
+      {id === "flipside" && <Flipside />}
       {id === "decant" && <Decant />}
       {id === "scatter" && <Scatter />}
       {id === "huedini" && <Huedini />}
@@ -139,6 +140,7 @@ const KNOWN = new Set([
   "crossword",
   "gridburst",
   "updraft",
+  "flipside",
   "decant",
   "scatter",
   "huedini",
@@ -615,6 +617,26 @@ function Updraft() {
       <div className="absolute inset-x-0 bottom-0 h-[10%] bg-surface" />
       <div className="absolute top-[42%] left-[20%] aspect-square w-[14%] -rotate-12 rounded-full bg-primary ring-2 ring-background/40">
         <span className="absolute top-[22%] right-[14%] size-[30%] rounded-full bg-background" />
+      </div>
+    </div>
+  );
+}
+
+function Flipside() {
+  // The tunnel: a hole in the floor, spikes on the ceiling, the runner mid-flip.
+  return (
+    <div className="relative size-full overflow-hidden rounded-xl bg-surface-2/60">
+      <div className="absolute inset-x-0 top-0 h-[12%] bg-game-2" />
+      <div className="absolute inset-x-0 bottom-0 h-[12%] bg-game-2" />
+      <div className="absolute bottom-0 left-[44%] h-[12%] w-[22%] bg-background" />
+      <div
+        className="absolute top-[12%] left-[70%] h-[6%] w-[24%] bg-destructive"
+        style={{
+          clipPath: "polygon(0 0, 16.6% 100%, 33.3% 0, 50% 100%, 66.6% 0, 83.3% 100%, 100% 0)",
+        }}
+      />
+      <div className="absolute top-[44%] left-[24%] aspect-square w-[14%] rotate-[100deg] rounded-md bg-primary ring-2 ring-background/40">
+        <span className="absolute top-[18%] right-[12%] size-[32%] rounded-full bg-background" />
       </div>
     </div>
   );

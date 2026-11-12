@@ -158,6 +158,11 @@ import {
   TangoPreview,
 } from "./TangoPreview";
 import {
+  FLIPSIDE_PREVIEW_FRAMES,
+  FLIPSIDE_PREVIEW_TICKS,
+  FlipsidePreview,
+} from "./FlipsidePreview";
+import {
   UPDRAFT_PREVIEW_COLUMNS,
   UPDRAFT_PREVIEW_FRAMES,
   UPDRAFT_PREVIEW_SEED,
@@ -308,6 +313,24 @@ describe("the Flutter preview", () => {
   it("renders", () => {
     render(<UpdraftPreview playing={false} />);
     expect(screen.getByTestId("updraft-preview")).toBeTruthy();
+  });
+});
+
+describe("the Flipside preview", () => {
+  it("runs the whole loop on the real physics, clearing hazards", () => {
+    expect(FLIPSIDE_PREVIEW_FRAMES).toHaveLength(FLIPSIDE_PREVIEW_TICKS);
+    for (let tick = 1; tick < FLIPSIDE_PREVIEW_FRAMES.length; tick += 1) {
+      // A crashed run stops scrolling: every frame moves on.
+      expect(FLIPSIDE_PREVIEW_FRAMES[tick].distance).toBeGreaterThan(
+        FLIPSIDE_PREVIEW_FRAMES[tick - 1].distance,
+      );
+    }
+    expect(FLIPSIDE_PREVIEW_FRAMES.at(-1)!.score).toBeGreaterThanOrEqual(2);
+  });
+
+  it("renders", () => {
+    render(<FlipsidePreview playing={false} />);
+    expect(screen.getByTestId("flipside-preview")).toBeTruthy();
   });
 });
 

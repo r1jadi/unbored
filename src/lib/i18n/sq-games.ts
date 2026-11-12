@@ -927,4 +927,20 @@ export const sqGames: Record<string, string> = {
   "Crossed: has to go": "I hequr: duhet të ikë",
   "Red: you crossed it, it stays": "I kuq: e hoqe, por rri",
   "Faint: not found yet": "I zbehtë: ende i pagjetur",
+  // Flipside
+  "Combo ×{count}": "Kombo ×{count}",
+  Flips: "Përmbysje",
+  "Flipside tunnel. Tap, click or press Space to flip gravity.":
+    "Tuneli i Flipside. Prek, kliko ose shtyp Hapësirën për të përmbysur gravitetin.",
+  "Near miss!": "Në fije!",
+  "Run time": "Kohëzgjatja",
+  "Tap, click or press Space to flip gravity. Jump the holes; don't touch the spikes.":
+    "Prek, kliko ose shtyp Hapësirën për të përmbysur gravitetin. Kapërce gropat; mos prek gjembat.",
+  "Verified by replaying your run on the server, then saved to the leaderboard.":
+    "U verifikua duke e riluajtur lojën në server, pastaj u ruajt në renditje.",
+  "Verified by replaying your run on the server. This was a guest run, so it is not on the leaderboard.":
+    "U verifikua duke e riluajtur lojën në server. Ishte lojë si mysafir, ndaj nuk është në renditje.",
+  "Wiped out": "U rrëzove",
+  "{count} hazards cleared.": "{count} pengesa të kaluara.",
+  "1 hazard cleared.": "1 pengesë e kaluar.",
 };

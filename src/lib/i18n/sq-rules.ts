@@ -327,4 +327,20 @@ export const sqRules: Record<string, string> = {
     "lëviz me shigjeta, shtyp X për të hequr, C për të rrethuar dhe Backspace për të pastruar. Zhbëj (Ctrl+Z) kthehet një hap pas.",
   "to lose to. The numbers get bigger as you go, and every solved board scores 500 points. Beating a board's par time earns a speed bonus when the run ends, up to double. You end the run when you like.":
     "për të humbur. Numrat rriten ndërsa vazhdon, dhe çdo tabelë e zgjidhur jep 500 pikë. Po ta mundësh kohën par të një tabele fiton bonus shpejtësie kur mbaron loja, deri në dyfish. Lojën e mbyll kur të duash.",
+  // Flipside
+  "Flip the tunnel": "Përmbys tunelin",
+  "Tap to flip gravity. Jump the holes, dodge the spikes.":
+    "Prek për të përmbysur gravitetin. Kapërce gropat, shmang gjembat.",
+  "Tap to flip": "Prek për ta përmbysur",
+  "— or click, or press Space. The runner falls to the other side: floor to ceiling and back.":
+    "— ose kliko, ose shtyp Hapësirën. Vrapuesi bie në anën tjetër: nga dyshemeja në tavan dhe mbrapsht.",
+  "Mind the gaps.": "Kujdes gropat.",
+  "Fall into a hole or touch a spike and the run is over. You can only flip from a surface; tap early and the flip waits for you to land.":
+    "Po re në një gropë ose preke një gjemb, loja mbaron. Përmbysesh vetëm nga një sipërfaqe; po preke herët, përmbysja pret sa të zbresësh.",
+  "Skim the spikes.": "Kalo afër gjembave.",
+  "Every hazard you clear is 10 points. Pass spikes close without touching for a near miss: a bonus that grows with every one in a row.":
+    "Çdo pengesë që kalon jep 10 pikë. Kalo afër gjembave pa i prekur për një shpëtim në fije: një bonus që rritet me secilin radhazi.",
+  "No last hazard.": "Nuk ka pengesë të fundit.",
+  "The tunnel speeds up as you go, until you slip or end the run.":
+    "Tuneli shpejtohet ndërsa vazhdon, derisa të gabosh ose ta mbyllësh lojën.",
 };

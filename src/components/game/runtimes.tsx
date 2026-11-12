@@ -24,6 +24,7 @@ import { Stack10Runtime } from "@/components/game/Stack10Runtime";
 import { SumdokuRuntime } from "@/components/game/SumdokuRuntime";
 import { SudokuRuntime } from "@/components/game/SudokuRuntime";
 import { TangoRuntime } from "@/components/game/TangoRuntime";
+import { FlipsideRuntime } from "@/components/game/FlipsideRuntime";
 import { UpdraftRuntime } from "@/components/game/UpdraftRuntime";
 import { WhittleRuntime } from "@/components/game/WhittleRuntime";
 import { ZipRuntime } from "@/components/game/ZipRuntime";
@@ -53,6 +54,7 @@ import { SUMDOKU_RUNTIME } from "@/lib/games/sumdoku";
 import { WHITTLE_RUNTIME } from "@/lib/games/whittle";
 import { TANGO_RUNTIME } from "@/lib/games/tango";
 import { UPDRAFT_RUNTIME } from "@/lib/games/updraft";
+import { FLIPSIDE_RUNTIME } from "@/lib/games/flipside";
 import { ZIP_RUNTIME } from "@/lib/games/zip";
 
 /** What the play screen hands every runtime. */
@@ -87,6 +89,7 @@ export const RUNTIMES: Readonly<Record<string, ComponentType<RuntimeProps>>> = {
   [CROSSWORD_RUNTIME]: CrosswordRuntime,
   [GRIDBURST_RUNTIME]: GridburstRuntime,
   [UPDRAFT_RUNTIME]: UpdraftRuntime,
+  [FLIPSIDE_RUNTIME]: FlipsideRuntime,
   [DECANT_RUNTIME]: DecantRuntime,
   [MINI_SUDOKU_RUNTIME]: MiniSudokuRuntime,
   [SCATTER_RUNTIME]: ScatterRuntime,

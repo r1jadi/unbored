@@ -40,6 +40,7 @@ const DYNAMIC_PATHS = [
     "crossword",
     "gridburst",
     "updraft",
+    "flipside",
     "decant",
     "scatter",
     "huedini",

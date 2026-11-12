@@ -25,6 +25,7 @@ const LOADERS: Record<string, Loader> = {
   "dont-break-the-chain": () => import("./ChainPreview").then((m) => ({ default: m.ChainPreview })),
   "dont-touch-the-black": () =>
     import("./DontTouchPreview").then((m) => ({ default: m.DontTouchPreview })),
+  flipside: () => import("./FlipsidePreview").then((m) => ({ default: m.FlipsidePreview })),
   fusebox: () => import("./FuseboxPreview").then((m) => ({ default: m.FuseboxPreview })),
   gridburst: () => import("./GridburstPreview").then((m) => ({ default: m.GridburstPreview })),
   guesswork: () => import("./GuessworkPreview").then((m) => ({ default: m.GuessworkPreview })),

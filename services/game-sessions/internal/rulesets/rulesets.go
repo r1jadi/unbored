@@ -71,6 +71,9 @@ var families = map[string]Ruleset{
 	// Updraft (Flutter): 2 × tick for a flap and 2 × tick + 1 for a stop, over
 	// the 108 000 ticks (thirty minutes at sixty a second) a run may last.
 	"updraft": {Verifier: "complete_updraft_run", MaxActions: 8192, ActionCodes: 2*108000 + 2},
+	// Flipside: 2 × tick for a tap and 2 × tick + 1 for a stop, over the same
+	// thirty-minute bound of 108 000 ticks.
+	"flipside": {Verifier: "complete_flipside_run", MaxActions: 8192, ActionCodes: 2*108000 + 2},
 	// Decant: a pour as from × 16 + to (up to 187 with twelve tubes), then 253 an
 	// extra tube, 254 undo and 255 restart.
 	"decant": {Verifier: "complete_decant_run", MaxActions: 8192, ActionCodes: 256},

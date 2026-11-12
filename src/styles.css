@@ -677,6 +677,32 @@
   }
 }
 
+/* Flipside (components/game/FlipsideRuntime): a near miss pops and floats up. */
+.flipside-graze {
+  animation: flipside-graze 650ms ease-out both;
+}
+
+@keyframes flipside-graze {
+  from {
+    transform: translateY(30%) scale(0.7);
+    opacity: 0;
+  }
+  25% {
+    transform: translateY(0) scale(1.15);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-80%) scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flipside-graze {
+    animation: none;
+  }
+}
+
 /* Huedini (components/game/HuediniRuntime): glossy blocks that glide, walls
    with a hatch, and a leaving block that runs out through its gate in a burst. */
 .huedini-block {

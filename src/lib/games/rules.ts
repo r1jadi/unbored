@@ -750,6 +750,34 @@ export const GAME_RULES = {
       },
     ],
   },
+  flipside: {
+    heading: msg("Flip the tunnel"),
+    summary: msg("Tap to flip gravity. Jump the holes, dodge the spikes."),
+    rules: [
+      {
+        lead: msg("Tap to flip"),
+        text: msg(
+          "— or click, or press Space. The runner falls to the other side: floor to ceiling and back.",
+        ),
+      },
+      {
+        lead: msg("Mind the gaps."),
+        text: msg(
+          "Fall into a hole or touch a spike and the run is over. You can only flip from a surface; tap early and the flip waits for you to land.",
+        ),
+      },
+      {
+        lead: msg("Skim the spikes."),
+        text: msg(
+          "Every hazard you clear is 10 points. Pass spikes close without touching for a near miss: a bonus that grows with every one in a row.",
+        ),
+      },
+      {
+        lead: msg("No last hazard."),
+        text: msg("The tunnel speeds up as you go, until you slip or end the run."),
+      },
+    ],
+  },
 } satisfies Record<string, GameRules>;
 
 /** A game's rules by its runtime, or null for a runtime with none written. */

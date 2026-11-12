@@ -101,7 +101,7 @@ export const Route = createFileRoute("/play/$id")({
  * `seven-second` plays 7 Second, `queens` plays Crowns, `zip` plays Trail,
  * `eight-puzzle` plays 8 Puzzle, `tango` plays Sun & Moon, `sudoku` plays Sudoku,
  * `crossword` plays the daily crossword, `gridburst` plays Gridburst,
- * `updraft` plays Flutter, `decant` plays Decant, `mini-sudoku` plays Mini Sudoku, `scatter` plays Scatter, `huedini` plays Huedini,
+ * `updraft` plays Flutter, `flipside` plays Flipside, `decant` plays Decant, `mini-sudoku` plays Mini Sudoku, `scatter` plays Scatter, `huedini` plays Huedini,
  * `cascade` plays Cascade, `checkmate` plays Checkmate,
  * and anything else gets the honest "no runtime
  * yet" screen rather than a board that does not follow that game's rules. Every

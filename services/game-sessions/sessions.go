@@ -11,7 +11,7 @@
 //     `complete_seven_second_run`, `complete_queens_run`, `complete_zip_run`,
 //     `complete_eight_puzzle_run`, `complete_tango_run`,
 //     `complete_sudoku_run`, `complete_crossword_run`,
-//     `complete_gridburst_run`, `complete_updraft_run`,
+//     `complete_gridburst_run`, `complete_updraft_run`, `complete_flipside_run`,
 //     `complete_decant_run`, `complete_mini_sudoku_run`,
 //     `complete_cascade_run`, `complete_checkmate_run`) replays the submitted
 //     actions, derives the

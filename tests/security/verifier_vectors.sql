@@ -472,4 +472,52 @@ begin
   end loop;
 end $$;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Flipside: a line of taps (2 × tick) and a stop (2 × tick + 1), replayed tick by
+-- tick: the score with its near-miss combos, the ticks run, hazards passed, taps
+-- and how the run ended.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  r record;
+  got text;
+begin
+  for v in select * from (values
+    -- vectors:flipside:begin
+    ('1', '', '0', '179', '0', '0', 'crash'),
+    ('1', '1', '0', '0', '0', '0', 'stop'),
+    ('2', '0,338,516,736,1274,1480,1810,2590,3126,3644,4142,4280,4850,4984,5565', '36', '2782', '30', '14', 'stop'),
+    ('42', '0,338,756,950,1882,2318,2520,3306,3462,3840,3978,4696,4832,5012,5446,5740,6042,6200,6316,6496,6924,7050,7668,7822,8238,8394,8512,8780,8916,9088,9232,9342,9496,9810,10021', '81', '5010', '60', '34', 'stop'),
+    ('7919', '0,722,1106,1314,1534,2076,2276,3016,3182,3328,3846,4810,5080,5230,5558,5716,5872,6332,6462,6868,7468,7669', '56', '3834', '45', '21', 'stop'),
+    ('123456789', '0,338,530,726,1122,1348,1516,1748,1956,2146,3224,3422,3912,4132,4304,4482,4879', '32', '2439', '25', '16', 'stop'),
+    ('42', '0,338,756,950,1882,2318,2520,3306,3462,3840,3978', '27', '2358', '23', '11', 'crash'),
+    ('11', '0,1152', '4', '585', '4', '2', 'crash')
+    -- vectors:flipside:end
+  ) as vectors(seed, actions, score, ticks, passed, taps, ending) loop
+    select * into r from public.flipside_replay(
+      v.seed::bigint, coalesce(nullif(string_to_array(v.actions, ','), '{}'), '{}')::integer[]);
+    if not r.valid
+       or r.score::text is distinct from v.score
+       or r.ticks::text is distinct from v.ticks
+       or r.passed::text is distinct from v.passed
+       or r.placed::text is distinct from v.taps
+       or r.ending is distinct from v.ending then
+      raise exception 'ASSERTION FAILED: Flipside seed % — the database replays score %, % ticks, % passed, % taps, %; the engine score %, % ticks, % passed, % taps, %',
+        v.seed, r.score, r.ticks, r.passed, r.placed, r.ending,
+        v.score, v.ticks, v.passed, v.taps, v.ending;
+    end if;
+    raise notice 'ok   Flipside seed %: the verifier replays the engine''s line', v.seed;
+  end loop;
+
+  -- Out of order, twice on one tick, and an action after the stop or the crash.
+  foreach got in array array['{338,0}', '{0,0}', '{1,0}', '{0,338,999999}'] loop
+    select * into r from public.flipside_replay(1, got::integer[]);
+    if r.valid then
+      raise exception 'ASSERTION FAILED: Flipside accepted %', got;
+    end if;
+  end loop;
+end $$;
+
 rollback;
