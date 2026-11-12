@@ -216,6 +216,7 @@ func TestPrivilegedRowAndClaimDeniedOnEveryRoute(t *testing.T) {
 		{http.MethodPatch, "/api/v1/admin/reports/" + testGameID, map[string]any{"status": "resolved", "reason": "no"}},
 		{http.MethodPatch, "/api/v1/admin/comments/" + testCommentID, map[string]any{"hidden": true, "reason": "no"}},
 		{http.MethodPatch, "/api/v1/admin/users/" + testPlayer, map[string]any{"suspended": true, "reason": "no"}},
+		{http.MethodDelete, "/api/v1/admin/users/" + testPlayer + "/avatar", map[string]any{"reason": "no"}},
 	}
 	for _, write := range writes {
 		if status, _ := call(t, server, write.method, write.path, token, write.body); status != http.StatusForbidden {
@@ -223,7 +224,7 @@ func TestPrivilegedRowAndClaimDeniedOnEveryRoute(t *testing.T) {
 		}
 	}
 
-	if backend.called("Overview") || backend.called("Games") || backend.called("SetGameStatus") || backend.called("SetSuspension") {
+	if backend.called("Overview") || backend.called("Games") || backend.called("SetGameStatus") || backend.called("SetSuspension") || backend.called("RemoveAvatar") {
 		t.Error("a refused request reached the database for staff work")
 	}
 }
@@ -330,6 +331,8 @@ func TestAllowlistedReachesEveryWrite(t *testing.T) {
 			map[string]any{"hidden": true, "reason": "Abuse"}, "SetCommentHidden"},
 		{"suspend account", http.MethodPatch, "/api/v1/admin/users/" + testPlayer,
 			map[string]any{"suspended": true, "reason": "Abuse"}, "SetSuspension"},
+		{"remove picture", http.MethodDelete, "/api/v1/admin/users/" + testPlayer + "/avatar",
+			map[string]any{"reason": "Explicit picture"}, "RemoveAvatar"},
 	}
 	for _, write := range writes {
 		t.Run(write.name, func(t *testing.T) {
@@ -368,5 +371,22 @@ func TestAllowlistedModeratorGateAndSuspension(t *testing.T) {
 	}
 	if !backend.called("SetSuspension") {
 		t.Error("the suspension never reached the database")
+	}
+}
+
+// TestRemoveAvatarNeedsAReason: a picture is never taken down without one.
+func TestRemoveAvatarNeedsAReason(t *testing.T) {
+	t.Setenv("ADMIN_EMAILS", "admin@example.com")
+	backend := &fakeBackend{identity: staffIdentity("admin")}
+	server, sign := newAllowlistServer(t, backend)
+	token := sign(testPlayer, "user", "admin@example.com")
+
+	status, _ := call(t, server, http.MethodDelete, "/api/v1/admin/users/"+testPlayer+"/avatar", token,
+		map[string]any{"reason": "  "})
+	if status != http.StatusBadRequest {
+		t.Errorf("no reason = %d, want 400", status)
+	}
+	if backend.called("RemoveAvatar") {
+		t.Error("a removal without a reason reached the database")
 	}
 }

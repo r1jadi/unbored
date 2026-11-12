@@ -70,8 +70,6 @@ export const sqApp: Record<string, string> = {
   Contact: "Kontakti",
   "Data is kept while your account is active. You can delete your account from Settings at any time; deletion immediately removes your profile and picture, preferences, scores, comments, likes, saves, follows, blocks and notifications. Backups, if any, age out on the provider's schedule.":
     "Të dhënat ruhen sa kohë llogaria jote është aktive. Mund ta fshish llogarinë nga Cilësimet në çdo kohë; fshirja heq menjëherë profilin dhe foton, preferencat, rezultatet, komentet, pëlqimet, ruajtjet, ndjekjet, bllokimet dhe njoftimet. Kopjet rezervë, nëse ka, skadojnë sipas orarit të ofruesit.",
-  "Data-retention periods beyond the implemented 30-day deletion target, if the policy must state them.":
-    "Periudhat e ruajtjes së të dhënave përtej objektivit të zbatuar të fshirjes brenda 30 ditëve, nëse politika duhet t'i deklarojë.",
   "Display names, bios, follows, blocked-user choices and notification preferences you set remain yours. You grant Unbored a licence to display profile and social content within the service so follows, leaderboards and notifications can function. Private-account, leaderboard-visibility and interaction settings in Settings → Privacy control who can see your activity where implemented.":
     "Emrat e shfaqur, biografitë, ndjekjet, zgjedhjet e bllokimit dhe preferencat e njoftimeve që vendos mbeten të tuat. I jep Unbored një licencë për të shfaqur përmbajtjen e profilit dhe atë sociale brenda shërbimit, që ndjekjet, renditjet dhe njoftimet të funksionojnë. Cilësimet e llogarisë private, dukshmërisë në renditje dhe ndërveprimit te Cilësimet → Privatësia kontrollojnë kush e sheh aktivitetin tënd, aty ku janë zbatuar.",
   "Edit profile, privacy, notification, language, appearance, accessibility and blocked-user settings in Settings; each supported control persists and takes effect as described on its screen. Unsupported controls (push, email delivery, MFA, per-device session lists) are labelled unavailable rather than simulated. To request access, correction or deletion, open an issue on the project tracker from your signed-in account until a dedicated privacy contact is published.":
@@ -82,11 +80,7 @@ export const sqApp: Record<string, string> = {
     "Hostimi dhe API: Vercel (aplikacioni web, porta Go dhe shërbimet Go në një domen). Identiteti, baza e të dhënave dhe ruajtja: Supabase (Auth, Postgres me Row Level Security, Storage). OAuth, kur aktivizohet: Google. Ky vendosje nuk përdor përpunues të tjerë.",
   "How we use it": "Si i përdorim",
   Infrastructure: "Infrastruktura",
-  "Jurisdiction / governing law and support response expectations, if any are promised.":
-    "Juridiksioni / ligji në fuqi dhe pritshmëritë e përgjigjes së mbështetjes, nëse premtohen.",
   "Last updated October 17, 2026": "Përditësuar më 17 tetor 2026",
-  "Legal operator name (person or company) and contact email for account, terms and privacy requests.":
-    "Emri ligjor i operatorit (person ose kompani) dhe email-i i kontaktit për kërkesat për llogarinë, kushtet dhe privatësinë.",
   "Material changes are announced in the app before they take effect. Continued use after the effective date constitutes acceptance.":
     "Ndryshimet thelbësore njoftohen në aplikacion para se të hyjnë në fuqi. Përdorimi i vazhduar pas datës së hyrjes në fuqi përbën pranim.",
   "Moderators review reports and the review queue; administrators manage games, categories, users and system settings. Enforcement ranges from hidden content to suspension. Decisions are made from database records of the reported content and account history.":
@@ -95,10 +89,10 @@ export const sqApp: Record<string, string> = {
     "Pa ngacmime, gjuhë urrejtjeje, spam, imitim të të tjerëve, mashtrim, abuzim me raportimin apo bllokimin, ose ndërhyrje në shërbim. Përmbajtja dhe llogaritë që shkelin këto rregulla mund të fshihen, kufizohen ose pezullohen nga moderatorët dhe administratorët.",
   "No payment data (no payments feature exists), no push subscriptions (no push delivery exists), no email campaign data (no email delivery beyond Supabase auth mails), no device fingerprint inventory beyond what the browser necessarily sends, and no analytics events beyond the append-only table the backend validates — the app does not run third-party analytics or advertising trackers.":
     "Asnjë të dhënë pagese (nuk ka veçori pagesash), asnjë abonim push (nuk ka dërgim push), asnjë të dhënë fushatash email (nuk ka dërgim email-esh përveç email-eve të identifikimit nga Supabase), asnjë inventar shenjash të pajisjes përtej asaj që shfletuesi dërgon domosdoshmërisht, dhe asnjë ngjarje analitike përtej tabelës që backend-i verifikon — aplikacioni nuk përdor analitikë apo gjurmues reklamash të palëve të treta.",
-  "Operator identity and contact: TO BE SUPPLIED BY THE OWNER before public launch (see the note at the top of this document). Until then, use the project issue tracker linked in Settings → Help.":
-    "Identiteti dhe kontakti i operatorit: DO TË JEPEN NGA PRONARI para nisjes publike (shih shënimin në krye të këtij dokumenti). Deri atëherë, përdor gjurmuesin e çështjeve të projektit të lidhur te Cilësimet → Ndihmë.",
-  "Privacy contact: TO BE SUPPLIED BY THE OWNER before public launch (operator name and email). Until then, use the project issue tracker linked in Settings → Help. This policy is product-accurate documentation, not legal advice; have counsel review it before public launch.":
-    "Kontakti për privatësinë: DO TË JEPET NGA PRONARI para nisjes publike (emri dhe email-i i operatorit). Deri atëherë, përdor gjurmuesin e çështjeve të projektit të lidhur te Cilësimet → Ndihmë. Kjo politikë është dokumentim i saktë i produktit, jo këshillë ligjore; kërko që ta shqyrtojë një jurist para nisjes publike.",
+  "Unbored is operated by Rijad Halili, an individual based in the Republic of Kosovo. For questions about your account, these terms or your data, email contactunbored@gmail.com or visit unbored.lol/support. These terms are governed by the laws of the Republic of Kosovo, and disputes go to its competent courts. Nothing in these terms removes protections that the consumer law of the country you live in gives you and that cannot be waived.":
+    "Unbored drejtohet nga Rijad Halili, një individ me seli në Republikën e Kosovës. Për pyetje rreth llogarisë, këtyre kushteve ose të dhënave të tua, shkruaj te contactunbored@gmail.com ose vizito unbored.lol/support. Këto kushte rregullohen nga ligjet e Republikës së Kosovës, dhe mosmarrëveshjet shkojnë në gjykatat e saj kompetente. Asgjë në këto kushte nuk heq mbrojtjet që të jep ligji për konsumatorët i vendit ku jeton dhe që nuk mund të hiqen.",
+  "Unbored is operated by Rijad Halili, an individual based in the Republic of Kosovo, who is responsible for your data. Privacy contact: contactunbored@gmail.com. You can also complain to the data protection authority where you live.":
+    "Unbored drejtohet nga Rijad Halili, një individ me seli në Republikën e Kosovës, i cili është përgjegjës për të dhënat e tua. Kontakti për privatësinë: contactunbored@gmail.com. Mund të ankohesh edhe te autoriteti për mbrojtjen e të dhënave ku jeton.",
   "Profiles (username, display name, bio, avatar), published games, scores on visible games, follows and visible comments are public by default. Private-account and visibility toggles in Settings → Privacy limit discovery where implemented. Notifications and preferences are visible only to their owner; roles are visible only to their owner and to staff. Administrators and moderators see moderation queues and audit trails through the staff-gated admin API.":
     "Profilet (emri i përdoruesit, emri i shfaqur, biografia, avatari), lojërat e publikuara, rezultatet në lojërat e dukshme, ndjekjet dhe komentet e dukshme janë publike si parazgjedhje. Llogaria private dhe çelësat e dukshmërisë te Cilësimet → Privatësia e kufizojnë zbulimin aty ku janë zbatuar. Njoftimet dhe preferencat i sheh vetëm pronari; rolet i sheh vetëm pronari dhe stafi. Administratorët dhe moderatorët shohin radhët e moderimit dhe gjurmët e auditimit përmes API-së së administrimit të rezervuar për stafin.",
   "Retention and deletion": "Ruajtja dhe fshirja",
@@ -114,8 +108,8 @@ export const sqApp: Record<string, string> = {
   "What we collect": "Çfarë mbledhim",
   "What we do not collect": "Çfarë nuk mbledhim",
   "Who can see it": "Kush mund ta shohë",
-  "You can delete your account at any time from Settings. Deletion is immediate and permanent: it removes your profile and picture, scores and leaderboard entries, comments, likes, saved games, follows, blocks, notifications and saved runs. Moderators with actions on record are removed by an administrator, so the moderation log stays accountable. See the Privacy Policy for what is collected and how long it is kept.":
-    "Mund ta fshish llogarinë në çdo kohë nga Cilësimet. Fshirja është e menjëhershme dhe e përhershme: heq profilin dhe foton, rezultatet dhe vendet në renditje, komentet, pëlqimet, lojërat e ruajtura, ndjekjet, bllokimet, njoftimet dhe lojërat e ruajtura përgjysmë. Moderatorët me veprime të regjistruara hiqen nga një administrator, që regjistri i moderimit të mbetet i përgjegjshëm. Shih Politikën e Privatësisë për çfarë mblidhet dhe sa gjatë ruhet.",
+  "You can delete your account at any time from the bottom of Settings (Delete account), or as described at unbored.lol/delete-account. Deletion is immediate and permanent and cannot be undone: it removes your profile and picture, scores and leaderboard entries, comments, likes, saved games, follows, blocks, chats you were part of, notifications and saved runs. Moderators with actions on record are removed by the operator on request, so the moderation log stays accountable. See the Privacy Policy for what is collected and how long it is kept.":
+    "Mund ta fshish llogarinë në çdo kohë nga fundi i Cilësimeve (Fshi llogarinë), ose siç përshkruhet te unbored.lol/delete-account. Fshirja është e menjëhershme, e përhershme dhe nuk mund të zhbëhet: heq profilin dhe foton, rezultatet dhe vendet në renditje, komentet, pëlqimet, lojërat e ruajtura, ndjekjet, bllokimet, bisedat ku ke qenë pjesë, njoftimet dhe lojërat e ruajtura në mes. Moderatorët me veprime të regjistruara i heq operatori me kërkesë, që regjistri i moderimit të mbetet i përgjegjshëm. Shih Politikën e Privatësisë për çfarë mblidhet dhe sa kohë ruhet.",
   "You must be at least 13 years old to create an account. Sign up with an email and password or with Google OAuth; email addresses are verified through a confirmation link before sign-in. You are responsible for activity on your account and for keeping your credentials secure. We may rate-limit credential attempts and require reauthentication for sensitive actions.":
     "Duhet të jesh të paktën 13 vjeç për të krijuar llogari. Regjistrohu me email dhe fjalëkalim ose me Google OAuth; adresat e email-it verifikohen me një lidhje konfirmimi para identifikimit. Je përgjegjës për aktivitetin në llogarinë tënde dhe për ruajtjen e sigurt të kredencialeve. Mund të kufizojmë përpjekjet e identifikimit dhe të kërkojmë rikonfirmim për veprime të ndjeshme.",
   "Your choices and rights": "Zgjedhjet dhe të drejtat e tua",
@@ -1058,8 +1052,8 @@ export const sqApp: Record<string, string> = {
   "Set at signup": "Vendosur në regjistrim",
   Setting: "Cilësimi",
   "Setting not found": "Cilësimi nuk u gjet",
-  "Settings → Delete account explains the current process. Deletion removes your profile and social relationships; scores on public leaderboards are retained without attribution where required.":
-    "Cilësimet → Fshi llogarinë shpjegon procesin aktual. Fshirja heq profilin dhe lidhjet sociale; rezultatet në renditjet publike ruhen pa emër aty ku kërkohet.",
+  "Open Settings and tap Delete account at the bottom. Deletion is immediate and permanent: your profile, scores, comments, chats and everything else tied to your account are removed. unbored.lol/delete-account explains the same steps.":
+    "Hap Cilësimet dhe prek Fshi llogarinë në fund. Fshirja është e menjëhershme dhe e përhershme: profili, rezultatet, komentet, bisedat dhe gjithçka tjetër e lidhur me llogarinë tënde hiqen. unbored.lol/delete-account shpjegon të njëjtat hapa.",
   "Show on leaderboards": "Shfaq në renditje",
   "Turn off to leave every game's board. Your scores are kept":
     "Çaktivizoje për të dalë nga renditja e çdo loje. Rezultatet e tua ruhen",
@@ -1199,4 +1193,45 @@ export const sqApp: Record<string, string> = {
   "Unbored is a social feed of short, playable games.":
     "Unbored është një rrjedhë sociale me lojëra të shkurtra të luajtshme.",
   Welcome: "Mirë se erdhe",
+  // Support and account deletion pages, the word filter
+  "Can't log in?": "Nuk mund të hysh?",
+  "Contact us": "Na kontakto",
+  "Delete your account": "Fshi llogarinë tënde",
+  "Deletion is immediate and permanent and cannot be undone. It removes your profile and picture, preferences, scores and leaderboard entries, comments, likes, saves, follows, blocks, every chat you were part of, reports you filed, push subscriptions, signed-in devices and notifications.":
+    "Fshirja është e menjëhershme, e përhershme dhe nuk mund të zhbëhet. Heq profilin dhe foton, preferencat, rezultatet dhe vendet në renditje, komentet, pëlqimet, të ruajturat, ndjekjet, bllokimet, çdo bisedë ku ke qenë pjesë, raportimet që ke bërë, abonimet push, pajisjet e kyçura dhe njoftimet.",
+  "Email us": "Na shkruaj me email",
+  "Email {email} from the address on your account and ask us to delete it. We delete it within 30 days and confirm by email.":
+    "Shkruaj te {email} nga adresa e llogarisë sate dhe kërko ta fshijmë. E fshijmë brenda 30 ditëve dhe ta konfirmojmë me email.",
+  "Encrypted database backups held by our provider expire within 30 days. If you accepted analytics, past analytics events stay under an account id that no longer belongs to anyone; email us to have them erased too.":
+    "Kopjet rezervë të koduara te ofruesi ynë skadojnë brenda 30 ditëve. Nëse ke pranuar analitikën, ngjarjet e kaluara mbeten nën një id llogarie që nuk i përket më askujt; na shkruaj që t'i fshijmë edhe ato.",
+  "Get help with Unbored: contact us, answers to common questions, and how to delete your account.":
+    "Merr ndihmë për Unbored: na kontakto, përgjigje për pyetjet e zakonshme dhe si ta fshish llogarinë.",
+  "Go to Settings": "Shko te Cilësimet",
+  "How to delete your Unbored account and everything tied to it.":
+    "Si ta fshish llogarinë tënde në Unbored dhe gjithçka të lidhur me të.",
+  "In the app or on the web": "Në aplikacion ose në ueb",
+  "Log in to Unbored.": "Hyr në Unbored.",
+  "Log in to delete your account": "Hyr për ta fshirë llogarinë",
+  "Open Settings.": "Hap Cilësimet.",
+  "Questions about your account, a bug, a player breaking the rules, or your data: email us and a person will answer.":
+    "Pyetje për llogarinë, një gabim, një lojtar që shkel rregullat ose të dhënat e tua: na shkruaj me email dhe do të të përgjigjet një njeri.",
+  "Republic of Kosovo": "Republika e Kosovës",
+  "Signed in? Settings → Help → Open an issue sends a report straight from the app. To report a player or a comment, use Report where you see them.":
+    "Je i kyçur? Cilësimet → Ndihmë → Hap një çështje dërgon një raport drejt nga aplikacioni. Për të raportuar një lojtar ose koment, përdor Raporto aty ku i sheh.",
+  "Tap Delete account at the bottom, then confirm.":
+    "Prek Fshi llogarinë në fund, pastaj konfirmo.",
+  "That has words our community rules don't allow. Change it and try again.":
+    "Kjo ka fjalë që rregullat e komunitetit nuk i lejojnë. Ndryshoje dhe provo sërish.",
+  "Unbored is operated by {name}, {country}.": "Unbored drejtohet nga {name}, {country}.",
+  "What is deleted": "Çfarë fshihet",
+  "What stays for a while": "Çfarë mbetet për pak kohë",
+  "You can also email us at {email} or visit the support page.":
+    "Mund të na shkruash edhe te {email} ose të vizitosh faqen e ndihmës.",
+  // Moderators removing a profile picture
+  "@{username}'s picture is taken off their profile everywhere. The reason is recorded against your name.":
+    "Fotoja e @{username} hiqet nga profili kudo. Arsyeja regjistrohet në emrin tënd.",
+  "Couldn't remove the photo.": "Fotoja nuk u hoq dot.",
+  "Remove photo": "Hiq foton",
+  "Remove this photo": "Hiq këtë foto",
+  "Removed @{username}'s photo.": "Fotoja e @{username} u hoq.",
 };

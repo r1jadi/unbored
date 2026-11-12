@@ -85,8 +85,9 @@ func SharedRateLimitFromEnv(namespace string) SharedRateLimit {
 // Row Level Security by design, so it is strictly server-only — never a VITE_*
 // variable, never logged, never sent to a client — and it is only loaded into
 // services that perform privileged server-side work after their own
-// authorization check (today: the admin API mounted in the games deployment,
-// which verifies ADMIN_EMAILS first). Every other service must leave it unset.
+// authorization check (the admin API mounted in the games deployment, which
+// verifies ADMIN_EMAILS first, and the users service, which publishes a profile
+// picture only for the verified caller and only after it passed screening).
 type Supabase struct {
 	ProjectURL  string
 	JWKSURL     string

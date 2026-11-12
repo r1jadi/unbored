@@ -90,6 +90,8 @@ const (
 	// UsersPath is the account directory; PATCH suspends or restores (admin only).
 	UsersPath = "/api/v1/admin/users"
 	UserPath  = "/api/v1/admin/users/{userID}"
+	// UserAvatarPath removes a player's picture (staff: moderators included).
+	UserAvatarPath = "/api/v1/admin/users/{userID}/avatar"
 	// LeaderboardsPath lists verified scores with the run behind each one.
 	LeaderboardsPath = "/api/v1/admin/leaderboards"
 	// ModerationLogPath is the audit trail of staff decisions.
@@ -156,6 +158,7 @@ type Backend interface {
 	SetReportStatus(ctx context.Context, token, actor, reportID, status, reason string) (supabaseadmin.ActionResult, error)
 	SetCommentHidden(ctx context.Context, token, actor, commentID string, hidden bool, reason string) (supabaseadmin.ActionResult, error)
 	SetSuspension(ctx context.Context, token, actor, userID string, suspended bool, reason string) (supabaseadmin.ActionResult, error)
+	RemoveAvatar(ctx context.Context, token, actor, userID, reason string) (supabaseadmin.ActionResult, error)
 	FeaturedGames(ctx context.Context, token, actor string) ([]supabaseadmin.FeaturedGame, error)
 	SetFeaturedGames(ctx context.Context, token, actor string, gameIDs []string) error
 	PlatformSettings(ctx context.Context, token, actor string) (supabaseadmin.PlatformSettings, error)
@@ -457,6 +460,9 @@ func (s *service) register(router *httpx.Router) {
 	// admits, and the handler re-checks the tier before the database is
 	// touched. A database moderator row — however stale — never reaches it.
 	router.AdminFunc("PATCH "+UserPath, s.staff(s.suspendUser))
+
+	// Taking down a reported picture is ordinary moderation, like hiding a comment.
+	router.AuthenticatedFunc("DELETE "+UserAvatarPath, s.staff(s.removeAvatar))
 
 	// Arranging featured games is moderation work. Broadcasts reach every player and
 	// settings change the platform for everyone, so both writes stay on the admin tier.
@@ -1211,6 +1217,39 @@ func (s *service) suspendUser(w http.ResponseWriter, r *http.Request) {
 		Suspended: result.Suspended,
 		Action:    result.Action,
 	})
+}
+
+type removeAvatarRequest struct {
+	Reason string `json:"reason"`
+}
+
+// removeAvatar takes a reported picture off a player's profile. The database
+// requires a reason and logs the action against the verified actor.
+func (s *service) removeAvatar(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.pathID(w, r, "userID", "account")
+	if !ok {
+		return
+	}
+	var body removeAvatarRequest
+	if !s.decode(w, r, &body) {
+		return
+	}
+	if strings.TrimSpace(body.Reason) == "" {
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
+			"A reason is required to remove a picture.",
+			apierr.Detail{Field: "reason", Rule: "required"}))
+		return
+	}
+	if !s.reason(w, r, body.Reason) {
+		return
+	}
+
+	result, err := s.backend.RemoveAvatar(r.Context(), s.token(r), s.actor(r), userID, body.Reason)
+	if err != nil {
+		s.moderationFailure(w, r, "remove a picture", err)
+		return
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, actionView{ID: result.UserID, Action: result.Action})
 }
 
 // ── Query and body parsing ──────────────────────────────────────────────────

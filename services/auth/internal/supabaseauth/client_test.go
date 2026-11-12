@@ -428,6 +428,10 @@ func TestUsernameAvailableReadsThePublicProfileAnonymously(t *testing.T) {
 	for name, testCase := range cases {
 		t.Run(name, func(t *testing.T) {
 			client, requests := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasSuffix(r.URL.Path, "/rpc/text_is_objectionable") {
+					writeJSON(t, w, 200, "false")
+					return
+				}
 				writeJSON(t, w, 200, testCase.body)
 			})
 
@@ -455,6 +459,39 @@ func TestUsernameAvailableReadsThePublicProfileAnonymously(t *testing.T) {
 			}
 			if got := sent.header.Get("Authorization"); got != "" {
 				t.Errorf("Authorization = %q on an anonymous availability read", got)
+			}
+		})
+	}
+}
+
+func TestUsernameAvailableRefusesWhatTheWordFilterRefuses(t *testing.T) {
+	cases := map[string]struct {
+		status int
+		body   string
+		want   bool
+	}{
+		"refused by the filter":         {status: 200, body: "true", want: false},
+		"allowed by the filter":         {status: 200, body: "false", want: true},
+		"filter not deployed yet (404)": {status: 404, body: `{"code":"PGRST202"}`, want: true},
+	}
+	for name, testCase := range cases {
+		t.Run(name, func(t *testing.T) {
+			client, requests := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasSuffix(r.URL.Path, "/rpc/text_is_objectionable") {
+					writeJSON(t, w, testCase.status, testCase.body)
+					return
+				}
+				writeJSON(t, w, 200, `[]`)
+			})
+			available, err := client.UsernameAvailable(context.Background(), "some_name")
+			if err != nil {
+				t.Fatalf("availability read failed: %v", err)
+			}
+			if available != testCase.want {
+				t.Errorf("available = %v, want %v", available, testCase.want)
+			}
+			if len(*requests) != 2 || (*requests)[1].method != http.MethodPost {
+				t.Errorf("want the profile read then a POST to the filter, got %d requests", len(*requests))
 			}
 		})
 	}

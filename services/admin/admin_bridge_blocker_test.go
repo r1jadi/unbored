@@ -217,6 +217,13 @@ func (g *guardBackend) SetCommentHidden(_ context.Context, token, actor, comment
 	return g.action, nil
 }
 
+func (g *guardBackend) RemoveAvatar(_ context.Context, token, actor, userID, reason string) (supabaseadmin.ActionResult, error) {
+	g.record("RemoveAvatar", userID, reason)
+	g.lastToken = token
+	g.lastActor = actor
+	return g.action, nil
+}
+
 func (g *guardBackend) SetSuspension(_ context.Context, token, actor, userID string, suspended bool, reason string) (supabaseadmin.ActionResult, error) {
 	g.record("SetSuspension", userID, reason)
 	g.lastToken = token

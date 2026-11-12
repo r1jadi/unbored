@@ -48,6 +48,7 @@ const Routes = {
   report: (id: string) => `/admin/reports/${id}`,
   comment: (id: string) => `/admin/comments/${id}`,
   user: (id: string) => `/admin/users/${id}`,
+  userAvatar: (id: string) => `/admin/users/${id}/avatar`,
 } as const;
 
 export const ADMIN_LIMIT = 50;
@@ -530,6 +531,15 @@ export async function setAccountSuspension(
     method: "PATCH",
     token: requireToken(),
     body: { suspended, reason: reason ?? "" },
+  });
+}
+
+/** Staff: takes a reported picture off a player's profile, with a reason. */
+export async function removeAvatar(userId: string, reason: string): Promise<AdminModerationResult> {
+  return apiFetch<AdminModerationResult>(Routes.userAvatar(userId), {
+    method: "DELETE",
+    token: requireToken(),
+    body: { reason },
   });
 }
 

@@ -102,5 +102,7 @@ run_file "$ROOT_DIR/tests/security/verifier_vectors.sql"
 run_file "$ROOT_DIR/tests/security/platform_features_test.sql"
 run_file "$ROOT_DIR/tests/security/streaks_test.sql"
 run_file "$ROOT_DIR/tests/security/engagement_test.sql"
+run_file "$ROOT_DIR/tests/security/content_filter_test.sql"
+run_file "$ROOT_DIR/tests/security/avatar_screening_test.sql"
 
 log "Database security suite passed."

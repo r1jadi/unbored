@@ -79,5 +79,35 @@ func (c *Client) UsernameAvailable(ctx context.Context, username string) (bool, 
 	if err := decodeJSON(response.Body, &rows); err != nil {
 		return false, &Error{Op: "username-available", Status: response.StatusCode, cause: err}
 	}
-	return len(rows) == 0, nil
+	if len(rows) > 0 {
+		return false, nil
+	}
+	// A free name the community rules refuse is not offered either: the
+	// database's word filter (public.text_is_objectionable) is the one list.
+	refused, err := c.usernameRefused(ctx, username)
+	if err != nil {
+		return false, err
+	}
+	return !refused, nil
+}
+
+// usernameRefused asks the database's word filter about a username. Before the
+// migration that adds the filter is applied the function is missing (404), and
+// the name is judged on availability alone rather than failing every sign-up.
+func (c *Client) usernameRefused(ctx context.Context, username string) (bool, error) {
+	response, err := c.do(ctx, "username-filter", http.MethodPost, "/rest/v1/rpc/text_is_objectionable",
+		map[string]string{"p_text": username}, "")
+	if err != nil {
+		var dataErr *Error
+		if errors.As(err, &dataErr) && dataErr.Status == http.StatusNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	defer response.Body.Close()
+	var refused bool
+	if err := decodeJSON(response.Body, &refused); err != nil {
+		return false, &Error{Op: "username-filter", Status: response.StatusCode, cause: err}
+	}
+	return refused, nil
 }

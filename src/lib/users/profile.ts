@@ -45,10 +45,16 @@ import { t } from "@/lib/settings/language";
 /** Routes implemented by `services/users`. Kept together so they cannot drift. */
 const Routes = {
   me: "/users/me",
+  avatar: "/users/me/avatar",
 } as const;
 
 /** The bucket the storage migration creates for profile pictures. */
 const AVATAR_BUCKET = "avatars";
+/**
+ * Where a new picture waits, private, until the users service has screened it
+ * (`POST /users/me/avatar`). Only a picture that passes reaches `avatars`.
+ */
+const AVATAR_UPLOAD_BUCKET = "avatar-uploads";
 
 /** One `public.profiles` row as the API exposes it. Never contains a secret. */
 export type Profile = {
@@ -288,10 +294,11 @@ export async function updateProfile(patch: ProfilePatch): Promise<Profile> {
 /**
  * Replaces the profile picture.
  *
- * The file goes to Storage first, then the profile is pointed at it, because the
- * database check constraint only accepts a path of the form `<account id>/<file>`
- * — the object has to exist under the caller's own folder before it can be
- * referenced. A large photo is shrunk first (`prepareAvatar`). Replacing a picture leaves the previous object in place: removing
+ * The file goes to the private holding bucket first, under the caller's own
+ * folder; then the users service screens it (OpenAI moderation) and, only if it
+ * passes, publishes it and points the profile at it. Nobody else can see the
+ * picture before that. A refused picture is answered with the service's own
+ * message, shown as it is. A large photo is shrunk first (`prepareAvatar`). Replacing a picture leaves the previous object in place: removing
  * it is a deletion the UI does not offer, and a failed cleanup must never break a
  * successful upload.
  */
@@ -328,19 +335,22 @@ export async function changeAvatar(chosen: File): Promise<Profile> {
   // folder separator into %2F and break the owner-folder rule the bucket policy
   // checks (`avatars/<caller id>/<file>`).
   const encodedPath = objectPath.split("/").map(encodeURIComponent).join("/");
-  const response = await fetch(`${baseUrl}/storage/v1/object/${AVATAR_BUCKET}/${encodedPath}`, {
-    method: "POST",
-    headers: {
-      apikey: publishableKey,
-      // The caller's own token: the bucket policy only allows writes inside a
-      // folder named after this account.
-      Authorization: `Bearer ${token}`,
-      "Content-Type": file.type,
-      "x-upsert": "false",
-      "cache-control": "max-age=3600",
+  const response = await fetch(
+    `${baseUrl}/storage/v1/object/${AVATAR_UPLOAD_BUCKET}/${encodedPath}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: publishableKey,
+        // The caller's own token: the bucket policy only allows writes inside a
+        // folder named after this account.
+        Authorization: `Bearer ${token}`,
+        "Content-Type": file.type,
+        "x-upsert": "false",
+        "cache-control": "max-age=3600",
+      },
+      body: file,
     },
-    body: file,
-  });
+  );
 
   if (!response.ok) {
     throw new ApiError(t("That photo could not be uploaded. Try again."), {
@@ -349,7 +359,13 @@ export async function changeAvatar(chosen: File): Promise<Profile> {
     });
   }
 
-  return updateProfile({ avatarPath: objectPath, expectedUpdatedAt: currentUpdatedAt() });
+  const profile = await apiFetch<Profile>(Routes.avatar, {
+    method: "POST",
+    token,
+    body: { uploadPath: objectPath },
+  });
+  adopt({ status: "ready", profile });
+  return profile;
 }
 
 /**

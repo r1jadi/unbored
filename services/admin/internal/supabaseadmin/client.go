@@ -482,6 +482,8 @@ type ActionResult struct {
 	Hidden         *bool   `json:"hidden"`
 	Suspended      *bool   `json:"suspended"`
 	Action         string  `json:"action"`
+	// AvatarPath is the picture a removal took off a profile.
+	AvatarPath string `json:"avatarPath"`
 }
 
 // SetGameStatus publishes, rejects, archives or returns a game to review. The
@@ -540,6 +542,45 @@ func (c *Client) SetSuspension(ctx context.Context, token, actor, userID string,
 		return ActionResult{}, err
 	}
 	return result, nil
+}
+
+// RemoveAvatar takes a player's picture off their profile, with a reason, and
+// logs it. With the server-only secret the file itself is deleted from the
+// public bucket too; without it the profile no longer points at the file, which
+// is what takes it off every screen, and the orphan is cleaned up later.
+func (c *Client) RemoveAvatar(ctx context.Context, token, actor, userID, reason string) (ActionResult, error) {
+	payload := map[string]any{
+		"p_user_id": userID,
+		"p_reason":  nullable(reason),
+	}
+	var result ActionResult
+	if err := c.invoke(ctx, "remove-avatar", "admin_remove_avatar", "admin_remove_avatar_svc", payload, token, actor, &result); err != nil {
+		return ActionResult{}, err
+	}
+	if c.secret != "" && result.AvatarPath != "" {
+		c.deleteAvatarObject(ctx, result.AvatarPath)
+	}
+	return result, nil
+}
+
+// deleteAvatarObject removes a picture from the public bucket, best effort: the
+// moderation already happened, and a failure here only leaves an unreferenced file.
+func (c *Client) deleteAvatarObject(ctx context.Context, path string) {
+	segments := strings.Split(path, "/")
+	for i, segment := range segments {
+		segments[i] = url.PathEscape(segment)
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodDelete,
+		c.baseURL+"/storage/v1/object/avatars/"+strings.Join(segments, "/"), nil)
+	if err != nil {
+		return
+	}
+	request.Header.Set("apikey", c.secret)
+	request.Header.Set("Authorization", "Bearer "+c.secret)
+	request.Header.Set("X-Client-Info", "unbored-admin-service")
+	if response, err := c.http.Do(request); err == nil {
+		_ = response.Body.Close()
+	}
 }
 
 // ── Transport ───────────────────────────────────────────────────────────────

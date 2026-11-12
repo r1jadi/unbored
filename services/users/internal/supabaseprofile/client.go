@@ -40,9 +40,12 @@ const (
 	codeInsufficientPrivilege = "42501"
 	codeUniqueViolation       = "23505"
 	codeCheckViolation        = "23514"
-	codeForeignKeyViolation   = "23503"
-	codeNotNullViolation      = "23502"
-	codeRLSViolation          = "42501"
+	// codeObjectionable is raised by public.refuse_objectionable_text, the
+	// database's word filter for profile text.
+	codeObjectionable       = "UB001"
+	codeForeignKeyViolation = "23503"
+	codeNotNullViolation    = "23502"
+	codeRLSViolation        = "42501"
 )
 
 // maxBodyBytes bounds what is read from the Data API.
@@ -110,6 +113,9 @@ func (e *Error) Unwrap() error { return e.cause }
 func (e *Error) IsForbidden() bool {
 	return e.Status == http.StatusForbidden || e.Code == codeInsufficientPrivilege || e.Code == codeRLSViolation
 }
+
+// IsObjectionable reports text the database's word filter refused.
+func (e *Error) IsObjectionable() bool { return e.Code == codeObjectionable }
 
 // IsUniqueViolation reports a duplicate value on a unique index.
 func (e *Error) IsUniqueViolation() bool { return e.Code == codeUniqueViolation }
@@ -303,7 +309,7 @@ func errorCode(body io.Reader) (string, error) {
 		return "", nil
 	}
 	for _, r := range envelope.Code {
-		if !(r >= '0' && r <= '9') && !(r >= 'a' && r <= 'z') && r != '_' {
+		if !(r >= '0' && r <= '9') && !(r >= 'a' && r <= 'z') && !(r >= 'A' && r <= 'Z') && r != '_' {
 			return "", nil
 		}
 	}

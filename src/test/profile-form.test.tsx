@@ -356,13 +356,14 @@ describe("ProfileForm", () => {
     expect(patchRequests(spy)).toHaveLength(0);
   });
 
-  it("uploads a chosen photo and stores its path on the profile", async () => {
+  it("uploads a chosen photo for screening and shows it once published", async () => {
     const spy = mockFetch((url, init) => {
       if (url.endsWith("/auth/sign-in")) return jsonResponse(sessionPayload());
-      if (init?.method === "POST") return jsonResponse({ Key: "avatars/object" });
-      if (init?.method === "PATCH") {
-        const sent = JSON.parse(String(init.body)) as { avatarPath: string };
-        return jsonResponse(profilePayload({ avatarPath: sent.avatarPath }));
+      if (url.includes("/storage/v1/object/"))
+        return jsonResponse({ Key: "avatar-uploads/object" });
+      if (url.endsWith("/users/me/avatar")) {
+        const sent = JSON.parse(String(init?.body)) as { uploadPath: string };
+        return jsonResponse(profilePayload({ avatarPath: sent.uploadPath }));
       }
       return jsonResponse(profilePayload());
     });
@@ -375,12 +376,13 @@ describe("ProfileForm", () => {
       fireEvent.change(input, { target: { files: [photo] } });
     });
 
-    const [patch] = patchRequests(spy);
-    expect(patch).toBeDefined();
-    const body = JSON.parse(String(patch![1]!.body)) as { avatarPath: string };
-    // The path is inside the caller's own folder, which is what the storage
-    // policy and the database's check constraint both require.
-    expect(body.avatarPath).toMatch(new RegExp(`^${testUserID}/[0-9a-f-]{36}\\.png$`));
+    const screening = spy.mock.calls.find(([url]) => String(url).endsWith("/users/me/avatar"));
+    expect(screening).toBeDefined();
+    const body = JSON.parse(String(screening![1]!.body)) as { uploadPath: string };
+    // The picture waits in the caller's own private folder until it is screened,
+    // and the profile is never patched to a path directly.
+    expect(body.uploadPath).toMatch(new RegExp(`^${testUserID}/[0-9a-f-]{36}\\.png$`));
+    expect(patchRequests(spy)).toHaveLength(0);
     // Once saved, the player is taken to their profile to see it.
     expect(await screen.findByText("Your profile")).toBeInTheDocument();
   });

@@ -1,22 +1,17 @@
 // Substantive terms and privacy text based on the implemented service.
-// No registered company, address, jurisdiction or contact identity is invented
-// here: where operator details are required, the document says exactly what the
-// owner must supply (see OPERATOR_DETAILS_REQUIRED below).
 //
-// Effective date: 2026-11-06. Review with counsel before public launch; this
-// is product-accurate copy, not legal advice.
+// The operator is Rijad Halili, an individual; contact contactunbored@gmail.com;
+// governing law: the Republic of Kosovo. Effective date: 2026-11-12. This is
+// product-accurate copy, not legal advice: have counsel review it.
 
 import { msg, t } from "@/lib/settings/language";
 
-export const OPERATOR_DETAILS_REQUIRED = [
-  msg(
-    "Legal operator name (person or company) and contact email for account, terms and privacy requests.",
-  ),
-  msg("Jurisdiction / governing law and support response expectations, if any are promised."),
-  msg(
-    "Data-retention periods beyond the implemented 30-day deletion target, if the policy must state them.",
-  ),
-] as const;
+/** Who runs Unbored and how to reach them: the one place these details live. */
+export const OPERATOR = {
+  name: "Rijad Halili",
+  email: "contactunbored@gmail.com",
+  country: "Republic of Kosovo",
+} as const;
 
 export const terms = [
   [
@@ -58,13 +53,13 @@ export const terms = [
   [
     msg("7. Deletion and data handling"),
     msg(
-      "You can delete your account at any time from Settings. Deletion is immediate and permanent: it removes your profile and picture, scores and leaderboard entries, comments, likes, saved games, follows, blocks, notifications and saved runs. Moderators with actions on record are removed by an administrator, so the moderation log stays accountable. See the Privacy Policy for what is collected and how long it is kept.",
+      "You can delete your account at any time from the bottom of Settings (Delete account), or as described at unbored.lol/delete-account. Deletion is immediate and permanent and cannot be undone: it removes your profile and picture, scores and leaderboard entries, comments, likes, saved games, follows, blocks, chats you were part of, notifications and saved runs. Moderators with actions on record are removed by the operator on request, so the moderation log stays accountable. See the Privacy Policy for what is collected and how long it is kept.",
     ),
   ],
   [
     msg("8. Availability, changes and third parties"),
     msg(
-      "The service is provided as-is and may change, including games, scores display, social features and rate limits. Authentication and hosting run on Supabase and Vercel; Google sign-in and linking, when enabled, are subject to Google's terms. No uptime, response-time or support promise is made in this document.",
+      "The service is provided as-is and may change, including games, scores display, social features and rate limits. Authentication and hosting run on Supabase and Vercel; Google sign-in and linking, when enabled, are subject to Google's terms. No uptime guarantee is made. Support questions go to contactunbored@gmail.com or unbored.lol/support.",
     ),
   ],
   [
@@ -82,7 +77,7 @@ export const terms = [
   [
     msg("11. Contact and operator details"),
     msg(
-      "Operator identity and contact: TO BE SUPPLIED BY THE OWNER before public launch (see the note at the top of this document). Until then, use the project issue tracker linked in Settings → Help.",
+      "Unbored is operated by Rijad Halili, an individual based in the Republic of Kosovo. For questions about your account, these terms or your data, email contactunbored@gmail.com or visit unbored.lol/support. These terms are governed by the laws of the Republic of Kosovo, and disputes go to its competent courts. Nothing in these terms removes protections that the consumer law of the country you live in gives you and that cannot be waived.",
     ),
   ],
 ];
@@ -127,19 +122,19 @@ export const privacy = [
   [
     msg("Retention and deletion"),
     msg(
-      "Data is kept while your account is active. You can delete your account from Settings at any time; deletion immediately removes your profile and picture, preferences, scores, comments, likes, saves, follows, blocks, messages you sent, reports you filed, push subscriptions, signed-in devices and notifications. Backups, if any, age out on the provider's schedule.",
+      "Data is kept while your account is active. You can delete your account at any time from the bottom of Settings (Delete account), or as described at unbored.lol/delete-account. Deletion is immediate and permanent: it removes your profile and picture, preferences, scores and leaderboard entries, comments, likes, saves, follows, blocks, every chat you were part of, reports you filed, push subscriptions, signed-in devices and notifications. Two things outlive it: encrypted database backups held by Supabase, which expire on its schedule within 30 days, and analytics events (only if you accepted analytics), which stay in PostHog under an account id that no longer belongs to anyone; email us to have those erased too.",
     ),
   ],
   [
     msg("Your choices and rights"),
     msg(
-      "Edit profile, privacy, notification, language, appearance, accessibility, cookie and blocked-user settings in Settings; each control persists and takes effect as described on its screen. Turn push on or off per device, opt in or out of the email digest and announcements, sign out other devices and turn on two-step verification in Settings. To request access, correction or deletion, open an issue on the project tracker from your signed-in account until a dedicated privacy contact is published.",
+      "Edit profile, privacy, notification, language, appearance, accessibility, cookie and blocked-user settings in Settings; each control persists and takes effect as described on its screen. Turn push on or off per device, opt in or out of the email digest and announcements, sign out other devices and turn on two-step verification in Settings. To request a copy of your data, a correction or deletion, email contactunbored@gmail.com from the address on your account. We answer within one month.",
     ),
   ],
   [
     msg("Contact"),
     msg(
-      "Privacy contact: TO BE SUPPLIED BY THE OWNER before public launch (operator name and email). Until then, use the project issue tracker linked in Settings → Help. This policy is product-accurate documentation, not legal advice; have counsel review it before public launch.",
+      "Unbored is operated by Rijad Halili, an individual based in the Republic of Kosovo, who is responsible for your data. Privacy contact: contactunbored@gmail.com. You can also complain to the data protection authority where you live.",
     ),
   ],
 ];
@@ -147,7 +142,7 @@ export const privacy = [
 export function LegalBody({ sections }: { sections: string[][] }) {
   return (
     <div className="space-y-5 text-sm leading-relaxed">
-      <p className="text-xs text-muted-foreground">{t("Last updated November 6, 2026")}</p>
+      <p className="text-xs text-muted-foreground">{t("Last updated November 12, 2026")}</p>
       {sections.map(([h, b]) => (
         <section key={h}>
           <h2 className="font-semibold">{t(h)}</h2>

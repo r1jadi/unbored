@@ -104,6 +104,8 @@ const UNFINISHED_SIGNUP_PATHS = [
   "/two-factor",
   "/terms",
   "/privacy",
+  "/support",
+  "/delete-account",
 ];
 
 // Where a session that still owes its second step may be: the prompt, a way to leave,
@@ -115,6 +117,8 @@ const TWO_FACTOR_FREE_PATHS = [
   "/reset-password",
   "/terms",
   "/privacy",
+  "/support",
+  "/delete-account",
 ];
 
 function NotFoundComponent() {

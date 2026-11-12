@@ -130,6 +130,9 @@ type patchRequest struct {
 type service struct {
 	backend Backend
 	logger  *slog.Logger
+	// avatars publishes screened profile pictures. Nil when the deployment has
+	// no secret key or no OpenAI key: the upload route then answers 503.
+	avatars *avatarPipeline
 }
 
 func newService(backend Backend, logger *slog.Logger) *service {
@@ -145,6 +148,7 @@ func newService(backend Backend, logger *slog.Logger) *service {
 func (s *service) register(router *httpx.Router) {
 	router.AuthenticatedFunc("GET "+ProfilePath, s.currentProfile)
 	router.AuthenticatedFunc("PATCH "+ProfilePath, s.updateProfile)
+	router.AuthenticatedFunc("POST "+AvatarPath, s.uploadAvatar)
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -264,10 +268,11 @@ func validated(w http.ResponseWriter, r *http.Request, request patchRequest) (su
 	if avatar, present, ok := nullableText(w, r, request.AvatarPath, "avatarPath", maxAvatarPathRunes); !ok {
 		return supabaseprofile.Patch{}, time.Time{}, false
 	} else if present {
-		// A non-empty value has to be a path this account may own. An empty
-		// string is how a client removes the avatar, which is a null column.
-		if avatar != nil && *avatar != "" && !avatarPathPattern.MatchString(*avatar) {
-			return reject(w, r, "avatarPath", "format", "Use a path of the form <account id>/<file name>.")
+		// Only removing the picture is a profile edit. Setting one goes through
+		// POST /users/me/avatar, which screens it first; the database refuses a
+		// path from a player's token anyway (profiles_avatar_path_server_only).
+		if avatar != nil && *avatar != "" {
+			return reject(w, r, "avatarPath", "upload", "Upload a picture to change it; this field can only remove it.")
 		}
 		if avatar != nil && *avatar == "" {
 			avatar = nil
@@ -380,6 +385,12 @@ func (s *service) dataFailure(w http.ResponseWriter, r *http.Request, operation 
 				slog.String("operation", operation), slog.String("code", dataErr.Code))
 			httpx.WriteError(w, r, httpx.NewError(httpx.CodeForbidden, "That profile field cannot be changed."))
 			return
+		case dataErr.IsObjectionable():
+			// The word filter (public.refuse_objectionable_text) refused a
+			// username, display name or bio. The wording is ours.
+			httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnprocessable,
+				"That has words our community rules don't allow. Change it and try again."))
+			return
 		case dataErr.IsUniqueViolation():
 			// The only unique-writable column on this table is the username, so
 			// a conflict here always names it — and the form shows it under the
@@ -422,7 +433,7 @@ func Options() servicekit.Options {
 			} else {
 				backend = client
 			}
-			newService(backend, logger).register(router)
+			newService(backend, logger).withAvatars(avatarPipelineFromEnv(cfg, logger)).register(router)
 		},
 	}
 }

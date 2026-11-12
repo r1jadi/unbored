@@ -419,14 +419,15 @@ describe("changeAvatar", () => {
     expect(spy.mock.calls.length).toBe(before);
   });
 
-  it("uploads into the caller's own folder and points the profile at the object", async () => {
+  it("holds the picture privately, then asks the service to screen and publish it", async () => {
     const spy = mockFetch((url, init) => {
       if (url.endsWith("/auth/sign-in")) return jsonResponse(sessionPayload());
-      if (init?.method === "POST") return jsonResponse({ Key: "avatars/object" });
-      if (init?.method === "PATCH") {
-        // Answer the way the database does: with the row it now holds.
-        const sent = JSON.parse(String(init.body)) as { avatarPath: string };
-        return jsonResponse(profilePayload({ avatarPath: sent.avatarPath }));
+      if (url.includes("/storage/v1/object/"))
+        return jsonResponse({ Key: "avatar-uploads/object" });
+      if (url.endsWith("/users/me/avatar")) {
+        // Answer the way the service does: with the profile now pointing at it.
+        const sent = JSON.parse(String(init?.body)) as { uploadPath: string };
+        return jsonResponse(profilePayload({ avatarPath: sent.uploadPath }));
       }
       return jsonResponse(profilePayload());
     });
@@ -437,19 +438,53 @@ describe("changeAvatar", () => {
 
     const upload = requestOf(spy, 2);
     expect(upload.method).toBe("POST");
-    // The bucket policy only allows writes inside `avatars/<caller id>/`, and the
-    // database check constraint only accepts `<account id>/<file>`.
-    expect(upload.url).toContain(`/storage/v1/object/avatars/${testUserID}/`);
+    // Into the private holding bucket, under the caller's own folder: nobody else
+    // can see it before it is screened.
+    expect(upload.url).toContain(`/storage/v1/object/avatar-uploads/${testUserID}/`);
     expect(upload.headers.get("Authorization")).toBe("Bearer access-token-1");
     expect(upload.headers.get("Content-Type")).toBe("image/png");
 
-    const objectPath = decodeURIComponent(upload.url.split("/avatars/")[1]!);
+    const objectPath = decodeURIComponent(upload.url.split("/avatar-uploads/")[1]!);
     expect(objectPath).toMatch(/^[0-9a-f-]{36}\/[a-z0-9._-]{1,120}$/);
 
-    const patch = requestOf(spy, 3);
-    expect(patch.method).toBe("PATCH");
-    expect(patch.body).toMatchObject({ avatarPath: objectPath });
+    const screen = requestOf(spy, 3);
+    expect(screen.method).toBe("POST");
+    expect(screen.url).toMatch(/\/users\/me\/avatar$/);
+    expect(screen.body).toEqual({ uploadPath: objectPath });
     expect((getProfileState() as { profile: Profile }).profile.avatarPath).toBe(objectPath);
+    // The profile is never patched to a path directly any more.
+    expect(spy.mock.calls.filter(([, init]) => init?.method === "PATCH")).toHaveLength(0);
+  });
+
+  it("shows the service's answer when a picture is refused", async () => {
+    mockFetch((url) => {
+      if (url.endsWith("/auth/sign-in")) return jsonResponse(sessionPayload());
+      if (url.includes("/storage/v1/object/"))
+        return jsonResponse({ Key: "avatar-uploads/object" });
+      if (url.endsWith("/users/me/avatar")) {
+        return jsonResponse(
+          {
+            error: {
+              code: "unprocessable",
+              message: "That picture isn't allowed. Choose a different one.",
+              details: [{ field: "uploadPath", rule: "objectionable" }],
+            },
+          },
+          422,
+        );
+      }
+      return jsonResponse(profilePayload());
+    });
+    await signInAs();
+    await loadProfile();
+
+    const failure = await changeAvatar(pngFile()).catch((e) => e);
+
+    expect(failure).toBeInstanceOf(ApiError);
+    expect((failure as ApiError).message).toBe(
+      "That picture isn't allowed. Choose a different one.",
+    );
+    expect((getProfileState() as { profile: Profile }).profile.avatarPath).toBeFalsy();
   });
 
   it("surfaces a failed upload and leaves the profile alone", async () => {
@@ -470,6 +505,9 @@ describe("changeAvatar", () => {
     expect(failure).toBeInstanceOf(ApiError);
     expect((failure as ApiError).status).toBe(403);
     expect(spy.mock.calls.filter(([, init]) => init?.method === "PATCH")).toHaveLength(0);
+    expect(spy.mock.calls.filter(([url]) => String(url).endsWith("/users/me/avatar"))).toHaveLength(
+      0,
+    );
   });
 });
 

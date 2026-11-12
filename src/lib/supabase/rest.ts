@@ -41,6 +41,14 @@ export function requireSupabaseRest(): { base: string; key: string } {
 }
 
 /** A Supabase PostgREST error payload, trimmed to what callers need. */
+/** SQLSTATE the database raises when a text breaks the community rules' word filter. */
+export const OBJECTIONABLE_CONTENT = "UB001";
+
+/** What a player sees when the word filter refuses what they wrote. */
+export function objectionableMessage(): string {
+  return t("That has words our community rules don't allow. Change it and try again.");
+}
+
 export class SupabaseRestError extends Error {
   readonly status: number;
   readonly code?: string;
@@ -124,6 +132,9 @@ async function toRestError(response: Response): Promise<SupabaseRestError> {
     const payload = (await response.json()) as { message?: string; code?: string; hint?: string };
     if (typeof payload.message === "string" && payload.message !== "") message = payload.message;
     if (typeof payload.code === "string") code = payload.code;
+    // The database's word filter (`public.refuse_objectionable_text`): one
+    // sentence the player can act on, whatever was being posted.
+    if (code === OBJECTIONABLE_CONTENT) message = objectionableMessage();
   } catch {
     // A non-JSON failure keeps the generic message; the status is the signal.
   }

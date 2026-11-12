@@ -75,6 +75,8 @@ const INDEXABLE_PATHS = new Set([
   "/signup",
   "/privacy",
   "/terms",
+  "/support",
+  "/delete-account",
 ]);
 
 const INDEXABLE_PATTERNS = [/^\/categories\/[a-z0-9-]+$/, /^\/games\/[a-z0-9-]+$/];

@@ -176,6 +176,11 @@ type harness struct {
 // deployment without Supabase credentials behaves.
 func newHarness(t *testing.T, backend Backend, withAuth bool) *harness {
 	t.Helper()
+	return buildHarness(t, backend, withAuth, nil)
+}
+
+func buildHarness(t *testing.T, backend Backend, withAuth bool, avatars *avatarPipeline) *harness {
+	t.Helper()
 
 	t.Setenv("ENVIRONMENT", "development")
 	t.Setenv("LOG_LEVEL", "debug")
@@ -209,7 +214,7 @@ func newHarness(t *testing.T, backend Backend, withAuth bool) *harness {
 
 	health := httpx.NewHealth(version.Version)
 	health.RegisterHealthRoutes(router.Mux())
-	newService(backend, logger).register(router)
+	newService(backend, logger).withAvatars(avatars).register(router)
 
 	httpServer := httptest.NewServer(httpx.NewServer(httpx.ServerOptions{
 		Config:  cfg,
@@ -452,7 +457,7 @@ func TestPatchProfileWritesTheCallersOwnRow(t *testing.T) {
 	h := newHarness(t, backend, true)
 
 	response := h.do(t, http.MethodPatch, ProfilePath,
-		`{"displayName":"  Rijad H  ","bio":"New bio","avatarPath":"`+testUserID+`/avatar.png"}`,
+		`{"displayName":"  Rijad H  ","bio":"New bio"}`,
 		token(t, testUserID))
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("PATCH = %d, want 200", response.StatusCode)
@@ -469,8 +474,8 @@ func TestPatchProfileWritesTheCallersOwnRow(t *testing.T) {
 	if !patch.SetBio || patch.Bio == nil || *patch.Bio != "New bio" {
 		t.Errorf("backend received bio %v (set=%v), want New bio", patch.Bio, patch.SetBio)
 	}
-	if !patch.SetAvatar || patch.AvatarPath == nil || *patch.AvatarPath != testUserID+"/avatar.png" {
-		t.Errorf("backend received avatar %v (set=%v)", patch.AvatarPath, patch.SetAvatar)
+	if patch.SetAvatar {
+		t.Errorf("an edit without avatarPath touched the avatar")
 	}
 	for _, seen := range backend.userIDs() {
 		if seen != testUserID {
@@ -625,6 +630,21 @@ func TestPatchReportsATakenUsernameAsAFieldConflict(t *testing.T) {
 	}
 	if field != "username" {
 		t.Errorf("field = %q, want username, so the form shows it under the input", field)
+	}
+}
+
+func TestPatchReportsTheWordFilterAsUnprocessable(t *testing.T) {
+	// public.refuse_objectionable_text raises SQLSTATE UB001. The answer is ours,
+	// never the database's text, which could echo what the player typed.
+	backend := &fakeBackend{
+		profile:   profileFixture(),
+		updateErr: &supabaseprofile.Error{Op: "update-profile", Status: http.StatusBadRequest, Code: "UB001"},
+	}
+	h := newHarness(t, backend, true)
+
+	response := h.do(t, http.MethodPatch, ProfilePath, `{"bio":"something rude"}`, token(t, testUserID))
+	if response.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", response.StatusCode)
 	}
 }
 

@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { resolveUserId } from "@/lib/social/follows";
 import { AchievementsList } from "@/components/social/AchievementsList";
 import { ReportDialog } from "@/components/social/ReportDialog";
+import { RemovePhotoDialog } from "@/components/social/RemovePhotoDialog";
+import { useAdminVisibility } from "@/lib/admin/visibility";
 import {
   Activity,
   Award,
@@ -428,6 +430,10 @@ export function ProfileView({
   const active = visible.includes(tab) ? tab : (visible[0] ?? "Best scores");
   const gamesScored = bestScores?.status === "ready" ? bestScores.entries?.length : undefined;
   const calloutBadge = useCalloutBadge(user.userId, self);
+  const staff = useAdminVisibility();
+  const [removingPhoto, setRemovingPhoto] = useState(false);
+  const [photoRemoved, setPhotoRemoved] = useState(false);
+  const avatarSrc = photoRemoved ? undefined : user.avatarSrc;
 
   async function block() {
     try {
@@ -480,6 +486,14 @@ export function ProfileView({
                   <DropdownMenuItem className="text-destructive" onClick={() => void block()}>
                     {t("Block")}
                   </DropdownMenuItem>
+                  {staff && avatarSrc && user.userId && (
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => setRemovingPhoto(true)}
+                    >
+                      {t("Remove photo")}
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -508,7 +522,7 @@ export function ProfileView({
                 <div className="-mt-12 flex items-end justify-between gap-3">
                   <Avatar
                     name={user.username}
-                    src={user.avatarSrc}
+                    src={avatarSrc}
                     size="xl"
                     zoomable
                     className="relative ring-4 ring-background"
@@ -687,6 +701,15 @@ export function ProfileView({
             targetId={user.userId ?? (() => resolveUserId(user.username))}
             subject={`@${user.username}`}
           />
+          {staff && user.userId && (
+            <RemovePhotoDialog
+              open={removingPhoto}
+              onOpenChange={setRemovingPhoto}
+              userId={user.userId}
+              username={user.username}
+              onRemoved={() => setPhotoRemoved(true)}
+            />
+          )}
         </>
       )}
     </Page>

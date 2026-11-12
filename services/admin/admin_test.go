@@ -199,6 +199,13 @@ func (f *fakeBackend) SetCommentHidden(_ context.Context, token, actor, commentI
 	return f.action, nil
 }
 
+func (f *fakeBackend) RemoveAvatar(_ context.Context, token, actor, userID, reason string) (supabaseadmin.ActionResult, error) {
+	f.record("RemoveAvatar", userID, reason)
+	f.lastToken = token
+	f.lastActor = actor
+	return supabaseadmin.ActionResult{UserID: userID, Action: "remove_avatar"}, nil
+}
+
 func (f *fakeBackend) SetSuspension(_ context.Context, token, actor, userID string, suspended bool, reason string) (supabaseadmin.ActionResult, error) {
 	f.record("SetSuspension", userID, reason)
 	f.lastToken = token

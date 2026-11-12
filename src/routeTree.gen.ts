@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountCreatedRouteImport } from './routes/account-created'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as DeleteAccountRouteImport } from './routes/delete-account'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as FollowingRouteImport } from './routes/following'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -29,6 +30,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as TwoFactorRouteImport } from './routes/two-factor'
@@ -81,6 +83,11 @@ const ActivityRoute = ActivityRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeleteAccountRoute = DeleteAccountRouteImport.update({
+  id: '/delete-account',
+  path: '/delete-account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExploreRoute = ExploreRouteImport.update({
@@ -161,6 +168,11 @@ const SearchRoute = SearchRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -334,6 +346,7 @@ export interface FileRoutesByFullPath {
   '/account-created': typeof AccountCreatedRoute
   '/activity': typeof ActivityRoute
   '/admin': typeof AdminRouteWithChildren
+  '/delete-account': typeof DeleteAccountRoute
   '/explore': typeof ExploreRoute
   '/following': typeof FollowingRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -350,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/two-factor': typeof TwoFactorRoute
@@ -388,6 +402,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account-created': typeof AccountCreatedRoute
   '/activity': typeof ActivityRoute
+  '/delete-account': typeof DeleteAccountRoute
   '/explore': typeof ExploreRoute
   '/following': typeof FollowingRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -404,6 +419,7 @@ export interface FileRoutesByTo {
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/two-factor': typeof TwoFactorRoute
@@ -444,6 +460,7 @@ export interface FileRoutesById {
   '/account-created': typeof AccountCreatedRoute
   '/activity': typeof ActivityRoute
   '/admin': typeof AdminRouteWithChildren
+  '/delete-account': typeof DeleteAccountRoute
   '/explore': typeof ExploreRoute
   '/following': typeof FollowingRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -460,6 +477,7 @@ export interface FileRoutesById {
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
+  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/two-factor': typeof TwoFactorRoute
@@ -501,6 +519,7 @@ export interface FileRouteTypes {
     | '/account-created'
     | '/activity'
     | '/admin'
+    | '/delete-account'
     | '/explore'
     | '/following'
     | '/forgot-password'
@@ -517,6 +536,7 @@ export interface FileRouteTypes {
     | '/saved'
     | '/search'
     | '/signup'
+    | '/support'
     | '/terms'
     | '/trending'
     | '/two-factor'
@@ -555,6 +575,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account-created'
     | '/activity'
+    | '/delete-account'
     | '/explore'
     | '/following'
     | '/forgot-password'
@@ -571,6 +592,7 @@ export interface FileRouteTypes {
     | '/saved'
     | '/search'
     | '/signup'
+    | '/support'
     | '/terms'
     | '/trending'
     | '/two-factor'
@@ -610,6 +632,7 @@ export interface FileRouteTypes {
     | '/account-created'
     | '/activity'
     | '/admin'
+    | '/delete-account'
     | '/explore'
     | '/following'
     | '/forgot-password'
@@ -626,6 +649,7 @@ export interface FileRouteTypes {
     | '/saved'
     | '/search'
     | '/signup'
+    | '/support'
     | '/terms'
     | '/trending'
     | '/two-factor'
@@ -666,6 +690,7 @@ export interface RootRouteChildren {
   AccountCreatedRoute: typeof AccountCreatedRoute
   ActivityRoute: typeof ActivityRoute
   AdminRoute: typeof AdminRouteWithChildren
+  DeleteAccountRoute: typeof DeleteAccountRoute
   ExploreRoute: typeof ExploreRoute
   FollowingRoute: typeof FollowingRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -682,6 +707,7 @@ export interface RootRouteChildren {
   SavedRoute: typeof SavedRoute
   SearchRoute: typeof SearchRoute
   SignupRoute: typeof SignupRoute
+  SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   TrendingRoute: typeof TrendingRoute
   TwoFactorRoute: typeof TwoFactorRoute
@@ -732,6 +758,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delete-account': {
+      id: '/delete-account'
+      path: '/delete-account'
+      fullPath: '/delete-account'
+      preLoaderRoute: typeof DeleteAccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/explore': {
@@ -844,6 +877,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -1119,6 +1159,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountCreatedRoute: AccountCreatedRoute,
   ActivityRoute: ActivityRoute,
   AdminRoute: AdminRouteWithChildren,
+  DeleteAccountRoute: DeleteAccountRoute,
   ExploreRoute: ExploreRoute,
   FollowingRoute: FollowingRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
@@ -1135,6 +1176,7 @@ const rootRouteChildren: RootRouteChildren = {
   SavedRoute: SavedRoute,
   SearchRoute: SearchRoute,
   SignupRoute: SignupRoute,
+  SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   TrendingRoute: TrendingRoute,
   TwoFactorRoute: TwoFactorRoute,

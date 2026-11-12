@@ -535,6 +535,40 @@ paths:
         "422": { $ref: "#/components/responses/Unprocessable" }
         "503": { $ref: "#/components/responses/Unavailable" }
 
+  /users/me/avatar:
+    post:
+      operationId: uploadMyAvatar
+      tags: [users]
+      summary: Screen and publish a new profile picture
+      description: |
+        The browser first uploads the picture to the private `avatar-uploads`
+        bucket under its own folder, then posts that object's path here. The
+        service checks it with OpenAI's moderation endpoint and, only if it
+        passes, copies it into the public `avatars` bucket and sets it on the
+        profile. A refused picture is deleted and answered with 422; no
+        verdict (screening unavailable) is answered with 503 and nothing is
+        published.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [uploadPath]
+              properties:
+                uploadPath: { type: string, maxLength: 160 }
+      responses:
+        "200":
+          description: The profile, now showing the new picture.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /users/{userID}:
     parameters:
       - $ref: "#/components/parameters/UserID"
@@ -1799,6 +1833,39 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "503": { $ref: "#/components/responses/Unavailable" }
+  /admin/users/{userID}/avatar:
+    delete:
+      operationId: removeAccountAvatar
+      tags: [admin]
+      summary: Remove a reported profile picture
+      description: |
+        Staff (moderators included) take a player's picture off their profile.
+        A reason is required, and the action is recorded in
+        `moderation_actions` against the verified actor.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 500 }
+      responses:
+        "200":
+          description: The recorded action.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminModerationResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /admin/leaderboards:
     get:
       operationId: listAdminScores

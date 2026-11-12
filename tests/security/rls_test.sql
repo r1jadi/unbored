@@ -704,13 +704,19 @@ select rls_test.denied(
 
 -- Storage
 select rls_test.denied(
-  $$insert into storage.objects (bucket_id, name, owner) values ('avatars', '22222222-2222-4222-8222-222222222222/steal.png', '11111111-1111-4111-8111-111111111111')$$,
+  $$insert into storage.objects (bucket_id, name, owner) values ('avatar-uploads', '22222222-2222-4222-8222-222222222222/steal.png', '11111111-1111-4111-8111-111111111111')$$,
   'a player cannot upload into another user''s folder'
 );
 select rls_test.allow(
   $$insert into storage.objects (bucket_id, name, owner)
-    values ('avatars', '11111111-1111-4111-8111-111111111111/me.png', '11111111-1111-4111-8111-111111111111')$$,
-  'a player can upload into their own folder'
+    values ('avatar-uploads', '11111111-1111-4111-8111-111111111111/me.png', '11111111-1111-4111-8111-111111111111')$$,
+  'a player can upload into their own holding folder'
+);
+-- Since 20261231120100_avatar_screening.sql only the screening service publishes.
+select rls_test.denied(
+  $$insert into storage.objects (bucket_id, name, owner)
+    values ('avatars', '11111111-1111-4111-8111-111111111111/unscreened.png', '11111111-1111-4111-8111-111111111111')$$,
+  'a player cannot publish a picture without screening'
 );
 select rls_test.visible($$select id from storage.objects where bucket_id = 'game-builds'$$, 0,
   'private build objects are invisible to other users');
