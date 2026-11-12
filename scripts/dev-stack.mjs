@@ -8,9 +8,10 @@
  *   users    http://localhost:8092   ├ the services behind the gateway
  *   games    http://localhost:8093   ┘ catalogue, play sessions, admin, digests
  *
- * The four API processes are the four the deployment runs (see vercel.json and
- * docs/deployment/vercel.md); every other route group answers 503 locally, as it
- * does in production. Supabase is whichever project `.env.local` names.
+ * The three services are the three the deployment runs (see vercel.json and
+ * docs/deployment/vercel.md). The gateway stands in for vercel.json's rewrites,
+ * routing each group to its service; every other route group answers 503 locally,
+ * as it does in production. Supabase is whichever project `.env.local` names.
  *
  * The Go services read their configuration from the environment only, so this
  * script reads `.env.local` and hands it to every process, then points the

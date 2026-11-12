@@ -1,6 +1,6 @@
 # 0010 — The auth service deploys as a private Vercel service, reached by a binding from a container gateway
 
-- Status: accepted
+- Status: superseded by [0015](0015-direct-service-routing.md)
 - Date: 2026-10-08
 - Amends [0009](0009-vercel-deployment-topology.md)
 

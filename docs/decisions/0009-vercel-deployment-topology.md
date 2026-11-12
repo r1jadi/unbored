@@ -6,6 +6,8 @@
   service needs a private route from the gateway, which requires the gateway to be
   a container image and moves its root back to `./`. The routing, the explicit
   per-service frameworks and the entrypoint pattern below still stand.
+- Amended by [0015](0015-direct-service-routing.md): the gateway is no longer
+  deployed on Vercel; each `/api/v1` group is routed straight to its service.
 
 ## Context
 

@@ -119,7 +119,7 @@ go run ./games/cmd/games            # serves :8080 by default
 ```
 
 ```bash
-# Through the gateway, which is how the browser reaches it in production
+# Through the local gateway, which routes by prefix the way vercel.json does
 UPSTREAM_GAMES_URL=http://localhost:8080 SERVICE_NAME=gateway HTTP_ADDR=:8081 \
   go run ./gateway/cmd/gateway
 curl -s localhost:8081/api/v1/games | jq
@@ -139,9 +139,11 @@ preset recognises exactly three entrypoint names — `main.go`, `cmd/api/main.go
 It is the same one line as [`cmd/games/main.go`](cmd/games/main.go), so the local
 binary and the deployment cannot drift.
 
-The gateway reaches it over the `UPSTREAM_GAMES_URL` service binding declared on the
-`api` service, so the public path stays
-`https://unbored.lol/api/v1/games`. See
+`vercel.json` routes every `/api/v1` path that is not auth or users straight to
+it, so it also answers `GET /api/v1`, the probes and the `503` for groups nothing
+deploys yet ([0015](../../docs/decisions/0015-direct-service-routing.md)). Guest
+reads are cached at Vercel's CDN through `services/internal/cdncache`, which
+`Options` installs. See
 [deployment/vercel.md](../../docs/deployment/vercel.md).
 
 ## Tests

@@ -1,9 +1,12 @@
 // Package apiroutes is the single source of truth for which service owns which
-// `/api/v1` path prefix. The gateway routes by this table, tests assert it and
-// docs/architecture/api.md documents it.
+// `/api/v1` path prefix. The local gateway routes by this table, the games
+// deployment answers 503 from it for groups nothing deploys (Unavailable), tests
+// assert it and docs/architecture/api.md documents it. On Vercel, vercel.json's
+// rewrites must agree with it.
 //
-// Adding a group here does not expose it: the gateway only forwards a group
-// when its UPSTREAM_<SERVICE>_URL is configured.
+// Adding a group here does not expose it: the gateway only forwards a group when
+// its UPSTREAM_<SERVICE>_URL is configured, and on Vercel the group answers 503
+// until a service and its rewrite exist.
 package apiroutes
 
 // Group maps a public API prefix to the service that owns it.
@@ -15,8 +18,9 @@ type Group struct {
 // Version is the only API version served today.
 const Version = "v1"
 
-// CDNCachePolicyHeader is how a service tells the gateway an answer is the same for
-// every guest, and how long the CDN may keep it. It stops at the gateway.
+// CDNCachePolicyHeader is how a handler marks an answer as the same for every
+// guest, and how long the CDN may keep it. services/internal/cdncache turns it into
+// the CDN's headers and removes it, so it never leaves the service.
 const CDNCachePolicyHeader = "X-Unbored-Cdn-Cache"
 
 // BasePath is the versioned API root.
@@ -36,8 +40,9 @@ func Groups() []Group {
 		// deployment mounts alongside the catalogue: Vercel's Go preset gives a
 		// service root three entrypoint names and all three are taken, and a
 		// second container service at the same root is not detected. The prefix
-		// is listed under the service that actually answers it, so the gateway's
-		// upstream lookup cannot drift from what runs. See
+		// is listed under the service that actually answers it, so the routing
+		// (vercel.json, the local gateway, apiroutes.Unavailable) cannot drift from
+		// what runs. See
 		// docs/deployment/vercel.md.
 		{Prefix: BasePath + "/sessions", Service: "games"},
 		{Prefix: BasePath + "/scores", Service: "scores"},
@@ -56,7 +61,7 @@ func Groups() []Group {
 		// there: the Go preset's three entrypoint names are all taken, and a
 		// second container service at the same root is not detected (see
 		// docs/deployment/vercel.md). The prefix names the service that answers
-		// it, so the gateway's upstream lookup cannot drift from what runs.
+		// it, so the routing cannot drift from what runs.
 		{Prefix: BasePath + "/admin", Service: "games"},
 		// The game-release digest is triggered by Vercel Cron, not a user. It is
 		// served by the notifications package mounted in the games deployment

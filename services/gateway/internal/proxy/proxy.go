@@ -163,10 +163,8 @@ func (p *Proxy) Middleware() httpx.Middleware {
 				if !strings.HasPrefix(r.URL.Path, rt.prefix) {
 					continue
 				}
-				// Before the strip: the writer needs the request as the client sent it.
-				cached := newCDNCacheWriter(w, r)
 				stripHeaders(r.Header)
-				rt.handler.ServeHTTP(cached, r)
+				rt.handler.ServeHTTP(w, r)
 				return
 			}
 			if strings.HasPrefix(r.URL.Path, "/api/") {
@@ -174,7 +172,7 @@ func (p *Proxy) Middleware() httpx.Middleware {
 				// than fall through to the SPA or to a wildcard proxy.
 				httpx.WriteError(w, r, httpx.NewError(
 					httpx.CodeUnavailable,
-					"This API is not available in this environment yet.",
+					apiroutes.UnavailableMessage,
 				))
 				return
 			}

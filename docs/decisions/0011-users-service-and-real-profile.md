@@ -1,6 +1,6 @@
 # 0011 — The users service serves the real profile, deployed privately beside auth
 
-- Status: accepted
+- Status: accepted (amended by [0015](0015-direct-service-routing.md): no binding, no gateway on Vercel)
 - Date: 2026-10-08
 - Extends [0010](0010-auth-service-deployment-topology.md)
 

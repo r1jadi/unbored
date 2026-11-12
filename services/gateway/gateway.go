@@ -5,19 +5,18 @@
 // that owns that group (services/internal/apiroutes). Services behind it repeat
 // authentication locally, so a routing mistake here cannot hand out access.
 //
-// The definition lives in a package rather than in a main so the two entrypoints
-// this repository ships — cmd/gateway (a long-running process) and cmd/api
-// (Vercel's Go runtime) — serve exactly the same service instead of drifting
-// apart. Deploy: one process, no database credentials, no service role key.
+// The gateway is not part of the Vercel deployment: there, vercel.json routes each
+// group straight to its service (docs/decisions/0015-direct-service-routing.md),
+// because every service already runs the same middleware chain. It remains the
+// single local entrypoint (scripts/dev-stack.mjs) and the shape for any host that
+// runs the services as plain processes. No database credentials, no service key.
 package gateway
 
 import (
 	"log/slog"
-	"net/http"
 
 	"github.com/r1jadi/unbored/packages/go/platform/config"
 	"github.com/r1jadi/unbored/packages/go/platform/httpx"
-	"github.com/r1jadi/unbored/packages/go/platform/version"
 	"github.com/r1jadi/unbored/services/gateway/internal/proxy"
 	"github.com/r1jadi/unbored/services/internal/apiroutes"
 	"github.com/r1jadi/unbored/services/internal/servicekit"
@@ -40,13 +39,7 @@ func Options() servicekit.Options {
 		Register: func(router *httpx.Router) {
 			// Version discovery: clients and probes can confirm which API
 			// version this deployment speaks without touching a service.
-			router.PublicFunc("GET "+apiroutes.BasePath, func(w http.ResponseWriter, r *http.Request) {
-				httpx.WriteJSON(w, r, http.StatusOK, map[string]any{
-					"apiVersion": apiroutes.Version,
-					"version":    version.Version,
-					"commit":     version.Commit,
-				})
-			})
+			apiroutes.RegisterVersion(router)
 		},
 	}
 }

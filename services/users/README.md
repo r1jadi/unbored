@@ -154,7 +154,8 @@ cd services
 SERVICE_NAME=users HTTP_ADDR=:8083 go run ./users/cmd/users
 ```
 
-Reach it through the gateway, which is how production reaches it:
+Or through the local gateway, which routes by prefix the way `vercel.json` does in
+production:
 
 ```bash
 UPSTREAM_USERS_URL=http://localhost:8083 SERVICE_NAME=gateway HTTP_ADDR=:8080 go run ./gateway/cmd/gateway
@@ -171,10 +172,9 @@ implementation to drift.
 | Entrypoint                 | Used by                                                                                                                                                                                                                                                            |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services/users/cmd/users` | local shell (`go run ./users/cmd/users`)                                                                                                                                                                                                                           |
-| `services/cmd/api`         | **the deployment** — Vercel's Go framework preset detects `main.go`, `cmd/api/main.go` or `cmd/server/main.go` at the service root; `cmd/server` is the auth service's, and the gateway deploys as a container image, so the Users service takes `cmd/api/main.go` |
+| `services/cmd/api`         | **the deployment** — Vercel's Go framework preset detects `main.go`, `cmd/api/main.go` or `cmd/server/main.go` at the service root; `cmd/server` is the auth service's and `main.go` the games deployment's, so the Users service takes `cmd/api/main.go`             |
 
-The name `cmd/api` is Vercel's, not a description: the gateway's own command is
-`services/gateway/cmd/gateway`, which the container image builds directly. See
+The name `cmd/api` is Vercel's, not a description. See
 [deployment/vercel.md](../../docs/deployment/vercel.md).
 
 ## Tests
@@ -204,25 +204,19 @@ an upstream message is dropped rather than logged.
 ## Deploying it
 
 `vercel.json` declares it as the `users` service (root `services/`, framework
-`go`, entrypoint `cmd/api/main.go`) and grants the gateway internal access with a
-service binding on `api`:
-
-```json
-{ "type": "service", "service": "users", "format": "url", "env": "UPSTREAM_USERS_URL" }
-```
-
-Like the auth service it has no rewrite of its own, so it is never reached from
-the internet directly: the public entry stays
-`https://unbored.lol/api/v1/users/*` through the gateway. `users`
-declares no binding itself and stays on the Go framework preset.
+`go`, entrypoint `cmd/api/main.go`) and routes `/api/v1/users` and
+`/api/v1/users/*` straight to it
+([0015](../../docs/decisions/0015-direct-service-routing.md)). The public entry is
+`https://unbored.lol/api/v1/users/*`, answered by this service's own
+middleware chain.
 
 Verification after a deployment:
 
 ```bash
 BASE=https://unbored.lol
 curl -sS -o /dev/null -w '%{http_code}\n' "$BASE/api/v1/users/me"
-# 401 — the binding resolved and the Users service answered (a 503 means the
-#       gateway has no UPSTREAM_USERS_URL; check that the `users` service was
+# 401 — the Users service answered (a 503 naming the group means the users
+#       rewrite did not match; check vercel.json and that the `users` service was
 #       detected in the build log).
 
 TOKEN=$(curl -sS -X POST -H 'Content-Type: application/json' \

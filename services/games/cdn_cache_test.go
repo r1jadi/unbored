@@ -39,7 +39,7 @@ func TestPublicReadsCanBeKeptByTheCDN(t *testing.T) {
 		if headers.Get(cdnHeader) == "" {
 			t.Errorf("%s: the CDN isn't allowed to keep this", path)
 		}
-		// The service keeps the API's baseline; the gateway decides what leaves it.
+		// The handler only marks; services/internal/cdncache decides what leaves the service.
 		if got := headers.Get("Cache-Control"); got != "no-store" {
 			t.Errorf("%s: Cache-Control = %q, want no-store", path, got)
 		}

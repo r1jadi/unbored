@@ -6,8 +6,11 @@
 // `cmd/server/main.go`. Auth owns `cmd/server` and users owns `cmd/api`, so the
 // remaining slot is this file. There is no fourth slot, and a second container
 // service at the same root was measured not to be detected at all (see
-// docs/deployment/vercel.md), so the two route groups that a browser reaches
-// through the gateway are mounted here together.
+// docs/deployment/vercel.md), so the route groups below are mounted here together.
+//
+// vercel.json routes /api/v1/auth/* and /api/v1/users/* to their own services and
+// every other /api/v1 path here, with no gateway in between
+// (docs/decisions/0015-direct-service-routing.md).
 //
 // The service *boundary* is unchanged: `services/games`, `services/game-sessions`,
 // `services/admin` and `services/notifications` are separate packages with
@@ -33,7 +36,8 @@ import (
 	"github.com/r1jadi/unbored/packages/go/platform/httpx"
 	"github.com/r1jadi/unbored/services/admin"
 	"github.com/r1jadi/unbored/services/game-sessions"
-	"github.com/r1jadi/unbored/services/games"
+	gamesservice "github.com/r1jadi/unbored/services/games"
+	"github.com/r1jadi/unbored/services/internal/apiroutes"
 	"github.com/r1jadi/unbored/services/internal/servicekit"
 	"github.com/r1jadi/unbored/services/notifications"
 )
@@ -46,12 +50,24 @@ func main() {
 // `RegisterWith`, so they share the request verifier and the resolved
 // configuration, and neither can be mounted without the other's middleware.
 func serve() servicekit.Options {
-	catalogue := games.Options()
+	catalogue := gamesservice.Options()
 	play := gamesessions.Options()
 	operations := admin.Options()
 	digests := notifications.Options()
 
 	options := catalogue
+	// This deployment is also where every /api/v1 path that isn't auth or users
+	// lands (vercel.json), so it answers what the gateway used to: the version
+	// route, and a 503 for a group nothing deploys yet.
+	options.Register = apiroutes.RegisterVersion
+	extra := catalogue.ExtraHandlers
+	options.ExtraHandlers = func(cfg *config.Config, logger *slog.Logger) []httpx.Middleware {
+		middlewares := []httpx.Middleware{apiroutes.Unavailable(gamesservice.Name)}
+		if extra != nil {
+			middlewares = append(middlewares, extra(cfg, logger)...)
+		}
+		return middlewares
+	}
 	options.RegisterWith = func(
 		router *httpx.Router,
 		cfg *config.Config,

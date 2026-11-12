@@ -3,9 +3,8 @@
 // The name is not a description: Vercel's Go framework preset detects exactly
 // three entrypoints at a service root — `main.go`, `cmd/api/main.go` and
 // `cmd/server/main.go` — and a service that wants the preset has to live in one
-// of them. `cmd/server` is the auth service's, and the gateway needs no preset
-// entrypoint because it deploys as a container image (see Dockerfile.vercel), so
-// the third slot is the one the Users service takes.
+// of them. `cmd/server` is the auth service's and `main.go` the games
+// deployment's, so `cmd/api` is the one the Users service takes.
 //
 // This is not a second implementation of anything: the body is the same one line
 // `services/users/cmd/users` runs, so `go run ./users/cmd/users`, the local
