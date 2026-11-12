@@ -5,31 +5,6 @@
       "root": "./",
       "framework": "tanstack-start"
     },
-    "api": {
-      "root": "./",
-      "runtime": "container",
-      "entrypoint": "Dockerfile.vercel",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "auth",
-          "format": "url",
-          "env": "UPSTREAM_AUTH_URL"
-        },
-        {
-          "type": "service",
-          "service": "users",
-          "format": "url",
-          "env": "UPSTREAM_USERS_URL"
-        },
-        {
-          "type": "service",
-          "service": "games",
-          "format": "url",
-          "env": "UPSTREAM_GAMES_URL"
-        }
-      ]
-    },
     "auth": {
       "root": "services/",
       "framework": "go",
@@ -77,34 +52,64 @@
     {
       "source": "/(assets/.*|favicon\\.png|favicon\\.svg|apple-touch-icon\\.png|icon-.*\\.png|manifest\\.webmanifest|offline-manifest\\.json|sw\\.js|robots\\.txt|sitemap\\.xml|\\.well-known/security\\.txt)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Access-Control-Allow-Origin", "value": "https://unbored.lol" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://unbored.lol"
+        }
       ]
     }
   ],
   "rewrites": [
     {
+      "source": "/api/v1/auth",
+      "destination": {
+        "service": "auth"
+      }
+    },
+    {
+      "source": "/api/v1/auth/(.*)",
+      "destination": {
+        "service": "auth"
+      }
+    },
+    {
+      "source": "/api/v1/users",
+      "destination": {
+        "service": "users"
+      }
+    },
+    {
+      "source": "/api/v1/users/(.*)",
+      "destination": {
+        "service": "users"
+      }
+    },
+    {
       "source": "/api/v1",
       "destination": {
-        "service": "api"
+        "service": "games"
       }
     },
     {
       "source": "/api/v1/(.*)",
       "destination": {
-        "service": "api"
+        "service": "games"
       }
     },
     {
       "source": "/healthz",
       "destination": {
-        "service": "api"
+        "service": "games"
       }
     },
     {
       "source": "/readyz",
       "destination": {
-        "service": "api"
+        "service": "games"
       }
     },
     {

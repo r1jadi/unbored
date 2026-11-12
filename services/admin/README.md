@@ -50,7 +50,7 @@ operator to fix), never as success and never as a privilege message.
 
 ## Routes
 
-All paths are the public ones, `/api/v1/admin/...`, served through the gateway.
+All paths are the public ones, `/api/v1/admin/...`, routed to the games deployment.
 The tier column is what the staff wrapper grants; suspension additionally
 requires the admin tier at the router, the handler and the database.
 
@@ -183,7 +183,7 @@ cd services
 go run ./admin/cmd/admin          # the admin service alone, on the platform port
 ```
 
-It is normally reached through the gateway, which is how the browser calls it:
+Locally it is normally reached through the gateway, which routes by prefix the way `vercel.json` does in production:
 
 ```bash
 curl -sS -H "Authorization: Bearer $ACCESS_TOKEN" \
@@ -200,8 +200,8 @@ beside the catalogue and the play sessions: Vercel's Go preset gives a service r
 three entrypoint names and all three are taken, and a second container service at
 the same root is not detected (see
 [docs/deployment/vercel.md](../../docs/deployment/vercel.md)). The routing table
-lists `/api/v1/admin` under the service that answers it, so the gateway's
-`UPSTREAM_GAMES_URL` binding covers it with no extra configuration.
+lists `/api/v1/admin` under the service that answers it, and `vercel.json` sends
+every such path to the games deployment with no extra configuration.
 
 Sharing a process shares no privilege beyond what is configured: these routes
 verify a token and authorize on every request, exactly as they would in a

@@ -7,20 +7,15 @@
    browser / PWA ──▶│  Vercel project (one domain)             │
                     │    web service → /                       │
                     │      TanStack Start (React 19, SSR)      │
-                    │    api service → /api/v1/*               │
-                    │      Go gateway (services/)              │
+                    │    /api/v1/<group> → the group's service │
                     └───────────────┬──────────────────────────┘
-                                    │  /api/v1/*  (bearer token)
-                    ┌───────────────▼──────────────────────────┐
-                    │  Go gateway (services/gateway)           │
-                    │  request id · security headers · CORS ·  │
-                    │  rate limit · body limit · reverse proxy │
-                    └───────────────┬──────────────────────────┘
-                                    │  /api/v1/<group>
-   ┌────────────────────────────────┼─────────────────────────────────────┐
-   │  auth · users · games · game-sessions · scores · leaderboards ·      │
-   │  feed · recommendations · social · notifications · search ·          │
-   │  moderation · analytics · admin        (one binary each)             │
+                                    │  /api/v1/<group>  (bearer token)
+   ┌────────────────────────────────▼─────────────────────────────────────┐
+   │  deployed: auth · users · games (+ game-sessions, admin, crons)      │
+   │  each runs: request id · security headers · CORS · rate limit ·      │
+   │             body limit · token verification                         │
+   │  not deployed yet: scores · leaderboards · feed · recommendations ·  │
+   │  social · notifications · search · moderation · analytics (→ 503)    │
    └────────────────────────────────┬─────────────────────────────────────┘
                                     │  SQL (service_role) / RLS (user tokens)
                     ┌───────────────▼──────────────────────────┐
@@ -30,6 +25,10 @@
                     │  Storage (avatars, game assets, builds)  │
                     └──────────────────────────────────────────┘
 ```
+
+Locally, the Go gateway (`services/gateway`) sits in front of the services and
+routes by prefix; on Vercel the rewrite table does that routing
+([0015](../decisions/0015-direct-service-routing.md)).
 
 Redis, a job runner and RaiAccept payments are **not** part of this diagram yet;
 where they will attach is described in
@@ -44,19 +43,18 @@ where they will attach is described in
 2. The browser calls `https://<origin>/api/v1/<group>/...` through
    `apiFetch` (`src/lib/api/client.ts`). The caller's identity travels in an
    `Authorization: Bearer <supabase access token>` header and nowhere else. The
-   rewrite table in [`vercel.json`](../../vercel.json) sends every `/api/v1/*`
-   path to the API service and nothing else, so the web app never renders an API
+   rewrite table in [`vercel.json`](../../vercel.json) sends each `/api/v1`
+   group to the Go service that owns it, so the web app never renders an API
    URL — see [deployment/vercel.md](../deployment/vercel.md).
-3. The api service is the second service of the same project: the Go gateway. It
-   strips any client-supplied identity headers, applies the security
-   headers, the CORS allowlist, a per-IP rate limit and a 1 MiB body limit, then
-   routes by prefix using `services/internal/apiroutes/routes.go`.
-4. The owning service repeats authentication locally: it verifies the token
+3. The service strips any client-supplied identity headers, applies the security
+   headers, the CORS allowlist, a per-IP rate limit and a 1 MiB body limit. The
+   groups and their owners are listed in `services/internal/apiroutes/routes.go`.
+4. The service authenticates locally: it verifies the token
    signature and audience against the Supabase JWKS, derives the user id and role
    from the token, and enforces the route tier (`public`, `optional`,
-   `authenticated`, `moderator`, `admin`). The gateway's own routes
-   (`/api/v1` version discovery and `GET /api/v1/health`) answer before the proxy
-   is consulted, so a health check never depends on an upstream being deployed.
+   `authenticated`, `moderator`, `admin`). Version discovery (`/api/v1`) and
+   `GET /api/v1/health` are answered by the games deployment with no dependency,
+   so a health check never depends on Supabase.
 5. Domain logic talks to Postgres. A service uses the `service_role` key only for
    work a user cannot be trusted to do (writing a score, hiding a comment,
    granting a role); anything a user could legitimately do is additionally
@@ -78,7 +76,7 @@ where they will attach is described in
 | `scripts/`                          | Operational helpers: `test-rls.sh`, `generate-sitemap.mjs`, `check-api-contract.mjs`.                                                                                                                                                                                                                                                                                                                                                                              |
 | `.github/workflows/`                | CI: web, go, database, api-contract, security.                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `infrastructure/`                   | Placeholders for container, CDN, monitoring and Terraform work.                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `vercel.json`, `Dockerfile.vercel`  | The deployment: four services (`web`, the container-image Go gateway `api`, and the internal Go `auth` and `users` services), the rewrites that route `/api/v1/*` to the gateway, and the two service bindings that give the gateway a private route to `auth` and to `users`. See [deployment/vercel.md](../deployment/vercel.md), [0010](../decisions/0010-auth-service-deployment-topology.md) and [0011](../decisions/0011-users-service-and-real-profile.md). |
+| `vercel.json`                       | The deployment: four services (`web` and the Go `auth`, `users` and `games` services) and the rewrites that route each `/api/v1` group to its service. See [deployment/vercel.md](../deployment/vercel.md) and [0015](../decisions/0015-direct-service-routing.md). |
 
 ## Two modules, one workspace
 

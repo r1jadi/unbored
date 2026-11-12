@@ -47,6 +47,7 @@ import (
 	"github.com/r1jadi/unbored/packages/go/platform/identity"
 	"github.com/r1jadi/unbored/services/games/internal/supabasegames"
 	"github.com/r1jadi/unbored/services/internal/apiroutes"
+	"github.com/r1jadi/unbored/services/internal/cdncache"
 	"github.com/r1jadi/unbored/services/internal/servicekit"
 )
 
@@ -60,8 +61,8 @@ const (
 	// GamesPath lists the catalogue.
 	GamesPath = "/api/v1/games"
 	// FollowingPath lists the caller's Following feed: published creator games
-	// of followed accounts. It lives under /games so the gateway's existing
-	// games binding routes it with no new upstream; it is registered before
+	// of followed accounts. It lives under /games so the existing games
+	// routing reaches it with no new rewrite; it is registered before
 	// GamePath but routing does not depend on order (Go's mux prefers the
 	// static segment over {slug}).
 	FollowingPath = "/api/v1/games/following"
@@ -73,7 +74,7 @@ const (
 	LeaderboardPath = "/api/v1/games/{slug}/leaderboard"
 	// OverallLeaderboardPath reads the all-games board: each player's per-game
 	// percentiles, summed. Like FollowingPath it is a static segment under
-	// /games, so the gateway's games binding routes it and Go's mux prefers it
+	// /games, so the existing games routing reaches it and Go's mux prefers it
 	// over {slug}. Optional-auth, like a game's board.
 	OverallLeaderboardPath = "/api/v1/games/leaderboard"
 	// CategoriesPath lists categories with their real published-game counts.
@@ -355,7 +356,7 @@ func (s *service) register(router *httpx.Router) {
 }
 
 // Short CDN lifetimes for answers that are the same for every guest. A cache hit
-// never reaches the gateway, this service or the database, which is most of what a
+// never reaches this service or the database, which is most of what a
 // public read costs. The stale window answers at once while one request refreshes.
 const (
 	catalogueCDNCache   = "s-maxage=60, stale-while-revalidate=300"
@@ -363,12 +364,11 @@ const (
 )
 
 // cacheForGuests marks this answer as one the CDN may keep. Call it only on the way
-// to a successful response. It is a request to the gateway, which sets the CDN's own
-// headers (see gateway/internal/proxy/cdn_cache.go): set here, they would be consumed
-// by the Vercel hop in front of this service.
+// to a successful response. The marker is turned into the CDN's own headers by
+// services/internal/cdncache, which Options installs, once the status is known.
 //
 // A request with a token is never marked: it can carry the caller's own standing.
-// The gateway checks that again, and Vercel doesn't cache such a request either.
+// The middleware checks that again, and Vercel doesn't cache such a request either.
 func cacheForGuests(w http.ResponseWriter, r *http.Request, policy string) {
 	if r.Header.Get("Authorization") != "" {
 		return
@@ -998,6 +998,10 @@ func (s *service) dataFailure(w http.ResponseWriter, r *http.Request, operation 
 func Options() servicekit.Options {
 	return servicekit.Options{
 		Name: Name,
+		// Turns cacheForGuests' marker into the CDN's headers on the way out.
+		ExtraHandlers: func(*config.Config, *slog.Logger) []httpx.Middleware {
+			return []httpx.Middleware{cdncache.Middleware}
+		},
 		RegisterWith: func(router *httpx.Router, cfg *config.Config, logger *slog.Logger, _ *authn.Verifier) {
 			var backend Backend
 			client, err := supabasegames.New(cfg)

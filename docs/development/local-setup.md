@@ -96,10 +96,10 @@ curl -s localhost:8080/api/v1         # version discovery
 ```
 
 `go run ./gateway/cmd/gateway` uses `HTTP_ADDR` when it is set, then `PORT_HTTP`,
-then `PORT`, then `:8080`. In a deployment the same wiring runs from the container
-image; `services/cmd/api` is **not** an alias for the gateway — that file is the
-users service's Vercel entrypoint, because the Go preset has three fixed slot names
-and the gateway (a container image) needs none of them. The routing and the
+then `PORT`, then `:8080`. The gateway is local only: on Vercel, `vercel.json`
+routes each group straight to its service. `services/cmd/api` is **not** an alias
+for the gateway — that file is the users service's Vercel entrypoint, because the
+Go preset has three fixed slot names. The routing and the
 environment variables the deployment needs are in
 [deployment/vercel.md](../deployment/vercel.md).
 

@@ -78,13 +78,13 @@ jobs:
             echo "building $service"
             go build -o /dev/null "./${service}/cmd/${service}"
           done
-          # The gateway's Vercel entrypoint (vercel.json names it): same gateway
-          # wiring as ./gateway/cmd/gateway, so it must keep compiling.
-          echo "building cmd/api (gateway Vercel entrypoint)"
+          # The Vercel entrypoints (vercel.json names them). Each serves the same
+          # wiring as a binary above; they exist only because Vercel's Go preset
+          # recognises three fixed entrypoint names.
+          echo "building cmd/server (auth Vercel entrypoint)"
+          go build -o /dev/null "./cmd/server"
+          echo "building cmd/api (users Vercel entrypoint)"
           go build -o /dev/null "./cmd/api"
-          # The games service's Vercel entrypoint (vercel.json names it): same
-          # games wiring as ./games/cmd/games, and the only reason it exists is
-          # that Vercel's Go preset recognises three fixed entrypoint names.
           echo "building . (games Vercel entrypoint)"
           go build -o /dev/null "."
 

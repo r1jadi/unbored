@@ -175,12 +175,16 @@ func Load(service string) (*Config, error) {
 			},
 		},
 		Supabase: Supabase{
-			ProjectURL:     strings.TrimRight(Getenv("SUPABASE_URL"), "/"),
+			// The project URL and the publishable key are public: the browser
+			// bundle carries both. So the server names fall back to the web app's
+			// VITE_ names, and an environment (a Vercel preview, say) that only
+			// sets those still reaches Supabase. The secret key never does this.
+			ProjectURL:     strings.TrimRight(Getenv("SUPABASE_URL", "VITE_SUPABASE_URL"), "/"),
 			JWKSURL:        Getenv("SUPABASE_JWKS_URL"),
 			JWTAudience:    Getenv("SUPABASE_JWT_AUDIENCE"),
 			JWTIssuer:      Getenv("SUPABASE_JWT_ISSUER"),
 			JWTSecret:      Getenv("SUPABASE_JWT_SECRET"),
-			PublishableKey: Getenv("SUPABASE_PUBLISHABLE_KEY", "SUPABASE_ANON_KEY"),
+			PublishableKey: Getenv("SUPABASE_PUBLISHABLE_KEY", "SUPABASE_ANON_KEY", "VITE_SUPABASE_PUBLISHABLE_KEY"),
 			// Server-only privileged credential. The legacy service-role name is
 			// accepted so an existing secret store keeps working; the new name
 			// wins when both are set. Never a VITE_* variable.

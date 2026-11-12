@@ -108,3 +108,37 @@ func TestAdminEmailsSnapshotIsParsedButNeverRequired(t *testing.T) {
 		t.Fatalf("AdminEmails = %v, want empty (fail-closed, but booting)", cfg.AdminEmails)
 	}
 }
+
+func TestPublicSupabaseValuesFallBackToTheWebAppNames(t *testing.T) {
+	t.Setenv("ENVIRONMENT", "development")
+	t.Setenv("SUPABASE_URL", "")
+	t.Setenv("SUPABASE_PUBLISHABLE_KEY", "")
+	t.Setenv("SUPABASE_ANON_KEY", "")
+	t.Setenv("VITE_SUPABASE_URL", "https://example.supabase.co/")
+	t.Setenv("VITE_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test")
+
+	cfg, err := Load("games")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Supabase.ProjectURL != "https://example.supabase.co" {
+		t.Errorf("ProjectURL = %q", cfg.Supabase.ProjectURL)
+	}
+	if cfg.Supabase.PublishableKey != "sb_publishable_test" {
+		t.Errorf("PublishableKey = %q", cfg.Supabase.PublishableKey)
+	}
+	if !cfg.HasAuthAPI() {
+		t.Error("HasAuthAPI() = false, want true from the VITE_ names")
+	}
+
+	// The server names still win when both are set.
+	t.Setenv("SUPABASE_URL", "https://server.supabase.co")
+	t.Setenv("SUPABASE_PUBLISHABLE_KEY", "sb_publishable_server")
+	cfg, err = Load("games")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Supabase.ProjectURL != "https://server.supabase.co" || cfg.Supabase.PublishableKey != "sb_publishable_server" {
+		t.Errorf("server names did not win: %q %q", cfg.Supabase.ProjectURL, cfg.Supabase.PublishableKey)
+	}
+}

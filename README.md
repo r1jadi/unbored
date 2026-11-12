@@ -88,11 +88,10 @@ to add a game, and the rules a runtime must follow, are in
         ▼
 ┌─────────────────────────────────────────────────────────┐
 │ Vercel project — one domain                             │
-│   web service   → /            TanStack Start (SSR)     │
-│   api service   → /api/v1/*    Go gateway (container)   │
-│                                 └── private bindings ──┐│
-│   auth service  (Go)  ◀────────────────────────────────┤│
-│   users service (Go)  ◀────────────────────────────────┘│
+│   web service   → /                  TanStack Start     │
+│   auth service  → /api/v1/auth/*     Go                 │
+│   users service → /api/v1/users/*    Go                 │
+│   games service → every other /api/v1 path   Go         │
 └──────────────────────────┬──────────────────────────────┘
                            │ SQL — service_role for privileged writes,
                            │ the caller's own token for everything a user may do
@@ -107,12 +106,13 @@ to add a game, and the rules a runtime must follow, are in
    canonical URLs and structured data; private pages are `noindex`.
 2. The browser calls `/api/v1/...` with `Authorization: Bearer <supabase access
 token>` and nothing else. The rewrite table in [`vercel.json`](vercel.json)
-   sends every `/api/v1/*` path to the API service.
-3. The gateway strips any client-supplied identity header, applies security
-   headers, the CORS allowlist, a per-IP rate limit and a 1 MiB body limit, then
-   routes by prefix from [`services/internal/apiroutes/routes.go`](services/internal/apiroutes/routes.go).
-4. The owning service verifies the token again locally against the Supabase JWKS
-   and enforces its route tier (`public`, `optional`, `authenticated`,
+   sends each `/api/v1` group straight to the service that owns it (the groups
+   are listed in [`services/internal/apiroutes/routes.go`](services/internal/apiroutes/routes.go)).
+3. The service strips any client-supplied identity header, applies security
+   headers, the CORS allowlist, a per-IP rate limit and a 1 MiB body limit. Locally,
+   the gateway runs the same chain in front of the services.
+4. The service verifies the token locally against the Supabase JWKS and enforces
+   its route tier (`public`, `optional`, `authenticated`,
    `moderator`, `admin`).
 5. Domain logic talks to Postgres. `service_role` is used only for work a user
    cannot be trusted to do; anything a user may legitimately do is _additionally_
@@ -132,7 +132,7 @@ Full detail, including the request path end to end, is in
 | Web tooling | bun (lockfile of record), ESLint + Prettier                                                     |
 | API         | Go 1.27, stdlib `net/http` with one thin router, two modules in one workspace                   |
 | Database    | Supabase Postgres, RLS, migrations as the only schema history                                   |
-| Deployment  | Vercel services mode: one container image for the gateway, Go runtime for the internal services |
+| Deployment  | Vercel services mode: the web app plus three Go-runtime services, routed by path                  |
 | CI          | GitHub Actions — web, go, database, api-contract, security                                      |
 
 ## Quick start
@@ -182,7 +182,7 @@ Step-by-step setup, ports and per-service commands: [local-setup.md](docs/develo
 | `scripts/`                                                   | Operational helpers: `test-rls.sh`, `check-api-contract.mjs`, `generate-sitemap.mjs`, `env-from-supabase.mjs`.                                                            |
 | `docs/`                                                      | Architecture, development, deployment, security and the decision records.                                                                                                 |
 | `.github/workflows/`                                         | CI: web, go, database, api-contract, security.                                                                                                                            |
-| `vercel.json`, `Dockerfile.vercel`                           | The deployment: four services, the `/api/v1` rewrites and the two service bindings.                                                                                       |
+| `vercel.json`                                                | The deployment: four services and the rewrites that route each `/api/v1` group to its service.                                                                            |
 | `apps/`, `config/`, `database/`, `games/`, `infrastructure/` | Placeholders for future work (mobile apps, environment config, SQL artifacts, game catalogues, infrastructure). `supabase/migrations` stays authoritative for the schema. |
 
 ## Services
@@ -291,18 +291,16 @@ Five workflows, all read-only with respect to the repository:
 
 ## Deployment
 
-One Vercel project serves five services from one domain, declared in
+One Vercel project serves four services from one domain, declared in
 [`vercel.json`](vercel.json):
 
 - **`web`** — the TanStack Start app, at `/`.
-- **`api`** — the Go gateway, built from [`Dockerfile.vercel`](Dockerfile.vercel)
-  as a container image because it needs service bindings, which the Go runtime
-  cannot express.
-- **`auth`**, **`users`** and **`games`** — Go runtime services. The gateway
-  reaches them over service bindings that inject `UPSTREAM_AUTH_URL`,
-  `UPSTREAM_USERS_URL` and `UPSTREAM_GAMES_URL` at runtime, and the rewrite table
-  sends no path directly to any of them, so `/api/v1` is the only way in. Those
-  three variables must never be set by hand in the dashboard.
+- **`auth`**, **`users`** and **`games`** — Go runtime services. The rewrite table
+  sends `/api/v1/auth/*` to `auth`, `/api/v1/users/*` to `users` and every other
+  `/api/v1` path, plus `/healthz` and `/readyz`, to `games`. There is no gateway on
+  Vercel: each service runs the full middleware chain itself
+  ([0015](docs/decisions/0015-direct-service-routing.md)). The gateway in
+  `services/gateway` is the local entrypoint only.
 
   The `games` service deploys from [`services/main.go`](services/main.go): Vercel's
   Go preset recognises exactly three entrypoint names and the other two are taken

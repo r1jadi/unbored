@@ -1,43 +1,43 @@
 # Deploying to Vercel
 
 One Vercel project serves the whole product on one domain: the TanStack Start web
-app, the Go API gateway, the Go auth service and the Go users service. There is no
-second host and no `api.` subdomain.
+app and three Go services (auth, users, games). There is no second host, no
+`api.` subdomain and — since [0015](../decisions/0015-direct-service-routing.md) —
+no gateway in between: `vercel.json` routes each `/api/v1` group straight to the
+service that owns it.
 
 |                    |                                                                                                                                                                                            |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Project            | `unboredapp` → `https://unbored.lol`                                                                                                                                             |
-| Configuration      | [`vercel.json`](../../vercel.json) (services + rewrites + two service bindings)                                                                                                            |
-| Web service        | `web` — repository root, framework `tanstack-start` (TanStack Start + Vite, SSR through Nitro)                                                                                     |
-| API service        | `api` — **container image**, `Dockerfile.vercel` at the repository root; this is the Go gateway                                                                                            |
-| Auth service       | `auth` — `services/`, framework `go`, entrypoint `services/cmd/server/main.go`                                                                                                             |
-| Users service      | `users` — `services/`, framework `go`, entrypoint `services/cmd/api/main.go`                                                                                                               |
-| Games service      | `games` — `services/`, framework `go`, entrypoint `services/main.go`; serves the catalogue, the play sessions **and** the admin API (one remaining preset entrypoint name, three packages) |
-| Reachability       | `auth`, `users` and `games` are internal: no rewrite targets them, so only the gateway can reach them                                                                                      |
-| Local API          | `http://localhost:8080/api/v1` (`go run ./gateway/cmd/gateway`, `HTTP_ADDR=:8080`)                                                                                                         |
-| Production API     | `https://unbored.lol/api/v1`                                                                                                                                                     |
-| Production auth    | `https://unbored.lol/api/v1/auth/*`                                                                                                                                              |
-| Production profile | `https://unbored.lol/api/v1/users/me`                                                                                                                                            |
-| Health             | `https://unbored.lol/api/v1/health`                                                                                                                                              |
+| Project            | `unboredapp` → `https://unbored.lol`                                                                                                                                                       |
+| Configuration      | [`vercel.json`](../../vercel.json) (services + rewrites; no bindings, no container)                                                                                                        |
+| Web service        | `web` — repository root, framework `tanstack-start` (TanStack Start + Vite, SSR through Nitro)                                                                                             |
+| Auth service       | `auth` — `services/`, framework `go`, entrypoint `services/cmd/server/main.go`; serves `/api/v1/auth/*`                                                                                    |
+| Users service      | `users` — `services/`, framework `go`, entrypoint `services/cmd/api/main.go`; serves `/api/v1/users/*`                                                                                     |
+| Games service      | `games` — `services/`, framework `go`, entrypoint `services/main.go`; serves every other `/api/v1` path: the catalogue, the play sessions, the admin API, the crons and the version/health routes |
+| Local API          | `http://localhost:8080/api/v1` (the gateway, `go run ./gateway/cmd/gateway`, in front of the same services — see `scripts/dev-stack.mjs`)                                                 |
+| Production API     | `https://unbored.lol/api/v1`                                                                                                                                                               |
+| Production auth    | `https://unbored.lol/api/v1/auth/*`                                                                                                                                                        |
+| Production profile | `https://unbored.lol/api/v1/users/me`                                                                                                                                                      |
+| Health             | `https://unbored.lol/api/v1/health`                                                                                                                                                        |
 
 ## The four services
 
-| Service | Root        | Built as                                     | Public?                                    |
-| ------- | ----------- | -------------------------------------------- | ------------------------------------------ |
-| `web`   | `./`        | Node (TanStack Start preset)                 | **Yes** — the catch-all rewrite            |
-| `api`   | `./`        | Custom container image (`Dockerfile.vercel`) | **Yes** — `/api/v1`, `/healthz`, `/readyz` |
-| `auth`  | `services/` | Vercel Go framework preset                   | **No** — internal only                     |
-| `users` | `services/` | Vercel Go framework preset                   | **No** — internal only                     |
-| `games` | `services/` | Vercel Go framework preset                   | **No** — internal only                     |
+| Service | Root        | Built as                     | Public through                                                     |
+| ------- | ----------- | ---------------------------- | ------------------------------------------------------------------ |
+| `web`   | `./`        | Node (TanStack Start preset) | the catch-all rewrite                                              |
+| `auth`  | `services/` | Vercel Go framework preset   | `/api/v1/auth`, `/api/v1/auth/*`                                   |
+| `users` | `services/` | Vercel Go framework preset   | `/api/v1/users`, `/api/v1/users/*`                                 |
+| `games` | `services/` | Vercel Go framework preset   | `/api/v1`, every other `/api/v1/*`, `/healthz`, `/readyz`          |
 
-A service is internal by default and only becomes routable if a top-level rewrite
-targets it. `web` and `api` have rewrites; `auth` and `users` do not, and that is
-deliberate: the public entry for authentication and for the profile must stay the
-gateway, so the gateway keeps ownership of CORS, rate limiting and the error
-envelope for `/api/v1/auth/*` and `/api/v1/users/*` exactly as it does for every
-other group.
+Every Go service runs the same `servicekit` middleware chain the gateway ran:
+request ids, panic recovery, the security-header baseline, CORS, stripping of
+client-supplied identity headers, request logging, the body limit and the rate
+limiter — and each verifies the caller's token itself. Routing a group straight at
+its service therefore removes a hop, not a protection. The public surface is still
+one origin and one versioned path; which process answers a group is a routing
+detail.
 
-The two Go services share one root and one framework, and differ only in which of
+The three Go services share one root and one framework, and differ only in which of
 the preset's fixed entrypoint names they occupy — see
 [why the users service is `cmd/api/main.go`](#why-the-entrypoint-is-cmdapimaingo).
 
@@ -55,83 +55,30 @@ The alternatives were rejected on purpose:
   sync with this repository.
 - **`api/*.go` serverless functions** are Vercel's other Go path. They expect a
   `go.mod` at the project root and one `http.HandlerFunc` per file, which would
-  mean a shim around the router instead of the gateway that already exists — and
+  mean a shim around the router instead of the services that already exist — and
   they are not part of what a Nitro build emits.
-- **A public rewrite into `auth`.** Routing `/api/v1/auth/*` straight at the auth
-  service would bypass the gateway's CORS and rate-limiting layer and duplicate
-  the public API surface across two services. It is also unnecessary: the binding
-  exists so the gateway can reach `auth` without either of them being public.
 
-### Why the gateway is a container image and the Go services are not
+### Why there is no gateway on Vercel any more
 
-The gateway is the service that calls `auth`, and a service binding is declared
-on the caller. Vercel's bindings documentation is explicit that bindings are not
-available to services on the Go or Rust runtime and that such a service has to be
-built as a container image instead:
+Until [0015](../decisions/0015-direct-service-routing.md) every API request went
+browser → `api` (the gateway, a container image) → service, over service bindings.
+The gateway had to be a container because Vercel's bindings are not available to
+Go-runtime services. In practice that container accounted for about 75% of the
+project's Fluid Active CPU and 96% of its Fluid Provisioned Memory in a 30-day
+window, while doing no work of its own: every check it ran, the service behind it
+ran again. Removing it cut both metrics to a fraction and took one hop and one cold
+start out of every API call. What the gateway did that a service did not is now in
+the services:
 
-> Service bindings aren't available yet for services that use the Go or Rust
-> runtime. If your service uses one of these runtimes and declares bindings,
-> build it as a container image instead. A container image service can use
-> bindings.
+- **The CDN cache headers** for guest reads: `services/internal/cdncache` turns the
+  games handlers' marker into `Vercel-CDN-Cache-Control`. The service is now the hop
+  the CDN sees, so the header it sets reaches the CDN.
+- **The version route and the `503` for groups nothing deploys yet**: mounted in the
+  games deployment (`services/main.go`, `apiroutes.RegisterVersion`,
+  `apiroutes.Unavailable`), which is where those paths land.
 
-`api` therefore declares the bindings **and** is a container image. `auth` and
-`users` declare nothing and stay on the Go framework preset, which builds the
-binary and runs it with no operating system to ship: reachability is declared by
-the caller, so a callee needs no binding of its own.
-
-Two details about that container are load-bearing and were measured, not assumed:
-
-- **The file name must be exactly `Dockerfile.vercel`.** Vercel auto-detects
-  `Dockerfile.vercel` or `Containerfile.vercel` at the service root. A
-  second, explicitly named entrypoint file (`Dockerfile.api.vercel`) was not
-  detected at all in testing — the container service silently disappeared from
-  the detected topology — so there is one container and one
-  `Dockerfile.vercel`.
-- **The build context is the service root**, which is why `api` has
-  `"root": "./"`. `services/go.mod` replaces the platform module with a relative
-  path (`../packages/go/platform`), so the image has to carry both Go modules and
-  the context has to be the whole repository. `.dockerignore` keeps that context
-  small and keeps every `.env*` file (except `.env.example`) out of the image.
-
-Port resolution: Vercel routes container traffic to **port 80** unless the project
-sets `PORT`. The image declares `ENV PORT=80` and the final stage is `FROM
-scratch` with one static binary, so the app's listener and Vercel's router agree
-without a project-wide variable — a project-wide `PORT` would also be read by the
-web and auth services. `config.Load` reads `HTTP_ADDR`, then `PORT_HTTP`, then
-`PORT`; never set `HTTP_ADDR` in Vercel, because it would override the injected
-port.
-
-## How the gateway finds the auth and users services
-
-`api` declares one service binding per callee:
-
-```json
-"bindings": [
-  { "type": "service", "service": "auth",  "format": "url", "env": "UPSTREAM_AUTH_URL" },
-  { "type": "service", "service": "users", "format": "url", "env": "UPSTREAM_USERS_URL" },
-  { "type": "service", "service": "games", "format": "url", "env": "UPSTREAM_GAMES_URL" }
-]
-```
-
-Vercel generates the value of each variable and injects it into the `api` service
-at runtime. They are **deployment-aware**: a preview deployment's gateway reaches
-that same preview deployment's services, so no fixed hostname is ever referenced.
-`config.loadUpstreams` then reads them like any other upstream
-(`UPSTREAM_AUTH_URL`, `UPSTREAM_USERS_URL`, `UPSTREAM_GAMES_URL`), trims a trailing
-slash, and the proxy replaces the scheme and host while keeping the original
-request path.
-
-Two consequences worth stating plainly:
-
-- **Do not set `UPSTREAM_AUTH_URL`, `UPSTREAM_USERS_URL` or `UPSTREAM_GAMES_URL`
-  in the dashboard.** A project-level value is not deployment-aware and would be
-  the value the gateway actually used instead of the binding's. The variables are
-  listed in `.env.example` because a local shell sets them, not because a
-  deployment sets them.
-- **A binding grants reachability, not authorization.** Vercel's documentation is
-  explicit that a binding "does not authenticate or authorize the call". Both
-  services verify the caller's access token themselves, against the project's
-  JWKS, for every authenticated endpoint.
+The gateway stays in the repository as the local entrypoint and as the shape for a
+host that runs the services as plain processes.
 
 ## Why the web service pins a framework
 
@@ -156,41 +103,41 @@ That is the only reason the users service is reached through a file called
 `cmd/api`: the slot name is Vercel's fixed list, not a description of what the
 service does. The mapping follows what each service needs:
 
-| Service     | Entrypoint                     | Why that one                                                                                                                                                                                                                |
-| ----------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `auth`      | `services/cmd/server/main.go`  | Built by the Go preset, so it needs one of the three names                                                                                                                                                                  |
-| `users`     | `services/cmd/api/main.go`     | Also built by the Go preset, so it takes the remaining name                                                                                                                                                                 |
-| `games`     | `services/main.go`             | The Go preset's third and last name. It sits at the module root because that is where the preset looks; the file is a slot, not a description. It mounts three packages: the catalogue, the play sessions and the admin API |
-| The gateway | `services/gateway/cmd/gateway` | Built by `Dockerfile.vercel`, which has no naming rule to satisfy, so its own command is used                                                                                                                               |
+| Service | Entrypoint                    | Why that one                                                                                                                                                                                                                |
+| ------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth`  | `services/cmd/server/main.go` | Built by the Go preset, so it needs one of the three names                                                                                                                                                                  |
+| `users` | `services/cmd/api/main.go`    | Also built by the Go preset, so it takes the remaining name                                                                                                                                                                 |
+| `games` | `services/main.go`            | The Go preset's third and last name. It sits at the module root because that is where the preset looks; the file is a slot, not a description. It mounts three packages: the catalogue, the play sessions and the admin API |
 
-All four run the same `servicekit.MustRun(<service>.Options())` as their local
+All three run the same `servicekit.MustRun(<service>.Options())` as their local
 `cmd/<name>` binary, so no entrypoint is a second implementation:
-`services/users/cmd/users`, `services/auth/cmd/auth`, `services/games/cmd/games`
-and `services/gateway/cmd/gateway` are the local shells for the same wiring.
+`services/users/cmd/users`, `services/auth/cmd/auth` and `services/games/cmd/games`
+are the local shells for the same wiring.
 
 ## Routing
 
 `vercel.json` routes public traffic with service rewrites. Vercel evaluates them in
-order, and routing into a service is final: a request routed to the API service
-never falls back to the web app, whatever path it is.
+order, and routing into a service is final: a request routed to a Go service never
+falls back to the web app, whatever path it is.
 
-| Request                                 | Service         | Notes                                                                                                    |
-| --------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------- |
-| `/api/v1/health`                        | `api`           | Liveness of the gateway; no auth, no dependency checks                                                   |
-| `/api/v1`                               | `api`           | Version discovery                                                                                        |
-| `/api/v1/auth/…`                        | `api` → `auth`  | The gateway proxies it over the binding to the deployed auth service                                     |
-| `/api/v1/users/…`                       | `api` → `users` | The same, over the users binding — `/api/v1/users/me` is the profile                                     |
-| `/api/v1/games/…`, `/api/v1/categories` | `api` → `games` | The same, over the games binding — the public catalogue and each game's leaderboard                      |
-| `/api/v1/sessions/…`                    | `api` → `games` | The same binding: the play-session routes are mounted in the games deployment                            |
-| `/api/v1/admin/…`                       | `api` → `games` | The same binding again: the admin routes are mounted in the games deployment, and stay fully staff-gated |
-| `/api/v1/<other group>/…`               | `api`           | The gateway proxies a group only when its `UPSTREAM_<SERVICE>_URL` is set; otherwise `503`               |
-| `/healthz`, `/readyz`                   | `api`           | The Go probes, so they stay usable in production                                                         |
-| everything else                         | `web`           | `/`, `/explore`, `/games/…`, `/categories/…`, `/profile/…`, `/settings`, assets, sitemap                 |
+| Request                                    | Service | Notes                                                                                                  |
+| ------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------ |
+| `/api/v1/auth`, `/api/v1/auth/…`           | `auth`  | Sign-up, sign-in, refresh, sign-out, session                                                           |
+| `/api/v1/users`, `/api/v1/users/…`         | `users` | `/api/v1/users/me` is the profile                                                                      |
+| `/api/v1/games/…`, `/api/v1/categories`    | `games` | The public catalogue and each game's leaderboard                                                       |
+| `/api/v1/sessions/…`                       | `games` | The play-session routes are mounted in the games deployment                                            |
+| `/api/v1/admin/…`                          | `games` | The admin routes are mounted in the games deployment, and stay fully staff-gated                       |
+| `/api/v1/cron/…`                           | `games` | Vercel Cron, authenticated with `CRON_SECRET`                                                          |
+| `/api/v1`, `/api/v1/health`                | `games` | Version discovery and liveness                                                                         |
+| `/api/v1/<group with no deployment>/…`     | `games` | `503 This API is not available in this environment yet.` (`apiroutes.Unavailable`)                     |
+| `/healthz`, `/readyz`                      | `games` | The Go probes, so they stay usable in production                                                       |
+| everything else                            | `web`   | `/`, `/explore`, `/games/…`, `/categories/…`, `/profile/…`, `/settings`, assets, sitemap               |
 
 A service receives the **original** request path (`/api/v1/auth/sign-in`, not
-`/auth/sign-in`), which is why both the gateway's own routes and the auth
-service's routes are mounted under `/api/v1` and nothing has to be rewritten in
-Go.
+`/auth/sign-in`), which is why every service's routes are mounted under `/api/v1`
+and nothing has to be rewritten in Go. The `auth` and `users` rewrites come before
+the `/api/v1/(.*)` catch-all, and each is listed both bare and with `/(.*)` so the
+group's own root reaches its service.
 
 ## Health, liveness and readiness
 
@@ -208,10 +155,9 @@ and it is exempt from the rate limiter. Readiness is deliberately separate: a
 dependency that is down must not make a healthy process look dead, because that
 is how a restart loop starts.
 
-The auth service serves the same two routes on its own port, but it is internal,
-so `https://unbored.lol/api/v1/health` is always the gateway's
-answer. Reach the auth service's own probes from inside the deployment, or
-locally.
+Every Go service serves these routes, but only the games deployment's are routed
+publicly, so `https://unbored.lol/api/v1/health` is always its answer. Reach
+the auth or users service's own probes locally.
 
 ## Environment variables
 
@@ -227,7 +173,7 @@ scopes variables per environment; the values below are for **Production**.
 | `VITE_PUBLIC_SITE_URL`          | `https://unbored.lol`          |
 | `VITE_API_BASE_URL`             | `https://unbored.lol/api/v1`   |
 
-`VITE_API_BASE_URL` is the gateway's origin. It is the same origin as the app, so
+`VITE_API_BASE_URL` is the API's origin. It is the same origin as the app, so
 the browser calls it without CORS preflights; the absolute value is used so the
 built bundle is explicit about where the API lives rather than depending on the
 origin it happens to be served from. For local work the same variable is
@@ -239,7 +185,7 @@ reads the variable and falls back to same-origin `/api/v1`.
 | Name                       | Production value                              | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | -------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ENVIRONMENT`              | `production`                                  | Selects `config.Validate`'s hardening rules                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `SUPABASE_URL`             | same URL as `VITE_SUPABASE_URL`               | Both Go services derive `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` from it                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `SUPABASE_URL`             | same URL as `VITE_SUPABASE_URL`               | Both Go services derive `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` from it. Unset, the services fall back to `VITE_SUPABASE_URL` (and the key to `VITE_SUPABASE_PUBLISHABLE_KEY`): both are public, so an environment that only sets the web app's names still works                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `SUPABASE_PUBLISHABLE_KEY` | same value as `VITE_SUPABASE_PUBLISHABLE_KEY` | Read by **both** Go services: `auth` calls the Supabase Auth API, `users` calls the Data API. The value is already public, so this is not a secret — it is set twice because the browser and the services read different names                                                                                                                                                                                                                                                              |
 | `CORS_ALLOWED_ORIGINS`     | `https://unbored.lol`               | Required in production; `*` is rejected. A wrong value surfaces in the browser as a network failure, never as an auth error — see the troubleshooting row for two-origin CORS errors.                                                                                                                                                                                                                                                                                                       |
 | `PUBLIC_SITE_URL`          | `https://unbored.lol`               | Origin the auth service proposes as Supabase `emailRedirectTo` (`…/auth/callback`); must also be allowlisted in Supabase redirect URLs. `SITE_URL` is accepted as a fallback name.                                                                                                                                                                                                                                                                                                          |
@@ -255,7 +201,7 @@ reads the variable and falls back to same-origin `/api/v1`.
 | `SERVICE_NAME`             | optional                                      | Appears in log lines; both services log a sensible default already                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 All three Go services read the server-only names from the same project scope, so
-setting them once covers `api`, `auth` and `users`. That is intended: the values
+setting them once covers `auth`, `users` and `games`. That is intended: the values
 are the same, and the publishable key is not a secret.
 
 The digest route is scheduled in `vercel.json` (`crons`) for 09:00 UTC daily and
@@ -269,15 +215,13 @@ Deliberately **not** set:
   JWKS, so no shared HS256 secret exists to leak or rotate. Setting only
   `SUPABASE_URL` is enough; removing the secret is a security improvement, not a
   missing value.
-- `UPSTREAM_AUTH_URL`, `UPSTREAM_USERS_URL` — injected by the service bindings.
-  See above.
-- `UPSTREAM_<OTHER>_URL` — the gateway answers `503` for a group whose upstream
-  is unset, which is the intended state until those services exist. No value is
-  committed here, because a deployment address is environment-specific.
+- `UPSTREAM_*_URL` — only the local gateway reads them. Nothing on Vercel proxies,
+  so a value set in the dashboard does nothing; remove any left over from the
+  gateway deployment.
 - `HTTP_ADDR` — Vercel injects the port; setting `HTTP_ADDR` would override it.
 - `SUPABASE_JWKS_URL`, `SUPABASE_JWT_ISSUER` — derived from `SUPABASE_URL`.
 
-Vercel environment variables are project-scoped, so the API service can read the
+Vercel environment variables are project-scoped, so the Go services can read the
 `VITE_` values too — that is harmless in that direction. The rule that matters is
 the other one: **only `VITE_`-prefixed names ever reach the browser bundle**, so a
 secret never gets that prefix. See
@@ -333,10 +277,10 @@ be built and tested before anything is committed or pushed.
 confirms Vercel detected the topology you intended, and the failure modes are
 silent: a service that is not detected does not error, it simply does not exist,
 and its rewrite answers `404` from the web app instead. Four services must appear
-(`web`, `api`, `auth`, `users`), and `api` must be reported as a container image
-build rather than a Go build. If a service is missing, the cause is the service
-object in `vercel.json` (root, `runtime`, `entrypoint`), not the Go code — and for
-a Go service it is usually an entrypoint name outside the preset's three.
+(`web`, `auth`, `users`, `games`), the three Go services as Go builds. If a
+service is missing, the cause is the service object in `vercel.json` (root,
+`framework`, `entrypoint`), not the Go code — usually an entrypoint name outside the
+preset's three.
 
 ### 3. Verify the preview
 
@@ -345,12 +289,15 @@ BASE=https://unboredapp-<hash>.vercel.app
 curl -sS "$BASE/api/v1/health"          # {"status":"ok","version":"dev"}
 curl -sS "$BASE/api/v1"                 # {"apiVersion":"v1",...}
 curl -sS -o /dev/null -w '%{http_code}\n' "$BASE/"   # 200 — the web app renders
+curl -sS -o /dev/null -w '%{http_code}\n' "$BASE/api/v1/scores"   # 503 — a group with no deployment
+curl -sSI "$BASE/api/v1/games" | grep -i -E 'x-vercel-cache|^cache-control'
+# Repeat the last request: the second answer should be a CDN HIT, which proves the
+# games service's Vercel-CDN-Cache-Control reached the CDN.
 ```
 
 If Deployment Protection is enabled for previews, an outside `curl` is answered
-by the protection wall rather than by the service. Service-to-service calls skip
-it, so the binding still works — but the end-to-end check below then has to run
-against production.
+by the protection wall rather than by the service, and the checks then have to run
+in a browser signed in to Vercel, or against production.
 
 ### 4. Verify the end-to-end auth path in production
 
@@ -361,15 +308,16 @@ reach the auth service and Supabase:
 
 ```bash
 curl -sS -o /dev/null -w '%{http_code}\n' https://unbored.lol/api/v1/auth/session
-# 401 — routed, proxied and verified by the auth service. 503 means the binding
-#       did not inject UPSTREAM_AUTH_URL; check the build log for the `auth` service.
+# 401 — routed to and verified by the auth service. 503 "not available in this
+#       environment" means the auth rewrite did not match and the games deployment
+#       answered; a 404 HTML page means the `auth` service was not detected.
 
 curl -sS -X POST -H 'Content-Type: application/json' \
   -d '{"email":"does-not-exist@example.com","password":"a-long-password"}' \
   https://unbored.lol/api/v1/auth/sign-in
 # 401 {"error":{"code":"unauthorized","message":"That email or username and password do not match."}}
 # This is Supabase's answer, mapped to the platform envelope. It proves the whole
-# chain — Vercel routing, the binding, the auth service and the Supabase project —
+# chain — Vercel routing, the auth service and the Supabase project —
 # because a missing Supabase configuration would answer 503 instead.
 ```
 
@@ -386,9 +334,9 @@ must be the account's own row, read from Supabase.
 ```bash
 BASE=https://unbored.lol
 curl -sS -o /dev/null -w '%{http_code}\n' "$BASE/api/v1/users/me"
-# 401 — the binding resolved and the Users service verified the absence of a
-#       token. 503 means the gateway has no UPSTREAM_USERS_URL; 404 from the web
-#       app would mean the `users` service was not detected at all.
+# 401 — routed to the Users service, which verified the absence of a token. A
+#       503 naming the group means the users rewrite did not match; 404 from the
+#       web app would mean the `users` service was not detected at all.
 
 TOKEN=$(curl -sS -X POST -H 'Content-Type: application/json' \
   -d '{"email":"<confirmed account>","password":"<password>"}' \
@@ -435,19 +383,21 @@ in services mode.
 | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Multiple frameworks detected in project root: TanStack Start, Nitro, Node. Specify "framework" explicitly in services.` | A service has no dashboard preset, and the root matches several detectors                                                               | Already fixed: the `web` service pins `"framework": "tanstack-start-lovable"`                                                                                                                                                                                              |
 | `/api/v1/*` returns the app's HTML 404                                                                                   | The project is not in services mode, so the rewrites are inert                                                                          | Set the framework preset to **Services**                                                                                                                                                                                                                                   |
-| A group answers `503 This API is not available in this environment yet.`                                                 | That group has no `UPSTREAM_<SERVICE>_URL`                                                                                              | Expected for the groups with no service yet. For `auth` or `users`, check that the service exists in the build log and that the binding is declared on `api` (the **caller**), not on the callee                                                                           |
-| `/api/v1/auth/*` answers `503` on every credential endpoint, but `/api/v1/auth/session` answers `401`                    | The binding works; the auth service has no Supabase credentials                                                                         | Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` for the environment being tested — a preview needs them too                                                                                                                                                              |
-| `/api/v1/users/me` answers `503 Profiles are not available right now.`                                                   | The users service is deployed but has no Data API configuration                                                                         | Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. A `503` naming the _group_ (`This API is not available in this environment yet.`) is a different fault: the binding, not the credentials                                                                                |
+| A group answers `503 This API is not available in this environment yet.`                                                 | The request reached the games deployment for a group it does not run                                                                     | Expected for the groups with no service yet. For `auth` or `users`, check that the service exists in the build log and that its rewrites come before `/api/v1/(.*)` in `vercel.json` |
+| `/api/v1/auth/*` answers `503` on every credential endpoint, but `/api/v1/auth/session` answers `401`                    | The routing works; the auth service has no Supabase credentials                                                                         | Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` for the environment being tested — a preview needs them too                                                                                                                                                              |
+| `/api/v1/users/me` answers `503 Profiles are not available right now.`                                                   | The users service is deployed but has no Data API configuration                                                                         | Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. A `503` naming the _group_ (`This API is not available in this environment yet.`) is a different fault: the routing, not the credentials                                                                                |
 | `/api/v1/users/me` answers `403 permission denied for table profiles` on a read                                          | A query asked for a column the SELECT grant excludes — `select=*` or a bare `Prefer: return=representation` projects `is_suspended` too | Name the projection. `supabaseprofile.Columns` is the list the grant allows, and both the read and the write use it; see [services/users/README.md](../../services/users/README.md#how-it-talks-to-supabase)                                                               |
 | The profile page shows a sign-in prompt immediately after a reload                                                       | No stored session for this browser (first visit, cleared storage, another device) or the server refused the stored one                  | Not a fault. A stored session is restored from `unbored.auth.session.v1` (a session stored before the rename under `onemore.auth.session.v1` is read once and moved forward) and re-validated with `GET /api/v1/auth/session`; a refused pair is cleared, so sign in again |
-| The `api` service is missing from the build log, or the deployment reports one fewer service than expected               | A container service was not detected                                                                                                    | The Dockerfile must be named exactly `Dockerfile.vercel` at the service root, and the service needs `"runtime": "container"` with `"entrypoint": "Dockerfile.vercel"`                                                                                                      |
-| The `api` container builds but every request times out                                                                   | The app bound a port Vercel does not route to                                                                                           | The image declares `ENV PORT=80` and Vercel routes to 80 by default. Do not set `HTTP_ADDR` or `PORT` in the dashboard                                                                                                                                                     |
-| The container build fails with `"/packages/go/platform": not found`                                                      | The build context is a subdirectory, so the relative `replace` in `services/go.mod` cannot resolve                                      | `api` must keep `"root": "./"` and build from the repository root                                                                                                                                                                                                          |
-| Every browser request fails with a CORS error naming two origins                                                         | An upstream set its own `Access-Control-Allow-Origin` and the gateway's was appended                                                    | Already fixed: the gateway strips upstream CORS headers (`corsResponseHeaders` in `services/gateway/internal/proxy`)                                                                                                                                                       |
+| Every browser request fails with a CORS error                                                                            | `CORS_ALLOWED_ORIGINS` does not list the origin the page was served from                                                                | Each Go service answers CORS itself from `CORS_ALLOWED_ORIGINS`; set it for the environment being tested (a preview has its own origin)                                                                                                                                     |
+| Guest catalogue reads are never a CDN `HIT`                                                                               | The CDN did not receive `Vercel-CDN-Cache-Control`                                                                                     | Check the response of `GET /api/v1/games` without a token: it must carry `Cache-Control: public, max-age=0, must-revalidate`. If it carries `no-store`, `cdncache.Middleware` is not installed (see `games.Options`)                                                        |
 
 ## Verified in the repository
 
 Verified in the repository (see [development/testing.md](../development/testing.md)):
+
+> The bullets below were recorded for the gateway topology (see
+> [0015](../decisions/0015-direct-service-routing.md)); the container image they
+> mention no longer exists.
 
 - `gofmt -l` clean and `go vet ./...` clean in both modules; `go test ./...` green
   in both; all seventeen `main` packages build (fourteen services, the gateway,
@@ -491,6 +441,11 @@ Verified in the repository (see [development/testing.md](../development/testing.
   across 28 paths, and `redocly lint` accepts the contract.
 
 ## Verified against production
+
+> **Historical.** This section records the gateway topology that
+> [0015](../decisions/0015-direct-service-routing.md) replaced: the `api`
+> container, the bindings and the gateway's answers are gone. Re-run the checks in
+> [Deploying](#deploying) against the current routing.
 
 The deployment described above was performed and exercised on **2026-10-08**
 against the project's Vercel production domain as it was at the time. The project
@@ -563,6 +518,5 @@ its predecessor. Until then, treat a refresh token as a long-lived credential.
   that observed the `429` and its `Retry-After`, which is the strongest claim
   available without a shared store.
 - **Vercel Services is still in Beta.** If the platform later rejects a
-  configuration detail (a `root`, a `framework` slug, or a binding on a
-  container service), the fix belongs in `vercel.json`; nothing in the Go code
-  depends on it.
+  configuration detail (a `root`, a `framework` slug or a service rewrite), the
+  fix belongs in `vercel.json`; nothing in the Go code depends on it.
