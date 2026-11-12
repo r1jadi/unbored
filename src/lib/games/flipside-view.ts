@@ -12,7 +12,8 @@ export const FLIPSIDE_VIEWBOX = `0 0 ${FLIPSIDE_WIDTH} ${FLIPSIDE_HEIGHT}`;
 
 /** The rock's colour: it changes every 25 hazards, so a milestone is felt. */
 export function rockColor(passed: number): string {
-  const palette = [2, 1, 7, 6, 5];
+  // Never the runner's orange (game-7) or a red near the spikes' (game-5).
+  const palette = [2, 1, 6, 4];
   return `var(--game-${palette[Math.floor(passed / 25) % palette.length]})`;
 }
 
