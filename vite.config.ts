@@ -34,6 +34,21 @@ function offlineManifest(): Plugin {
   };
 }
 
+/**
+ * Old game slugs → their current names. vercel.json does the same at Vercel's
+ * edge; these route rules carry it to every other host (Cloudflare, Node).
+ */
+function renamedGameRedirects() {
+  const renamed = { queens: "crowns", zip: "trail", tango: "sun-and-moon" };
+  const rules: Record<string, { redirect: { to: string; status: 301 } }> = {};
+  for (const section of ["games", "play", "leaderboards"]) {
+    for (const [from, to] of Object.entries(renamed)) {
+      rules[`/${section}/${from}`] = { redirect: { to: `/${section}/${to}`, status: 301 } };
+    }
+  }
+  return rules;
+}
+
 export default defineConfig(({ command, mode }) => {
   // The server entry and the client both read `import.meta.env.VITE_*`.
   const define = Object.fromEntries(
@@ -79,7 +94,9 @@ export default defineConfig(({ command, mode }) => {
         },
       }),
       // Only for a build. Vercel is the default, and `NITRO_PRESET` can still override it.
-      ...(command === "build" ? [nitro({ defaultPreset: "vercel" })] : []),
+      ...(command === "build"
+        ? [nitro({ defaultPreset: "vercel", routeRules: renamedGameRedirects() })]
+        : []),
       viteReact(),
       offlineManifest(),
     ],

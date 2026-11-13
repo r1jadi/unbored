@@ -1,0 +1,51 @@
+# Render Blueprint for the API (free plan). The website itself is served by
+# Cloudflare Workers; see docs/deployment/free-hosting.md.
+services:
+  - type: web
+    name: unbored-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./infrastructure/docker/api.Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://unbored.lol,https://www.unbored.lol
+      - key: PUBLIC_SITE_URL
+        value: https://unbored.lol
+      - key: SUPABASE_URL
+        value: https://trrwaftksifjaiaxfmiu.supabase.co
+      - key: SUPABASE_JWT_AUDIENCE
+        value: authenticated
+      - key: EMAIL_FROM
+        value: Unbored <hello@unbored.lol>
+      - key: RATE_LIMIT_ENABLED
+        value: "1"
+      - key: RATE_LIMIT_REQUESTS_PER_MINUTE
+        value: "600"
+      - key: RATE_LIMIT_BURST
+        value: "60"
+      - key: AUTH_RATE_LIMIT_REQUESTS_PER_MINUTE
+        value: "10"
+      - key: AUTH_RATE_LIMIT_BURST
+        value: "5"
+      # Filled in on the Render dashboard (sync: false = asked for at setup, never committed).
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
