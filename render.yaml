@@ -1,14 +1,27 @@
 # Render Blueprint for the API (free plan). The website itself is served by
 # Cloudflare Workers; see docs/deployment/free-hosting.md.
+#
+# Frankfurt sits next to the Supabase database (eu-west-1, Ireland); a US region
+# adds a transatlantic round trip to every query. The site reaches the API at
+# api.unbored.lol (a DNS-only CNAME in Cloudflare), so moving it again only
+# changes DNS, not the website build.
 services:
   - type: web
-    name: unbored-api
+    name: unbored-api-eu
+    region: frankfurt
     runtime: docker
     plan: free
     dockerfilePath: ./infrastructure/docker/api.Dockerfile
     dockerContext: .
     healthCheckPath: /healthz
     autoDeploy: true
+    buildFilter:
+      paths:
+        - services/**
+        - packages/go/**
+        - infrastructure/docker/api.Dockerfile
+    domains:
+      - api.unbored.lol
     envVars:
       - key: ENVIRONMENT
         value: production

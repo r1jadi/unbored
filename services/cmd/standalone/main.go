@@ -14,6 +14,7 @@ package main
 
 import (
 	"log/slog"
+	"time"
 
 	"github.com/r1jadi/unbored/packages/go/platform/authn"
 	"github.com/r1jadi/unbored/packages/go/platform/config"
@@ -22,6 +23,7 @@ import (
 	"github.com/r1jadi/unbored/services/auth"
 	"github.com/r1jadi/unbored/services/game-sessions"
 	gamesservice "github.com/r1jadi/unbored/services/games"
+	"github.com/r1jadi/unbored/services/internal/apicache"
 	"github.com/r1jadi/unbored/services/internal/apiroutes"
 	"github.com/r1jadi/unbored/services/internal/servicekit"
 	"github.com/r1jadi/unbored/services/notifications"
@@ -44,8 +46,12 @@ func serve() servicekit.Options {
 	options.Register = apiroutes.RegisterVersion
 	options.ExtraLimiters = append(append([]*httpx.RateLimiter{}, catalogue.ExtraLimiters...), authOpts.ExtraLimiters...)
 	extra := catalogue.ExtraHandlers
+	catalogueCache := apicache.New(60 * time.Second)
 	options.ExtraHandlers = func(cfg *config.Config, logger *slog.Logger) []httpx.Middleware {
-		middlewares := []httpx.Middleware{apiroutes.Unavailable(gamesservice.Name, auth.Name, users.Name)}
+		middlewares := []httpx.Middleware{
+			apiroutes.Unavailable(gamesservice.Name, auth.Name, users.Name),
+			catalogueCache.Middleware(),
+		}
 		if extra != nil {
 			middlewares = append(middlewares, extra(cfg, logger)...)
 		}

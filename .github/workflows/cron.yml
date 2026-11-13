@@ -1,6 +1,6 @@
 # Daily jobs for hosts without a built-in scheduler (Vercel runs these from
 # vercel.json's "crons"). Needs two repository secrets:
-#   API_ORIGIN   e.g. https://unbored-api.onrender.com  (no trailing slash)
+#   API_ORIGIN   e.g. https://api.unbored.lol  (no trailing slash)
 #   CRON_SECRET  the same value the API has
 # Without API_ORIGIN the jobs skip, so a Vercel deployment is not double-run.
 name: cron
