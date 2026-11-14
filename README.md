@@ -73,6 +73,7 @@ database accepts only after replaying the run.
 | Sun & Moon            | `sun-and-moon`         | `tango.ts`        |
 | Sudoku                | `sudoku`               | `sudoku.ts`       |
 | Daily Crossword       | `crossword`            | `crossword.ts`    |
+| Deep Cut              | `deep-cut`             | `deep-cut.ts`     |
 
 7 Second is the daily game: one shared deck per UTC day and one ranked attempt a
 day. `play.$id.tsx` mounts a runtime only for a game whose `runtime` identifier it

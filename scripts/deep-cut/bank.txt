@@ -1,0 +1,368 @@
+# Deep Cut — the curated answer bank.
+#
+# Every question is a header line, then one line per rarity tier:
+#
+#   ## slug | Category | The prompt the player reads
+#   1: Common; Answers/Alias; Go here
+#   6: The rarest; correct answers
+#
+# Tiers, from the surface down (points in brackets):
+#   1 Surface (10)  2 Shallows (20)  3 Reef (40)  4 Twilight (60)  5 Midnight (80)  6 Abyss (100)
+#
+# Within a line answers are separated by ';'. An answer's first spelling is its
+# canonical name; the spellings after '/' are aliases (abbreviations, other names,
+# common alternative spellings). Case, accents, punctuation, spaces and a leading
+# "the"/"a"/"an" never matter, so "Rolls-Royce" and "rolls royce" are one spelling.
+#
+# A tier is an estimate of how often people give that answer — the share of players
+# who'd say it — not of how hard it is to know. Tier 1 is what most people say first;
+# tier 6 is correct and almost nobody says it. Ties go to the rarer tier when in doubt
+# only for answers that are genuinely obscure.
+#
+# `node scripts/generate-deep-cut-bank.mjs --write` turns this file into the bank
+# migration. Never reuse a slug for a different question.
+
+## us-state | Geography | Name a US state
+1: California/CA; Texas/TX; New York/NY; Florida/FL
+2: Ohio/OH; Washington/WA; Alaska/AK; Hawaii/HI; Arizona/AZ; Nevada/NV; Colorado/CO; Georgia/GA; Illinois/IL; Michigan/MI; Oregon/OR
+3: Pennsylvania/PA; New Jersey/NJ; Massachusetts/MA; Virginia/VA; Utah/UT; Montana/MT; Tennessee/TN; Louisiana/LA; Oklahoma/OK; Kentucky/KY; Kansas/KS; Wisconsin/WI; Minnesota/MN; North Carolina/NC; South Carolina/SC; Alabama/AL; Mississippi/MS; Missouri/MO; Maine/ME; Vermont/VT; New Mexico/NM; Idaho/ID; Indiana/IN; Iowa/IA
+4: Wyoming/WY; Nebraska/NE; Arkansas/AR; Connecticut/CT; Maryland/MD; West Virginia/WV; North Dakota/ND; South Dakota/SD; New Hampshire/NH; Rhode Island/RI
+5: Delaware/DE
+
+## africa-country | Geography | Name a country in Africa
+1: Egypt; South Africa; Nigeria; Kenya
+2: Morocco; Ethiopia; Ghana; Madagascar; Algeria; Libya; Somalia; Sudan; Tunisia; Uganda; Tanzania; Zimbabwe
+3: Senegal; Cameroon; Angola; Rwanda; Congo/Republic of the Congo/Congo-Brazzaville; Democratic Republic of the Congo/DRC/DR Congo/Congo-Kinshasa/Zaire; Ivory Coast/Côte d'Ivoire/Cote dIvoire; Mali; Namibia; Botswana; Zambia; Mozambique; Chad; Niger; South Sudan
+4: Liberia; Sierra Leone; Gambia/The Gambia; Burkina Faso; Malawi; Eritrea; Mauritania; Gabon; Benin; Togo; Guinea; Lesotho; Mauritius; Burundi; Djibouti
+5: Eswatini/Swaziland; Central African Republic/CAR; Guinea-Bissau; Equatorial Guinea; Cape Verde/Cabo Verde; Seychelles; Comoros
+6: São Tomé and Príncipe/Sao Tome and Principe/Sao Tome
+
+## europe-country | Geography | Name a country in Europe
+1: France; Germany; Italy; Spain; United Kingdom/UK/Britain/Great Britain/England
+2: Portugal; Netherlands/Holland; Belgium; Switzerland; Austria; Greece; Poland; Sweden; Norway; Ireland/Republic of Ireland/Eire; Russia; Denmark
+3: Finland; Iceland; Ukraine; Czech Republic/Czechia; Hungary; Romania; Croatia; Turkey/Türkiye; Scotland; Wales; Serbia; Bulgaria
+4: Slovakia; Slovenia; Albania; Estonia; Latvia; Lithuania; Belarus; Bosnia and Herzegovina/Bosnia; Montenegro; Kosovo; Luxembourg; Monaco; Malta; Cyprus; Northern Ireland
+5: North Macedonia/Macedonia; Moldova; Andorra; Liechtenstein; San Marino; Vatican City/Vatican/Holy See; Georgia; Armenia; Azerbaijan
+6: Kazakhstan
+
+## asia-country | Geography | Name a country in Asia
+1: China; Japan; India; South Korea/Korea/Republic of Korea
+2: Thailand; Vietnam/Viet Nam; North Korea/DPRK; Indonesia; Philippines; Pakistan; Russia; Singapore; Malaysia
+3: Iran; Iraq; Saudi Arabia; Afghanistan; Nepal; Bangladesh; Sri Lanka; Israel; Mongolia; Taiwan; Cambodia; Turkey/Türkiye; United Arab Emirates/UAE; Syria; Myanmar/Burma
+4: Laos; Kazakhstan; Jordan; Lebanon; Qatar; Kuwait; Yemen; Oman; Bhutan; Uzbekistan; Maldives
+5: Brunei; Timor-Leste/East Timor; Bahrain; Kyrgyzstan; Tajikistan; Turkmenistan; Georgia; Armenia; Azerbaijan; Palestine; Cyprus
+
+## south-america-country | Geography | Name a country in South America
+1: Brazil; Argentina
+2: Peru; Chile; Colombia
+3: Venezuela; Ecuador; Bolivia
+4: Uruguay; Paraguay
+5: Guyana
+6: Suriname
+
+## europe-capital | Geography | Name a capital city in Europe
+1: Paris; London; Berlin; Rome; Madrid
+2: Lisbon; Amsterdam; Brussels; Vienna; Athens; Moscow; Dublin
+3: Prague; Budapest; Warsaw; Stockholm; Oslo; Copenhagen; Helsinki; Bern; Reykjavik; Edinburgh; Kyiv/Kiev
+4: Bucharest; Belgrade; Zagreb; Sofia; Bratislava; Ljubljana; Tallinn; Riga; Vilnius; Minsk; Luxembourg; Monaco; Cardiff; Belfast; Ankara; Tirana
+5: Sarajevo; Podgorica; Skopje; Pristina; Chisinau; Valletta; Nicosia; Andorra la Vella; San Marino; Vatican City
+6: Vaduz; Tbilisi; Yerevan; Baku
+
+## canada-province | Geography | Name a Canadian province or territory
+1: Ontario/ON; Quebec/QC; British Columbia/BC
+2: Alberta/AB; Nova Scotia/NS
+3: Manitoba/MB; Saskatchewan/SK; Newfoundland and Labrador/Newfoundland/NL
+4: New Brunswick/NB; Yukon/YT; Prince Edward Island/PEI
+5: Northwest Territories/NWT; Nunavut/NU
+
+## ocean-sea | Geography | Name an ocean or sea
+1: Pacific Ocean/Pacific; Atlantic Ocean/Atlantic
+2: Indian Ocean/Indian; Arctic Ocean/Arctic; Mediterranean Sea/Mediterranean; Southern Ocean/Antarctic Ocean
+3: Caribbean Sea/Caribbean; Red Sea; Black Sea; Dead Sea; North Sea; Baltic Sea
+4: Caspian Sea; Arabian Sea; South China Sea; Adriatic Sea; Aegean Sea; Sea of Japan/East Sea; Irish Sea; Bering Sea
+5: Coral Sea; Tasman Sea; Ionian Sea; Tyrrhenian Sea; Sargasso Sea; Yellow Sea; East China Sea; Barents Sea; Norwegian Sea; Labrador Sea; Ligurian Sea; Sea of Okhotsk; Aral Sea; Celtic Sea; Weddell Sea; Ross Sea
+6: Sea of Azov; Philippine Sea; Andaman Sea; Kara Sea; Laptev Sea; Beaufort Sea; Sulu Sea; Java Sea; Banda Sea; Sea of Marmara; Alboran Sea; Balearic Sea; White Sea; Chukchi Sea; Timor Sea; Arafura Sea; Solomon Sea; Bismarck Sea; Scotia Sea; Amundsen Sea
+
+## constellation | Science | Name a constellation
+1: Orion; Ursa Major/Great Bear/Big Dipper
+2: Ursa Minor/Little Bear/Little Dipper; Cassiopeia; Scorpius/Scorpio; Leo; Gemini; Taurus; Aries
+3: Andromeda; Pegasus; Cancer; Virgo; Libra; Sagittarius; Capricornus/Capricorn; Aquarius; Pisces; Draco; Perseus; Cygnus; Hercules; Lyra; Southern Cross/Crux
+4: Canis Major; Canis Minor; Aquila; Centaurus; Cepheus; Hydra; Boötes/Bootes; Auriga; Corona Borealis; Phoenix; Ophiuchus; Lupus; Monoceros; Cetus; Eridanus; Delphinus
+5: Carina; Vela; Puppis; Lepus; Columba; Corvus; Crater; Sagitta; Vulpecula; Lacerta; Pavo; Grus; Tucana; Ara; Musca; Chamaeleon; Pyxis; Sextans; Serpens; Scutum; Triangulum; Camelopardalis; Lynx; Leo Minor; Canes Venatici; Coma Berenices; Corona Australis; Piscis Austrinus; Fornax; Sculptor; Indus; Hydrus; Dorado; Volans; Apus; Pictor; Reticulum; Caelum; Horologium; Microscopium; Telescopium; Norma; Circinus; Mensa; Octans; Antlia; Equuleus; Triangulum Australe
+
+## chemical-element | Science | Name a chemical element
+1: Oxygen/O; Hydrogen/H; Carbon/C; Gold/Au; Iron/Fe
+2: Nitrogen/N; Helium/He; Silver/Ag; Copper/Cu; Sodium/Na; Calcium/Ca; Uranium/U; Lead/Pb; Neon/Ne; Aluminium/Aluminum/Al; Zinc/Zn; Platinum/Pt; Mercury/Hg
+3: Potassium/K; Magnesium/Mg; Chlorine/Cl; Lithium/Li; Sulfur/Sulphur/S; Phosphorus/P; Tin/Sn; Nickel/Ni; Titanium/Ti; Plutonium/Pu; Argon/Ar; Fluorine/F; Silicon/Si; Iodine/I; Cobalt/Co; Radon/Rn; Radium/Ra; Chromium/Cr; Tungsten/W
+4: Boron/B; Beryllium/Be; Krypton/Kr; Xenon/Xe; Manganese/Mn; Bromine/Br; Arsenic/As; Cesium/Caesium/Cs; Barium/Ba; Strontium/Sr; Bismuth/Bi; Palladium/Pd; Iridium/Ir; Osmium/Os; Cadmium/Cd; Thorium/Th; Selenium/Se; Polonium/Po; Vanadium/V; Rubidium/Rb; Francium/Fr; Antimony/Sb; Tellurium/Te; Gallium/Ga; Germanium/Ge; Zirconium/Zr; Molybdenum/Mo; Neodymium/Nd; Einsteinium/Es
+5: Scandium/Sc; Yttrium/Y; Niobium/Nb; Technetium/Tc; Ruthenium/Ru; Rhodium/Rh; Indium/In; Hafnium/Hf; Tantalum/Ta; Rhenium/Re; Thallium/Tl; Astatine/At; Actinium/Ac; Protactinium/Pa; Neptunium/Np; Americium/Am; Curium/Cm; Berkelium/Bk; Californium/Cf; Fermium/Fm; Mendelevium/Md; Nobelium/No; Lawrencium/Lr; Lanthanum/La; Cerium/Ce; Europium/Eu; Gadolinium/Gd; Promethium/Pm; Samarium/Sm
+6: Praseodymium/Pr; Terbium/Tb; Dysprosium/Dy; Holmium/Ho; Erbium/Er; Thulium/Tm; Ytterbium/Yb; Lutetium/Lu; Rutherfordium/Rf; Dubnium/Db; Seaborgium/Sg; Bohrium/Bh; Hassium/Hs; Meitnerium/Mt; Darmstadtium/Ds; Roentgenium/Rg; Copernicium/Cn; Nihonium/Nh; Flerovium/Fl; Moscovium/Mc; Livermorium/Lv; Tennessine/Ts; Oganesson/Og
+
+## solar-moon | Science | Name a moon in our solar system (not Earth's Moon)
+1: Europa; Titan
+2: Io; Ganymede; Callisto; Phobos; Deimos
+3: Enceladus; Triton; Charon
+4: Mimas; Rhea; Iapetus; Dione; Tethys; Miranda; Oberon; Titania
+5: Hyperion; Phoebe; Ariel; Umbriel; Nereid; Amalthea; Proteus; Puck; Pandora; Prometheus; Janus; Epimetheus
+6: Himalia; Thebe; Metis; Adrastea; Elara; Pasiphae; Sinope; Carme; Ananke; Lysithea; Leda; Atlas; Pan; Daphnis; Calypso; Telesto; Helene; Cordelia; Ophelia; Bianca; Cressida; Desdemona; Juliet; Portia; Rosalind; Belinda; Caliban; Sycorax; Naiad; Thalassa; Despina; Galatea; Larissa; Halimede; Nix; Hydra; Kerberos; Styx; Dysnomia; Hiiaka; Namaka; Vanth; Weywot
+
+## bone | Science | Name a bone in the human body
+1: Femur/Thigh bone; Skull/Cranium; Rib; Spine/Vertebra/Vertebrae/Backbone
+2: Tibia/Shinbone; Humerus; Pelvis/Hip bone; Jaw/Jawbone/Mandible; Clavicle/Collarbone; Fibula; Radius; Ulna; Sternum/Breastbone
+3: Scapula/Shoulder blade; Patella/Kneecap; Coccyx/Tailbone; Sacrum; Phalanges/Phalanx; Metacarpals/Metacarpal; Metatarsals/Metatarsal; Maxilla; Carpals/Carpal; Tarsals/Tarsal
+4: Stapes/Stirrup; Incus/Anvil; Malleus/Hammer; Hyoid; Calcaneus/Heel bone; Talus/Ankle bone; Ilium; Ischium; Pubis; Atlas; Axis; Zygomatic/Cheekbone; Sphenoid; Occipital; Parietal; Temporal; Frontal; Nasal bone
+5: Ethmoid; Vomer; Lacrimal; Palatine; Scaphoid; Lunate; Triquetrum; Pisiform; Trapezium; Trapezoid; Capitate; Hamate; Cuboid; Navicular; Cuneiform; Inferior nasal concha; Manubrium; Xiphoid
+
+## organ | Science | Name an organ of the human body
+1: Heart; Brain; Lungs/Lung; Liver
+2: Kidney/Kidneys; Stomach; Skin; Intestines/Intestine/Bowel/Gut; Eye/Eyes
+3: Pancreas; Spleen; Bladder/Urinary bladder; Gallbladder; Appendix; Large intestine/Colon; Small intestine; Uterus/Womb; Tongue; Ear/Ears
+4: Thyroid; Esophagus/Oesophagus/Gullet; Ovary/Ovaries; Testes/Testicles/Testicle; Prostate; Adrenal gland/Adrenal glands; Thymus; Pituitary gland/Pituitary; Larynx/Voice box; Trachea/Windpipe; Diaphragm; Nose; Rectum; Duodenum
+5: Pineal gland/Pineal; Hypothalamus; Cerebellum; Pharynx; Epiglottis; Parathyroid; Tonsils/Tonsil; Lymph node/Lymph nodes; Placenta; Mesentery; Interstitium; Ureter; Urethra; Cecum/Caecum; Jejunum; Ileum
+
+## gemstone | Science | Name a gemstone
+1: Diamond; Ruby; Emerald; Sapphire
+2: Amethyst; Pearl; Opal; Topaz; Jade
+3: Garnet; Turquoise; Aquamarine; Onyx; Quartz; Amber; Peridot
+4: Tanzanite; Lapis lazuli/Lapis; Citrine; Moonstone; Tourmaline; Jasper; Obsidian; Agate; Coral; Alexandrite; Zircon
+5: Malachite; Carnelian; Tiger's eye/Tigers eye; Bloodstone; Spinel; Morganite; Chrysoberyl; Beryl; Rose quartz; Hematite; Labradorite; Jet; Kunzite; Iolite; Sunstone; Rhodochrosite; Chalcedony
+6: Benitoite; Painite; Taaffeite; Grandidierite; Musgravite; Red beryl/Bixbite; Jeremejevite; Poudretteite; Serendibite; Tsavorite; Demantoid; Sphene/Titanite; Kyanite; Andalusite; Sodalite; Chrysoprase; Larimar; Ammolite; Charoite; Sugilite; Padparadscha
+
+## dinosaur | Science | Name a dinosaur
+1: Tyrannosaurus rex/T rex/Tyrannosaurus; Triceratops; Velociraptor/Raptor
+2: Stegosaurus; Brachiosaurus; Diplodocus; Spinosaurus
+3: Ankylosaurus; Brontosaurus; Apatosaurus; Allosaurus; Parasaurolophus; Iguanodon; Pachycephalosaurus; Dilophosaurus; Gallimimus
+4: Carnotaurus; Giganotosaurus; Argentinosaurus; Archaeopteryx; Deinonychus; Compsognathus; Protoceratops; Oviraptor; Baryonyx; Utahraptor; Therizinosaurus; Maiasaura; Megalosaurus; Albertosaurus; Hadrosaurus; Edmontosaurus; Styracosaurus; Kentrosaurus; Microraptor
+5: Ceratosaurus; Corythosaurus; Lambeosaurus; Troodon; Mamenchisaurus; Plateosaurus; Coelophysis; Suchomimus; Carcharodontosaurus; Dreadnoughtus; Amargasaurus; Nodosaurus; Euoplocephalus; Psittacosaurus; Herrerasaurus; Eoraptor; Sinosauropteryx; Yutyrannus; Dracorex; Stygimoloch; Majungasaurus; Irritator; Pentaceratops; Chasmosaurus; Centrosaurus; Einiosaurus; Gigantoraptor; Saltasaurus; Camarasaurus; Supersaurus; Patagotitan
+6: Nigersaurus; Minmi; Borealopelta; Concavenator; Halszkaraptor; Zuul; Mapusaurus; Torvosaurus; Austroraptor; Pyroraptor; Velafrons; Tsintaosaurus; Olorotitan; Shantungosaurus; Leaellynasaura; Muttaburrasaurus; Ouranosaurus; Masiakasaurus; Mononykus; Shuvuuia; Anchiornis; Epidexipteryx; Kosmoceratops; Regaliceratops; Zuniceratops
+
+## dog-breed | Animals | Name a dog breed
+1: Labrador Retriever/Labrador/Lab; Golden Retriever; German Shepherd/Alsatian; Poodle; Bulldog/English Bulldog; Chihuahua
+2: Beagle; Husky/Siberian Husky; Pug; Dachshund/Sausage dog/Wiener dog; Rottweiler; Boxer; Dalmatian; Pit Bull/Pitbull/American Pit Bull Terrier; Border Collie; French Bulldog/Frenchie; Yorkshire Terrier/Yorkie; Corgi/Pembroke Welsh Corgi; Shih Tzu
+3: Great Dane; Doberman/Dobermann/Doberman Pinscher; Greyhound; Saint Bernard/St Bernard; Cocker Spaniel; Maltese; Pomeranian; Jack Russell Terrier/Jack Russell; Shiba Inu; Bernese Mountain Dog; Australian Shepherd; Collie/Rough Collie; Akita; Chow Chow; Mastiff; Newfoundland; Bichon Frise; Schnauzer; Samoyed; Labradoodle; Cavalier King Charles Spaniel/Cavalier; Whippet; Basset Hound; Bloodhound; Irish Setter; Alaskan Malamute/Malamute; Staffordshire Bull Terrier/Staffy
+4: Weimaraner; Vizsla; Afghan Hound; Shar Pei; Bull Terrier; West Highland Terrier/Westie; Scottish Terrier/Scottie; Lhasa Apso; Papillon; Boston Terrier; Rhodesian Ridgeback; Cane Corso; Belgian Malinois/Malinois; Shetland Sheepdog/Sheltie; Springer Spaniel/English Springer Spaniel; Pointer; Basenji; Irish Wolfhound; Old English Sheepdog; Great Pyrenees/Pyrenean Mountain Dog; Dogue de Bordeaux; Airedale Terrier/Airedale; Cockapoo; Havanese; Miniature Pinscher; Italian Greyhound; Pekingese; Bullmastiff; Saluki; Borzoi
+5: Xoloitzcuintli/Xolo; Puli; Komondor; Leonberger; Tibetan Mastiff; Kuvasz; Anatolian Shepherd; Bedlington Terrier; Chinese Crested; Affenpinscher; Brussels Griffon; Schipperke; Keeshond; Norwegian Elkhound; Pharaoh Hound; Ibizan Hound; Portuguese Water Dog; Bouvier des Flandres; Briard; Coton de Tulear; Lagotto Romagnolo; Spinone Italiano; Field Spaniel; Sussex Spaniel; Clumber Spaniel; Dandie Dinmont Terrier; Sealyham Terrier; Skye Terrier; Kerry Blue Terrier; Glen of Imaal Terrier; Otterhound; Plott Hound; Catahoula Leopard Dog; Carolina Dog; Azawakh; Sloughi; Mudi; Pumi; Lundehund/Norwegian Lundehund; Thai Ridgeback; Kai Ken; Kishu Ken; Jindo/Korean Jindo; Tosa/Tosa Inu; Bergamasco; Cesky Terrier; Stabyhoun; Kooikerhondje; Finnish Spitz; Karelian Bear Dog
+
+## cat-breed | Animals | Name a breed of cat
+1: Siamese; Persian
+2: Maine Coon; Sphynx/Sphinx; Bengal; Ragdoll; British Shorthair
+3: Scottish Fold; Russian Blue; Abyssinian; Birman; Burmese; Norwegian Forest Cat/Norwegian Forest; Exotic Shorthair; American Shorthair; Himalayan; Savannah; Manx
+4: Devon Rex; Cornish Rex; Siberian; Oriental Shorthair/Oriental; Turkish Angora; Turkish Van; Egyptian Mau; Tonkinese; Balinese; Bombay; Munchkin; Chartreux; Somali; Ocicat; Selkirk Rex; Japanese Bobtail; American Curl; Ragamuffin
+5: LaPerm; Korat; Singapura; Havana Brown; Nebelung; Pixie-bob; Toyger; Lykoi; Peterbald; Donskoy/Don Sphynx; Khao Manee; Sokoke; Burmilla; Chausie; Serengeti; Cymric; Kurilian Bobtail; American Bobtail; Snowshoe; European Shorthair; Colorpoint Shorthair; Javanese; Minuet/Napoleon; Bambino; Elf cat; Highlander; Thai; Suphalak; Australian Mist; Ojos Azules
+
+## bird | Animals | Name a bird
+1: Eagle; Robin; Penguin; Pigeon; Parrot; Owl; Crow; Sparrow
+2: Flamingo; Swan; Duck; Chicken; Ostrich; Hawk; Seagull/Gull; Peacock/Peafowl; Blue Jay/Jay; Hummingbird; Woodpecker; Cardinal; Falcon; Turkey; Goose; Toucan
+3: Raven; Pelican; Stork; Heron; Vulture; Albatross; Kingfisher; Magpie; Starling; Finch; Canary; Emu; Kiwi; Puffin; Cockatoo; Macaw; Budgie/Budgerigar/Parakeet; Dove; Condor; Crane; Swallow; Kookaburra; Ibis; Quail; Pheasant; Blackbird; Wren; Osprey
+4: Cormorant; Egret; Sandpiper; Plover; Kestrel; Buzzard; Kite; Cuckoo; Nightingale; Lark/Skylark; Thrush; Oriole; Warbler; Tit/Titmouse/Blue tit; Chickadee; Nuthatch; Grouse; Partridge; Rhea; Cassowary; Lovebird; Cockatiel; Mockingbird; Roadrunner; Hornbill; Bald eagle; Gannet; Tern; Loon; Grebe; Coot; Moorhen; Rook; Jackdaw; Kakapo; Lyrebird
+5: Shoebill; Secretary bird; Hoatzin; Kea; Quetzal; Bird of paradise; Frigatebird; Booby; Skua; Avocet; Curlew; Godwit; Lapwing; Oystercatcher; Dipper; Treecreeper; Shrike; Waxwing; Bunting; Grosbeak; Tanager; Vireo; Junco; Bobolink; Meadowlark; Grackle; Cowbird; Nightjar/Goatsucker; Potoo; Frogmouth; Tawny frogmouth; Hoopoe; Bee-eater; Roller; Trogon; Motmot; Jacana; Bittern; Spoonbill; Merganser; Shoveler; Teal; Wigeon; Eider; Pochard; Gadwall; Ptarmigan; Capercaillie; Guineafowl; Takahe; Weka; Tui; Fantail; Pitta; Wallcreeper; Bowerbird; Honeyeater; Sunbird; Weaver; Dodo
+
+## ocean-mammal | Animals | Name a mammal that lives in the ocean
+1: Dolphin; Whale; Blue whale; Orca/Killer whale; Seal
+2: Sea lion; Walrus; Humpback whale; Sea otter/Otter; Manatee; Narwhal
+3: Beluga/Beluga whale; Sperm whale; Dugong; Porpoise; Polar bear; Grey whale/Gray whale; Fin whale; Elephant seal
+4: Minke whale; Bowhead whale; Right whale; Bottlenose dolphin; Leopard seal; Harbor seal/Harbour seal/Common seal; Pilot whale; Fur seal; Sei whale; Bryde's whale/Brydes whale
+5: Vaquita; Beaked whale; Cuvier's beaked whale/Cuviers beaked whale; Pygmy sperm whale; Dwarf sperm whale; Melon-headed whale; False killer whale; Risso's dolphin/Rissos dolphin; Spinner dolphin; Hector's dolphin/Hectors dolphin; Dusky dolphin; Commerson's dolphin/Commersons dolphin; Irrawaddy dolphin; Hooded seal; Harp seal; Ringed seal; Weddell seal; Crabeater seal; Ross seal; Bearded seal; Monk seal; Steller sea lion; Marine otter; Steller's sea cow/Stellers sea cow; Baird's beaked whale; Pygmy right whale; Omura's whale
+
+## fish | Animals | Name a fish
+1: Salmon; Tuna; Shark; Goldfish; Cod
+2: Trout; Clownfish; Swordfish; Catfish; Bass; Carp; Piranha; Sardine; Pufferfish/Puffer fish/Blowfish; Mackerel; Tilapia; Herring; Anchovy; Halibut
+3: Barracuda; Marlin; Eel; Stingray/Ray; Manta ray; Angelfish; Betta/Siamese fighting fish; Guppy; Koi; Haddock; Sole; Pike; Perch; Sturgeon; Seahorse; Flounder; Snapper; Grouper; Mahi-mahi/Dorado/Dolphinfish; Plaice; Swordtail; Tetra; Minnow
+4: Anglerfish; Lionfish; Sunfish/Mola mola/Ocean sunfish; Hammerhead; Great white shark; Whale shark; Moray eel; Wrasse; Parrotfish; Triggerfish; Pollock; Hake; Monkfish; Bream; Mullet; Turbot; Walleye; Bluegill; Crappie; Gar; Arapaima; Discus; Oscar; Molly; Platy; Zebrafish; Loach; Cichlid; Barramundi; Sea bass; John Dory; Skate; Lamprey; Hagfish
+5: Coelacanth; Oarfish; Blobfish; Gulper eel; Viperfish; Fangtooth; Hatchetfish; Lanternfish; Barreleye; Goblin shark; Frilled shark; Wobbegong; Mudskipper; Archerfish; Bichir; Lungfish; Paddlefish; Bowfin; Arowana; Knifefish; Elephantnose fish; Snakehead; Gourami; Danio; Rasbora; Pleco; Corydoras; Stonefish; Scorpionfish; Toadfish; Wolffish; Lumpsucker; Sculpin; Dragonet; Mandarinfish; Goby; Blenny; Remora; Wahoo; Cobia; Tarpon; Bonefish; Snook; Dab; Brill; Whiting; Ling; Tilefish; Opah; Escolar
+
+## fruit | Food | Name a fruit
+1: Apple; Banana; Orange; Strawberry; Grape
+2: Mango; Pineapple; Watermelon; Pear; Peach; Cherry; Blueberry; Lemon; Kiwi/Kiwifruit; Raspberry
+3: Plum; Apricot; Pomegranate; Lime; Grapefruit; Coconut; Papaya; Melon; Cantaloupe; Fig; Blackberry; Avocado; Tomato; Nectarine; Passion fruit/Passionfruit; Cranberry; Dragon fruit/Pitaya; Clementine; Tangerine; Honeydew
+4: Lychee/Litchi; Guava; Persimmon; Date; Quince; Gooseberry; Kumquat; Starfruit/Carambola; Mandarin; Durian; Jackfruit; Rhubarb; Elderberry; Mulberry; Boysenberry; Currant/Blackcurrant/Redcurrant; Olive; Plantain; Tamarind; Satsuma; Blood orange; Cherimoya/Custard apple
+5: Rambutan; Mangosteen; Longan; Salak/Snake fruit; Feijoa; Loquat; Medlar; Sapodilla; Soursop/Graviola; Ackee; Jabuticaba; Pawpaw; Miracle fruit/Miracle berry; Buddha's hand/Buddhas hand; Yuzu; Pomelo; Ugli fruit; Cloudberry; Lingonberry; Huckleberry; Salmonberry; Physalis/Cape gooseberry/Goldenberry; Tamarillo; Horned melon/Kiwano; Breadfruit; Marula; Noni; Acerola; Açaí/Acai; Bilberry; Damson; Greengage; Sloe; Jujube; Kaffir lime; Finger lime; Langsat; Santol; Bael; Cupuaçu/Cupuacu; Pitanga/Surinam cherry; Mamey sapote; Black sapote; Lucuma; Carob; Medjool date
+
+## vegetable | Food | Name a vegetable
+1: Carrot; Broccoli; Potato; Lettuce; Onion
+2: Spinach; Cucumber; Pepper/Bell pepper; Corn/Sweetcorn; Peas/Pea; Cabbage; Celery; Cauliflower; Tomato; Green beans/Beans; Garlic
+3: Zucchini/Courgette; Eggplant/Aubergine; Kale; Asparagus; Sweet potato; Mushroom; Brussels sprouts/Brussels sprout/Sprouts; Pumpkin; Beetroot/Beet; Radish; Leek; Squash; Artichoke
+4: Turnip; Parsnip; Okra; Bok choy/Pak choi; Arugula/Rocket; Chard/Swiss chard; Fennel; Butternut squash; Yam; Shallot; Watercress; Cassava/Yuca; Endive; Collard greens/Collards; Edamame; Spring onion/Scallion/Green onion; Chili pepper/Chilli; Kohlrabi; Rutabaga/Swede; Celeriac; Radicchio; Snow peas/Mangetout; Lentils
+5: Jicama; Salsify; Sunchoke/Jerusalem artichoke; Daikon; Taro; Lotus root; Bitter melon/Bitter gourd; Chayote; Romanesco; Kai lan/Chinese broccoli; Mizuna; Tatsoi; Fiddlehead; Ramps/Wild garlic; Samphire; Burdock; Cardoon; Malanga; Oca; Ulluco; Celtuce; Kalettes; Nopal/Nopales; Purslane; Sorrel; Dandelion greens; Mustard greens; Broccolini; Garlic scapes; Water chestnut; Bamboo shoots; Hearts of palm; Choy sum; Gai lan; Skirret; Hamburg parsley
+
+## cheese | Food | Name a cheese
+1: Cheddar; Mozzarella; Parmesan/Parmigiano-Reggiano/Parmigiano; Brie
+2: Swiss; Gouda; Feta; Camembert; Blue cheese; Cream cheese; Goat cheese/Chèvre/Chevre
+3: Ricotta; Gorgonzola; Roquefort; Stilton; Edam; Emmental/Emmentaler; Gruyère/Gruyere; Halloumi; Monterey Jack/Jack; Provolone; Mascarpone; Colby; Pecorino/Pecorino Romano; Manchego; Cottage cheese; American cheese; Burrata
+4: Havarti; Muenster/Munster; Asiago; Paneer; Jarlsberg; Wensleydale; Red Leicester; Double Gloucester; Fontina; Taleggio; Comté/Comte; Raclette; Port Salut; Boursin; Queso fresco; Pepper Jack; Limburger; Leerdammer; Grana Padano; Babybel; Caerphilly; Lancashire; Cheshire; Danish Blue; Stracciatella; Labneh; Quark; Bocconcini
+5: Reblochon; Époisses/Epoisses; Pont-l'Évêque/Pont-lEveque/Pont l'Eveque; Morbier; Saint-Nectaire/Saint Nectaire; Tomme; Beaufort; Abondance; Valençay/Valencay; Crottin; Mimolette; Cantal; Salers; Bleu d'Auvergne/Bleu dAuvergne; Fourme d'Ambert/Fourme dAmbert; Brillat-Savarin; Chaource; Langres; Maroilles; Vacherin; Appenzeller; Tête de Moine/Tete de Moine; Sbrinz; Scamorza; Caciocavallo; Montasio; Castelmagno; Robiola; Stracchino; Casu marzu; Idiazabal; Mahón/Mahon; Cabrales; Tetilla; Torta del Casar; Queso Oaxaca/Oaxaca; Cotija; Chihuahua cheese/Chihuahua; Gjetost/Brunost; Nøkkelost/Nokkelost; Västerbotten/Vasterbotten; Graviera; Kefalotyri; Kasseri; Manouri; Mizithra/Myzithra; Telemea; Oscypek; Bryndza; Tilsit; Butterkäse/Butterkase; Cornish Yarg/Yarg; Stinking Bishop; Shropshire Blue; Lincolnshire Poacher; Teifi; Gubbeen; Cashel Blue; Durrus
+
+## pasta | Food | Name a type of pasta
+1: Spaghetti; Penne; Macaroni; Lasagna/Lasagne
+2: Fettuccine; Ravioli; Linguine; Fusilli; Rigatoni; Tortellini; Farfalle/Bow tie/Bowtie; Gnocchi
+3: Tagliatelle; Orzo; Ziti; Rotini; Pappardelle; Cannelloni; Angel hair/Capellini; Conchiglie/Shells; Vermicelli; Manicotti; Orecchiette
+4: Bucatini; Ditalini; Cavatappi; Gemelli; Tortelloni; Agnolotti; Paccheri; Radiatori; Campanelle; Cavatelli; Tortiglioni; Mafaldine/Mafalda; Pici; Trofie; Strozzapreti; Stelline; Acini di pepe; Anelli; Fregola; Ruote/Rotelle/Wagon wheels; Lumache; Mezze maniche
+5: Bigoli; Busiate; Casarecce; Corzetti; Culurgiones; Garganelli; Lorighittas; Malloreddus; Mezzelune; Passatelli; Pizzoccheri; Sedanini; Spaghettoni; Strangozzi; Tajarin; Tonnarelli; Trenette; Fileja; Cappelletti; Cappellacci; Caramelle; Sorpresine; Scialatielli; Calamarata; Candele; Ziti tagliati; Fazzoletti; Lagane; Maltagliati; Quadrefiore; Reginette; Testaroli; Sagne; Anellini; Canestri; Gramigna; Spätzle/Spaetzle
+
+## spice-herb | Food | Name a herb or spice
+1: Salt; Pepper/Black pepper; Basil; Cinnamon; Oregano
+2: Paprika; Cumin; Parsley; Thyme; Rosemary; Mint; Garlic; Ginger; Turmeric; Chili powder/Chilli; Nutmeg; Coriander/Cilantro; Dill; Sage; Cayenne/Cayenne pepper
+3: Cloves/Clove; Cardamom; Saffron; Bay leaf/Bay leaves/Bay; Chives; Vanilla; Star anise; Allspice; Mustard; Curry powder/Curry; Fennel; Tarragon; Lemongrass; Garam masala; Chilli flakes/Red pepper flakes
+4: Marjoram; Anise/Aniseed; Fenugreek; Sumac; Caraway; Juniper/Juniper berries; Mace; Horseradish; Wasabi; Za'atar/Zaatar; Lavender; Five spice/Chinese five spice; Celery seed; Poppy seed; Sesame/Sesame seeds; Lovage; Chervil; Sorrel; Borage; Kaffir lime leaves/Lime leaves; Curry leaves; Smoked paprika; White pepper; Pink peppercorns; Szechuan pepper/Sichuan pepper
+5: Asafoetida/Hing; Nigella/Kalonji/Black seed; Ajwain/Carom; Grains of paradise; Long pepper; Mahlab; Amchur/Amchoor; Galangal; Annatto/Achiote; Epazote; Sassafras/Filé/File powder; Savory/Summer savory; Hyssop; Angelica; Woodruff; Shiso/Perilla; Culantro; Rue; Lemon verbena; Lemon balm; Stevia; Tonka bean; Cubeb; Berbere; Ras el hanout; Baharat; Dukkah; Shichimi; Urfa biber/Urfa pepper; Aleppo pepper; Pandan; Fingerroot; Black cardamom; Wattleseed; Pepperberry; Sansho; Barberry; Kokum; Anardana
+
+## coffee-drink | Food | Name a coffee drink
+1: Latte; Cappuccino; Espresso; Americano
+2: Mocha; Macchiato; Flat white; Iced coffee; Cold brew; Frappuccino/Frappe
+3: Cortado; Affogato; Irish coffee; Black coffee/Filter coffee/Drip coffee; Ristretto; Lungo; Turkish coffee; Pumpkin spice latte; Vietnamese coffee/Ca phe sua da
+4: Café au lait/Cafe au lait; Doppio; Red eye; Breve; Piccolo/Piccolo latte; Cafe con leche; Cafe Cubano/Cuban coffee/Cafecito; Greek frappé/Greek frappe; Dalgona coffee/Dalgona; Nitro cold brew/Nitro; Long black; Gibraltar; Bulletproof coffee
+5: Black eye; Dead eye; Lazy eye; Café de olla/Cafe de olla; Carajillo; Bicerin; Marocchino; Mazagran; Galão/Galao; Einspänner/Einspanner; Melange/Wiener Melange; Kaffeost; Egg coffee/Ca phe trung; Yuanyang; Cafe bombon/Bombon; Caffè corretto/Caffe corretto/Corretto; Espresso romano; Shakerato/Caffe shakerato; Cafe miel; Qahwa/Arabic coffee; Kopi luwak; Kopi tubruk; Mokaccino; Antoccino; Guillermo; Cortadito; Espresso con panna; Vienna coffee; Freddo espresso; Freddo cappuccino; Ipoh white coffee/White coffee; Kopi; Indian filter coffee/Filter kaapi
+
+## shakespeare-play | Culture | Name a play by Shakespeare
+1: Romeo and Juliet; Hamlet; Macbeth
+2: Othello; King Lear; A Midsummer Night's Dream/Midsummer Nights Dream/Midsummer; Julius Caesar; The Tempest/Tempest
+3: Much Ado About Nothing/Much Ado; Twelfth Night; The Merchant of Venice/Merchant of Venice; The Taming of the Shrew/Taming of the Shrew; As You Like It; Richard III/Richard the Third; Antony and Cleopatra
+4: Henry V/Henry the Fifth; The Winter's Tale/Winters Tale; Henry IV/Henry the Fourth; Richard II/Richard the Second; The Comedy of Errors/Comedy of Errors; The Merry Wives of Windsor/Merry Wives of Windsor; Coriolanus; Titus Andronicus; Measure for Measure; All's Well That Ends Well/Alls Well That Ends Well
+5: Henry VI/Henry the Sixth; Henry VIII/Henry the Eighth/All Is True; King John; Love's Labour's Lost/Loves Labours Lost; The Two Gentlemen of Verona/Two Gentlemen of Verona; Troilus and Cressida; Timon of Athens; Cymbeline; Pericles/Pericles, Prince of Tyre
+6: The Two Noble Kinsmen/Two Noble Kinsmen; Edward III/Edward the Third; Sir Thomas More
+
+## greek-god | Culture | Name a Greek god or goddess
+1: Zeus; Poseidon; Hades; Athena/Athene; Aphrodite
+2: Apollo; Ares; Hermes; Hera; Artemis; Dionysus/Dionysos
+3: Demeter; Hephaestus/Hephaistos; Hestia; Persephone; Eros; Nike; Gaia/Gaea; Cronus/Kronos; Pan; Helios; Selene
+4: Hecate; Nemesis; Tyche; Iris; Hypnos; Thanatos; Uranus/Ouranos; Rhea; Eos; Asclepius; Hebe; Morpheus; Atlas; Prometheus; Nyx; Chaos; Eris; Themis; Triton; Hymen; Harmonia
+5: Erebus; Aether; Hemera; Tartarus; Pontus; Oceanus; Tethys; Hyperion; Theia; Coeus; Phoebe; Mnemosyne; Crius; Iapetus; Metis; Leto; Dione; Styx; Nereus; Proteus; Amphitrite; Thetis; Aeolus; Boreas; Zephyrus; Notus; Eurus; Enyo; Phobos; Deimos; Eileithyia; Peitho; Plutus/Ploutos; Priapus; Hesperus; Phosphorus; Astraea; Achlys; Ananke; Moros; Geras; Momus; Oizys; Apate; Dolos; Kratos; Bia; Zelus; Pheme; Ate; Lethe
+
+## mythical-creature | Culture | Name a mythical creature
+1: Dragon; Unicorn; Mermaid; Phoenix; Vampire
+2: Werewolf; Centaur; Griffin/Gryphon; Pegasus; Fairy; Troll; Goblin; Bigfoot/Sasquatch; Yeti/Abominable snowman; Minotaur; Medusa; Cyclops; Elf; Kraken
+3: Hydra; Sphinx; Chimera/Chimaera; Siren; Banshee; Leprechaun; Gnome; Basilisk; Loch Ness Monster/Nessie; Cerberus; Ogre; Giant; Dwarf; Harpy; Satyr/Faun; Gorgon; Zombie; Ghost; Genie/Djinn/Jinn; Chupacabra
+4: Wendigo; Kelpie; Selkie; Nymph; Dryad; Naiad; Golem; Wyvern; Manticore; Cockatrice; Hippogriff; Kitsune; Kappa; Tengu; Pixie; Sprite; Hobgoblin; Gargoyle; Thunderbird; Mothman; Jersey Devil; Valkyrie; Fenrir; Jörmungandr/Jormungandr/Midgard Serpent; Sleipnir; Leviathan; Behemoth; Roc; Bunyip; Yokai; Oni; Naga; Garuda; Qilin/Kirin; Baku; Succubus; Incubus; Imp; Doppelganger; Poltergeist
+5: Amarok; Ammit; Anzu; Aswang; Bake-kujira; Barghest; Bonnacon; Boobrie; Caladrius; Camazotz; Catoblepas; Cù-sìth/Cu sith; Draugr; Dullahan; Encantado; Erymanthian Boar; Fomorian; Gamayun; Ghoul; Grindylow; Hodag; Huldra; Ifrit; Jiangshi; Jorogumo; Kikimora; Kludde; Kumiho; La Llorona; Lamassu; Leshy; Mapinguari; Manananggal; Mokele-mbembe; Nuckelavee; Nue; Pishtaco; Questing Beast; Rusalka; Sigbin; Simurgh; Strix; Tarasque; Tikbalang; Tupilaq; Undine; Vodyanoy; Wolpertinger; Yara-ma-yha-who; Ziz; Zmey; Bakunawa; Baba Yaga; Taniwha; Ahuizotl; Tokoloshe; Adze; Impundulu; Grootslang; Inkanyamba
+
+## instrument | Culture | Name a musical instrument
+1: Piano; Guitar; Drums/Drum kit/Drum; Violin
+2: Flute; Trumpet; Saxophone/Sax; Cello; Clarinet; Bass/Bass guitar; Harp; Ukulele; Trombone; Keyboard
+3: Tuba; French horn/Horn; Oboe; Harmonica; Accordion; Banjo; Viola; Double bass/Upright bass/Contrabass; Xylophone; Tambourine; Recorder; Bagpipes; Organ; Triangle; Synthesizer/Synth; Electric guitar; Mandolin; Bassoon; Piccolo; Cymbals/Cymbal
+4: Sitar; Marimba; Glockenspiel; Bongos/Bongo; Didgeridoo; Harpsichord; Lute; Timpani/Kettle drum; Cornet; Euphonium; Congas/Conga; Maracas; Castanets; Steel drum/Steelpan; Kazoo; Ocarina; Pan flute/Panpipes/Pan pipes; Djembe; Cajon; Vibraphone; Tabla; Bugle; Theremin; Melodica; Celesta; Clavichord; Spinet; Keytar; Cowbell; Gong; Koto; Shamisen; Bouzouki; Balalaika; Zither; Dulcimer
+5: Erhu; Guzheng; Pipa; Shakuhachi; Taiko; Oud; Saz; Kora; Mbira/Kalimba/Thumb piano; Hang/Handpan; Duduk; Kaval; Zurna; Ney; Santoor; Sarod; Veena; Mridangam; Shehnai; Bansuri; Harmonium; Nyckelharpa; Hurdy-gurdy; Crwth; Rebec; Viol/Viola da gamba; Theorbo; Cittern; Sackbut; Crumhorn; Shawm; Serpent; Ophicleide; Flugelhorn; Sousaphone; Mellophone; Contrabassoon; English horn/Cor anglais; Heckelphone; Sarrusophone; Bandoneon; Concertina; Calliope; Glass harmonica; Ondes Martenot; Mellotron; Stylophone; Tromba marina; Jaw harp/Jew's harp; Washboard; Cuíca/Cuica; Berimbau; Charango; Quena; Cavaquinho; Tres; Guiro; Claves; Agogo; Udu; Talking drum; Bodhrán/Bodhran; Uilleann pipes; Tin whistle/Penny whistle; Fiddle
+
+## dance | Culture | Name a style of dance
+1: Ballet; Salsa; Tango; Hip hop/Hip-hop; Waltz
+2: Tap/Tap dance; Breakdancing/Breaking/Breakdance; Jazz; Swing; Ballroom; Contemporary; Flamenco; Belly dance/Belly dancing; Line dancing/Line dance; Disco
+3: Cha-cha/Cha cha/Cha-cha-cha; Rumba; Samba; Foxtrot; Bachata; Merengue; Lindy hop; Jive; Irish dance/Irish dancing/Step dance; Square dance; Polka; Twerking/Twerk; Pole dance/Pole dancing; Zumba; Modern dance/Modern; Charleston; Krumping/Krump; Moonwalk
+4: Quickstep; Paso doble; Cancan/Can-can; Mambo; Kizomba; Zouk; Popping; Locking; Voguing/Vogue; House; Twist; Macarena; Electric slide; Hula; Haka; Bollywood; Kathak; Bharatanatyam; Morris dance/Morris dancing; Clogging; Highland dance/Highland dancing; Ceilidh; Hora; Sirtaki/Zorba; Bolero; Boogie-woogie; Shuffle; Tutting; Waacking; Butoh; Capoeira
+5: Kuchipudi; Odissi; Kathakali; Manipuri; Mohiniyattam; Bhangra; Garba; Dandiya; Lavani; Kecak; Legong; Fandango; Sevillanas; Sardana; Jota; Tarantella; Saltarello; Mazurka; Polonaise; Krakowiak; Csárdás/Csardas; Kolo; Horo; Dabke; Attan; Gumboot dance/Gumboot; Pantsula; Kuduro; Coupé-décalé/Coupe decale; Azonto; Ndombolo; Cumbia; Joropo; Cueca; Marinera; Forró/Forro; Frevo; Lambada; Carimbó/Carimbo; Huapango; Jarabe tapatío/Mexican hat dance; Danzón/Danzon; Son jarocho; Bomba; Plena; Calypso; Soca; Dancehall; Limbo; Reggaeton; Tinikling; Cariñosa/Carinosa; Fan dance; Lion dance; Dragon dance; Yangge; Odori; Bon odori; Kabuki; Para para; Cossack dance/Hopak; Trepak; Lezginka; Khorumi; Schuhplattler; Ländler/Landler; Gavotte; Minuet; Allemande; Courante; Sarabande; Gigue/Jig; Reel; Hornpipe; Pavane; Galliard; Volta; Quadrille; Cotillion; Contra dance; Clog dance; Sword dance; Maypole dance
+
+## painter | Culture | Name a famous painter
+1: Leonardo da Vinci/Da Vinci/Leonardo; Pablo Picasso/Picasso; Vincent van Gogh/Van Gogh
+2: Claude Monet/Monet; Michelangelo; Salvador Dalí/Dali/Salvador Dali; Frida Kahlo/Kahlo; Rembrandt; Andy Warhol/Warhol; Bob Ross
+3: Raphael; Edvard Munch/Munch; Henri Matisse/Matisse; Johannes Vermeer/Vermeer; Gustav Klimt/Klimt; Jackson Pollock/Pollock; Paul Cézanne/Cezanne; Pierre-Auguste Renoir/Renoir; Edgar Degas/Degas; Georgia O'Keeffe/OKeeffe/O'Keeffe; Banksy; Caravaggio; Sandro Botticelli/Botticelli; Mark Rothko/Rothko; Paul Gauguin/Gauguin; René Magritte/Magritte; Wassily Kandinsky/Kandinsky
+4: Francisco Goya/Goya; Diego Velázquez/Velazquez; El Greco; Titian; Jan van Eyck/Van Eyck; Hieronymus Bosch/Bosch; Pieter Bruegel/Bruegel/Brueghel; Peter Paul Rubens/Rubens; J. M. W. Turner/Turner/JMW Turner; John Constable/Constable; Édouard Manet/Manet; Georges Seurat/Seurat; Henri de Toulouse-Lautrec/Toulouse-Lautrec; Joan Miró/Miro; Piet Mondrian/Mondrian; Marc Chagall/Chagall; Roy Lichtenstein/Lichtenstein; Keith Haring/Haring; Jean-Michel Basquiat/Basquiat; Edward Hopper/Hopper; Norman Rockwell/Rockwell; Grant Wood; Andrew Wyeth/Wyeth; David Hockney/Hockney; Francis Bacon; Lucian Freud; Gerhard Richter; Yayoi Kusama/Kusama; Katsushika Hokusai/Hokusai; Paul Klee/Klee; Egon Schiele/Schiele; Amedeo Modigliani/Modigliani
+5: Albrecht Dürer/Durer/Albrecht Durer; Hans Holbein/Holbein; Giotto; Fra Angelico; Masaccio; Piero della Francesca; Andrea Mantegna/Mantegna; Giovanni Bellini/Bellini; Tintoretto; Paolo Veronese/Veronese; Artemisia Gentileschi/Gentileschi; Nicolas Poussin/Poussin; Claude Lorrain; Antoine Watteau/Watteau; Jean-Honoré Fragonard/Fragonard; François Boucher/Boucher; Jacques-Louis David; Eugène Delacroix/Delacroix; Théodore Géricault/Gericault; Jean-Auguste-Dominique Ingres/Ingres; Gustave Courbet/Courbet; Jean-François Millet/Millet; Camille Pissarro/Pissarro; Alfred Sisley/Sisley; Berthe Morisot/Morisot; Mary Cassatt/Cassatt; Gustave Caillebotte/Caillebotte; Henri Rousseau; Odilon Redon/Redon; Pierre Bonnard/Bonnard; Édouard Vuillard/Vuillard; Caspar David Friedrich; Arnold Böcklin/Bocklin; Ilya Repin/Repin; Kazimir Malevich/Malevich; Franz Marc; Ernst Ludwig Kirchner/Kirchner; Max Beckmann/Beckmann; Otto Dix; George Grosz; Giorgio de Chirico/De Chirico; Max Ernst; Yves Tanguy; Tamara de Lempicka/Lempicka; Diego Rivera/Rivera; José Clemente Orozco/Orozco; David Alfaro Siqueiros/Siqueiros; Fernando Botero/Botero; Willem de Kooning/De Kooning; Franz Kline; Clyfford Still; Barnett Newman; Helen Frankenthaler/Frankenthaler; Cy Twombly/Twombly; Robert Rauschenberg/Rauschenberg; Jasper Johns; Agnes Martin; Lee Krasner/Krasner; Joan Mitchell; John Singer Sargent/Sargent; James McNeill Whistler/Whistler; Winslow Homer; Thomas Cole; Albert Bierstadt/Bierstadt; Frederic Church; Thomas Eakins/Eakins; Utagawa Hiroshige/Hiroshige; Ito Jakuchu; Sesshū/Sesshu; Qi Baishi; Xu Beihong; Amrita Sher-Gil; Raja Ravi Varma; Sofonisba Anguissola; Élisabeth Vigée Le Brun/Vigee Le Brun; Hilma af Klint; Rosa Bonheur; Dante Gabriel Rossetti/Rossetti; John Everett Millais/Millais; John William Waterhouse/Waterhouse; William Blake; Thomas Gainsborough/Gainsborough; Joshua Reynolds; William Hogarth/Hogarth; George Stubbs/Stubbs; Frans Hals; Jan Steen; Gerard ter Borch; Canaletto; Giovanni Battista Tiepolo/Tiepolo
+
+## us-president | Culture | Name a US president
+1: Abraham Lincoln/Lincoln; George Washington/Washington; Barack Obama/Obama; Donald Trump/Trump
+2: John F. Kennedy/JFK/Kennedy/John Kennedy; Joe Biden/Biden; Franklin D. Roosevelt/FDR/Franklin Roosevelt; Theodore Roosevelt/Teddy Roosevelt/Roosevelt; Ronald Reagan/Reagan; Thomas Jefferson/Jefferson; Bill Clinton/Clinton
+3: George W. Bush/George W Bush/Bush/Dubya; George H. W. Bush/George HW Bush/Bush Sr; Richard Nixon/Nixon; Jimmy Carter/Carter; Dwight D. Eisenhower/Eisenhower/Ike; Harry S. Truman/Truman; Andrew Jackson/Jackson; John Adams; Ulysses S. Grant/Grant; Lyndon B. Johnson/LBJ/Lyndon Johnson; Gerald Ford/Ford
+4: James Madison/Madison; James Monroe/Monroe; John Quincy Adams; Woodrow Wilson/Wilson; Herbert Hoover/Hoover; Calvin Coolidge/Coolidge; William Howard Taft/Taft; William McKinley/McKinley; Andrew Johnson; James K. Polk/Polk; Grover Cleveland/Cleveland
+5: Martin Van Buren/Van Buren; William Henry Harrison; John Tyler/Tyler; Zachary Taylor/Taylor; Millard Fillmore/Fillmore; Franklin Pierce/Pierce; James Buchanan/Buchanan; Rutherford B. Hayes/Hayes; James A. Garfield/Garfield; Chester A. Arthur/Chester Arthur/Arthur; Benjamin Harrison; Warren G. Harding/Harding
+
+## zodiac | Culture | Name a sign of the Western zodiac
+1: Leo; Scorpio; Gemini; Aries
+2: Virgo; Libra; Taurus; Cancer; Pisces; Sagittarius
+3: Capricorn; Aquarius
+6: Ophiuchus
+
+## summer-olympic-sport | Sports | Name a sport at the Summer Olympics
+1: Swimming; Athletics/Track and field; Gymnastics; Basketball; Football/Soccer
+2: Tennis; Boxing; Volleyball; Cycling; Diving; Wrestling; Rowing; Fencing; Archery
+3: Judo; Taekwondo; Weightlifting; Table tennis/Ping pong; Badminton; Handball; Water polo; Hockey/Field hockey; Golf; Sailing; Equestrian/Horse riding; Beach volleyball; Triathlon; Shooting; Canoeing/Kayaking/Canoe; Skateboarding; Surfing; Rugby/Rugby sevens
+4: Sport climbing/Climbing; Breaking/Breakdancing; Modern pentathlon/Pentathlon; Artistic swimming/Synchronized swimming; Trampoline; BMX; Marathon swimming; Rhythmic gymnastics; Mountain biking; Karate; Baseball; Softball
+5: Lacrosse; Cricket; Squash; Flag football
+
+## nba-team | Sports | Name an NBA team
+1: Los Angeles Lakers/Lakers/LA Lakers; Chicago Bulls/Bulls; Golden State Warriors/Warriors; Boston Celtics/Celtics
+2: Miami Heat/Heat; New York Knicks/Knicks; Brooklyn Nets/Nets; Cleveland Cavaliers/Cavaliers/Cavs; San Antonio Spurs/Spurs; Houston Rockets/Rockets; Philadelphia 76ers/76ers/Sixers
+3: Dallas Mavericks/Mavericks/Mavs; Toronto Raptors/Raptors; Phoenix Suns/Suns; Denver Nuggets/Nuggets; Milwaukee Bucks/Bucks; Los Angeles Clippers/Clippers/LA Clippers; Oklahoma City Thunder/Thunder/OKC; Detroit Pistons/Pistons; Orlando Magic/Magic; Atlanta Hawks/Hawks; Utah Jazz/Jazz
+4: Portland Trail Blazers/Trail Blazers/Blazers; Minnesota Timberwolves/Timberwolves/Wolves; Indiana Pacers/Pacers; Charlotte Hornets/Hornets; Sacramento Kings/Kings; Memphis Grizzlies/Grizzlies; Washington Wizards/Wizards
+5: New Orleans Pelicans/Pelicans
+
+## premier-league-club | Sports | Name a football club that has played in the English Premier League
+1: Manchester United/Man United/Man Utd; Liverpool; Arsenal; Chelsea; Manchester City/Man City
+2: Tottenham Hotspur/Tottenham/Spurs; Everton; Newcastle United/Newcastle; West Ham United/West Ham; Aston Villa/Villa; Leeds United/Leeds
+3: Leicester City/Leicester; Southampton; Wolverhampton Wanderers/Wolves/Wolverhampton; Crystal Palace/Palace; Brighton & Hove Albion/Brighton; Fulham; Sunderland; Middlesbrough/Boro; Blackburn Rovers/Blackburn; Nottingham Forest/Forest; Burnley; Brentford; Bournemouth/AFC Bournemouth; Norwich City/Norwich; Watford; Stoke City/Stoke; West Bromwich Albion/West Brom/WBA
+4: Bolton Wanderers/Bolton; Wigan Athletic/Wigan; Portsmouth/Pompey; Sheffield United/Sheff Utd; Sheffield Wednesday/Sheff Wed; Ipswich Town/Ipswich; Charlton Athletic/Charlton; Birmingham City/Birmingham; Queens Park Rangers/QPR; Swansea City/Swansea; Hull City/Hull; Coventry City/Coventry; Derby County/Derby; Cardiff City/Cardiff; Huddersfield Town/Huddersfield; Luton Town/Luton; Wimbledon
+5: Reading; Blackpool; Bradford City/Bradford; Barnsley; Oldham Athletic/Oldham; Swindon Town/Swindon
+
+## programming-language | Tech | Name a programming language
+1: Python; JavaScript/JS; Java; C++/CPP; C
+2: C#/C Sharp/CSharp; TypeScript/TS; PHP; Ruby; Swift; Go/Golang; Rust; Kotlin; SQL; HTML
+3: R; Scala; Perl; Lua; Dart; Haskell; MATLAB; Objective-C/ObjC; Assembly/Asm; Visual Basic/VB/VB.NET; Bash/Shell; Fortran; COBOL; Pascal; BASIC; Lisp; Scratch; Elixir; Julia; CSS
+4: Clojure; Erlang; F#/F Sharp; OCaml; Groovy; Delphi; Prolog; Scheme; Smalltalk; Ada; Racket; Zig; Nim; Crystal; Elm; PowerShell; Solidity; Apex; ABAP; Logo; Tcl; Awk; Haxe; CoffeeScript; VBA; Sass; GDScript; Wolfram/Mathematica
+5: APL; J; K; Forth; ALGOL/Algol; Simula; Modula-2/Modula; Oberon; Eiffel; Self; Io; Idris; Agda; Coq/Rocq; Lean; Mercury; Pony; Red; Rebol; Factor; Joy; Brainfuck; Malbolge; Befunge; Whitespace; LOLCODE; Chapel; Fortress; X10; Hack; Vala; Genie; D; Odin; Jai; V/Vlang; Carbon; Mojo; Gleam; ReasonML/Reason; PureScript; ReScript; Ballerina; Raku; PL/I; RPG; JCL; MUMPS/M; Clipper; dBase; FoxPro; Ladder logic; Verilog; VHDL; Q#; Cobra; Boo; Nemerle; Squirrel; AngelScript; Pike; Icon; SNOBOL; Rexx; Hope; Miranda; Clean; ML; Standard ML/SML; Occam
+
+## car-maker | Tech | Name a car manufacturer
+1: Toyota; Ford; BMW; Honda; Tesla; Mercedes-Benz/Mercedes
+2: Chevrolet/Chevy; Volkswagen/VW; Audi; Nissan; Ferrari; Porsche; Hyundai; Kia; Lamborghini; Jeep; Dodge
+3: Mazda; Subaru; Volvo; Lexus; Jaguar; Land Rover/Range Rover; Fiat; Peugeot; Renault; Bugatti; Maserati; Bentley; Rolls-Royce; Aston Martin; McLaren; Cadillac; Mitsubishi; Mini; Buick; GMC; Chrysler; Lincoln; Suzuki; Skoda; Seat; Citroën/Citroen; Alfa Romeo; Ram
+4: Acura; Infiniti; Genesis; Lotus; Pagani; Koenigsegg; Rivian; Lucid; Polestar; BYD; Geely; Opel; Vauxhall; Dacia; Lancia; Saab; Smart; Cupra; DS; Pontiac; Hummer; Isuzu; Daihatsu; Tata; Mahindra; Maybach; Lada; Chery; Great Wall; Nio; Xpeng; Abarth; Alpine; Holden
+5: Spyker; Rimac; Zenvo; Hennessey; SSC; Morgan; TVR; Caterham; Ariel; Noble; Ginetta; De Tomaso; Lagonda; Bristol; Proton; Perodua; Datsun; Plymouth; Oldsmobile; Mercury; Saturn; DeLorean; AMC; Studebaker; Packard; Hudson; Nash; Tucker; Edsel; DeSoto; Scion; Trabant; Wartburg; Moskvitch; ZiL; GAZ; UAZ; Tatra; Hispano-Suiza; Iso; Autobianchi; Innocenti; Rover; MG; Triumph; Austin; Morris; Hillman; Sunbeam; Talbot; Simca; Panhard; Facel Vega; Borgward; NSU; Wanderer; Horch; Hongqi; Lynk & Co/Lynk and Co; Zeekr; Li Auto; Aiways; Leapmotor; Wuling; Baojun; Haval; Togg; Vinfast; Fisker; Karma; Faraday Future; Aptera; Czinger
+
+## computer-part | Tech | Name a part inside a computer
+1: CPU/Processor/Central processing unit; Motherboard; RAM/Memory; Hard drive/Hard disk/HDD
+2: GPU/Graphics card/Video card; Power supply/PSU; SSD/Solid state drive; Fan/Cooling fan
+3: Heat sink/Heatsink; Case/Chassis; CPU cooler/Cooler; BIOS; Network card/NIC/Ethernet card; Sound card; Optical drive/DVD drive/CD drive; Cables
+4: Thermal paste/Thermal compound; Chipset; CMOS battery/CMOS; Cache; Expansion card; PCIe slot/PCI Express; SATA cable/SATA; Wi-Fi card/Wireless card; Liquid cooling/Water cooling/AIO; Capacitor; Voltage regulator/VRM; M.2 slot/M.2; Riser cable
+5: Northbridge; Southbridge; Front-side bus; Clock generator/Crystal oscillator; Backplate; I/O shield; Fan header; Jumper; Standoff; Daughterboard; ROM; EEPROM; TPM/Trusted Platform Module; DIMM slot; Socket/CPU socket; Super I/O; Bus; Register; ALU/Arithmetic logic unit; Control unit; Transistor; Resistor; Inductor; Heat pipe; Radiator; Pump; Reservoir
+
+## color | Culture | Name a colour
+1: Red; Blue; Green; Yellow; Purple; Orange
+2: Pink; Black; White; Brown; Grey/Gray; Violet; Turquoise
+3: Teal; Magenta; Cyan; Indigo; Maroon; Navy/Navy blue; Beige; Gold; Silver; Lavender; Lime; Crimson; Scarlet; Burgundy; Olive; Aqua; Coral; Peach; Tan; Cream; Ivory; Mint
+4: Fuchsia; Mauve; Lilac; Ochre/Ocher; Amber; Azure; Cobalt; Emerald; Jade; Ruby; Sapphire; Khaki; Taupe; Salmon; Plum; Mustard; Charcoal; Periwinkle; Chartreuse; Vermilion/Vermillion; Cerulean; Sepia; Rust; Copper; Bronze; Sienna; Umber; Burnt orange; Sky blue; Royal blue; Hot pink; Off-white; Eggshell; Champagne; Wine; Ultramarine; Aquamarine; Tangerine; Apricot; Rose; Cherry; Lemon; Sand; Slate
+5: Puce; Gamboge; Cinnabar; Celadon; Viridian; Heliotrope; Wenge; Glaucous; Falu red; Coquelicot; Smaragdine; Xanadu; Zaffre; Fulvous; Mikado yellow; Feldgrau; Eburnean; Caput mortuum; Vantablack; Isabelline; Liseran; Amaranth; Byzantium; Carmine; Cardinal; Cordovan; Eggplant; Fawn; Gunmetal; Haze; Honeydew; Jasmine; Lapis; Malachite; Mahogany; Mulberry; Oxblood; Pewter; Phlox; Razzmatazz; Russet; Saffron; Sangria; Seafoam; Thistle; Tiffany blue; Titian; Verdigris; Wisteria; Zinnwaldite; Bistre; Bole; Drab; Murrey; Sinopia; Tenné/Tenne; Sable; Gules; Vert; Azure blue; Prussian blue; Payne's grey/Paynes grey; Alizarin; Cadmium yellow; Hooker's green/Hookers green; Mars black; Ivory black; Lamp black; Naples yellow; Indian yellow; Van Dyke brown; Celeste; Baby blue; Powder blue; Duck egg; Bottle green; Racing green; Hunter green; Forest green; Kelly green; Neon green; Electric blue; Midnight blue; Steel blue; Denim; Mint green; Pistachio; Sage; Moss; Avocado; Tea green
+
+## currency | Culture | Name a currency
+1: Dollar/US dollar/USD; Euro/EUR; Pound/Pound sterling/GBP/British pound; Yen/Japanese yen/JPY
+2: Peso; Rupee/Indian rupee/INR; Franc/Swiss franc/CHF; Yuan/Renminbi/RMB/CNY; Ruble/Rouble/RUB; Bitcoin
+3: Won/Korean won/KRW; Real/Brazilian real/BRL; Lira/Turkish lira/TRY; Krona/Swedish krona/SEK; Krone/Danish krone/Norwegian krone/NOK/DKK; Rand/South African rand/ZAR; Dinar; Shekel/New shekel/ILS; Baht/Thai baht/THB; Dirham; Riyal/Rial; Deutsche Mark/Mark/Deutschmark; Lek
+4: Zloty/PLN; Forint/HUF; Koruna/Czech koruna/CZK; Rupiah/IDR; Ringgit/MYR; Dong/VND; Naira/NGN; Shilling/Kenyan shilling; Hryvnia/UAH; Leu/Romanian leu/RON; Lev/Bulgarian lev; Kuna; Drachma; Peseta; Lira (Italian)/Italian lira; Guilder/Gulden; Escudo; Sol/Peruvian sol; Bolivar/Bolívar; Rial (Iranian)/Iranian rial; Taka/BDT; Ethereum/Ether
+5: Kwacha; Kwanza; Cedi; Birr; Dalasi; Leone; Ariary; Ouguiya; Pula; Loti; Lilangeni; Metical; Nakfa; Dobra; Kip; Riel; Kyat; Tugrik/Tögrög/Togrog; Som; Somoni; Manat; Tenge; Lari; Dram; Afghani; Ngultrum; Rufiyaa; Pa'anga/Paanga; Tala; Vatu; Kina; Gourde; Quetzal; Lempira; Córdoba/Cordoba; Colón/Colon; Balboa; Guaraní/Guarani; Boliviano; Denar; Mark (convertible)/Convertible mark; Florin; Kroon; Lats; Litas; Tolar; Ecu; Sucre; Austral; Cruzeiro; Ducat; Thaler; Doubloon; Sestertius; Denarius; Groat; Farthing; Guinea; Sovereign; Crown
+
+## shape | Science | Name a geometric shape
+1: Circle; Square; Triangle; Rectangle
+2: Pentagon; Hexagon; Octagon; Oval; Star; Diamond/Rhombus; Heart; Cube; Sphere; Pyramid
+3: Trapezoid/Trapezium; Parallelogram; Heptagon; Cylinder; Cone; Ellipse; Prism; Decagon; Semicircle; Crescent; Kite; Nonagon
+4: Dodecagon; Hendecagon/Undecagon; Tetrahedron; Octahedron; Dodecahedron; Icosahedron; Cuboid; Torus/Donut; Hemisphere; Rhomboid; Quadrilateral; Polygon; Arrow; Cross; Spiral; Ring/Annulus; Pentagram; Hexagram; Sector; Segment
+5: Deltoid; Lune; Reuleaux triangle; Ellipsoid; Paraboloid; Hyperboloid; Frustum; Antiprism; Rhombicuboctahedron; Truncated icosahedron; Cuboctahedron; Icosidodecahedron; Möbius strip/Mobius strip; Klein bottle; Tesseract; Hypercube; Astroid; Cardioid; Deltahedron; Vesica piscis; Trefoil; Quatrefoil; Arbelos; Salinon; Superellipse; Squircle; Stadium; Pseudosphere; Catenoid; Helicoid; Lemniscate; Triskelion; Enneagram; Heptagram; Octagram; Decagram; Gnomon; Polyomino; Tetromino; Pentomino
+
+## unit | Science | Name a unit of measurement
+1: Metre/Meter; Kilogram/Kilo; Second; Inch; Foot/Feet; Mile; Pound
+2: Centimetre/Centimeter/cm; Kilometre/Kilometer/km; Gram; Litre/Liter; Millimetre/Millimeter/mm; Ounce; Yard; Gallon; Minute; Hour; Degree; Celsius/Centigrade; Fahrenheit
+3: Watt; Volt; Amp/Ampere; Kelvin; Joule; Newton; Calorie; Ton/Tonne; Pint; Quart; Cup; Teaspoon; Tablespoon; Acre; Hectare; Hertz; Byte; Bit; Mole; Candela; Light-year/Light year; Decibel; Knot
+4: Ohm; Pascal; Bar; Atmosphere; Coulomb; Farad; Henry; Tesla; Weber; Siemens; Lumen; Lux; Becquerel; Gray; Sievert; Horsepower; Fathom; Furlong; Nautical mile; Stone; Carat; Gill; Dram; Bushel; Peck; Hand; Chain; Rod; League; Parsec; Astronomical unit/AU; Angstrom/Ångström; Micron; Nanometre/Nanometer; Erg; BTU/British thermal unit; Therm; Radian; Steradian; Barrel
+5: Dyne; Poise; Stokes; Gauss; Maxwell; Oersted; Gilbert; Torr; Barye; Rankine; Réaumur/Reaumur; Rømer/Romer; Delisle; Newton (temperature); Slug; Poundal; Grain; Scruple; Pennyweight; Minim; Hogshead; Firkin; Kilderkin; Tun; Butt; Puncheon; Perch; Pole; Link; Cubit; Span; Ell; Mil; Thou; Smoot; Barn; Shed; Jansky; Darcy; Katal; Kayser; Rem; Rad; Roentgen; Curie; Rutherford; Langley; Mho; Abampere; Statcoulomb; Fermi; Planck length; Dalton; Svedberg; Mache; Shake; Jiffy; Lustrum; Fortnight; Scoville; Kelvin (color temperature)
+
+## weather | Science | Name a type of extreme weather or natural disaster
+1: Tornado; Hurricane; Earthquake; Flood; Tsunami
+2: Blizzard; Volcano/Volcanic eruption; Wildfire/Bushfire/Forest fire; Drought; Avalanche; Typhoon; Cyclone; Thunderstorm/Storm; Heatwave/Heat wave
+3: Landslide/Mudslide; Hailstorm/Hail; Monsoon; Sandstorm/Dust storm; Lightning; Ice storm; Sinkhole; Waterspout; Tropical storm; Cold snap/Cold wave; Fog
+4: Derecho; Haboob; Firestorm; Fire whirl/Fire tornado/Firenado; Polar vortex; Storm surge; Flash flood; Lahar; Pyroclastic flow; Squall; Gale; Microburst; Supercell; Whiteout; Freezing rain; Black ice; Smog; Meteor/Asteroid impact; Solar flare/Solar storm; El Niño/El Nino; La Niña/La Nina; Dust devil
+5: Bomb cyclone; Atmospheric river; Thundersnow; Graupel; Sleet; Sirocco; Mistral; Bora; Foehn/Föhn; Chinook; Santa Ana winds/Santa Ana; Harmattan; Simoom; Khamsin; Buran; Purga; Willy-willy; Medicane; Nor'easter/Noreaster; Lake-effect snow/Lake effect; Snow squall; Downburst; Gustnado; Landspout; Heat burst; Limnic eruption; Jökulhlaup/Jokulhlaup/Glacial outburst flood; Seiche; Rogue wave; Storm tide; Dzud/Zud; Ice jam; Frazil ice; Hoar frost; Pogonip; Haar; Steam devil; Volcanic winter; Megadrought; Megatsunami
+
+## tree | Nature | Name a kind of tree
+1: Oak; Pine; Maple; Palm; Birch
+2: Willow; Apple; Cherry; Spruce; Fir; Christmas tree; Redwood; Elm; Ash; Cedar; Sequoia
+3: Beech; Poplar; Sycamore; Chestnut; Walnut; Cypress; Magnolia; Eucalyptus; Baobab; Yew; Bamboo; Hazel; Olive; Lemon; Orange; Banana; Coconut palm; Aspen; Juniper; Larch; Holly; Dogwood; Hemlock; Mahogany; Teak; Bonsai
+4: Alder; Hawthorn; Rowan/Mountain ash; Lime/Linden; Hornbeam; Hickory; Pecan; Buckeye; Horse chestnut/Conker tree; Plane/London plane; Gingko/Ginkgo; Jacaranda; Banyan; Fig; Acacia; Mangrove; Joshua tree; Douglas fir; Monkey puzzle; Cottonwood; Tulip tree; Sweetgum; Black locust/Locust; Mulberry; Elder; Box/Boxwood; Laurel; Myrtle; Sassafras; Rubber tree; Ebony; Rosewood; Balsa; Kapok; Jackfruit tree; Mango tree; Avocado tree; Date palm; Cork oak; Dragon tree; Bristlecone pine
+5: Wollemi pine; Dawn redwood/Metasequoia; Cryptomeria/Japanese cedar; Hinoki; Araucaria; Kauri; Totara; Rimu; Pohutukawa; Jarrah; Karri; Marri; Wandoo; Mulga; Brigalow; Boab; Bunya pine; Hoop pine; Norfolk Island pine; Ironwood; Lignum vitae; Zelkova; Hackberry; Catalpa; Paulownia; Ailanthus/Tree of heaven; Osage orange; Persimmon; Pawpaw; Serviceberry/Juneberry; Sorbus; Whitebeam; Wild service tree; Medlar; Quince; Loquat; Tamarind; Neem; Sal; Sandalwood; Deodar; Chinar; Peepal/Bodhi tree/Sacred fig; Ashoka; Flame tree/Gulmohar/Royal poinciana; Cecropia; Brazil nut; Sapele; Iroko; Wenge; Zebrawood; Purpleheart; Padauk; Bubinga; Ocotillo; Palo verde; Mesquite; Smoke tree; Yellowwood; Kentucky coffeetree; Sourwood; Blackgum/Tupelo; Pignut; Shagbark hickory; Butternut
+
+## flower | Nature | Name a flower
+1: Rose; Tulip; Daisy; Sunflower; Lily
+2: Orchid; Daffodil; Lavender; Carnation; Poppy; Lotus; Dandelion; Violet; Iris; Marigold; Hibiscus; Jasmine
+3: Peony; Chrysanthemum/Mum; Hydrangea; Lilac; Magnolia; Gardenia; Dahlia; Begonia; Petunia; Geranium; Cherry blossom/Sakura; Pansy; Snapdragon; Azalea; Camellia; Buttercup; Bluebell; Forget-me-not; Morning glory; Zinnia; Gerbera; Cosmos; Lupin/Lupine; Crocus; Hyacinth; Freesia; Foxglove; Water lily
+4: Aster; Anemone; Ranunculus; Calla lily; Amaryllis; Gladiolus; Sweet pea; Bird of paradise/Strelitzia; Protea; Anthurium; Plumeria/Frangipani; Bougainvillea; Wisteria; Clematis; Honeysuckle; Hollyhock; Delphinium/Larkspur; Primrose; Snowdrop; Edelweiss; Heather; Lily of the valley; Cornflower; Black-eyed Susan; Coneflower/Echinacea; Yarrow; Verbena; Lantana; Fuchsia; Impatiens; Periwinkle; Alstroemeria; Lisianthus; Stock; Statice; Gypsophila/Baby's breath/Babys breath; Allium; Rhododendron; Oleander; Passionflower/Passion flower; Columbine; Cyclamen; Poinsettia
+5: Rafflesia; Corpse flower/Titan arum; Ghost orchid; Kadupul; Jade vine; Middlemist red; Gentian; Saxifrage; Hellebore; Scabiosa; Nigella/Love-in-a-mist; Calendula; Nasturtium; Borage; Celosia; Gomphrena; Amaranthus; Salvia; Penstemon; Agapanthus; Crocosmia; Kniphofia/Red hot poker; Nerine; Sparaxis; Ixia; Tritonia; Watsonia; Leucojum; Muscari/Grape hyacinth; Scilla; Chionodoxa; Fritillary/Fritillaria; Trillium; Bloodroot; Hepatica; Pasqueflower; Lewisia; Mesembryanthemum/Ice plant; Portulaca; Osteospermum; Gazania; Arctotis; Felicia; Brachyscome; Bacopa; Lobelia; Nemesia; Diascia; Angelonia; Torenia; Browallia; Cleome; Gaura; Monarda/Bee balm; Agastache; Nepeta/Catmint; Liatris; Veronica; Astilbe; Bergenia; Brunnera; Pulmonaria; Tiarella; Heuchera; Acanthus; Eryngium/Sea holly; Echinops/Globe thistle; Cardoon; Kangaroo paw; Waratah; Banksia; Grevillea; Bottlebrush/Callistemon; Leucadendron; Hoya; Stephanotis; Tuberose; Ylang-ylang; Champaca; Night-blooming cereus; Moonflower
+
+## language | Culture | Name a language with over a million speakers
+1: English; Spanish; French; Chinese/Mandarin; German
+2: Arabic; Italian; Japanese; Russian; Portuguese; Hindi; Korean
+3: Dutch; Swedish; Greek; Turkish; Polish; Bengali/Bangla; Cantonese; Urdu; Persian/Farsi; Vietnamese; Thai; Hebrew; Ukrainian; Norwegian; Danish; Finnish; Indonesian; Swahili; Tagalog/Filipino; Punjabi
+4: Czech; Hungarian; Romanian; Bulgarian; Serbian; Croatian; Albanian; Slovak; Lithuanian; Malay; Tamil; Telugu; Marathi; Gujarati; Kannada; Malayalam; Javanese; Hausa; Yoruba; Igbo; Amharic; Somali; Zulu; Xhosa; Afrikaans; Pashto; Kurdish; Nepali; Sinhala/Sinhalese; Burmese; Khmer; Catalan; Armenian; Georgian; Azerbaijani/Azeri; Kazakh; Uzbek; Wu/Shanghainese; Hakka; Min/Hokkien
+5: Odia/Oriya; Assamese; Maithili; Bhojpuri; Sindhi; Saraiki; Konkani; Santali; Kashmiri; Dogri; Tulu; Sundanese; Madurese; Minangkabau; Balinese; Bugis/Buginese; Cebuano; Ilocano; Hiligaynon; Waray; Bikol; Kapampangan; Lao; Shan; Karen; Hmong; Zhuang; Uyghur; Tibetan; Mongolian; Tatar; Bashkir; Chechen; Chuvash; Kyrgyz; Tajik; Turkmen; Balochi; Brahui; Malagasy; Kinyarwanda; Kirundi; Luganda; Lingala; Kikongo; Tshiluba; Chichewa/Nyanja; Shona; Sesotho/Sotho; Setswana/Tswana; Tsonga; Venda; Ndebele; Oromo; Tigrinya; Wolof; Fula/Fulani; Mandinka; Bambara; Akan/Twi; Ewe; Fon; Mossi/Mooré; Kanuri; Tiv; Berber/Tamazight/Kabyle; Quechua; Aymara; Guarani; Nahuatl; Haitian Creole/Kreyol; Yiddish; Galician; Basque; Welsh; Belarusian; Latvian; Slovenian; Macedonian; Bosnian; Estonian

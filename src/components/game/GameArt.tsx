@@ -76,6 +76,7 @@ export function GameArt({
       {id === "sumdoku" && <Sumdoku />}
       {id === "whittle" && <Whittle />}
       {id === "guesswork" && <Guesswork />}
+      {id === "deep-cut" && <DeepCut />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </GameStage>
   );
@@ -149,6 +150,7 @@ const KNOWN = new Set([
   "sumdoku",
   "whittle",
   "guesswork",
+  "deep-cut",
 ]);
 
 /**
@@ -753,6 +755,38 @@ function Guesswork() {
             </div>
           ))}
         </div>
+      ))}
+    </div>
+  );
+}
+
+function DeepCut() {
+  // The depth gauge: six bands from sunlit to black, a marker sunk to the fifth.
+  const bands = [
+    "oklch(0.9 0.13 95)",
+    "oklch(0.82 0.13 165)",
+    "oklch(0.68 0.13 225)",
+    "oklch(0.52 0.16 285)",
+    "oklch(0.36 0.11 270)",
+    "oklch(0.2 0.07 280)",
+  ];
+  return (
+    <div className="relative flex h-[84%] w-[64%] flex-col overflow-hidden rounded-[min(3cqw,3cqh,0.75rem)]">
+      {bands.map((background, index) => (
+        <div key={index} className="flex-1" style={{ background }} />
+      ))}
+      <div className="absolute right-[12%] top-[69%] size-[min(14cqw,14cqh,3.5rem)] rounded-full border-[min(1cqw,1cqh,0.25rem)] border-background bg-foreground" />
+      {[18, 34, 50].map((left, index) => (
+        <div
+          key={left}
+          className="absolute rounded-full border-[min(0.5cqw,0.5cqh,0.125rem)] border-foreground/50"
+          style={{
+            left: `${left}%`,
+            top: `${58 - index * 14}%`,
+            width: `min(${5 - index}cqw, ${5 - index}cqh, ${1.25 - index * 0.2}rem)`,
+            aspectRatio: "1",
+          }}
+        />
       ))}
     </div>
   );

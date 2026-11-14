@@ -418,6 +418,32 @@ export const GAME_RULES = {
       },
     ],
   },
+  "deep-cut": {
+    heading: msg("Deep Cut"),
+    summary: msg(
+      "Name something correct that nobody else would. The rarer the answer, the deeper it dives.",
+    ),
+    rules: [
+      {
+        lead: msg("Seven questions,"),
+        text: msg(
+          'the same for everyone today — "Name a US state", "Name a cheese". You get 25 seconds and one answer for each.',
+        ),
+      },
+      {
+        lead: msg("Any correct answer scores,"),
+        text: msg(
+          "but the obvious ones stay near the surface: 10 points for what everybody says, up to 100 for an answer from the abyss. 700 is a perfect day.",
+        ),
+      },
+      {
+        lead: msg("Spelling slips are fine,"),
+        text: msg(
+          "and so are abbreviations and other names. A wrong answer, or none, scores nothing.",
+        ),
+      },
+    ],
+  },
   guesswork: {
     heading: msg("Today's word"),
     summary: msg("One hidden five-letter word a day. Six guesses to find it."),

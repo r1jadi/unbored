@@ -2174,3 +2174,77 @@ a.ranks-rung:hover {
 .light.theme-new-year.a11y-contrast {
   --ring: oklch(0.35 0.16 22);
 }
+
+/* Deep Cut (components/game/DeepCutRuntime). A verdict's marker sinks down the
+   depth gauge to its tier, its points pop, and a few bubbles rise past it. The
+   countdown ring drains with the clock. */
+.deep-cut-sink {
+  animation: deep-cut-sink 900ms var(--ease-out) both;
+}
+.deep-cut-pop {
+  animation: deep-cut-pop 520ms var(--ease-out) 450ms both;
+}
+.deep-cut-bubble {
+  animation: deep-cut-bubble 1.6s ease-in var(--bubble-delay, 0ms) both;
+}
+.deep-cut-rise {
+  animation: enter 420ms var(--ease-out) var(--rise-delay, 0ms) both;
+}
+.deep-cut-ring {
+  transition: stroke-dashoffset 250ms linear, color 300ms ease;
+}
+
+@keyframes deep-cut-sink {
+  from {
+    transform: translateY(calc(-1 * var(--sink-from, 0px)));
+    opacity: 0.4;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes deep-cut-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes deep-cut-bubble {
+  from {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.7;
+  }
+  to {
+    transform: translateY(-140px) scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deep-cut-sink,
+  .deep-cut-pop,
+  .deep-cut-bubble,
+  .deep-cut-rise {
+    animation: none;
+  }
+  .deep-cut-bubble {
+    display: none;
+  }
+  .deep-cut-ring {
+    transition: none;
+  }
+}

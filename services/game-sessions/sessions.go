@@ -48,6 +48,7 @@ import (
 	"github.com/r1jadi/unbored/packages/go/platform/authn"
 	"github.com/r1jadi/unbored/packages/go/platform/config"
 	"github.com/r1jadi/unbored/packages/go/platform/httpx"
+	"github.com/r1jadi/unbored/services/game-sessions/internal/deepcutjudge"
 	"github.com/r1jadi/unbored/services/game-sessions/internal/rulesets"
 	"github.com/r1jadi/unbored/services/game-sessions/internal/supabaseplay"
 	"github.com/r1jadi/unbored/services/internal/servicekit"
@@ -128,10 +129,18 @@ type resultView struct {
 type service struct {
 	backend Backend
 	logger  *slog.Logger
+	// deepCut is the backend's Deep Cut surface, when it has one.
+	deepCut DeepCutBackend
+	// judging is the optional AI fallback for answers the Deep Cut bank lacks.
+	judging *deepCutJudging
 }
 
 func newService(backend Backend, logger *slog.Logger) *service {
-	return &service{backend: backend, logger: logger}
+	s := &service{backend: backend, logger: logger}
+	if deepCut, ok := backend.(DeepCutBackend); ok {
+		s.deepCut = deepCut
+	}
+	return s
 }
 
 // register mounts the session routes. Both are optional-auth: a visitor without
@@ -139,6 +148,7 @@ func newService(backend Backend, logger *slog.Logger) *service {
 func (s *service) register(router *httpx.Router) {
 	router.OptionalAuthFunc("POST /api/v1/sessions", s.startSession)
 	router.OptionalAuthFunc("POST /api/v1/sessions/{sessionID}/complete", s.completeSession)
+	s.registerDeepCut(router)
 }
 
 // startSessionRequest is the documented body: the game by slug, the rules the
@@ -460,7 +470,27 @@ func Options() servicekit.Options {
 			} else {
 				backend = client
 			}
-			newService(backend, logger).register(router)
+			service := newService(backend, logger)
+			service.judging = deepCutJudgingFromEnv(logger)
+			service.register(router)
 		},
 	}
+}
+
+// deepCutJudgingFromEnv builds the Deep Cut AI judge when the deployment has both
+// an Anthropic key and the judge key whose hash the database holds
+// (`deep_cut_judge_keys`). Without either, unknown answers wait for staff review.
+func deepCutJudgingFromEnv(logger *slog.Logger) *deepCutJudging {
+	judgeKey := config.Getenv("DEEP_CUT_JUDGE_KEY")
+	apiKey := config.Getenv("ANTHROPIC_API_KEY")
+	if judgeKey == "" || apiKey == "" {
+		logger.Info("the Deep Cut AI judge is off; unknown answers wait for review")
+		return nil
+	}
+	judge, err := deepcutjudge.New(apiKey, config.Getenv("DEEP_CUT_JUDGE_MODEL"))
+	if err != nil {
+		logger.Warn("the Deep Cut AI judge is not configured", slog.Any("error", err))
+		return nil
+	}
+	return &deepCutJudging{judge: judge, key: judgeKey}
 }

@@ -41,6 +41,8 @@ func Groups() []Group {
 		// locally, so the routing (the local gateway, apiroutes.Unavailable)
 		// cannot drift from what runs.
 		{Prefix: BasePath + "/sessions", Service: "games"},
+		// Deep Cut's per-question routes live in the same `game-sessions` package.
+		{Prefix: BasePath + "/deep-cut", Service: "games"},
 		{Prefix: BasePath + "/scores", Service: "scores"},
 		{Prefix: BasePath + "/leaderboards", Service: "leaderboards"},
 		{Prefix: BasePath + "/feed", Service: "feed"},

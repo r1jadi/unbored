@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Twenty-eight games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Twenty-nine games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword** and **Guesswork**, the daily word. Twenty-five of them — all but 7 Second, the crossword and Guesswork, the three
+**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword**, **Guesswork**, the daily word, and **Deep Cut**, the rare-answer trivia game. Twenty-five of them — all but 7 Second, the crossword and Guesswork, the three
 daily games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
@@ -1896,6 +1896,140 @@ plays no part.
 `src/lib/games/guesswork.test.ts` asserts the client's lists equal the migration's
 word for word, and `tests/security/verifier_vectors.sql` with
 `src/test/verifier-vectors.test.ts` pin the day-to-word mapping in both languages.
+
+## Deep Cut
+
+Seven questions a day — "Name a US state", "Name a cheese" — the same for everyone,
+25 seconds and one answer each. Any correct answer scores, but by how *rarely*
+people give it: the obvious answer stays at the surface, the obscure one dives to
+the abyss. One ranked play a day, as the crossword; **Unlimited** and the
+**Archive** (any of the last thirty days) are unranked practice.
+
+| Thing    | Value                                                                        |
+| -------- | ---------------------------------------------------------------------------- |
+| Bank     | `scripts/deep-cut/bank.txt` — 48 questions, ~4,250 answers with aliases      |
+| Day      | the player's day number — the session's seed, as the crossword's            |
+| Moves    | 7 at most: one per question, the matched answer's id or 0                    |
+| Clock    | 25 s a question, plus 3 s of server grace for the network                    |
+| Rules    | `deep-cut@1`                                                                 |
+| Runtime  | `deep-cut` (the catalogue's `games.runtime` value)                           |
+
+### Why the rules live on the server
+
+Every other game's rules run on the device and are replayed by the database.
+Deep Cut's cannot: the answer bank *is* the score, and a browser holding it could
+look up the rarest answer to every question. So the bank never leaves the
+database. The server deals each question when its clock starts
+(`deep_cut_reveal`) and judges each answer as it arrives (`deep_cut_answer`); the
+client never sees a question before its clock runs or an answer it didn't type.
+Questions come strictly in order, one answer each, and a signed-in player who
+reloads mid-run continues the same run — the same questions, with the answers
+and timeouts already recorded — rather than seeing them afresh.
+
+### Tiers and scoring
+
+| Tier | Name     | Points | Roughly                                   |
+| ---- | -------- | ------ | ----------------------------------------- |
+| 1    | Surface  | 10     | what most people say first                |
+| 2    | Shallows | 20     | common                                    |
+| 3    | Reef     | 40     | known, but not the first thing said       |
+| 4    | Twilight | 60     | takes some knowledge                      |
+| 5    | Midnight | 80     | rare                                      |
+| 6    | Abyss    | 100    | correct, and almost nobody says it        |
+
+A day scores up to **700**. The verified score is a tenth of that (70), as every
+game's score is a tenth of what the screen shows. A wrong answer, a skip or no
+answer in time scores nothing. Tiers are curated estimates of how often people
+give each answer — not random, and not computed from today's players — so the same
+answer to the same question always scores the same. The reveal also shows the
+share of players who gave that answer once twenty have answered, as colour.
+
+### Matching an answer
+
+`deep_cut_key` normalises a spelling — lower case, accents folded, `&` as *and*,
+`+` as *plus* and `#` as *sharp* (so C, C++ and C# differ), a leading
+*the/a/an* dropped, only letters and digits kept — and `deep_cut_lookup` matches
+it against the question's spellings, in order:
+
+1. **exact** — the answer's name or any alias (abbreviations, other names):
+   *CA*, *Swaziland*, *Côte d'Ivoire*;
+2. a cached **rejection** — wrong, for everyone;
+3. a **plural** of a listed spelling (*grapes*);
+4. a **typo** — the unique closest spelling with the same first letter within an
+   optimal-string-alignment distance of 0 (keys under five characters, so *Iran*
+   is never *Iraq*), 1 (five to nine) or 2 (ten and up). Two answers equally close
+   is ambiguous and matches neither;
+5. otherwise **unknown**.
+
+### Answers the bank doesn't know: the AI judge and staff
+
+An unknown spelling is judged **once**, and the verdict is cached for every later
+player (`deep_cut_reviews`):
+
+- With `ANTHROPIC_API_KEY` and `DEEP_CUT_JUDGE_KEY` set on the API, the
+  game-sessions service holds the answer (`p_final = false`), asks Claude
+  (`services/game-sessions/internal/deepcutjudge`, default model
+  `claude-haiku-5-5`, overridable with `DEEP_CUT_JUDGE_MODEL`) with a forced tool
+  call, records the ruling with `deep_cut_record_review`, and settles the answer.
+  The model can only say *another name for this listed answer* (which then scores
+  that answer's curated tier), *a new answer* (its tier clamped to 2–5 — never
+  the surface, never the abyss, so a plausible fabrication can't be worth 100), or
+  *wrong*. The player's text is fenced as data. At most 120 rulings a minute per
+  process; past that, or on any failure, the answer falls through to staff.
+- Without a judge, or when it fails, the answer scores nothing now
+  (`unverified`, "Not in our depths yet") and is queued as `pending`. Staff rule
+  from the database console with `deep_cut_staff_review(question_id, key,
+  verdict, canonical, tier)`, which may use any tier and replace an earlier ruling.
+
+The judge's two functions need its key: `deep_cut_judge_keys` holds the SHA-256
+of `DEEP_CUT_JUDGE_KEY` —
+`insert into public.deep_cut_judge_keys (key_hash, label) values (sha256(convert_to('<key>', 'UTF8')), 'render');`
+The service needs no service-role credential.
+
+### Days, practice and the archive
+
+A day's seven questions are chosen the first time anyone needs them
+(`deep_cut_day_questions`, a seeded shuffle) and kept in `deep_cut_days`, so
+everyone and the archive see the same set. Questions used in the days just
+before are skipped — six days, or fewer when the bank is too small to leave seven
+(48 questions: five).
+
+Practice never deals a question that is in a daily set live anywhere — the UTC
+day and the day either side, which covers every time zone — so Unlimited and the
+Archive can't be used to probe today's answers. An archived day's question that
+is back in a live set is swapped for another. Practice shows a question's rarest
+answers after it is answered; a daily run shows only what most people say, so
+today's deep cuts can't be passed on.
+
+### Verified scores
+
+**The database decides the score**: see
+`supabase/migrations/20270102120000_deep_cut_sessions.sql`.
+
+- `complete_deep_cut_run` runs `speed_run_gate`, refuses a second completion of
+  the same day (`already_played`), settles any open question (skipped), and
+  requires the actions to be exactly the recorded turns' answer ids (0 for a
+  miss). The score is the sum of the recorded points, a tenth on screen. The Go
+  service routes `deep-cut@` runs to it, up to 7 actions below 2²⁴.
+- `start_game_session` seeds a `deep-cut` session with the player's day.
+- `20270102120100_deep_cut_bank.sql` loads the bank; regenerate it with
+  `node scripts/generate-deep-cut-bank.mjs --write` after editing
+  `scripts/deep-cut/bank.txt`. The generator refuses two answers sharing a key,
+  an answer listed twice, or a bank under 21 questions. Answers reviewers added
+  survive a reload.
+- `20270102120200_deep_cut_playable.sql` inserts the catalogue record (Daily).
+
+`tests/security/deep_cut_test.sql` covers the matcher, the clock, the daily run
+and its continuation, the verifier, practice, the judge's key and the staff
+review; `src/lib/games/deep-cut.test.ts` and `src/test/deep-cut-play.test.tsx`
+cover the client.
+
+### Not built yet
+
+- **Multiplayer** — private rooms and a hot-potato party mode.
+- An admin screen for the review queue (staff use the SQL function above).
+- Questions in Albanian: the screens are translated, the questions and answers are
+  English.
 
 ## Color Merge
 

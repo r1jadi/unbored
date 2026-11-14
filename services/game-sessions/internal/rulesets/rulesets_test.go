@@ -21,6 +21,7 @@ func TestLookupRoutesEachFamilyToItsVerifier(t *testing.T) {
 		"whittle@1":     "complete_whittle_run",
 		"flipside@1":    "complete_flipside_run",
 		"guesswork@1":   "complete_guesswork_run",
+		"deep-cut@1":    "complete_deep_cut_run",
 		"gjeje@1":       "complete_gjeje_run",
 	} {
 		if got := Lookup(version).Verifier; got != verifier {

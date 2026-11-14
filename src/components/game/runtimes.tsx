@@ -11,6 +11,7 @@ import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
 import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
 import { FuseboxRuntime } from "@/components/game/FuseboxRuntime";
 import { GridburstRuntime } from "@/components/game/GridburstRuntime";
+import { DeepCutRuntime } from "@/components/game/DeepCutRuntime";
 import { GuessworkRuntime } from "@/components/game/GuessworkRuntime";
 import { HuediniRuntime } from "@/components/game/HuediniRuntime";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
@@ -39,6 +40,7 @@ import { DONT_TOUCH_RUNTIME } from "@/lib/games/dont-touch";
 import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
 import { FUSEBOX_RUNTIME } from "@/lib/games/fusebox";
 import { GRIDBURST_RUNTIME } from "@/lib/games/gridburst";
+import { DEEP_CUT_RUNTIME } from "@/lib/games/deep-cut";
 import { GUESSWORK_RUNTIME } from "@/lib/games/guesswork";
 import { HUEDINI_RUNTIME } from "@/lib/games/huedini";
 import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
@@ -102,4 +104,5 @@ export const RUNTIMES: Readonly<Record<string, ComponentType<RuntimeProps>>> = {
   [SUMDOKU_RUNTIME]: SumdokuRuntime,
   [WHITTLE_RUNTIME]: WhittleRuntime,
   [GUESSWORK_RUNTIME]: GuessworkRuntime,
+  [DEEP_CUT_RUNTIME]: ({ slug, title }) => <DeepCutRuntime slug={slug} title={title} />,
 };

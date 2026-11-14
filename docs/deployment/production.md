@@ -129,6 +129,7 @@ Render dashboard and never committed.
 | `SUPABASE_SECRET_KEY` | `sb_secret_…` (dashboard) | Admin bridge, digests, username lookup at sign-in, avatar publish. Without it those answer `503`. Legacy name `SUPABASE_SERVICE_ROLE_KEY` is accepted |
 | `ADMIN_EMAILS` | comma-separated emails (dashboard) | The single source of administrator access, matched per request |
 | `OPENAI_API_KEY` | `sk-…` (dashboard) | Moderation of new profile pictures; uploads fail closed (`503`) without it |
+| `ANTHROPIC_API_KEY`, `DEEP_CUT_JUDGE_KEY` | `sk-ant-…`, a long random value (dashboard) | Optional: Deep Cut's AI judge for answers its bank lacks. The judge key's SHA-256 goes in `public.deep_cut_judge_keys`. Without either, unknown answers score nothing and queue for staff review |
 | `RESEND_API_KEY` | `re_…` (dashboard) | Digest and feedback mail |
 | `EMAIL_FROM` | `Unbored <hello@unbored.lol>` | Verified Resend sender |
 | `CRON_SECRET` | long random value (dashboard) | Bearer token GitHub Actions sends to `/api/v1/cron/*`; unset disables the routes |

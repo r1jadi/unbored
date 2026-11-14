@@ -103,6 +103,10 @@ var families = map[string]Ruleset{
 	// verifiers refuse a code that is not a listed word.
 	"guesswork": {Verifier: "complete_guesswork_run", MaxActions: 6, ActionCodes: 1 << 25},
 	"gjeje":     {Verifier: "complete_gjeje_run", MaxActions: 6, ActionCodes: 1 << 25},
+	// Deep Cut carries a day's seven turns: the id of the answer the database
+	// matched while the run was played, or 0. The verifier compares each with the
+	// turn it recorded; the bound only keeps an absurd id out.
+	"deep-cut": {Verifier: "complete_deep_cut_run", MaxActions: 7, ActionCodes: 1 << 24},
 }
 
 // overrides are the versions whose bounds differ from their family's: the

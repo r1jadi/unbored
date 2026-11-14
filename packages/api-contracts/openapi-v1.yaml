@@ -1083,6 +1083,185 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "503": { $ref: "#/components/responses/Unavailable" }
 
+  /deep-cut/runs/{runID}/questions/{position}:
+    parameters:
+      - { name: runID, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: position, in: path, required: true, schema: { type: integer, minimum: 0, maximum: 6 } }
+    post:
+      operationId: revealDeepCutQuestion
+      tags: [sessions]
+      summary: Deal a Deep Cut question and start its clock
+      description: |
+        Deep Cut's answer bank is its score, so it never reaches the client: the
+        server deals each question when its 25-second clock starts. `runID` is a
+        daily session's id or a practice run's. Questions come in order; asking
+        for one already dealt returns it again with its original `deadline`. A
+        signed-in player who starts a new session the same day continues the same
+        run (`settled` carries any answer already given).
+      security:
+        - {}
+        - bearerAuth: []
+      x-status: available
+      responses:
+        "200":
+          description: The question, its clock and, if it was already answered, the result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  outcome: { type: string, enum: [shown] }
+                  runId: { type: string, format: uuid }
+                  mode: { type: string, enum: [daily, unlimited, archive] }
+                  position: { type: integer }
+                  total: { type: integer }
+                  category: { type: string }
+                  prompt: { type: string }
+                  shownAt: { type: string, format: date-time }
+                  deadline: { type: string, format: date-time }
+                  seconds: { type: integer }
+                  settled: { $ref: "#/components/schemas/DeepCutTurn" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Out of order, expired, or finished.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /deep-cut/runs/{runID}/questions/{position}/answer:
+    parameters:
+      - { name: runID, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: position, in: path, required: true, schema: { type: integer, minimum: 0, maximum: 6 } }
+    post:
+      operationId: answerDeepCutQuestion
+      tags: [sessions]
+      summary: Judge one Deep Cut answer
+      description: |
+        One answer per question, judged by the database against its curated bank:
+        exact names, aliases and abbreviations, plurals and small typos. A correct
+        answer scores its rarity tier — 10, 20, 40, 60, 80 or 100. An answer the
+        bank has never seen is ruled on once by the AI judge (when configured) and
+        that ruling is cached for every later player; without a ruling it scores
+        nothing and is queued for review. An empty answer skips the question; one
+        after the clock (plus a few seconds' grace) is out of time.
+      security:
+        - {}
+        - bearerAuth: []
+      x-status: available
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                answer: { type: string, maxLength: 60 }
+      responses:
+        "200":
+          description: The settled turn.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  outcome: { type: string, enum: [scored] }
+                  turn: { $ref: "#/components/schemas/DeepCutTurn" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Not dealt yet, already answered, expired, or finished.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /deep-cut/runs/{runID}/summary:
+    parameters:
+      - { name: runID, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: finishDeepCutPractice
+      tags: [sessions]
+      summary: End a Deep Cut practice run and total it
+      description: Practice runs are never recorded; this settles and totals one, and closes it.
+      security:
+        - {}
+        - bearerAuth: []
+      x-status: available
+      responses:
+        "200":
+          description: The run's turns and total points.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  outcome: { type: string, enum: [finished] }
+                  points: { type: integer }
+                  turns: { type: array, items: { $ref: "#/components/schemas/DeepCutTurn" } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /deep-cut/practice:
+    post:
+      operationId: startDeepCutPractice
+      tags: [sessions]
+      summary: Start an unranked Deep Cut run (Unlimited or Archive)
+      description: |
+        Unlimited deals seven questions at random; Archive deals a past day's set,
+        from thirty days back to two days ago. Neither ever deals a question that
+        is in a daily set live anywhere — an archived question back in play is
+        swapped for another (`swapped`).
+      security:
+        - {}
+        - bearerAuth: []
+      x-status: available
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [mode]
+              properties:
+                mode: { type: string, enum: [unlimited, archive] }
+                day: { type: integer, description: Days since 1970-01-01 (UTC); required for archive. }
+      responses:
+        "200":
+          description: The run.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  outcome: { type: string, enum: [started] }
+                  runId: { type: string, format: uuid }
+                  mode: { type: string }
+                  day: { type: [integer, "null"] }
+                  swapped: { type: integer }
+                  total: { type: integer }
+                  expiresAt: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "422":
+          description: That day can't be played from the archive.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /deep-cut/archive:
+    get:
+      operationId: listDeepCutArchive
+      tags: [sessions]
+      summary: The days the Deep Cut archive can deal
+      security:
+        - {}
+        - bearerAuth: []
+      x-status: available
+      responses:
+        "200":
+          description: Day numbers, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  days: { type: array, items: { type: integer } }
   /scores/me:
     get:
       operationId: getMyScores
@@ -2296,6 +2475,20 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
+    DeepCutTurn:
+      type: object
+      description: One answered Deep Cut question.
+      properties:
+        position: { type: integer }
+        verdict: { type: string, enum: [correct, wrong, unverified, timeout, skipped] }
+        answer: { type: [string, "null"], description: The answer as typed. }
+        canonical: { type: [string, "null"], description: The bank's name for the matched answer. }
+        answerId: { type: integer, description: The matched answer's id, or 0. A daily run submits these as its actions. }
+        tier: { type: [integer, "null"], minimum: 1, maximum: 6 }
+        points: { type: integer, enum: [0, 10, 20, 40, 60, 80, 100] }
+        sharePercent: { type: [integer, "null"], description: How many players gave this answer, once twenty have answered. }
+        commonAnswer: { type: [string, "null"], description: What most people say. }
+        deepestAnswers: { type: [string, "null"], description: Some of the rarest answers — practice runs only. }
     Error:
       type: object
       required: [error]

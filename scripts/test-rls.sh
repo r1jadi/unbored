@@ -104,5 +104,6 @@ run_file "$ROOT_DIR/tests/security/streaks_test.sql"
 run_file "$ROOT_DIR/tests/security/engagement_test.sql"
 run_file "$ROOT_DIR/tests/security/content_filter_test.sql"
 run_file "$ROOT_DIR/tests/security/avatar_screening_test.sql"
+run_file "$ROOT_DIR/tests/security/deep_cut_test.sql"
 
 log "Database security suite passed."
