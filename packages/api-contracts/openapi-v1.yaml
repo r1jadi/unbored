@@ -1128,6 +1128,63 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /deep-cut/runs/{runID}/questions/{position}/check:
+    parameters:
+      - { name: runID, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: position, in: path, required: true, schema: { type: integer, minimum: 0, maximum: 6 } }
+    post:
+      operationId: checkDeepCutAnswer
+      tags: [sessions]
+      summary: Check whether a Deep Cut answer would count, without submitting it
+      description: |
+        Lets the player fix an answer before it costs them the question. Says
+        only whether the answer is valid — never its tier — and records nothing:
+        the question stays open. `valid` counts; `invalid` is not a correct
+        answer; `ambiguous` is a near-miss spelling of two answers; `unknown`
+        could not be ruled on (no judge, or the judge failed) and may still be
+        submitted; `empty` and `late` mean nothing to check or the clock ran out.
+        An answer the bank has never seen is ruled on by the AI judge first, and
+        that ruling is cached exactly as a submitted answer's would be.
+      security:
+        - {}
+        - bearerAuth: []
+      x-status: available
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                answer: { type: string, maxLength: 60 }
+      responses:
+        "200":
+          description: The check.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  outcome: { type: string, enum: [checked] }
+                  result:
+                    type: string
+                    enum: [valid, invalid, ambiguous, unknown, empty, late]
+                  suggestions:
+                    type: array
+                    maxItems: 2
+                    items: { type: string }
+                    description: |
+                      When the answer doesn't count: up to two answers the player
+                      may have meant (a shared uncommon word, a prefix, a near
+                      spelling). Absent on `valid`.
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Not dealt yet, already answered, expired, or finished.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /deep-cut/runs/{runID}/questions/{position}/answer:
     parameters:
       - { name: runID, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1244,6 +1301,131 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /deep-cut/parties:
+    post:
+      operationId: startDeepCutParty
+      tags: [sessions]
+      summary: Start a Deep Cut Party (hot potato, pass-and-play)
+      description: |
+        Two to eight players share one device. The server deals each round's
+        question and judges each answer; the fuse, the turns and the lives live on
+        the device. Unranked, like practice, and never a question live in a daily
+        set. Lasts three hours and at most 60 rounds.
+      security:
+        - {}
+        - bearerAuth: []
+      x-status: available
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [players]
+              properties:
+                players: { type: integer, minimum: 2, maximum: 8 }
+      responses:
+        "200":
+          description: The party.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  outcome: { type: string, enum: [started] }
+                  partyId: { type: string, format: uuid }
+                  players: { type: integer }
+                  expiresAt: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /deep-cut/parties/{partyID}/rounds/{round}:
+    parameters:
+      - { name: partyID, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: round, in: path, required: true, schema: { type: integer, minimum: 0, maximum: 59 } }
+    post:
+      operationId: dealDeepCutPartyRound
+      tags: [sessions]
+      summary: Deal a Deep Cut Party round
+      description: |
+        Rounds come in order; asking again for a round already dealt returns it
+        with the answers given so far.
+      security:
+        - {}
+        - bearerAuth: []
+      x-status: available
+      responses:
+        "200":
+          description: The round's question.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  outcome: { type: string, enum: [shown] }
+                  round: { type: integer }
+                  category: { type: string }
+                  prompt: { type: string }
+                  used:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        player: { type: integer }
+                        canonical: { type: string }
+                        tier: { type: integer, minimum: 1, maximum: 6 }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+  /deep-cut/parties/{partyID}/rounds/{round}/answers:
+    parameters:
+      - { name: partyID, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: round, in: path, required: true, schema: { type: integer, minimum: 0, maximum: 59 } }
+    post:
+      operationId: answerDeepCutPartyRound
+      tags: [sessions]
+      summary: Judge one player's Deep Cut Party answer
+      description: |
+        `valid` is recorded and scores its tier; `repeat` is a correct answer
+        already given this round; `invalid`, `ambiguous`, `unknown` and `empty`
+        record nothing. An answer nobody has judged is put to the AI judge first.
+      security:
+        - {}
+        - bearerAuth: []
+      x-status: available
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [player]
+              properties:
+                player: { type: integer, minimum: 0, maximum: 7 }
+                answer: { type: string, maxLength: 60 }
+      responses:
+        "200":
+          description: The verdict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  outcome: { type: string, enum: [judged] }
+                  result:
+                    type: string
+                    enum: [valid, repeat, invalid, ambiguous, unknown, empty]
+                  canonical: { type: string }
+                  suggestions:
+                    type: array
+                    maxItems: 2
+                    items: { type: string }
+                  tier: { type: integer, minimum: 1, maximum: 6 }
+                  points: { type: integer }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /deep-cut/archive:
     get:
       operationId: listDeepCutArchive
@@ -2105,6 +2287,176 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /admin/deep-cut/reviews:
+    get:
+      operationId: listDeepCutReviews
+      tags: [admin]
+      summary: The Deep Cut review queue
+      description: |
+        Spellings the Deep Cut answer bank did not know, with their verdict —
+        pending ones most-typed first. Requires the moderator or administrator role.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: verdict
+          in: query
+          schema: { type: string, enum: [pending, accepted, rejected, all], default: pending }
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - $ref: "#/components/parameters/AdminLimit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: A page of spellings.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        questionId: { type: integer }
+                        questionSlug: { type: string }
+                        category: { type: string }
+                        prompt: { type: string }
+                        key: { type: string }
+                        sample: { type: string }
+                        verdict: { type: string, enum: [pending, accepted, rejected] }
+                        reviewer: { type: [string, "null"], enum: [ai, staff, null] }
+                        seen: { type: integer }
+                        firstSeen: { type: string, format: date-time }
+                        reviewedAt: { type: [string, "null"], format: date-time }
+                        answerId: { type: [integer, "null"] }
+                        answerName: { type: [string, "null"] }
+                        answerTier: { type: [integer, "null"], minimum: 1, maximum: 6 }
+                  hasMore: { type: boolean }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /admin/deep-cut/questions/{questionID}/answers:
+    get:
+      operationId: listDeepCutAnswers
+      tags: [admin]
+      summary: A Deep Cut question's answers
+      description: |
+        Every answer with its tier, source and how often players gave it. Once the
+        question has 100 answers, each also has its share and the tier that share
+        suggests. Requires the moderator or administrator role.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: questionID, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: The answers, surface first.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        canonical: { type: string }
+                        tier: { type: integer, minimum: 1, maximum: 6 }
+                        source: { type: string, enum: [curated, ai, staff] }
+                        spellings: { type: integer }
+                        given: { type: integer }
+                        sharePercent: { type: [number, "null"] }
+                        suggestedTier: { type: [integer, "null"], minimum: 1, maximum: 6 }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /admin/deep-cut/questions/{questionID}/reviews/{key}:
+    put:
+      operationId: ruleDeepCutSpelling
+      tags: [admin]
+      summary: Rule on a Deep Cut spelling
+      description: |
+        Accept a spelling — as another name for an existing answer, or as a new
+        answer at any tier — or reject it. Replaces any earlier ruling, the AI
+        judge's included. Requires the moderator or administrator role.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: questionID, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: key, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9]{1,60}$" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [verdict]
+              properties:
+                verdict: { type: string, enum: [accepted, rejected] }
+                canonical: { type: string, maxLength: 60 }
+                tier: { type: integer, minimum: 1, maximum: 6 }
+      responses:
+        "200":
+          description: The ruling.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  questionId: { type: integer }
+                  key: { type: string }
+                  previousVerdict: { type: [string, "null"] }
+                  verdict: { type: string, enum: [accepted, rejected] }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /admin/deep-cut/answers/{answerID}:
+    patch:
+      operationId: retierDeepCutAnswer
+      tags: [admin]
+      summary: Move a Deep Cut answer to another tier
+      description: |
+        The tier is pinned against later bank loads; turns already played keep
+        their points. Requires the moderator or administrator role.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: answerID, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [tier]
+              properties:
+                tier: { type: integer, minimum: 1, maximum: 6 }
+      responses:
+        "200":
+          description: The new tier.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  answerId: { type: integer }
+                  previousTier: { type: integer }
+                  tier: { type: integer }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "503": { $ref: "#/components/responses/Unavailable" }
   /admin/moderation-log:
     get:

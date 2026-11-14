@@ -40,6 +40,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminCommentsRouteImport } from './routes/admin.comments'
+import { Route as AdminDeepCutRouteImport } from './routes/admin.deep-cut'
 import { Route as AdminFeaturedRouteImport } from './routes/admin.featured'
 import { Route as AdminFeedbackRouteImport } from './routes/admin.feedback'
 import { Route as AdminGamesRouteImport } from './routes/admin.games'
@@ -220,6 +221,11 @@ const AdminCommentsRoute = AdminCommentsRouteImport.update({
   path: '/comments',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDeepCutRoute = AdminDeepCutRouteImport.update({
+  id: '/deep-cut',
+  path: '/deep-cut',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminFeaturedRoute = AdminFeaturedRouteImport.update({
   id: '/featured',
   path: '/featured',
@@ -372,6 +378,7 @@ export interface FileRoutesByFullPath {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/comments': typeof AdminCommentsRoute
+  '/admin/deep-cut': typeof AdminDeepCutRoute
   '/admin/featured': typeof AdminFeaturedRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/games': typeof AdminGamesRoute
@@ -428,6 +435,7 @@ export interface FileRoutesByTo {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/comments': typeof AdminCommentsRoute
+  '/admin/deep-cut': typeof AdminDeepCutRoute
   '/admin/featured': typeof AdminFeaturedRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/games': typeof AdminGamesRoute
@@ -486,6 +494,7 @@ export interface FileRoutesById {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/comments': typeof AdminCommentsRoute
+  '/admin/deep-cut': typeof AdminDeepCutRoute
   '/admin/featured': typeof AdminFeaturedRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/games': typeof AdminGamesRoute
@@ -545,6 +554,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/categories'
     | '/admin/comments'
+    | '/admin/deep-cut'
     | '/admin/featured'
     | '/admin/feedback'
     | '/admin/games'
@@ -601,6 +611,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/categories'
     | '/admin/comments'
+    | '/admin/deep-cut'
     | '/admin/featured'
     | '/admin/feedback'
     | '/admin/games'
@@ -658,6 +669,7 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/categories'
     | '/admin/comments'
+    | '/admin/deep-cut'
     | '/admin/featured'
     | '/admin/feedback'
     | '/admin/games'
@@ -949,6 +961,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCommentsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/deep-cut': {
+      id: '/admin/deep-cut'
+      path: '/deep-cut'
+      fullPath: '/admin/deep-cut'
+      preLoaderRoute: typeof AdminDeepCutRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/featured': {
       id: '/admin/featured'
       path: '/featured'
@@ -1124,6 +1143,7 @@ interface AdminRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCommentsRoute: typeof AdminCommentsRoute
+  AdminDeepCutRoute: typeof AdminDeepCutRoute
   AdminFeaturedRoute: typeof AdminFeaturedRoute
   AdminFeedbackRoute: typeof AdminFeedbackRoute
   AdminGamesRoute: typeof AdminGamesRoute
@@ -1140,6 +1160,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCommentsRoute: AdminCommentsRoute,
+  AdminDeepCutRoute: AdminDeepCutRoute,
   AdminFeaturedRoute: AdminFeaturedRoute,
   AdminFeedbackRoute: AdminFeedbackRoute,
   AdminGamesRoute: AdminGamesRoute,

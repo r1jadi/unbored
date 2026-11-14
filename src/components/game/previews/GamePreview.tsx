@@ -22,6 +22,7 @@ const LOADERS: Record<string, Loader> = {
   crossword: () => import("./CrosswordPreview").then((m) => ({ default: m.CrosswordPreview })),
   crowns: () => import("./QueensPreview").then((m) => ({ default: m.QueensPreview })),
   decant: () => import("./DecantPreview").then((m) => ({ default: m.DecantPreview })),
+  "deep-cut": () => import("./DeepCutPreview").then((m) => ({ default: m.DeepCutPreview })),
   "dont-break-the-chain": () => import("./ChainPreview").then((m) => ({ default: m.ChainPreview })),
   "dont-touch-the-black": () =>
     import("./DontTouchPreview").then((m) => ({ default: m.DontTouchPreview })),

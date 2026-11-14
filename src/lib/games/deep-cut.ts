@@ -132,7 +132,7 @@ export function verdictLabel(turn: Pick<DeepCutTurn, "verdict" | "tier">): strin
     case "correct":
       return tierInfo(turn.tier)?.name ?? msg("Correct");
     case "wrong":
-      return msg("Not an answer");
+      return msg("Not a valid answer");
     case "unverified":
       return msg("Not in our depths yet");
     case "timeout":
@@ -200,6 +200,8 @@ const Routes = {
   archive: "/deep-cut/archive",
   question: (runId: string, position: number) =>
     `/deep-cut/runs/${encodeURIComponent(runId)}/questions/${position}`,
+  check: (runId: string, position: number) =>
+    `/deep-cut/runs/${encodeURIComponent(runId)}/questions/${position}/check`,
   answer: (runId: string, position: number) =>
     `/deep-cut/runs/${encodeURIComponent(runId)}/questions/${position}/answer`,
   summary: (runId: string) => `/deep-cut/runs/${encodeURIComponent(runId)}/summary`,
@@ -274,6 +276,40 @@ export async function revealQuestion(
     remainingMs: body.remainingMs ?? body.seconds * 1000,
     settled: body.settled ? asTurn(body.settled) : null,
   };
+}
+
+/**
+ * What the server says about an answer before it is submitted:
+ *   - `valid` — it counts (the tier stays a secret until it is submitted);
+ *   - `invalid` — not a correct answer: the player may type another;
+ *   - `ambiguous` — a near-miss spelling of two different answers;
+ *   - `unknown` — nobody could rule on it yet: submitting it is the player's call;
+ *   - `empty`, `late` — nothing to check, or the clock has run out.
+ */
+export type CheckResult = "valid" | "invalid" | "ambiguous" | "unknown" | "empty" | "late";
+
+/** A check, with up to two answers the player may have meant when it doesn't count. */
+export type Check = { result: CheckResult; suggestions: string[] };
+
+/** Checks an answer to question `position` without submitting it. Records nothing. */
+export async function checkAnswer(
+  runId: string,
+  position: number,
+  answer: string,
+  signal?: AbortSignal,
+): Promise<Check> {
+  const body = await apiFetch<{ result: CheckResult; suggestions?: string[] }>(
+    Routes.check(runId, position),
+    {
+      method: "POST",
+      body: { answer },
+      token: getAccessToken(),
+      signal,
+      // The judge may be consulted: give it room, but less than the clock.
+      timeoutMs: 9_000,
+    },
+  );
+  return { result: body.result, suggestions: (body.suggestions ?? []).slice(0, 2) };
 }
 
 /** Answers question `position`. One answer per question; a repeat returns the first. */

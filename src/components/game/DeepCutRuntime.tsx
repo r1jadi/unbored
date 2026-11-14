@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
+  Bomb,
   CalendarDays,
   Clock,
   Infinity as InfinityIcon,
@@ -15,6 +16,8 @@ import {
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { ErrorState } from "@/components/common";
+import { DeepCutDive } from "@/components/game/DeepCutDive";
+import { DeepCutParty } from "@/components/game/DeepCutParty";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
 import { RulesList } from "@/components/game/RulesList";
@@ -49,6 +52,7 @@ import {
   type Tier,
 } from "@/lib/games/deep-cut";
 import { useDeepCutRun, type DeepCutControls } from "@/lib/games/deep-cut-run";
+import type { Check, CheckResult } from "@/lib/games/deep-cut";
 import { GAME_RULES } from "@/lib/games/rules";
 import { playErrorMessage } from "@/lib/games/sessions";
 import { useGameSounds } from "@/lib/sound";
@@ -83,10 +87,15 @@ function tierStyle(tier: Tier | null | undefined): CSSProperties | undefined {
  */
 export function DeepCutRuntime({ slug, title }: { slug: string; title: string }) {
   const state = useDeepCutRun(slug);
+  const [party, setParty] = useState(false);
+
+  if (party && state.status === "intro") {
+    return <DeepCutParty onExit={() => setParty(false)} />;
+  }
 
   switch (state.status) {
     case "intro":
-      return <Intro state={state} slug={slug} title={title} />;
+      return <Intro state={state} slug={slug} title={title} onParty={() => setParty(true)} />;
     case "starting":
     case "finishing":
       return (
@@ -108,6 +117,7 @@ export function DeepCutRuntime({ slug, title }: { slug: string; title: string })
           answering={state.status === "answering" ? state.answer : null}
           mode={state.mode}
           onSubmit={state.submit}
+          onCheck={state.check}
           onEnd={state.end}
         />
       );
@@ -133,7 +143,17 @@ export function DeepCutRuntime({ slug, title }: { slug: string; title: string })
 
 // ── The mode picker ─────────────────────────────────────────────────────────
 
-function Intro({ state, slug, title }: { state: DeepCutControls; slug: string; title: string }) {
+function Intro({
+  state,
+  slug,
+  title,
+  onParty,
+}: {
+  state: DeepCutControls;
+  slug: string;
+  title: string;
+  onParty: () => void;
+}) {
   const [archive, setArchive] = useState(false);
   if (archive) {
     return (
@@ -171,6 +191,10 @@ function Intro({ state, slug, title }: { state: DeepCutControls; slug: string; t
               {t("Archive")}
             </Button>
           </div>
+          <Button variant="secondary" size="lg" onClick={onParty}>
+            <Bomb />
+            {t("Party: hot potato")}
+          </Button>
           <Button asChild variant="ghost" size="lg">
             <ExitGameLink slug={slug}>{t("Back to {title}", { title })}</ExitGameLink>
           </Button>
@@ -412,6 +436,18 @@ function Countdown({ left, seconds }: { left: number; seconds: number }) {
   );
 }
 
+/** The answer's normalised form, to tell whether it changed since its check. */
+function sameAnswer(a: string, b: string): boolean {
+  const fold = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+  return fold(a) === fold(b);
+}
+
+/** Why an answer can't go in yet, in words. */
+const CHECK_MESSAGES: Partial<Record<CheckResult, string>> = {
+  invalid: "Not a valid answer. Try another.",
+  ambiguous: "That's close to more than one answer. Check the spelling.",
+};
+
 function QuestionScreen({
   question,
   deadline,
@@ -419,6 +455,7 @@ function QuestionScreen({
   answering,
   mode,
   onSubmit,
+  onCheck,
   onEnd,
 }: {
   question: DeepCutQuestion;
@@ -427,6 +464,7 @@ function QuestionScreen({
   answering: string | null;
   mode: DeepCutMode;
   onSubmit: (answer: string) => void;
+  onCheck: (answer: string) => Promise<Check>;
   onEnd: () => void;
 }) {
   const [answer, setAnswer] = useState("");
@@ -435,16 +473,31 @@ function QuestionScreen({
   const left = useCountdown(deadline, answering === null);
   const input = useRef<HTMLInputElement>(null);
   const fired = useRef(false);
+  /** The answer being checked, while its check is with the server. */
+  const [checking, setChecking] = useState<string | null>(null);
+  /** The last answer the server turned down, and why. */
+  const [refused, setRefused] = useState<{
+    answer: string;
+    result: CheckResult;
+    suggestions: string[];
+  } | null>(null);
+  const refusedRef = useRef(refused);
+  refusedRef.current = refused;
+  const busy = answering !== null || checking !== null;
+  const showRefusal = refused !== null && sameAnswer(refused.answer, answer);
 
   useEffect(() => {
     input.current?.focus({ preventScroll: true });
   }, []);
 
-  // Time's up: whatever is typed goes in (the server allows a little grace).
+  // Time's up: whatever is typed goes in (the server allows a little grace) —
+  // unless it is the answer just turned down, which would only score nothing.
   useEffect(() => {
     if (left > 0 || answering !== null || fired.current) return;
     fired.current = true;
-    onSubmit(latest.current.trim());
+    const typed = latest.current.trim();
+    const turnedDown = refusedRef.current && sameAnswer(refusedRef.current.answer, typed);
+    onSubmit(turnedDown ? "" : typed);
   }, [left, answering, onSubmit]);
 
   const send = (value: string) => {
@@ -453,13 +506,30 @@ function QuestionScreen({
     onSubmit(value.trim());
   };
 
+  /** Checks the answer first: one that wouldn't count stays in the box to fix. */
+  const checkThenSend = async (value: string) => {
+    if (busy || fired.current) return;
+    const typed = value.trim();
+    if (refused && sameAnswer(refused.answer, typed)) return;
+    setChecking(typed);
+    const { result, suggestions } = await onCheck(typed);
+    setChecking(null);
+    if (fired.current) return;
+    if (result === "invalid" || result === "ambiguous") {
+      setRefused({ answer: typed, result, suggestions });
+      requestAnimationFrame(() => input.current?.select());
+      return;
+    }
+    send(typed);
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
       <TopBar
         turns={turns}
         position={question.position}
         mode={mode}
-        onEnd={answering === null ? onEnd : undefined}
+        onEnd={busy ? undefined : onEnd}
       />
       <div className="deep-cut-rise mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-6 px-6">
         <Countdown
@@ -481,7 +551,7 @@ function QuestionScreen({
           className="flex w-full flex-col gap-2"
           onSubmit={(event) => {
             event.preventDefault();
-            if (answer.trim()) send(answer);
+            if (answer.trim()) void checkThenSend(answer);
           }}
         >
           <div className="flex gap-2">
@@ -491,28 +561,66 @@ function QuestionScreen({
               onChange={(event) => setAnswer(event.target.value)}
               maxLength={60}
               disabled={answering !== null}
+              readOnly={checking !== null}
               placeholder={t("Your answer")}
               aria-label={t("Your answer")}
+              aria-invalid={showRefusal || undefined}
+              aria-describedby={showRefusal ? "deep-cut-refusal" : undefined}
               autoComplete="off"
               autoCorrect="off"
               spellCheck={false}
               enterKeyHint="send"
-              className="h-12 min-w-0 flex-1 rounded-xl border border-input bg-surface px-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-70"
+              className={cn(
+                "h-12 min-w-0 flex-1 rounded-xl border border-input bg-surface px-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-70",
+                showRefusal && "border-destructive focus-visible:ring-destructive",
+              )}
             />
             <Button
               type="submit"
               variant="play"
               size="lg"
               className="h-12 px-4"
-              disabled={answering !== null || !answer.trim()}
+              disabled={busy || !answer.trim() || showRefusal}
               aria-label={t("Submit answer")}
             >
-              {answering !== null ? <Loader2 className="animate-spin" /> : <SendHorizontal />}
+              {busy ? <Loader2 className="animate-spin" /> : <SendHorizontal />}
             </Button>
           </div>
-          {answering !== null ? (
+          {showRefusal ? (
+            <>
+              <p
+                id="deep-cut-refusal"
+                className="flex items-center justify-center gap-1.5 text-center text-sm font-medium text-destructive"
+                role="alert"
+              >
+                <TriangleAlert className="size-4 shrink-0" aria-hidden />
+                {t(CHECK_MESSAGES[refused.result] ?? CHECK_MESSAGES.invalid!)}
+              </p>
+              {refused.suggestions.length > 0 && (
+                <div className="flex flex-wrap items-center justify-center gap-1.5 text-sm">
+                  <span className="text-muted-foreground">{t("Did you mean:")}</span>
+                  {refused.suggestions.map((suggestion) => (
+                    <Button
+                      key={suggestion}
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-8 rounded-full"
+                      onClick={() => {
+                        setAnswer(suggestion);
+                        send(suggestion);
+                      }}
+                    >
+                      {suggestion}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : null}
+          {busy ? (
             <p className="text-center text-sm text-muted-foreground" aria-live="polite">
-              {t("Measuring the depth…")}
+              {checking !== null ? t("Checking your answer…") : t("Measuring the depth…")}
             </p>
           ) : (
             <button
@@ -530,54 +638,6 @@ function QuestionScreen({
 }
 
 // ── A verdict ───────────────────────────────────────────────────────────────
-
-/** A vertical gauge of the six depths with a marker sunk to `tier`. */
-function DepthGauge({ tier, animate = true }: { tier: Tier | null; animate?: boolean }) {
-  const rowHeight = 22;
-  return (
-    <div className="relative w-32" aria-hidden>
-      <div className="overflow-hidden rounded-xl">
-        {TIERS.map((info) => (
-          <div
-            key={info.tier}
-            className="flex items-center justify-between px-2 text-[10px] font-medium"
-            style={{ height: rowHeight, ...tierStyle(info.tier) }}
-          >
-            <span>{t(info.name)}</span>
-          </div>
-        ))}
-      </div>
-      {tier && (
-        <div
-          className={cn("absolute -right-4 flex items-center", animate && "deep-cut-sink")}
-          style={
-            {
-              top: (tier - 1) * rowHeight - 3,
-              ["--sink-from" as string]: `${(tier - 1) * rowHeight}px`,
-            } as CSSProperties
-          }
-        >
-          <span className="size-7 rounded-full border-2 border-background bg-foreground shadow-lg" />
-        </div>
-      )}
-      {tier &&
-        animate &&
-        [0, 1, 2, 3].map((index) => (
-          <span
-            key={index}
-            className="deep-cut-bubble absolute size-2 rounded-full border border-foreground/40"
-            style={
-              {
-                left: `${30 + index * 18}%`,
-                top: (tier - 1) * rowHeight + 10,
-                ["--bubble-delay" as string]: `${500 + index * 180}ms`,
-              } as CSSProperties
-            }
-          />
-        ))}
-    </div>
-  );
-}
 
 function Reveal({
   question,
@@ -616,9 +676,9 @@ function Reveal({
         <p className="text-sm text-muted-foreground">{question.prompt}</p>
         <p className="text-xl font-semibold">“{turn.answer ?? "—"}”</p>
 
-        <div className="flex items-center gap-6">
-          <DepthGauge tier={correct ? turn.tier : null} />
-          <div className="flex flex-col items-center gap-1">
+        <div className="flex w-full items-center justify-center gap-5">
+          <DeepCutDive tier={correct ? turn.tier : null} className="flex-1" />
+          <div className="flex shrink-0 flex-col items-center gap-1">
             <span
               className={cn(
                 "deep-cut-pop text-4xl font-bold tabular",

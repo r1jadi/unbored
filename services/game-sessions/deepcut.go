@@ -21,6 +21,9 @@ import (
 //
 //   - POST /deep-cut/runs/{runID}/questions/{position} deals a question and
 //     starts its clock (`deep_cut_reveal`). A daily run's id is its session id.
+//   - POST /deep-cut/runs/{runID}/questions/{position}/check says whether an
+//     answer would count, before it is submitted (`deep_cut_check`). It records
+//     nothing; a spelling nobody has judged is put to the AI judge first.
 //   - POST /deep-cut/runs/{runID}/questions/{position}/answer judges one answer
 //     (`deep_cut_answer`). An answer the bank has never seen is held while the AI
 //     judge rules on it — once, cached for everyone — and then settled.
@@ -53,8 +56,10 @@ func (s *service) registerDeepCut(router *httpx.Router) {
 	router.OptionalAuthFunc("POST /api/v1/deep-cut/practice", s.deepCutPractice)
 	router.OptionalAuthFunc("GET /api/v1/deep-cut/archive", s.deepCutArchive)
 	router.OptionalAuthFunc("POST /api/v1/deep-cut/runs/{runID}/questions/{position}", s.deepCutReveal)
+	router.OptionalAuthFunc("POST /api/v1/deep-cut/runs/{runID}/questions/{position}/check", s.deepCutCheck)
 	router.OptionalAuthFunc("POST /api/v1/deep-cut/runs/{runID}/questions/{position}/answer", s.deepCutAnswer)
 	router.OptionalAuthFunc("POST /api/v1/deep-cut/runs/{runID}/summary", s.deepCutSummary)
+	s.registerDeepCutParty(router)
 }
 
 // outcomeOf reads the `outcome` a Deep Cut function answered with.
@@ -194,6 +199,78 @@ func (s *service) deepCutAnswer(w http.ResponseWriter, r *http.Request) {
 	s.writeDeepCut(w, r, "judge a Deep Cut answer", raw, "scored")
 }
 
+// deepCutCheck answers whether an answer would count, without submitting it.
+// `result` is valid, invalid, ambiguous, unknown, empty or late. An answer the
+// bank has never seen is put to the judge first (its ruling is cached exactly as
+// if the answer had been submitted); with no judge, or a judge that cannot rule,
+// it stays `unknown` and the client lets the player submit it as before.
+func (s *service) deepCutCheck(w http.ResponseWriter, r *http.Request) {
+	if !s.deepCutReady(w, r, "check a Deep Cut answer") {
+		return
+	}
+	runID, position, ok := runAndPosition(w, r)
+	if !ok {
+		return
+	}
+	var body deepCutAnswerRequest
+	if err := httpx.DecodeJSON(w, r, 4*1024, &body); err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+	answer := ""
+	if body.Answer != nil {
+		answer = strings.TrimSpace(*body.Answer)
+	}
+	if len([]rune(answer)) > maxAnswerRunes {
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
+			"An answer is at most 60 characters.", apierr.Detail{Field: "answer", Rule: "length"}))
+		return
+	}
+
+	token := callerToken(r)
+	payload := map[string]any{"p_run_id": runID, "p_position": position, "p_answer": answer}
+	raw, err := s.deepCut.DeepCut(r.Context(), "deep_cut_check", payload, token)
+	if err != nil {
+		s.dataFailure(w, r, "check a Deep Cut answer", err)
+		return
+	}
+	if outcomeOf(raw) == "checked" && checkResultOf(raw) == "unknown" && s.judging != nil {
+		if s.consultJudgeOnCheck(r.Context(), runID, position, answer) {
+			raw, err = s.deepCut.DeepCut(r.Context(), "deep_cut_check", payload, token)
+			if err != nil {
+				s.dataFailure(w, r, "check a Deep Cut answer", err)
+				return
+			}
+		}
+	}
+	s.writeDeepCut(w, r, "check a Deep Cut answer", raw, "checked")
+}
+
+// checkResultOf reads the `result` of a `deep_cut_check` answer.
+func checkResultOf(raw json.RawMessage) string {
+	var head struct {
+		Result string `json:"result"`
+	}
+	_ = json.Unmarshal(raw, &head)
+	return head.Result
+}
+
+// consultJudgeOnCheck asks the judge about an answer being checked on an open
+// turn and records the ruling. It reports whether a ruling was recorded.
+func (s *service) consultJudgeOnCheck(parent context.Context, runID string, position int, answer string) bool {
+	ctx, cancel := context.WithTimeout(parent, judgeTimeout)
+	defer cancel()
+
+	raw, err := s.deepCut.DeepCut(ctx, "deep_cut_check_context", map[string]any{
+		"p_judge_key": s.judging.key, "p_run_id": runID, "p_position": position, "p_answer": answer,
+	}, "")
+	if err != nil {
+		s.logger.ErrorContext(ctx, "deep cut check context failed", slog.Any("error", err))
+		return false
+	}
+	return s.ruleAndRecord(ctx, raw)
+}
+
 // consultJudge asks the AI judge about a held answer and records its ruling. Any
 // failure is logged and swallowed: the answer is then settled without a ruling,
 // scores nothing and waits for staff, which is the same as having no judge.
@@ -208,6 +285,13 @@ func (s *service) consultJudge(parent context.Context, runID string, position in
 		s.logger.ErrorContext(ctx, "deep cut judge context failed", slog.Any("error", err))
 		return
 	}
+	s.ruleAndRecord(ctx, raw)
+}
+
+// ruleAndRecord puts a judge context (`deep_cut_judge_context` or
+// `deep_cut_check_context`) to the judge and records its ruling. Any failure is
+// logged and swallowed. It reports whether a ruling was recorded.
+func (s *service) ruleAndRecord(ctx context.Context, raw json.RawMessage) bool {
 	var held struct {
 		Outcome    string   `json:"outcome"`
 		QuestionID int      `json:"questionId"`
@@ -218,7 +302,7 @@ func (s *service) consultJudge(parent context.Context, runID string, position in
 		Known      []string `json:"known"`
 	}
 	if err := json.Unmarshal(raw, &held); err != nil || held.Outcome != "held" {
-		return
+		return false
 	}
 
 	ruling, err := s.judging.judge.Rule(ctx, deepcutjudge.Question{
@@ -230,7 +314,7 @@ func (s *service) consultJudge(parent context.Context, runID string, position in
 			level = slog.LevelWarn
 		}
 		s.logger.Log(ctx, level, "deep cut judge failed", slog.Any("error", err))
-		return
+		return false
 	}
 
 	verdict := "rejected"
@@ -243,7 +327,9 @@ func (s *service) consultJudge(parent context.Context, runID string, position in
 		"p_sample": held.Answer, "p_verdict": verdict, "p_canonical": canonical, "p_tier": tier,
 	}, ""); err != nil {
 		s.logger.ErrorContext(ctx, "deep cut review could not be recorded", slog.Any("error", err))
+		return false
 	}
+	return true
 }
 
 type deepCutPracticeRequest struct {

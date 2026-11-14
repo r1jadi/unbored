@@ -2193,6 +2193,68 @@ a.ranks-rung:hover {
 .deep-cut-ring {
   transition: stroke-dashoffset 250ms linear, color 300ms ease;
 }
+/* The reveal's dive: light from the surface, fish drifting, a miss bobbing. */
+.deep-cut-rays {
+  background:
+    repeating-linear-gradient(
+      100deg,
+      oklch(1 0 0 / 0.16) 0 6%,
+      transparent 6% 14%
+    ),
+    linear-gradient(to bottom, oklch(1 0 0 / 0.25), transparent);
+  mask-image: linear-gradient(to bottom, black, transparent);
+  animation: deep-cut-rays 6s ease-in-out infinite alternate;
+}
+.deep-cut-drift {
+  animation: deep-cut-drift 9s ease-in-out infinite alternate;
+}
+.deep-cut-bob {
+  animation: deep-cut-bob 1.8s ease-in-out infinite;
+}
+
+@keyframes deep-cut-rays {
+  from {
+    transform: translateX(-4%);
+  }
+  to {
+    transform: translateX(4%);
+  }
+}
+
+@keyframes deep-cut-drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-2.5rem) scaleX(-1);
+  }
+}
+
+@keyframes deep-cut-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(6deg);
+  }
+}
+
+/* Party's hot potato: a wobble whose duration the screen shortens as the round
+   burns (never by time left — the fuse is hidden). */
+.deep-cut-potato {
+  animation: deep-cut-potato 1.2s ease-in-out infinite;
+}
+
+@keyframes deep-cut-potato {
+  0%,
+  100% {
+    transform: rotate(-8deg) scale(1);
+  }
+  50% {
+    transform: rotate(8deg) scale(1.08);
+  }
+}
 
 @keyframes deep-cut-sink {
   from {
@@ -2238,7 +2300,11 @@ a.ranks-rung:hover {
   .deep-cut-sink,
   .deep-cut-pop,
   .deep-cut-bubble,
-  .deep-cut-rise {
+  .deep-cut-rise,
+  .deep-cut-potato,
+  .deep-cut-rays,
+  .deep-cut-drift,
+  .deep-cut-bob {
     animation: none;
   }
   .deep-cut-bubble {

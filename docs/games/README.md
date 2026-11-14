@@ -1907,7 +1907,7 @@ the abyss. One ranked play a day, as the crossword; **Unlimited** and the
 
 | Thing    | Value                                                                        |
 | -------- | ---------------------------------------------------------------------------- |
-| Bank     | `scripts/deep-cut/bank.txt` — 48 questions, ~4,250 answers with aliases      |
+| Bank     | `scripts/deep-cut/bank.txt` — 100 questions, ~10,600 answers with aliases    |
 | Day      | the player's day number — the session's seed, as the crossword's            |
 | Moves    | 7 at most: one per question, the matched answer's id or 0                    |
 | Clock    | 25 s a question, plus 3 s of server grace for the network                    |
@@ -1961,6 +1961,47 @@ it against the question's spellings, in order:
    is ambiguous and matches neither;
 5. otherwise **unknown**.
 
+### Checking before submitting
+
+Pressing Enter first asks `POST /deep-cut/runs/{runID}/questions/{position}/check`
+(`deep_cut_check`) whether the answer would count. It records nothing — the
+question stays open and its clock keeps running — and says only `valid`,
+`invalid`, `ambiguous` (a near-miss spelling of two answers), `unknown`, `empty`
+or `late`, never a tier. An `invalid` or `ambiguous` answer stays in the box with
+"Not a valid answer. Try another." so the player can change it; anything else is
+submitted. An unknown spelling is put to the AI judge first (its ruling cached
+exactly as if it had been submitted); with no judge, or a judge that can't rule,
+it stays `unknown` and the player may submit it. When the clock runs out, an
+answer just turned down is sent as nothing rather than scored as wrong. The
+check works only on a dealt, unanswered question within its clock.
+
+An answer that doesn't count comes with up to two **suggestions**
+(`deep_cut_suggest`), shown as "Did you mean:" buttons that send the answer on a
+tap: an answer sharing an uncommon word with what was typed ("New York City" →
+New York), one it is the start of or starts with ("Rhode" → Rhode Island), or a
+spelling just beyond the typo allowance ("Missisipi" → Mississippi). So the hint
+can't be used to fish for rare answers, a word found in three or more of the
+question's answers ("new", "south") counts for nothing, as do short and filler
+words; a bare prefix must be five letters and name one answer; and common answers
+come first. Party mode suggests the same way, leaving out answers already said
+that round.
+
+### The dive
+
+The reveal shows how deep an answer went as a dive (`DeepCutDive.tsx`,
+`src/lib/games/deep-cut-dive.ts`): a water column from the sunlit surface to the
+black abyss, the six depths marked down its side, and a diver who sinks to the
+answer's tier while a depth counter runs up to it (0 m, 10 m, 40 m, 200 m,
+1,000 m, 4,000 m); deeper dives take longer, up to 2.2 s. A miss bobs at the
+surface. With reduced motion the diver is simply there.
+
+### The feed preview
+
+`previews/DeepCutPreview.tsx` loops for four seconds: a prompt the bank doesn't
+have ("Name a pizza topping"), an answer typed in, and the diver sinking to
+Twilight as +60 rises — the points the real tiers give. `previews.test.tsx`
+fails if the prompt ever joins the bank.
+
 ### Answers the bank doesn't know: the AI judge and staff
 
 An unknown spelling is judged **once**, and the verdict is cached for every later
@@ -1978,9 +2019,22 @@ player (`deep_cut_reviews`):
   *wrong*. The player's text is fenced as data. At most 120 rulings a minute per
   process; past that, or on any failure, the answer falls through to staff.
 - Without a judge, or when it fails, the answer scores nothing now
-  (`unverified`, "Not in our depths yet") and is queued as `pending`. Staff rule
-  from the database console with `deep_cut_staff_review(question_id, key,
-  verdict, canonical, tier)`, which may use any tier and replace an earlier ruling.
+  (`unverified`, "Not in our depths yet") and is queued as `pending`.
+
+Staff rule in the admin console, **Admin → Deep Cut answers** (`/admin/deep-cut`):
+pending spellings come most-typed first, and each can be filed under an existing
+answer, added as a new answer at any tier, or rejected; a ruling may replace an
+earlier one, the AI's included. The same dialog lists the question's answers with
+how often players gave them, and moves any answer to another tier. Once a
+question has 100 answers each answer also shows its real share and the tier that
+share suggests (`deep_cut_tier_for_share`: Surface ≥ 15%, Shallows ≥ 6%, Reef ≥
+2.5%, Twilight ≥ 1%, Midnight above zero, Abyss for none in 400). A tier set by
+hand is marked `staff` and survives the next bank load; turns already played keep
+their points. The routes are `services/admin/deepcut.go`; the functions
+(`admin_deep_cut_reviews`, `admin_deep_cut_answers`, `admin_deep_cut_rule`,
+`admin_deep_cut_set_tier`, each with a `_svc` bridge twin) are in
+`20270103120000_deep_cut_check_and_review.sql`. `deep_cut_staff_review` still
+works from the database console.
 
 The judge's two functions need its key: `deep_cut_judge_keys` holds the SHA-256
 of `DEEP_CUT_JUDGE_KEY` —
@@ -1992,8 +2046,8 @@ The service needs no service-role credential.
 A day's seven questions are chosen the first time anyone needs them
 (`deep_cut_day_questions`, a seeded shuffle) and kept in `deep_cut_days`, so
 everyone and the archive see the same set. Questions used in the days just
-before are skipped — six days, or fewer when the bank is too small to leave seven
-(48 questions: five).
+before are skipped: one day per seven active questions, less one, at most 60
+(`deep_cut_repeat_window`; 100 questions: 13 days).
 
 Practice never deals a question that is in a daily set live anywhere — the UTC
 day and the day either side, which covers every time zone — so Unlimited and the
@@ -2013,11 +2067,14 @@ today's deep cuts can't be passed on.
   miss). The score is the sum of the recorded points, a tenth on screen. The Go
   service routes `deep-cut@` runs to it, up to 7 actions below 2²⁴.
 - `start_game_session` seeds a `deep-cut` session with the player's day.
-- `20270102120100_deep_cut_bank.sql` loads the bank; regenerate it with
+- `20270103120100_deep_cut_bank_more.sql` loads the bank (the first load was
+  `20270102120100_deep_cut_bank.sql`); regenerate it with
   `node scripts/generate-deep-cut-bank.mjs --write` after editing
-  `scripts/deep-cut/bank.txt`. The generator refuses two answers sharing a key,
-  an answer listed twice, or a bank under 21 questions. Answers reviewers added
-  survive a reload.
+  `scripts/deep-cut/bank.txt`. Each bank migration carries the whole bank, so
+  once one is deployed, point the generator's `MIGRATION` at a new file rather
+  than rewriting it. The generator refuses two answers sharing a key, an answer
+  listed twice, or a bank under 21 questions. Answers reviewers added, and tiers
+  staff set, survive a reload.
 - `20270102120200_deep_cut_playable.sql` inserts the catalogue record (Daily).
 
 `tests/security/deep_cut_test.sql` covers the matcher, the clock, the daily run
@@ -2025,10 +2082,29 @@ and its continuation, the verifier, practice, the judge's key and the staff
 review; `src/lib/games/deep-cut.test.ts` and `src/test/deep-cut-play.test.tsx`
 cover the client.
 
+### Party: hot potato
+
+Pass-and-play for two to eight players on one phone (`src/components/game/DeepCutParty.tsx`,
+`src/lib/games/deep-cut-party.ts`). Each round deals one question; whoever holds
+the phone names a correct answer nobody has given this round, and a valid answer
+passes it on. A hidden fuse (20–45 s, fresh each round) burns throughout; whoever
+holds the phone when it goes off loses a life (1–3 each), and the last player with
+a life wins. Rarer answers score their tier as bragging rights.
+
+The server deals and judges, so the bank still never reaches the device
+(`20270103120300_deep_cut_party.sql`): `deep_cut_party_start`,
+`deep_cut_party_question` (never a question live in a daily set) and
+`deep_cut_party_answer`, which records a valid answer once per round and answers
+`repeat` for the second person to say it. An unjudged spelling goes to the AI
+judge first (`deep_cut_party_context`). The fuse, turns, lives and names stay on
+the device: Party is unranked and records no score. An answer already with the
+server when the fuse goes off is judged first; if it passes the phone on, the
+next player is holding it.
+
 ### Not built yet
 
-- **Multiplayer** — private rooms and a hot-potato party mode.
-- An admin screen for the review queue (staff use the SQL function above).
+- **Private rooms** (signed-in players only) and an online hot-potato variant
+  played across phones in a room.
 - Questions in Albanian: the screens are translated, the questions and answers are
   English.
 

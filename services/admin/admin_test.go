@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -53,6 +54,9 @@ type fakeBackend struct {
 	feedback   []supabaseadmin.Feedback
 	categories []supabaseadmin.Category
 	log        []supabaseadmin.ModerationAction
+
+	deepCutReviews []supabaseadmin.DeepCutReview
+	deepCutAnswers []supabaseadmin.DeepCutAnswer
 
 	action    supabaseadmin.ActionResult
 	actionErr error
@@ -985,4 +989,30 @@ func (f *fakeBackend) SendBroadcast(_ context.Context, token, actor, title, body
 	f.record("SendBroadcast", title, body, link)
 	f.lastActor = actor
 	return supabaseadmin.BroadcastResult{ID: "broadcast-1", Recipients: 3}, nil
+}
+
+func (f *fakeBackend) DeepCutReviews(_ context.Context, token, actor, verdict, search string, page supabaseadmin.Page) ([]supabaseadmin.DeepCutReview, error) {
+	f.record("DeepCutReviews", verdict, search)
+	f.lastPage = page
+	f.lastToken = token
+	f.lastActor = actor
+	return f.deepCutReviews, f.readErr
+}
+
+func (f *fakeBackend) DeepCutAnswers(_ context.Context, token, actor string, questionID int) ([]supabaseadmin.DeepCutAnswer, error) {
+	f.record("DeepCutAnswers", strconv.Itoa(questionID))
+	f.lastActor = actor
+	return f.deepCutAnswers, f.readErr
+}
+
+func (f *fakeBackend) RuleDeepCut(_ context.Context, token, actor string, questionID int, key, verdict, canonical string, tier int) (supabaseadmin.DeepCutRuling, error) {
+	f.record("RuleDeepCut", strconv.Itoa(questionID), key, verdict, canonical, strconv.Itoa(tier))
+	f.lastActor = actor
+	return supabaseadmin.DeepCutRuling{QuestionID: questionID, Key: key, Verdict: verdict}, f.actionErr
+}
+
+func (f *fakeBackend) SetDeepCutTier(_ context.Context, token, actor string, answerID, tier int) (supabaseadmin.DeepCutRetier, error) {
+	f.record("SetDeepCutTier", strconv.Itoa(answerID), strconv.Itoa(tier))
+	f.lastActor = actor
+	return supabaseadmin.DeepCutRetier{AnswerID: answerID, PreviousTier: 3, Tier: tier}, f.actionErr
 }
