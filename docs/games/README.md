@@ -1966,11 +1966,12 @@ it against the question's spellings, in order:
 An unknown spelling is judged **once**, and the verdict is cached for every later
 player (`deep_cut_reviews`):
 
-- With `ANTHROPIC_API_KEY` and `DEEP_CUT_JUDGE_KEY` set on the API, the
-  game-sessions service holds the answer (`p_final = false`), asks Claude
-  (`services/game-sessions/internal/deepcutjudge`, default model
-  `claude-haiku-5-5`, overridable with `DEEP_CUT_JUDGE_MODEL`) with a forced tool
-  call, records the ruling with `deep_cut_record_review`, and settles the answer.
+- With `GROQ_API_KEY` and `DEEP_CUT_JUDGE_KEY` set on the API, the
+  game-sessions service holds the answer (`p_final = false`), asks a model on
+  Groq (`services/game-sessions/internal/deepcutjudge`, default
+  `openai/gpt-oss-120b` with low reasoning effort, overridable with
+  `DEEP_CUT_JUDGE_MODEL`) with a forced function call, records the ruling with
+  `deep_cut_record_review`, and settles the answer.
   The model can only say *another name for this listed answer* (which then scores
   that answer's curated tier), *a new answer* (its tier clamped to 2–5 — never
   the surface, never the abyss, so a plausible fabrication can't be worth 100), or

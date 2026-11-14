@@ -64,7 +64,7 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       # Deep Cut's optional AI judge; leave both empty to have staff review instead.
-      - key: ANTHROPIC_API_KEY
+      - key: GROQ_API_KEY
         sync: false
       - key: DEEP_CUT_JUDGE_KEY
         sync: false

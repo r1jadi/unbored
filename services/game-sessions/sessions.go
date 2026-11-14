@@ -478,11 +478,11 @@ func Options() servicekit.Options {
 }
 
 // deepCutJudgingFromEnv builds the Deep Cut AI judge when the deployment has both
-// an Anthropic key and the judge key whose hash the database holds
+// a Groq key and the judge key whose hash the database holds
 // (`deep_cut_judge_keys`). Without either, unknown answers wait for staff review.
 func deepCutJudgingFromEnv(logger *slog.Logger) *deepCutJudging {
 	judgeKey := config.Getenv("DEEP_CUT_JUDGE_KEY")
-	apiKey := config.Getenv("ANTHROPIC_API_KEY")
+	apiKey := config.Getenv("GROQ_API_KEY")
 	if judgeKey == "" || apiKey == "" {
 		logger.Info("the Deep Cut AI judge is off; unknown answers wait for review")
 		return nil
