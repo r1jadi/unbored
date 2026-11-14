@@ -50,3 +50,17 @@ description = "Supabase session captured during QA, deleted in the next commit �
 # from Supabase → Authentication → Sessions ("sign out all users"), or with the
 # service role key: POST /auth/v1/admin/users/<id>/logout?scope=global.
 commits = ["afc8293f4dade8538ca9b1533901008801b6e583"]
+
+[[allowlists]]
+description = "Model name beside a fake key in the Deep Cut judge test, not a credential"
+# generic-api-key fires on `New("test-key", "llama-3.3-70b-versatile")` in
+# services/game-sessions/internal/deepcutjudge/judge_test.go: a high-entropy
+# literal right after an argument named for a key. The key is the placeholder
+# "test-key" and the other value is a public Groq model name; the call goes to a
+# local httptest server. Checked by hand: that commit holds no real Groq key and
+# not the Deep Cut judge key. The line was rewritten in the next commit (the name
+# is now a constant), so nothing later depends on this entry.
+#
+# Scoped to the one commit, as above: a commit is immutable, so this can hide
+# only the finding that exists in it, never a secret committed later.
+commits = ["277fbc63a7bb1de88e6ff23bcccad0db519d8ea0"]
