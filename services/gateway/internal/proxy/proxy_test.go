@@ -273,9 +273,8 @@ func TestUpstreamSecurityHeadersAreNotDuplicated(t *testing.T) {
 func TestLongestPrefixWins(t *testing.T) {
 	// Every group in the routing table must be proxied to the service the table
 	// names. Two of them are served by a deployment whose name is not their own
-	// (the play sessions and the admin API are mounted in the games service,
-	// because Vercel's Go preset gives a service root three entrypoint names and
-	// all three are taken), so the mapping is asserted from the table rather than
+	// (the play sessions and the admin API are mounted beside the catalogue in
+	// the games service), so the mapping is asserted from the table rather than
 	// assumed from the prefix.
 	// Every service in the table gets an upstream, so every group is routed.
 	upstreams := map[string]string{}

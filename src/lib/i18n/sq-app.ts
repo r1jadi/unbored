@@ -76,8 +76,8 @@ export const sqApp: Record<string, string> = {
     "Ndrysho cilësimet e profilit, privatësisë, njoftimeve, gjuhës, pamjes, aksesueshmërisë dhe përdoruesve të bllokuar te Cilësimet; çdo kontroll i mbështetur ruhet dhe hyn në fuqi siç përshkruhet në ekranin e tij. Kontrollet e pambështetura (push, dërgimi i email-eve, MFA, listat e sesioneve për pajisje) shënohen si të padisponueshme në vend që të simulohen. Për të kërkuar qasje, korrigjim ose fshirje, hap një çështje në gjurmuesin e projektit nga llogaria jote derisa të publikohet një kontakt i dedikuar për privatësinë.",
   "Games, artwork, branding and the app itself remain the property of their respective owners. You may not copy, redistribute or misrepresent them.":
     "Lojërat, grafika, marka dhe vetë aplikacioni mbeten pronë e pronarëve përkatës. Nuk lejohet t'i kopjosh, rishpërndash apo paraqesësh gabim.",
-  "Hosting and API: Vercel (web app, Go gateway and Go services on one domain). Identity, database and storage: Supabase (Auth, Postgres with Row Level Security, Storage). OAuth, when enabled: Google. No other processors are used by this deployment.":
-    "Hostimi dhe API: Vercel (aplikacioni web, porta Go dhe shërbimet Go në një domen). Identiteti, baza e të dhënave dhe ruajtja: Supabase (Auth, Postgres me Row Level Security, Storage). OAuth, kur aktivizohet: Google. Ky vendosje nuk përdor përpunues të tjerë.",
+  "Hosting: Cloudflare (web app, domain and DNS). API: Render (the Go services at api.unbored.lol, in Frankfurt). Identity, database and storage: Supabase (Auth, Postgres with Row Level Security, Storage). OAuth, when enabled: Google. No other processors are used by this deployment.":
+    "Hostimi: Cloudflare (aplikacioni web, domeni dhe DNS). API: Render (shërbimet Go në api.unbored.lol, në Frankfurt). Identiteti, baza e të dhënave dhe ruajtja: Supabase (Auth, Postgres me Row Level Security, Storage). OAuth, kur aktivizohet: Google. Ky vendosje nuk përdor përpunues të tjerë.",
   "How we use it": "Si i përdorim",
   Infrastructure: "Infrastruktura",
   "Last updated October 17, 2026": "Përditësuar më 17 tetor 2026",
@@ -99,8 +99,8 @@ export const sqApp: Record<string, string> = {
   "Scores must be earned by playing in the app. Play sessions are created server-side and scores are recorded against them; only published games appear on leaderboards. Automated play, exploiting bugs, manipulating sessions or leaderboard abuse may lead to score removal, content removal or account restriction.":
     "Rezultatet duhet të fitohen duke luajtur në aplikacion. Sesionet e lojës krijohen në server dhe rezultatet regjistrohen kundrejt tyre; vetëm lojërat e publikuara shfaqen në renditje. Loja e automatizuar, shfrytëzimi i gabimeve, manipulimi i sesioneve ose abuzimi me renditjet mund të çojnë në heqjen e rezultateve, të përmbajtjes ose në kufizimin e llogarisë.",
   "Storage, cookies and local data": "Ruajtja, cookies dhe të dhënat lokale",
-  "The service is provided as-is and may change, including games, scores display, social features and rate limits. Authentication and hosting run on Supabase and Vercel; Google sign-in, when enabled, is subject to Google's terms. No uptime, response-time or support promise is made in this document.":
-    "Shërbimi ofrohet siç është dhe mund të ndryshojë, përfshirë lojërat, shfaqjen e rezultateve, veçoritë sociale dhe kufizimet. Identifikimi dhe hostimi funksionojnë në Supabase dhe Vercel; identifikimi me Google, kur aktivizohet, i nënshtrohet kushteve të Google. Ky dokument nuk premton kohë funksionimi, kohë përgjigjeje apo mbështetje.",
+  "The service is provided as-is and may change, including games, scores display, social features and rate limits. Authentication runs on Supabase, the website on Cloudflare and the API on Render; Google sign-in, when enabled, is subject to Google's terms. No uptime, response-time or support promise is made in this document.":
+    "Shërbimi ofrohet siç është dhe mund të ndryshojë, përfshirë lojërat, shfaqjen e rezultateve, veçoritë sociale dhe kufizimet. Identifikimi funksionon në Supabase, faqja në Cloudflare dhe API në Render; identifikimi me Google, kur aktivizohet, i nënshtrohet kushteve të Google. Ky dokument nuk premton kohë funksionimi, kohë përgjigjeje apo mbështetje.",
   "To create and secure accounts, verify email, run play sessions and leaderboards, render profiles and follow graphs, deliver in-app notifications for genuine events (such as new followers), enforce blocks and privacy choices, moderate reported content, and keep the platform safe within rate limits.":
     "Për të krijuar dhe siguruar llogaritë, verifikuar email-in, drejtuar sesionet e lojës dhe renditjet, shfaqur profilet dhe lidhjet e ndjekjes, dërguar njoftime në aplikacion për ngjarje të vërteta (si ndjekës të rinj), zbatuar bllokimet dhe zgjedhjet e privatësisë, moderuar përmbajtjen e raportuar dhe mbajtur platformën të sigurt brenda kufizimeve.",
   "Unbored is a web catalogue of short playable games with accounts, profiles, scores, leaderboards, follows, notifications and moderation. Browsing the catalogue is public; scoring, following, notifications and settings require an account.":
@@ -905,8 +905,8 @@ export const sqApp: Record<string, string> = {
   "Essentials only": "Vetëm të domosdoshmet",
   "Go on, have a bite.": "Hajde, kafshoje një herë.",
   "Okay, you clearly like cookies.": "Në rregull, dukesh se i do biskotat.",
-  "PostHog and Vercel Analytics count visits and how games are played. They set cookies, so they only start if you accept. No ads, ever.":
-    "PostHog dhe Vercel Analytics numërojnë vizitat dhe si luhen lojërat. Vendosin cookies, ndaj nisin vetëm nëse pranon. Asnjë reklamë, kurrë.",
+  "PostHog counts visits and how games are played. It sets cookies, so it only starts if you accept. No ads, ever.":
+    "PostHog numëron vizitat dhe si luhen lojërat. Vendos cookies, ndaj niset vetëm nëse pranon. Asnjë reklamë, kurrë.",
   "Psst — want a cookie?": "Pss — do një biskotë?",
   Show: "Shfaq",
   "Take a bite of the cookie": "Kafsho biskotën",

@@ -5,9 +5,10 @@
 // that owns that group (services/internal/apiroutes). Services behind it repeat
 // authentication locally, so a routing mistake here cannot hand out access.
 //
-// The gateway is not part of the Vercel deployment: there, vercel.json routes each
-// group straight to its service (docs/decisions/0015-direct-service-routing.md),
-// because every service already runs the same middleware chain. It remains the
+// The gateway is not part of the production deployment: there, one process
+// (services/cmd/standalone) mounts every group
+// (docs/decisions/0016-cloudflare-and-render-hosting.md), and every service
+// already runs the same middleware chain. It remains the
 // single local entrypoint (scripts/dev-stack.mjs) and the shape for any host that
 // runs the services as plain processes. No database credentials, no service key.
 package gateway

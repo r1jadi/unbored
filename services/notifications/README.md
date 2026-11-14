@@ -57,7 +57,8 @@ Nothing is sent until all of this is done, and nothing breaks before it is.
    npx web-push generate-vapid-keys
    ```
 
-2. Set these in the Vercel project, then redeploy:
+2. Set these, then redeploy — `VITE_VAPID_PUBLIC_KEY` as a Cloudflare build
+   variable, the rest on Render:
 
    | Variable | Value |
    | --- | --- |
@@ -72,7 +73,7 @@ Nothing is sent until all of this is done, and nothing breaks before it is.
    Use the same value as `CRON_SECRET`, and check that the `pg_net` extension is on:
 
    ```sql
-   select vault.create_secret('https://unbored.lol/api/v1/cron/push-dispatch', 'push_dispatch_url');
+   select vault.create_secret('https://api.unbored.lol/api/v1/cron/push-dispatch', 'push_dispatch_url');
    select vault.create_secret('<CRON_SECRET>', 'push_dispatch_secret');
    ```
 
@@ -85,15 +86,14 @@ pg_net made are in `net._http_response`.
 
 ## What triggers it
 
-`vercel.json` schedules a daily request to
-`GET /api/v1/cron/game-digests`. Vercel Cron sends
+The GitHub Actions workflow [`cron.yml`](../../.github/workflows/cron.yml) sends a
+daily request to `GET /api/v1/cron/game-digests` (09:00 UTC). It sends
 `Authorization: Bearer $CRON_SECRET`, and the route answers `401` otherwise. With
 `CRON_SECRET` unset the route answers `503`: there is no open mail trigger.
 
-The route is served by the `notifications` package mounted in the **games**
-deployment, not by a deployment of its own. That deployment already holds
-`SUPABASE_SECRET_KEY` for the admin bridge, and Vercel's Go preset has no
-remaining entrypoint slot for another service. The local
+The route is served by the `notifications` package mounted in the single API
+process on Render (`services/cmd/standalone`), not by a deployment of its own;
+that process already holds `SUPABASE_SECRET_KEY` for the admin bridge. The local
 `services/notifications/cmd/notifications` binary mounts the same package.
 
 ## How a digest is assembled
@@ -138,9 +138,9 @@ rather than retried forever, so one bad mailbox cannot hold the queue.
 | `RESEND_API_KEY` | Sending. Without it the route answers `503` |
 | `EMAIL_FROM` | Verified Resend sender, e.g. `Unbored <hello@unbored.lol>` |
 | `PUBLIC_SITE_URL` | Play and preferences links. Falls back to `https://unbored.lol` |
-| `CRON_SECRET` | Shared secret Vercel Cron presents. Unset disables the route |
+| `CRON_SECRET` | Shared secret the cron workflow presents. Unset disables the route |
 
-Set `CRON_SECRET` in the Vercel project (Production and Preview are independent).
+Set `CRON_SECRET` on Render and, with the same value, as a GitHub Actions secret.
 Resend must have `unbored.lol` verified, as described in
 [docs/development/analytics-and-email.md](../../docs/development/analytics-and-email.md).
 

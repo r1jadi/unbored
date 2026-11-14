@@ -1,5 +1,5 @@
 # Render Blueprint for the API (free plan). The website itself is served by
-# Cloudflare Workers; see docs/deployment/free-hosting.md.
+# Cloudflare Workers; see docs/deployment/production.md.
 #
 # Frankfurt sits next to the Supabase database (eu-west-1, Ireland); a US region
 # adds a transatlantic round trip to every query. The site reaches the API at

@@ -6,8 +6,9 @@
 // how-to-play text and link, sends it through Resend, and records every outcome so
 // a retry does not mail anyone twice.
 //
-// The endpoint is not a user route: it is called by Vercel Cron and authenticated
-// with CRON_SECRET, which Vercel sends as `Authorization: Bearer …`. Without the
+// The endpoint is not a user route: it is called by the daily cron
+// (.github/workflows/cron.yml) and authenticated with CRON_SECRET, sent as
+// `Authorization: Bearer …`. Without the
 // secret the route answers 503 rather than becoming an open mail trigger.
 package notifications
 
@@ -32,7 +33,7 @@ import (
 // Name is the service name used in logs and configuration validation.
 const Name = "notifications"
 
-// DigestPath is the machine-triggered route Vercel Cron calls. It lives under
+// DigestPath is the machine-triggered route the daily cron calls. It lives under
 // /api/v1/cron, a prefix the gateway forwards to the games deployment, because
 // that deployment holds the secret key and the admin bridge already there.
 const DigestPath = "/api/v1/cron/game-digests"

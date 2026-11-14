@@ -14,13 +14,14 @@ not edit history.
 | [0006](0006-dependency-and-lockfile-policy.md)   | `bun.lock` is authoritative; no dependency is added without updating it                              | Accepted                   |
 | [0007](0007-database-authorization-model.md)     | Grants plus RLS, with privileges in a separate table                                                 | Accepted                   |
 | [0008](0008-browser-data-access.md)              | The browser talks to `/api/v1` for domain data; Supabase directly only for auth and storage          | Accepted (amended by 0014) |
-| [0009](0009-vercel-deployment-topology.md)       | The Go gateway deploys as a service of the existing Vercel project, on the platform's port           | Accepted (amended by 0010, 0015) |
+| [0009](0009-vercel-deployment-topology.md)       | The Go gateway deploys as a service of the existing Vercel project, on the platform's port           | Superseded by 0016         |
 | [0010](0010-auth-service-deployment-topology.md) | The auth service deploys as a private Vercel service, reached by a binding from a container gateway  | Superseded by 0015         |
-| [0011](0011-users-service-and-real-profile.md)   | The users service serves the real profile, deployed privately beside auth                            | Accepted (amended by 0015) |
+| [0011](0011-users-service-and-real-profile.md)   | The users service serves the real profile, deployed privately beside auth                            | Accepted (amended by 0015, 0016) |
 | [0012](0012-server-verified-scores.md)           | Scores are verified by the database, and the session service holds no master key                     | Accepted                   |
 | [0013](0013-admin-authorization.md)              | Admin authorization is a database row checked on every request, and roles are granted by an operator | Accepted                   |
 | [0014](0014-realtime-direct-messages.md)         | Direct messages use the Data API and Realtime directly, and Realtime carries no text                 | Accepted                   |
-| [0015](0015-direct-service-routing.md)           | Vercel routes each API group straight to its service; the gateway container is retired               | Accepted                   |
+| [0015](0015-direct-service-routing.md)           | Vercel routes each API group straight to its service; the gateway container is retired               | Superseded by 0016         |
+| [0016](0016-cloudflare-and-render-hosting.md)    | Website on Cloudflare Workers, API on Render as one process, crons on GitHub Actions                 | Accepted                   |
 
 ## Template
 

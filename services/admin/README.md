@@ -119,7 +119,7 @@ indistinguishable from a measured one.
 ## The ADMIN_EMAILS allowlist
 
 `ADMIN_EMAILS` (exact name, never a `VITE_` variable) grants administrator
-access to the accounts it names, managed in Vercel rather than in SQL:
+access to the accounts it names, managed in the API's environment on Render rather than in SQL:
 
 ```dotenv
 ADMIN_EMAILS=admin@example.com,another@example.com
@@ -141,7 +141,7 @@ Rules:
   and admin claims.
 - **Immediate.** Read on every request, so removing an address revokes on the
   next call — not when a token expires and not from any client-cached role.
-  (On Vercel an env change redeploys; the fresh process reads the new value.)
+  (On Render an env change restarts the service; the fresh process reads the new value.)
   No database cleanup or manual role change is required.
 
 ### How it relates to database roles and RLS
@@ -183,7 +183,7 @@ cd services
 go run ./admin/cmd/admin          # the admin service alone, on the platform port
 ```
 
-Locally it is normally reached through the gateway, which routes by prefix the way `vercel.json` does in production:
+Locally it is normally reached through the gateway, which routes by prefix to the same packages production mounts:
 
 ```bash
 curl -sS -H "Authorization: Bearer $ACCESS_TOKEN" \
@@ -195,13 +195,11 @@ with `This area requires a moderator account.`
 
 ## Deployment
 
-The routes are served by the **games deployment**, which mounts this package
-beside the catalogue and the play sessions: Vercel's Go preset gives a service root
-three entrypoint names and all three are taken, and a second container service at
-the same root is not detected (see
-[docs/deployment/vercel.md](../../docs/deployment/vercel.md)). The routing table
-lists `/api/v1/admin` under the service that answers it, and `vercel.json` sends
-every such path to the games deployment with no extra configuration.
+The routes are served by the single API process on Render
+([`services/cmd/standalone`](../cmd/standalone/main.go)), which mounts this package
+beside every other group (see
+[docs/deployment/production.md](../../docs/deployment/production.md)). The routing
+table lists `/api/v1/admin` under the service that answers it.
 
 Sharing a process shares no privilege beyond what is configured: these routes
 verify a token and authorize on every request, exactly as they would in a

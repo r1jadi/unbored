@@ -1,11 +1,13 @@
 // Command standalone runs the whole public API — auth, users, the catalogue, play
 // sessions, admin and the digest/feedback crons — in one process.
 //
-// It exists for hosts that run a single container (Render, Fly, Cloud Run, a
-// VPS), where splitting the API into three deployments the way vercel.json does
-// would cost three always-on instances. The route groups are the same packages
-// the Vercel entrypoints mount (services/main.go, services/cmd/server,
-// services/cmd/api); only the process boundary differs.
+// This is the production API: Render runs it from
+// infrastructure/docker/api.Dockerfile (render.yaml) at api.unbored.lol — see
+// docs/deployment/production.md and docs/decisions/0016-cloudflare-and-render-hosting.md.
+// One container is one always-on instance, where the old Vercel split needed
+// three. The route groups are the same packages the legacy Vercel entrypoints
+// mount (services/main.go, services/cmd/server, services/cmd/api); only the
+// process boundary differs.
 //
 //	go run ./cmd/standalone          # from services/
 //

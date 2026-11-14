@@ -1,12 +1,17 @@
-// Command services is the Vercel deployment entrypoint for the catalogue, the
-// play sessions and the admin API.
+// Command services is the former Vercel deployment entrypoint for the catalogue,
+// the play sessions and the admin API.
+//
+// Legacy: no longer deployed. Production runs every route group in one process,
+// services/cmd/standalone, on Render (docs/decisions/0016-cloudflare-and-render-hosting.md).
+// This entrypoint is kept, and built in CI, so a return to Vercel stays a config
+// change.
 //
 // Vercel's Go framework preset builds a service from a root `go.mod` plus one of
 // exactly three entrypoint names — `main.go`, `cmd/api/main.go`,
 // `cmd/server/main.go`. Auth owns `cmd/server` and users owns `cmd/api`, so the
 // remaining slot is this file. There is no fourth slot, and a second container
 // service at the same root was measured not to be detected at all (see
-// docs/deployment/vercel.md), so the route groups below are mounted here together.
+// docs/deployment/archive/vercel.md), so the route groups below are mounted here together.
 //
 // vercel.json routes /api/v1/auth/* and /api/v1/users/* to their own services and
 // every other /api/v1 path here, with no gateway in between
@@ -56,8 +61,8 @@ func serve() servicekit.Options {
 	digests := notifications.Options()
 
 	options := catalogue
-	// This deployment is also where every /api/v1 path that isn't auth or users
-	// lands (vercel.json), so it answers what the gateway used to: the version
+	// On Vercel this deployment was also where every /api/v1 path that wasn't
+	// auth or users landed (vercel.json), so it answers what the gateway used to: the version
 	// route, and a 503 for a group nothing deploys yet.
 	options.Register = apiroutes.RegisterVersion
 	extra := catalogue.ExtraHandlers

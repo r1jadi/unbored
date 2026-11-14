@@ -63,7 +63,7 @@ func newAllowlistServer(t *testing.T, backend Backend) (*httptest.Server, func(s
 
 // TestAllowlistedEmailIsAdminWithoutARowOrClaim: a verified email in
 // ADMIN_EMAILS is an administrator even when the token claim says user and the
-// database row says user. This is the Vercel-managed path: no claim edit, no
+// database row says user. This is the environment-managed path: no claim edit, no
 // row edit — the Go layer authorizes from the allowlist.
 func TestAllowlistedEmailIsAdminWithoutARowOrClaim(t *testing.T) {
 	t.Setenv("ADMIN_EMAILS", "admin@example.com")

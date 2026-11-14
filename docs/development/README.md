@@ -16,7 +16,7 @@ Quick reference:
 bun run dev            # web app on :8081
 bun run typecheck      # tsc --noEmit
 bun run test           # vitest
-bun run build          # the command Vercel runs
+bun run build          # the command Cloudflare runs
 ./scripts/test-rls.sh  # migrations + 50+ RLS assertions on throwaway Postgres
 cd services && go test ./...
 ```

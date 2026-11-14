@@ -33,7 +33,7 @@ reviewer remembering.
 | `scripts/test-rls.sh` | pass — migrations applied to an empty Postgres 16, 50+ assertions green |
 | `vitest run` | pass — 19 tests |
 | `tsc --noEmit`, `eslint` on every changed file | clean |
-| `npm run build` | pass — the Vercel build path is intact |
+| `npm run build` | pass — the production build path is intact |
 | `gitleaks detect` over the full history | no leaks found |
 | `node scripts/check-api-contract.mjs` | pass — 16 routed groups documented across 25 paths |
 | `redocly lint` on the contract | valid |
@@ -63,7 +63,7 @@ curl -s localhost:8080/api/v1/admin/users                         # 503 (no upst
 ```
 
 The deployed equivalent of those four calls, and what each one proves, is in
-[deployment/vercel.md](../deployment/vercel.md#deploying).
+[deployment/production.md](../deployment/production.md#verifying-a-deploy).
 
 ## What is not covered
 

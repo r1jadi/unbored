@@ -5,9 +5,9 @@
 | Environment     | Purpose                     | Web                             | API                                                                           | Database                                                |
 | --------------- | --------------------------- | ------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------- |
 | **development** | a developer's machine       | `npm run dev` on `:8081`        | `go run ./gateway/cmd/gateway` on `:8080`                                     | local Supabase (`supabase start`) or the Docker harness |
-| **preview**     | one per pull request        | Vercel preview                  | Vercel preview (same deployment, `development`-like config)                   | staging project (read-only data)                        |
-| **staging**     | pre-production verification | Vercel preview of `main`        | same deployment as production, separate config                                | separate Supabase project                               |
-| **production**  | users                       | `https://unbored.lol` | `https://unbored.lol/api/v1` (a service of the same Vercel project) | hosted Supabase project                                 |
+| **preview**     | checking a branch           | Cloudflare `*.workers.dev` preview build, if enabled | the production API (add the preview origin to `CORS_ALLOWED_ORIGINS`) | hosted Supabase project |
+| **staging**     | pre-production verification | not set up                      | not set up                                                                    | separate Supabase project, once it exists               |
+| **production**  | users                       | `https://unbored.lol` (Cloudflare Workers) | `https://api.unbored.lol/api/v1` (Render, Frankfurt) | hosted Supabase project                                 |
 
 `ENVIRONMENT` drives the hardening rules: a wildcard CORS origin, an empty CORS
 allowlist, missing auth material, a non-HTTPS JWKS URL and a disabled rate limiter
@@ -37,14 +37,14 @@ is updated before another. `VITE_SUPABASE_ANON_KEY` is still read as a fallback 
 
 | Variable                                                                                    | Read by                                                | Why it is secret                                                                                                                                                                                                             |
 | ------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SUPABASE_SECRET_KEY`                                                                       | web SSR, Go services (reserved — no code reads it yet) | bypasses RLS; the current name for the service role key                                                                                                                                                                      |
+| `SUPABASE_SECRET_KEY`                                                                       | Go API (admin bridge, digests, username sign-in, avatar publish) | bypasses RLS; the current name for the service role key                                                                                                                                                                      |
 | `SUPABASE_JWT_SECRET`                                                                       | Go services                                            | forges tokens in legacy HS256 projects                                                                                                                                                                                       |
 | `SUPABASE_JWKS_URL`, `SUPABASE_URL`, `SUPABASE_JWT_AUDIENCE`, `SUPABASE_JWT_ISSUER`         | Go services                                            | project metadata, not secret, but server-side                                                                                                                                                                                |
 | `SUPABASE_PUBLISHABLE_KEY`                                                                  | the auth and users services                            | the browser is given the same value, so it is not secret — but only the server needs to make Auth API and Data API calls                                                                                                     |
 | `CORS_ALLOWED_ORIGINS`, `RATE_LIMIT_*`, `LOG_*`, `HTTP_ADDR`, `ENVIRONMENT`, `SERVICE_NAME` | Go services                                            | service configuration                                                                                                                                                                                                        |
 | `ADMIN_EMAILS`                                                                              | Go API (gateway, games/admin, moderation, analytics)   | single source of truth for admin access: comma-separated verified account emails, compared case-insensitively per request; missing/empty grants no one; token claims and `user_roles` rows never grant; never a `VITE_` name |
 | `PUBLIC_SITE_URL` (`SITE_URL` fallback)                                                     | auth service                                           | not secret: origin proposed as Supabase `emailRedirectTo` (`/auth/callback`); the Supabase redirect allowlist decides whether it is honoured                                                                                 |
-| `NITRO_PRESET`                                                                              | web service (Vercel)                                   | build preset, not secret: must be `vercel` on Vercel because the repo config defaults Nitro to a Cloudflare worker                                                                                                           |
+| `NITRO_PRESET`                                                                              | web build                                              | build preset, not secret: optional — the repo config already defaults Nitro to `cloudflare_module` (Cloudflare Workers); set `node-server` for a Node build                                                                  |
 | `UPSTREAM_*_URL`                                                                            | gateway                                                | internal addresses                                                                                                                                                                                                           |
 | `RAIACCEPT_*`                                                                               | payments service (later)                               | payment credentials                                                                                                                                                                                                          |
 
@@ -61,11 +61,13 @@ leaked — see [security/env-and-secrets.md](../security/env-and-secrets.md).
 | Environment                        | Mechanism                                                                                                                                                                                                                                                                                                    |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | development                        | `.env.local` (web), shell environment or a `direnv`-style loader (Go)                                                                                                                                                                                                                                        |
-| preview / production (web and API) | Vercel → Project → Settings → Environment Variables, scoped per environment. Variables are project-scoped, so the web service and the API service read the same set; only `VITE_*` names reach the browser bundle. The required set and exact values are in [deployment/vercel.md](../deployment/vercel.md). |
-| any other API host                 | the platform's secret store (e.g. a mounted env file or container secrets) — never a committed file                                                                                                                                                                                                          |
+| production web                     | Cloudflare → the Worker → Settings → **Build** variables. Only public `VITE_*` values; they are compiled into the bundle, so a change needs a redeploy. |
+| production API                     | Render → `unbored-api-eu` → **Environment**. Plain values are committed in [`render.yaml`](../../render.yaml); secrets are `sync: false` there and entered only on the dashboard. |
+| crons                              | GitHub → Settings → Secrets and variables → Actions: `API_ORIGIN` and `CRON_SECRET`. |
 
-Vercel scoping matters: a preview deployment must not receive production
-secrets. Set public values for all environments and secrets only for Production.
+The exact set and values are in [deployment/production.md](../deployment/production.md#environment-variables).
+The website and the API no longer share one variable store: the browser build
+never sees a server secret, because the Worker is never given one.
 
 ## How to find each value
 
@@ -95,18 +97,18 @@ onto the names in this repository.
 
 | Value                                   | Where a human gets it                                                                                                                                                                                                                                                                                                                                                                                                               |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `VITE_PUBLIC_SITE_URL`                  | The origin the app is actually served from: the custom domain, otherwise the Vercel production domain.                                                                                                                                                                                                                                                                                                                              |
-| `VITE_API_BASE_URL`                     | The deployed gateway's origin: `https://unbored.lol/api/v1` in production, `http://localhost:8080/api/v1` locally. Empty means same-origin `/api/v1`, which is also correct in production now that the gateway is part of the same deployment. A localhost value baked into a production build fails every call as a network error; the client ignores it on non-localhost pages but the dashboard value must be correct. |
+| `VITE_PUBLIC_SITE_URL`                  | The origin the app is actually served from: `https://unbored.lol` in production.                                                                                                                                                                                                                                                                                                                              |
+| `VITE_API_BASE_URL`                     | The API's base URL: `https://api.unbored.lol/api/v1` in production, `http://localhost:8080/api/v1` locally. Empty means same-origin `/api/v1`, which is **wrong** in production now that the API is on its own origin. A localhost value baked into a production build fails every call as a network error; the client ignores it on non-localhost pages but the dashboard value must be correct. |
 | `PUBLIC_SITE_URL` (`SITE_URL` fallback) | The origin the auth service proposes for Supabase email-confirmation/recovery links: `https://unbored.lol` in production. Must also be allowlisted in Supabase → Authentication → URL Configuration → Redirect URLs (`…/auth/callback`).                                                                                                                                                                                  |
-| `NITRO_PRESET`                          | `vercel` on Vercel (all environments). Without it the web service emits a Cloudflare worker (`.output/nitro.json` with `"preset": "cloudflare-module"`); local `vite dev` does not use it.                                                                                                                                                                                                                                          |
-| `ENVIRONMENT`                           | Chosen, not found: `development` locally, `production` on Vercel, `staging` on a staging host. It selects the hardening rules in `config.Validate`.                                                                                                                                                                                                                                                                                 |
+| `NITRO_PRESET`                          | Optional. Unset, `vite build` emits a Cloudflare worker (`.output/nitro.json` with `"preset": "cloudflare-module"`), which is what production deploys. `node-server` gives a Node build; local `vite dev` does not use it.                                                                                                                                                                                                                                          |
+| `ENVIRONMENT`                           | Chosen, not found: `development` locally, `production` on Render, `staging` on a staging host. It selects the hardening rules in `config.Validate`.                                                                                                                                                                                                                                                                                 |
 | `SERVICE_NAME`                          | Chosen: the service being run (`gateway`, `auth`, …), used in logs.                                                                                                                                                                                                                                                                                                                                                                 |
-| `HTTP_ADDR`                             | Chosen: the port the service listens on. Set `:8080` locally; on Vercel leave it unset, because the platform injects `PORT` and `config.Load` prefers `HTTP_ADDR`, then `PORT_HTTP`, then `PORT`.                                                                                                                                                                                                                                   |
+| `HTTP_ADDR`                             | Chosen: the port the service listens on. Set `:8080` locally; on Render leave it unset, because the platform injects `PORT` and `config.Load` prefers `HTTP_ADDR`, then `PORT_HTTP`, then `PORT`.                                                                                                                                                                                                                                   |
 | `LOG_LEVEL`, `LOG_FORMAT`               | Chosen: `debug`/`info`/`warn`/`error` and `json`/`text`.                                                                                                                                                                                                                                                                                                                                                                            |
-| `CORS_ALLOWED_ORIGINS`                  | The exact browser origins the web app is served from — dev server, Vercel production and preview domains. Comma-separated, no wildcard outside development.                                                                                                                                                                                                                                                                         |
+| `CORS_ALLOWED_ORIGINS`                  | The exact browser origins the web app is served from — dev server, `https://unbored.lol` and `https://www.unbored.lol`, and any Cloudflare preview origin. Comma-separated, no wildcard outside development.                                                                                                                                                                                                                                                                         |
 | `RATE_LIMIT_*`                          | Tuned from observed traffic, not discovered. Defaults suit a single instance; raise them deliberately.                                                                                                                                                                                                                                                                                                                              |
 | `AUTH_RATE_LIMIT_*`                     | The credential budget for the auth endpoints, metered per client and per account. Defaults to 10/minute with a burst of 5, deliberately far tighter than `RATE_LIMIT_*` because every attempt can verify a password.                                                                                                                                                                                                                |
-| `UPSTREAM_*_URL`                        | The private address of each deployed service. Unset means the gateway answers `503` for that route group, which is the intended state before an API host exists. Only the local gateway reads them: on Vercel each group is routed straight to its service ([0015](../decisions/0015-direct-service-routing.md)), so they are never set there. |
+| `UPSTREAM_*_URL`                        | The private address of each deployed service. Unset means the gateway answers `503` for that route group, which is the intended state before an API host exists. Only the local gateway reads them: in production every group is mounted in one process ([0016](../decisions/0016-cloudflare-and-render-hosting.md)), so they are never set there. |
 | `RAIACCEPT_*`                           | The RaiAccept merchant dashboard, once payments start. Not read by any service today.                                                                                                                                                                                                                                                                                                                                               |
 | Database password / connection string   | Supabase dashboard → **Project Settings → Database → Connection string** (or `supabase status` → _Database_ → URL locally). Nothing in this repository stores it: migrations run through the CLI, which keeps its own session.                                                                                                                                                                                                      |
 
@@ -145,9 +147,9 @@ UPSTREAM_GAMES_URL=http://localhost:8084 \
 
 The gateway proxies `/api/v1/auth/*` to `UPSTREAM_AUTH_URL`, `/api/v1/users/*` to
 `UPSTREAM_USERS_URL` and `/api/v1/games/*` (plus `/api/v1/categories`) to
-`UPSTREAM_GAMES_URL`. Locally those values are set by hand. On Vercel there is no
-gateway: `vercel.json` routes the same prefixes straight to the deployed services,
-so the routing is the same and only the process doing it differs. `services/auth/README.md`
+`UPSTREAM_GAMES_URL`. Locally those values are set by hand. In production there is no
+gateway: `services/cmd/standalone` mounts the same groups in one process, so the
+routing is the same and only the process boundary differs. `services/auth/README.md`
 and `services/users/README.md` list the endpoints and what each one calls at
 Supabase.
 
@@ -189,32 +191,24 @@ dashboard access:
    migrations are therefore **not** reapplied. (`supabase db push` also cannot run
    with CLI 2.120.0: `db.major_version = 16` in `supabase/config.toml` is rejected
    by that version, which is an upstream bug — nothing in this work needs it.)
-2. **Vercel services mode — on.** The project builds as services and production
-   routes each `/api/v1` group to its Go service; the deployment and its verification are in
-   [deployment/vercel.md](../deployment/vercel.md). What remains "manual" is only
-   that the service wiring lives in a dashboard-visible setting: if the framework
-   preset is ever changed away from **Services**, `vercel.json` goes inert and the
-   API disappears behind the web app.
-3. **Vercel environment variables.** `VITE_SUPABASE_URL` and
-   `VITE_SUPABASE_PUBLISHABLE_KEY` must be set in Vercel for the app and for both
-   Go services; the app reports a clear configuration error until they are. Set
-   them for all environments; keep `SUPABASE_SECRET_KEY` out of the project
-   entirely. The Go services' own variables (`ENVIRONMENT`, `SUPABASE_URL`,
-   `CORS_ALLOWED_ORIGINS`, `RATE_LIMIT_ENABLED`) are listed in the same document —
-   they must never be given `SUPABASE_JWT_SECRET` or `SUPABASE_SECRET_KEY`.
-4. **Custom domain.** When one is chosen, set `VITE_PUBLIC_SITE_URL`, regenerate
-   the sitemap (`npm run sitemap`), update the `Sitemap:` line in `robots.txt`,
-   and add the origin to `CORS_ALLOWED_ORIGINS`. Nothing else changes.
-5. **The auth and users services need environment variables, not a host.**
-   `vercel.json` deploys both and routes their groups to them, so no host and no
-   address have to be chosen or committed — see
-   [0015](../decisions/0015-direct-service-routing.md). What is still
-   outstanding is `SUPABASE_PUBLISHABLE_KEY` next to `SUPABASE_URL`, set for
-   whichever environment is being tested so `auth` can reach Supabase Auth and
-   `users` can reach the Data API. Until they are set each group answers `503`
-   **from its own service** — _"This API is not available in this environment
-   yet."_ is the different fault of a rewrite that did not match — and the web app reports the
-   failure instead of pretending to sign anyone in.
+2. **Hosting — done.** The website is a Cloudflare Worker and the API a Render
+   service (`render.yaml`); the setup steps and the checks after a deploy are in
+   [deployment/production.md](../deployment/production.md). The website's build
+   variables and the API's secrets live in the two dashboards, not the repository.
+3. **Keep the API awake.** The free Render instance sleeps after 15 idle minutes.
+   An external uptime monitor must hit `https://api.unbored.lol/healthz` every
+   10 minutes; without it the first visitor after a quiet spell waits up to a
+   minute.
+4. **Custom domain — done** (`unbored.lol`). If it ever changes, set
+   `VITE_PUBLIC_SITE_URL` and `PUBLIC_SITE_URL`, regenerate the sitemap
+   (`npm run sitemap`), update the `Sitemap:` line in `robots.txt`, and update
+   `CORS_ALLOWED_ORIGINS` and the Supabase redirect allowlist.
+5. **The API needs environment variables, not more hosts.** Every group is mounted
+   in the one Render service, so no address has to be chosen or committed. If
+   `SUPABASE_URL` or `SUPABASE_PUBLISHABLE_KEY` is missing, `auth` and `users`
+   answer `503` from their own handlers and the web app reports the failure
+   instead of pretending to sign anyone in. _"This API is not available in this
+   environment yet."_ is the different answer of a group with no service at all.
 6. **The admin surface needs two migrations applied, and one role granted by
    hand.** `20261013130000_admin_operations.sql` and
    `20261013130100_admin_identity_and_categories.sql` define the staff functions

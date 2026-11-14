@@ -156,9 +156,9 @@ func Load(service string) (*Config, error) {
 		Service:     service,
 		Environment: env,
 		HTTP: HTTP{
-			// HTTP_ADDR is the explicit setting. PORT is what Vercel (and most
+			// HTTP_ADDR is the explicit setting. PORT is what Render (and most
 			// PaaS) injects, so a platform-managed process never has to guess its
-			// port — see docs/deployment/vercel.md.
+			// port — see docs/deployment/production.md.
 			Addr:              normalizeAddr(Getenv("HTTP_ADDR", "PORT_HTTP", "PORT"), ":8080"),
 			ReadHeaderTimeout: 5 * time.Second,
 			ReadTimeout:       15 * time.Second,
@@ -177,7 +177,7 @@ func Load(service string) (*Config, error) {
 		Supabase: Supabase{
 			// The project URL and the publishable key are public: the browser
 			// bundle carries both. So the server names fall back to the web app's
-			// VITE_ names, and an environment (a Vercel preview, say) that only
+			// VITE_ names, and an environment (a preview build, say) that only
 			// sets those still reaches Supabase. The secret key never does this.
 			ProjectURL:     strings.TrimRight(Getenv("SUPABASE_URL", "VITE_SUPABASE_URL"), "/"),
 			JWKSURL:        Getenv("SUPABASE_JWKS_URL"),
@@ -369,7 +369,7 @@ func defaultString(v, fallback string) string {
 
 // normalizeAddr turns the ways a host names a listen port into an address
 // net.Listen accepts. An explicit ":8080" or "0.0.0.0:8080" is returned
-// unchanged, while a bare port — which is how Vercel passes PORT — gets the
+// unchanged, while a bare port — which is how Render and most PaaS pass PORT — gets the
 // colon it needs; without that, "8080" would be read as a host name and the
 // server would refuse to start.
 func normalizeAddr(raw, fallback string) string {

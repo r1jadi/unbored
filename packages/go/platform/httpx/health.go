@@ -12,7 +12,7 @@ const healthSuffix = "/health"
 
 // HealthPath is the versioned liveness route, `/api/v1/health`. It is part of
 // the published API surface (packages/api-contracts/openapi-v1.yaml) because
-// clients, uptime checks and the deployment (see docs/deployment/vercel.md)
+// clients, uptime checks and the deployment (see docs/deployment/production.md)
 // need a stable, unauthenticated path. `/healthz` stays unversioned for
 // orchestrators that must not have to know the API version.
 const HealthPath = "/api/" + APIVersion + healthSuffix

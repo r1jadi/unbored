@@ -2,6 +2,10 @@
 
 > **Update, 2026-11-06:** the project is no longer connected to Lovable. The Lovable
 > constraints below no longer apply; the Vercel, lockfile and CI work of a move still does.
+>
+> **Update, 2026-11-13:** the site is now deployed by Cloudflare Workers, not Vercel
+> ([0016](0016-cloudflare-and-render-hosting.md)). Read "Vercel's root directory and
+> build settings" below as the Cloudflare Worker's build settings.
 
 * Status: accepted
 * Date: 2026-10-05

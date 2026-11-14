@@ -5,7 +5,7 @@ name: web
 # docs/decisions/0002-web-app-location.md.
 #
 # Every job is read-only with respect to the repository; the deploy itself is
-# Vercel's job and is not triggered from here.
+# Cloudflare Workers' Git integration and is not triggered from here.
 on:
   push:
     branches: [main]

@@ -12,7 +12,7 @@ func clearAddressEnv(t *testing.T) {
 }
 
 func TestListenAddressFollowsThePlatformPort(t *testing.T) {
-	// Vercel (like most PaaS) hands the process a bare port in PORT. Reading it
+	// Render (like most PaaS) hands the process a bare port in PORT. Reading it
 	// as a host name instead of a port is the difference between a deployment
 	// that boots and one that fails its first health check.
 	cases := []struct {
@@ -45,9 +45,9 @@ func TestListenAddressFollowsThePlatformPort(t *testing.T) {
 	}
 }
 
-func TestVercelProductionEnvironmentBootsWithJwksOnly(t *testing.T) {
-	// The documented production environment of the Vercel deployment
-	// (docs/deployment/vercel.md): the project URL is enough because the service
+func TestProductionEnvironmentBootsWithJwksOnly(t *testing.T) {
+	// The documented production environment (render.yaml,
+	// docs/deployment/production.md): the project URL is enough because the service
 	// derives the JWKS endpoint from it, so no shared HS256 secret is needed.
 	clearAddressEnv(t)
 	t.Setenv("ENVIRONMENT", "production")
@@ -62,7 +62,7 @@ func TestVercelProductionEnvironmentBootsWithJwksOnly(t *testing.T) {
 
 	cfg, err := Load("gateway")
 	if err != nil {
-		t.Fatalf("the documented Vercel production environment was rejected: %v", err)
+		t.Fatalf("the documented production environment was rejected: %v", err)
 	}
 
 	const wantJWKS = "https://abcdefghijklmnop.supabase.co/auth/v1/.well-known/jwks.json"

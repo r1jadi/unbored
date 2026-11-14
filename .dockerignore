@@ -1,11 +1,10 @@
 # Build context for any container image built from the repository root.
 #
-# Nothing in the Vercel deployment builds an image any more (the gateway container
-# was retired by docs/decisions/0015-direct-service-routing.md). The file stays so
-# a future image of the Go services — which needs the repository root as its
-# context, because services/go.mod replaces the platform module with a relative
-# path (../packages/go/platform) — never uploads node_modules, build output or
-# secrets.
+# The production API image (infrastructure/docker/api.Dockerfile, built by Render
+# from render.yaml) needs the repository root as its context, because
+# services/go.mod replaces the platform module with a relative path
+# (../packages/go/platform). This file keeps node_modules, build output and
+# secrets out of that context.
 #
 # Everything below is either unrelated to a Go build or must never enter an image.
 

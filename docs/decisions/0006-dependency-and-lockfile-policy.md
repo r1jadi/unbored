@@ -1,6 +1,6 @@
 # 0006 — bun.lock is authoritative, and no dependency is added without updating it
 
-* Status: accepted
+* Status: accepted (2026-11-13: the site now builds on Cloudflare Workers with `bun install`, see [0016](0016-cloudflare-and-render-hosting.md); the lockfile rule is unchanged)
 * Date: 2026-10-05
 
 ## Context

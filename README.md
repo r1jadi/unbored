@@ -8,7 +8,7 @@ into independent services behind one gateway, and a Supabase (Postgres) database
 whose authorization lives in Row Level Security rather than in application code.
 
 - **Web** — <https://unbored.lol>
-- **API** — <https://unbored.lol/api/v1> (a service of the same Vercel project)
+- **API** — <https://api.unbored.lol/api/v1> (one Go process on Render, Frankfurt)
 - **Source** — <https://github.com/r1jadi/unbored>
 
 ## Status
@@ -87,11 +87,15 @@ to add a game, and the rules a runtime must follow, are in
         │
         ▼
 ┌─────────────────────────────────────────────────────────┐
-│ Vercel project — one domain                             │
-│   web service   → /                  TanStack Start     │
-│   auth service  → /api/v1/auth/*     Go                 │
-│   users service → /api/v1/users/*    Go                 │
-│   games service → every other /api/v1 path   Go         │
+│ Cloudflare Workers — unbored.lol                        │
+│   TanStack Start (SSR + static assets)                  │
+└─────────────────────────────────────────────────────────┘
+        │ browser calls the API cross-origin (CORS)
+        ▼
+┌─────────────────────────────────────────────────────────┐
+│ Render (Frankfurt) — api.unbored.lol                    │
+│   one Go process (services/cmd/standalone):             │
+│   auth, users, catalogue, play sessions, admin, crons   │
 └──────────────────────────┬──────────────────────────────┘
                            │ SQL — service_role for privileged writes,
                            │ the caller's own token for everything a user may do
@@ -105,9 +109,9 @@ to add a game, and the rules a runtime must follow, are in
 1. The web service renders the page. Public pages are server rendered with
    canonical URLs and structured data; private pages are `noindex`.
 2. The browser calls `/api/v1/...` with `Authorization: Bearer <supabase access
-token>` and nothing else. The rewrite table in [`vercel.json`](vercel.json)
-   sends each `/api/v1` group straight to the service that owns it (the groups
-   are listed in [`services/internal/apiroutes/routes.go`](services/internal/apiroutes/routes.go)).
+token>` and nothing else. The API at `api.unbored.lol` mounts
+   every `/api/v1` group in one process and routes it to the package that owns it
+   (the groups are listed in [`services/internal/apiroutes/routes.go`](services/internal/apiroutes/routes.go)).
 3. The service strips any client-supplied identity header, applies security
    headers, the CORS allowlist, a per-IP rate limit and a 1 MiB body limit. Locally,
    the gateway runs the same chain in front of the services.
@@ -132,7 +136,7 @@ Full detail, including the request path end to end, is in
 | Web tooling | bun (lockfile of record), ESLint + Prettier                                                     |
 | API         | Go 1.27, stdlib `net/http` with one thin router, two modules in one workspace                   |
 | Database    | Supabase Postgres, RLS, migrations as the only schema history                                   |
-| Deployment  | Vercel services mode: the web app plus three Go-runtime services, routed by path                  |
+| Deployment  | Cloudflare Workers (website) + Render (API, one Go container) + GitHub Actions (daily crons)     |
 | CI          | GitHub Actions — web, go, database, api-contract, security                                      |
 
 ## Quick start
@@ -182,7 +186,7 @@ Step-by-step setup, ports and per-service commands: [local-setup.md](docs/develo
 | `scripts/`                                                   | Operational helpers: `test-rls.sh`, `check-api-contract.mjs`, `generate-sitemap.mjs`, `env-from-supabase.mjs`.                                                            |
 | `docs/`                                                      | Architecture, development, deployment, security and the decision records.                                                                                                 |
 | `.github/workflows/`                                         | CI: web, go, database, api-contract, security.                                                                                                                            |
-| `vercel.json`                                                | The deployment: four services and the rewrites that route each `/api/v1` group to its service.                                                                            |
+| `render.yaml`                                                | The API deployment (Render Blueprint); the website deploys to Cloudflare Workers — see [deployment/production.md](docs/deployment/production.md).                         |
 | `apps/`, `config/`, `database/`, `games/`, `infrastructure/` | Placeholders for future work (mobile apps, environment config, SQL artifacts, game catalogues, infrastructure). `supabase/migrations` stays authoritative for the schema. |
 
 ## Services
@@ -291,28 +295,31 @@ Five workflows, all read-only with respect to the repository:
 
 ## Deployment
 
-One Vercel project serves four services from one domain, declared in
-[`vercel.json`](vercel.json):
+Two hosts, both deployed from Git on push to `main`
+([0016](docs/decisions/0016-cloudflare-and-render-hosting.md)):
 
-- **`web`** — the TanStack Start app, at `/`.
-- **`auth`**, **`users`** and **`games`** — Go runtime services. The rewrite table
-  sends `/api/v1/auth/*` to `auth`, `/api/v1/users/*` to `users` and every other
-  `/api/v1` path, plus `/healthz` and `/readyz`, to `games`. There is no gateway on
-  Vercel: each service runs the full middleware chain itself
-  ([0015](docs/decisions/0015-direct-service-routing.md)). The gateway in
-  `services/gateway` is the local entrypoint only.
+- **Website** — Cloudflare Workers serves `https://unbored.lol` (Nitro's
+  `cloudflare_module` preset, the default in `vite.config.ts`). `VITE_*` values,
+  including `VITE_API_BASE_URL=https://api.unbored.lol/api/v1`, are Cloudflare
+  build variables.
+- **API** — one Render web service in Frankfurt, next to the Supabase database,
+  defined in [`render.yaml`](render.yaml) and built from
+  [`infrastructure/docker/api.Dockerfile`](infrastructure/docker/api.Dockerfile).
+  It runs [`services/cmd/standalone`](services/cmd/standalone/main.go), which
+  mounts auth, users, the catalogue, play sessions, admin and the crons in one
+  process, at `https://api.unbored.lol`.
+- **Crons** — [`.github/workflows/cron.yml`](.github/workflows/cron.yml) calls the
+  digest and feedback routes daily with `CRON_SECRET`.
+- **DNS** — Cloudflare; `api` is a DNS-only CNAME to Render.
 
-  The `games` service deploys from [`services/main.go`](services/main.go): Vercel's
-  Go preset recognises exactly three entrypoint names and the other two are taken
-  by `auth` and `users`. The file is a slot name, not a description — it runs the
-  same one line as the local binary.
+The API needs `ENVIRONMENT=production`, the Supabase URL and keys, and a CORS
+allowlist with both site origins; it never gets `SUPABASE_JWT_SECRET` (tokens are
+verified against the JWKS). The Vercel-named Go entrypoints (`services/main.go`,
+`services/cmd/server`, `services/cmd/api`) are no longer deployed and are kept only
+so CI keeps them building.
 
-Deploys come from Git. Environment variables are scoped per environment in the
-Vercel project; the API needs `ENVIRONMENT=production`, the Supabase URL and the
-CORS allowlist, and must never be given `SUPABASE_JWT_SECRET` or
-`SUPABASE_SECRET_KEY`.
-
-Routing, variables and post-deploy verification: [deployment/vercel.md](docs/deployment/vercel.md).
+Variables, verification, rollback and troubleshooting:
+[deployment/production.md](docs/deployment/production.md).
 
 ## Conventions
 
@@ -346,7 +353,7 @@ Linux and is unaffected. Do not commit a repo-wide reformat to silence it.
 | Get a working checkout                                    | [development/local-setup.md](docs/development/local-setup.md)   |
 | Configure an environment                                  | [development/environments.md](docs/development/environments.md) |
 | Know which control answers which threat                   | [security/threat-model.md](docs/security/threat-model.md)       |
-| Deploy or verify the API                                  | [deployment/vercel.md](docs/deployment/vercel.md)               |
+| Deploy or verify the site and API                         | [deployment/production.md](docs/deployment/production.md)       |
 | Know why something is the way it is                       | [decisions/](docs/decisions/README.md)                          |
 
 ## License

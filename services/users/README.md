@@ -154,8 +154,8 @@ cd services
 SERVICE_NAME=users HTTP_ADDR=:8083 go run ./users/cmd/users
 ```
 
-Or through the local gateway, which routes by prefix the way `vercel.json` does in
-production:
+Or through the local gateway, which routes by prefix to the same packages the
+production process (`services/cmd/standalone`) mounts:
 
 ```bash
 UPSTREAM_USERS_URL=http://localhost:8083 SERVICE_NAME=gateway HTTP_ADDR=:8080 go run ./gateway/cmd/gateway
@@ -172,10 +172,11 @@ implementation to drift.
 | Entrypoint                 | Used by                                                                                                                                                                                                                                                            |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `services/users/cmd/users` | local shell (`go run ./users/cmd/users`)                                                                                                                                                                                                                           |
-| `services/cmd/api`         | **the deployment** — Vercel's Go framework preset detects `main.go`, `cmd/api/main.go` or `cmd/server/main.go` at the service root; `cmd/server` is the auth service's and `main.go` the games deployment's, so the Users service takes `cmd/api/main.go`             |
+| `services/cmd/standalone`  | **production** (Render) — mounts this service with every other route group in one process |
+| `services/cmd/api`         | the old Vercel entrypoint (Vercel's Go preset only detected `main.go`, `cmd/api/main.go` or `cmd/server/main.go`); no longer deployed, still built in CI |
 
-The name `cmd/api` is Vercel's, not a description. See
-[deployment/vercel.md](../../docs/deployment/vercel.md).
+The name `cmd/api` was Vercel's slot name, not a description. See
+[deployment/archive/vercel.md](../../docs/deployment/archive/vercel.md) for the history.
 
 ## Tests
 
@@ -203,21 +204,17 @@ an upstream message is dropped rather than logged.
 
 ## Deploying it
 
-`vercel.json` declares it as the `users` service (root `services/`, framework
-`go`, entrypoint `cmd/api/main.go`) and routes `/api/v1/users` and
-`/api/v1/users/*` straight to it
-([0015](../../docs/decisions/0015-direct-service-routing.md)). The public entry is
-`https://unbored.lol/api/v1/users/*`, answered by this service's own
-middleware chain.
+In production the service runs inside the single API process on Render
+(`services/cmd/standalone`), at `https://api.unbored.lol/api/v1/users/*`, behind
+the same middleware chain as every group
+([0016](../../docs/decisions/0016-cloudflare-and-render-hosting.md)).
 
 Verification after a deployment:
 
 ```bash
-BASE=https://unbored.lol
+BASE=https://api.unbored.lol
 curl -sS -o /dev/null -w '%{http_code}\n' "$BASE/api/v1/users/me"
-# 401 — the Users service answered (a 503 naming the group means the users
-#       rewrite did not match; check vercel.json and that the `users` service was
-#       detected in the build log).
+# 401 — the Users service answered.
 
 TOKEN=$(curl -sS -X POST -H 'Content-Type: application/json' \
   -d '{"email":"…","password":"…"}' "$BASE/api/v1/auth/sign-in" | jq -r .tokens.accessToken)
@@ -225,5 +222,6 @@ curl -sS "$BASE/api/v1/users/me" -H "Authorization: Bearer $TOKEN"
 # 200 with the account's real row
 ```
 
-`SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` are project-scoped in Vercel, so the
-values the auth service already reads cover this service too.
+`SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` are set once on Render, so the
+values the auth service reads cover this service too. Avatar uploads also need
+`SUPABASE_SECRET_KEY` and `OPENAI_API_KEY` there.

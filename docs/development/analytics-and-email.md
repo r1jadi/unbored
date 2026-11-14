@@ -16,7 +16,7 @@
   `-assets` host in `connect-src`. Scripts PostHog loads are already allowed by
   `'strict-dynamic'`.
 
-Setup: set both variables in Vercel (Production and Preview) and redeploy —
+Setup: set both variables as Cloudflare build variables and redeploy —
 `VITE_` values are inlined at build time.
 
 ## Resend
@@ -54,11 +54,11 @@ Two paths, one API key:
    })
    ```
 
-   Set `RESEND_API_KEY` only on the Vercel service that sends mail — it is a
+   Set `RESEND_API_KEY` only on the API (Render) — it is a
    secret and never a `VITE_` variable.
 
 3. **Game release digest** (`services/notifications`). After five games have
-   been published since the last digest, a daily Vercel Cron calls
+   been published since the last digest, a daily GitHub Actions cron (`.github/workflows/cron.yml`) calls
    `GET /api/v1/cron/game-digests`, which emails every account with
    `user_preferences.notify_new_games = true`. The message lists each game's
    name, its how-to-play `instructions` and a `/play/<slug>` link, and links to
@@ -69,7 +69,7 @@ Two paths, one API key:
    Existing accounts start opted out. The catalogue that predates the feature is
    recorded as a closed baseline digest, so it is never mailed retroactively.
 
-   The route is disabled (503) unless `CRON_SECRET` is set; Vercel Cron sends it
+   The route is disabled (503) unless `CRON_SECRET` is set; the cron workflow sends it
    as `Authorization: Bearer <CRON_SECRET>`. Each run sends to at most 25
    recipients and continues an unfinished digest on the next run. Delivery rows
    and a Resend idempotency key per digest/recipient prevent duplicates. See
@@ -81,11 +81,11 @@ Two paths, one API key:
    `contactunbored@gmail.com` (override with `FEEDBACK_EMAIL_TO`) with the
    sender as `Reply-To`, so replying answers the player. The browser nudges
    `POST /api/v1/cron/feedback-notify` right after a send (signed-in callers
-   only, bounded to ten unsent rows); a daily Vercel Cron on
+   only, bounded to ten unsent rows); a daily GitHub Actions cron on
    `GET /api/v1/cron/feedback-emails` (`CRON_SECRET`) mails anything a lost nudge
    left behind. A row is stamped `emailed_at` only after Resend accepted it, and
    a per-row idempotency key stops a retry sending twice. Needs `RESEND_API_KEY`,
-   `EMAIL_FROM` and `SUPABASE_SECRET_KEY` on the games deployment.
+   `EMAIL_FROM` and `SUPABASE_SECRET_KEY` on the API.
 
 Before any of these works, verify `unbored.lol` in Resend → Domains (SPF/DKIM DNS
 records), otherwise Resend only delivers to the account owner's address.

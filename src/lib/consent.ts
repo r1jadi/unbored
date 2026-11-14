@@ -4,7 +4,7 @@
  * Two kinds of storage exist. **Essential** ones are what the app cannot work
  * without and are always on: the sign-in session, the language cookie, settings
  * kept on the device and the offline copies of the app and catalogue.
- * **Analytics** (PostHog, which sets cookies, and Vercel Analytics) is optional
+ * **Analytics** (PostHog, which sets cookies) is optional
  * and only starts once the visitor accepts it — `lib/analytics.ts` and the root
  * route ask here first.
  *

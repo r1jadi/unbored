@@ -1,16 +1,12 @@
 // Command users runs the Users service locally.
 //
-// It is the developer's entrypoint — `go run ./users/cmd/users` from `services/`
-// — and the deployment entrypoint is services/cmd/api, because Vercel's Go
-// framework preset only recognises `main.go`, `cmd/api/main.go` and
-// `cmd/server/main.go` at the service root, and the other two names are already
-// spoken for (auth owns `cmd/server`, the games deployment `main.go`). Both
-// files are one line of
-// `servicekit.MustRun(users.Options())`, so the local binary and the deployment
-// cannot drift into different wiring.
+// It is the developer's entrypoint — `go run ./users/cmd/users` from `services/`.
+// In production the service is mounted in services/cmd/standalone with every
+// other route group (docs/deployment/production.md). The legacy Vercel
+// entrypoint, services/cmd/api, is the same one line of
+// `servicekit.MustRun(users.Options())`, so the wirings cannot drift.
 //
-// See services/users/users.go for the routes and docs/deployment/vercel.md for
-// the topology.
+// See services/users/users.go for the routes.
 package main
 
 import (

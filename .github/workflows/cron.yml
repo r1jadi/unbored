@@ -1,8 +1,8 @@
-# Daily jobs for hosts without a built-in scheduler (Vercel runs these from
-# vercel.json's "crons"). Needs two repository secrets:
-#   API_ORIGIN   e.g. https://api.unbored.lol  (no trailing slash)
-#   CRON_SECRET  the same value the API has
-# Without API_ORIGIN the jobs skip, so a Vercel deployment is not double-run.
+# The daily jobs. Render's free plan has no scheduler, so GitHub Actions calls the
+# API's cron routes. Needs two repository secrets:
+#   API_ORIGIN   https://api.unbored.lol  (no trailing slash)
+#   CRON_SECRET  the same value the API has on Render
+# Without API_ORIGIN the jobs skip (forks, or a repository with no API).
 name: cron
 
 on:

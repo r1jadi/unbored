@@ -1,8 +1,8 @@
 // Command gateway is the long-running API gateway process: one process, no
 // database credentials, no service role key.
 //
-// The wiring lives in the gateway package so the Vercel entrypoint (cmd/api)
-// serves the same service; this file only fixes the process model. It listens on
+// The wiring lives in the gateway package; this file only fixes the process
+// model. It listens on
 // HTTP_ADDR (or PORT when the platform injects one) and shuts down gracefully on
 // a termination signal.
 package main

@@ -95,7 +95,7 @@ deploy and monitor for no gain over a function the database can already run.
 * **The service boundary is smaller, and the deployment is unchanged.** `/api/v1/sessions`
   is served by the `games` deployment (Vercel's Go preset offers one remaining
   entrypoint, and a second container service at the same root was measured not to be
-  detected — see [deployment/vercel.md](../deployment/vercel.md)). Two packages, one
+  detected — see [deployment/archive/vercel.md](../deployment/archive/vercel.md)). Two packages, one
   deployment, one binding.
 * **Cost of reversing**: moving verification into Go means adding a master credential
   to the platform, granting the service write access to the ledger, and porting the

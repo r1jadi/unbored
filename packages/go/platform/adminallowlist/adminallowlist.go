@@ -55,7 +55,7 @@ func Parse(raw string) []string {
 // Get reads and parses the current server-side configuration. It reads the
 // environment on every call so that changing the allowlist takes effect on
 // the next request without relying on stale client state (a cached role, a
-// token claim, localStorage). On Vercel an env change redeploys, but a fresh
+// token claim, localStorage). On Render an env change restarts the service, but a fresh
 // read is still the correct behaviour for long-lived processes.
 func Get() []string {
 	return Parse(os.Getenv(EnvVar))

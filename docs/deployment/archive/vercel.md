@@ -1,15 +1,22 @@
-# Deploying to Vercel
+# Deploying to Vercel (archived)
+
+> **Archived — not the current deployment.** Production moved off Vercel on
+> 2026-11-13: the website runs on Cloudflare Workers and the API on Render. See
+> [production.md](../production.md) and
+> [decisions/0016](../../decisions/0016-cloudflare-and-render-hosting.md).
+> `vercel.json` has been deleted; this page is kept for its history (why the Go
+> services have Vercel-shaped entrypoints, and the 2026-10-08 production checks).
 
 One Vercel project serves the whole product on one domain: the TanStack Start web
 app and three Go services (auth, users, games). There is no second host, no
-`api.` subdomain and — since [0015](../decisions/0015-direct-service-routing.md) —
+`api.` subdomain and — since [0015](../../decisions/0015-direct-service-routing.md) —
 no gateway in between: `vercel.json` routes each `/api/v1` group straight to the
 service that owns it.
 
 |                    |                                                                                                                                                                                            |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Project            | `unboredapp` → `https://unbored.lol`                                                                                                                                                       |
-| Configuration      | [`vercel.json`](../../vercel.json) (services + rewrites; no bindings, no container)                                                                                                        |
+| Configuration      | `vercel.json` (deleted; see git history) (services + rewrites; no bindings, no container)                                                                                                        |
 | Web service        | `web` — repository root, framework `tanstack-start` (TanStack Start + Vite, SSR through Nitro)                                                                                             |
 | Auth service       | `auth` — `services/`, framework `go`, entrypoint `services/cmd/server/main.go`; serves `/api/v1/auth/*`                                                                                    |
 | Users service      | `users` — `services/`, framework `go`, entrypoint `services/cmd/api/main.go`; serves `/api/v1/users/*`                                                                                     |
@@ -60,7 +67,7 @@ The alternatives were rejected on purpose:
 
 ### Why there is no gateway on Vercel any more
 
-Until [0015](../decisions/0015-direct-service-routing.md) every API request went
+Until [0015](../../decisions/0015-direct-service-routing.md) every API request went
 browser → `api` (the gateway, a container image) → service, over service bindings.
 The gateway had to be a container because Vercel's bindings are not available to
 Go-runtime services. In practice that container accounted for about 75% of the
@@ -196,7 +203,7 @@ reads the variable and falls back to same-origin `/api/v1`.
 | `RESEND_API_KEY`           | `re_…`                                        | Sends the five-new-games digest through Resend. Without it the digest route answers `503`. Server-only; never a `VITE_` name.                                                                                                                                                                                                                                                                                                                                                                |
 | `EMAIL_FROM`               | `Unbored <hello@unbored.lol>`                 | Verified Resend sender. The domain must be verified before delivery works.                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `CRON_SECRET`              | a long random value                           | Vercel Cron sends it as `Authorization: Bearer …` to `/api/v1/cron/game-digests`. Unset means the digest route stays disabled. Set it separately for Production and Preview.                                                                                                                                                                                                                                                                                                                  |
-| `VITE_VAPID_PUBLIC_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | a pair from `npx web-push generate-vapid-keys` | Web push (the private key is server-only). Unset, Settings says push isn't available and nothing is sent. Full setup in [services/notifications](../../services/notifications/README.md#turning-it-on) |
+| `VITE_VAPID_PUBLIC_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | a pair from `npx web-push generate-vapid-keys` | Web push (the private key is server-only). Unset, Settings says push isn't available and nothing is sent. Full setup in [services/notifications](../../../services/notifications/README.md#turning-it-on) |
 | `LOG_LEVEL`, `LOG_FORMAT`  | `info`, `json` (defaults)                     | Optional; structured logs are what Vercel captures                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `SERVICE_NAME`             | optional                                      | Appears in log lines; both services log a sensible default already                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
@@ -225,7 +232,7 @@ Vercel environment variables are project-scoped, so the Go services can read the
 `VITE_` values too — that is harmless in that direction. The rule that matters is
 the other one: **only `VITE_`-prefixed names ever reach the browser bundle**, so a
 secret never gets that prefix. See
-[security/env-and-secrets.md](../security/env-and-secrets.md).
+[security/env-and-secrets.md](../../security/env-and-secrets.md).
 
 ### Preview deployments
 
@@ -386,17 +393,17 @@ in services mode.
 | A group answers `503 This API is not available in this environment yet.`                                                 | The request reached the games deployment for a group it does not run                                                                     | Expected for the groups with no service yet. For `auth` or `users`, check that the service exists in the build log and that its rewrites come before `/api/v1/(.*)` in `vercel.json` |
 | `/api/v1/auth/*` answers `503` on every credential endpoint, but `/api/v1/auth/session` answers `401`                    | The routing works; the auth service has no Supabase credentials                                                                         | Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` for the environment being tested — a preview needs them too                                                                                                                                                              |
 | `/api/v1/users/me` answers `503 Profiles are not available right now.`                                                   | The users service is deployed but has no Data API configuration                                                                         | Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. A `503` naming the _group_ (`This API is not available in this environment yet.`) is a different fault: the routing, not the credentials                                                                                |
-| `/api/v1/users/me` answers `403 permission denied for table profiles` on a read                                          | A query asked for a column the SELECT grant excludes — `select=*` or a bare `Prefer: return=representation` projects `is_suspended` too | Name the projection. `supabaseprofile.Columns` is the list the grant allows, and both the read and the write use it; see [services/users/README.md](../../services/users/README.md#how-it-talks-to-supabase)                                                               |
+| `/api/v1/users/me` answers `403 permission denied for table profiles` on a read                                          | A query asked for a column the SELECT grant excludes — `select=*` or a bare `Prefer: return=representation` projects `is_suspended` too | Name the projection. `supabaseprofile.Columns` is the list the grant allows, and both the read and the write use it; see [services/users/README.md](../../../services/users/README.md#how-it-talks-to-supabase)                                                               |
 | The profile page shows a sign-in prompt immediately after a reload                                                       | No stored session for this browser (first visit, cleared storage, another device) or the server refused the stored one                  | Not a fault. A stored session is restored from `unbored.auth.session.v1` (a session stored before the rename under `onemore.auth.session.v1` is read once and moved forward) and re-validated with `GET /api/v1/auth/session`; a refused pair is cleared, so sign in again |
 | Every browser request fails with a CORS error                                                                            | `CORS_ALLOWED_ORIGINS` does not list the origin the page was served from                                                                | Each Go service answers CORS itself from `CORS_ALLOWED_ORIGINS`; set it for the environment being tested (a preview has its own origin)                                                                                                                                     |
 | Guest catalogue reads are never a CDN `HIT`                                                                               | The CDN did not receive `Vercel-CDN-Cache-Control`                                                                                     | Check the response of `GET /api/v1/games` without a token: it must carry `Cache-Control: public, max-age=0, must-revalidate`. If it carries `no-store`, `cdncache.Middleware` is not installed (see `games.Options`)                                                        |
 
 ## Verified in the repository
 
-Verified in the repository (see [development/testing.md](../development/testing.md)):
+Verified in the repository (see [development/testing.md](../../development/testing.md)):
 
 > The bullets below were recorded for the gateway topology (see
-> [0015](../decisions/0015-direct-service-routing.md)); the container image they
+> [0015](../../decisions/0015-direct-service-routing.md)); the container image they
 > mention no longer exists.
 
 - `gofmt -l` clean and `go vet ./...` clean in both modules; `go test ./...` green
@@ -443,7 +450,7 @@ Verified in the repository (see [development/testing.md](../development/testing.
 ## Verified against production
 
 > **Historical.** This section records the gateway topology that
-> [0015](../decisions/0015-direct-service-routing.md) replaced: the `api`
+> [0015](../../decisions/0015-direct-service-routing.md) replaced: the `api`
 > container, the bindings and the gateway's answers are gone. Re-run the checks in
 > [Deploying](#deploying) against the current routing.
 

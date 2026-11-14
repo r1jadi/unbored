@@ -182,8 +182,8 @@ file inside a private bucket is never executed by the origin.
 
 It bypasses RLS. Therefore:
 
-- it exists only in server-side environments (Vercel SSR env, the API's secret
-  store) — never in a `VITE_` variable, never in a client bundle, never in a log;
+- it exists only in server-side environments (the API's Render environment) — never
+  the Cloudflare website build — never in a `VITE_` variable, never in a client bundle, never in a log;
 - each use should be justified by "a user cannot be trusted to do this";
 - **only the admin API's games deployment holds it.** It verifies ADMIN_EMAILS
   first and then calls the `service_role`-only `*_svc` wrappers with the

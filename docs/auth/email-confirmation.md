@@ -47,7 +47,7 @@ steps that code cannot perform.
 2. **Redirect URLs** (allowlist): add
    - `https://unbored.lol/auth/callback`
    - `https://unbored.lol/auth/callback?next=/reset-password`
-   - preview origins as needed (`https://unboredapp-*.vercel.app/auth/callback`).
+   - preview origins as needed (a Cloudflare `*.workers.dev` address + `/auth/callback`).
      Without these, Supabase ignores the proposed `emailRedirectTo`.
 3. **Authentication → Email templates → Confirm signup**: ensure the button links
    to `{{ .ConfirmationURL }}` (the Supabase verify URL carrying the redirect).
@@ -59,9 +59,9 @@ steps that code cannot perform.
 4. **Authentication → Providers → Email**: confirm signup confirmation is ON
    (the app handles the pending state; do not disable it to make signup look
    instant).
-5. **Vercel env (Production)**: `PUBLIC_SITE_URL=https://unbored.lol`,
-   `VITE_API_BASE_URL=https://unbored.lol/api/v1`,
-   `CORS_ALLOWED_ORIGINS=https://unbored.lol`.
+5. **Production env**: on Render, `PUBLIC_SITE_URL=https://unbored.lol` and
+   `CORS_ALLOWED_ORIGINS=https://unbored.lol,https://www.unbored.lol`; on
+   Cloudflare (build variable), `VITE_API_BASE_URL=https://api.unbored.lol/api/v1`.
 
 ## Verify without touching production data
 

@@ -11,7 +11,6 @@ import {
   type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Analytics } from "@vercel/analytics/react";
 
 import appCss from "../styles.css?url";
 import { rootSeo, SITE_NAME } from "../lib/seo";
@@ -346,7 +345,6 @@ function RootComponent() {
         offset={{ top: "calc(var(--safe-top) + 24px)" }}
         mobileOffset={{ top: "calc(var(--safe-top) + 12px)" }}
       />
-      {analyticsAllowed && <Analytics />}
       {/* Asked once per browser, never over a game or the admin dashboard. */}
       {!path.startsWith("/play") && !path.startsWith("/admin") && !path.startsWith("/og-card") && (
         <CookieConsent />

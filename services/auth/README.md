@@ -107,13 +107,14 @@ implementation to drift.
 | Entrypoint               | Used by                                                                                                                                                                            |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services/auth/cmd/auth` | local shell (`go run ./auth/cmd/auth`)                                                                                                                                             |
-| `services/cmd/server`    | **the deployment** — Vercel's Go framework preset detects `main.go`, `cmd/api/main.go` or `cmd/server/main.go` at the service root, and the users service owns `cmd/api/main.go`     |
+| `services/cmd/standalone` | **production** (Render) — mounts this service with every other route group in one process |
+| `services/cmd/server`    | the old Vercel entrypoint (Vercel's Go preset only detected `main.go`, `cmd/api/main.go` or `cmd/server/main.go`); no longer deployed, still built in CI |
 
 The deployed path is described in
-[deployment/vercel.md](../../docs/deployment/vercel.md); the short version is that
-`vercel.json` deploys this service at root `services/` with
-`"entrypoint": "cmd/server/main.go"` and routes `/api/v1/auth` and
-`/api/v1/auth/*` straight to it ([0015](../../docs/decisions/0015-direct-service-routing.md)).
+[deployment/production.md](../../docs/deployment/production.md); the short version
+is that the Render service runs `services/cmd/standalone`, which mounts
+`/api/v1/auth` and `/api/v1/auth/*` beside every other group
+([0016](../../docs/decisions/0016-cloudflare-and-render-hosting.md)).
 
 Locally the gateway sits in front of it, through `UPSTREAM_AUTH_URL`:
 
@@ -122,7 +123,7 @@ UPSTREAM_AUTH_URL=http://localhost:8082 SERVICE_NAME=gateway HTTP_ADDR=:8080 go 
 ```
 
 With it unset the local gateway answers `503` for `/api/v1/auth/*` — routed, but
-not proxied. On Vercel nothing reads it.
+not proxied. In production nothing reads it.
 
 ## Tests
 
@@ -144,32 +145,26 @@ machine-readable code.
 
 ## Deploying it
 
-The service is part of the Vercel deployment: `vercel.json` declares it as the
-`auth` service (root `services/`, framework `go`, entrypoint `cmd/server/main.go`)
-and routes `/api/v1/auth` and `/api/v1/auth/*` to it. The service applies the
-same CORS, rate-limiting, header and error-envelope chain the gateway used to, and
-its own credential throttle on top.
+In production the service runs inside the single API process on Render
+(`services/cmd/standalone`, built from `infrastructure/docker/api.Dockerfile`),
+at `https://api.unbored.lol/api/v1/auth/*`. It applies the same CORS,
+rate-limiting, header and error-envelope chain as every group, and its own
+credential throttle on top.
 
-Two things must be true for a deployment to serve real authentication:
-
-1. **`SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`** must be set for the
-   environment being deployed, in the project's Vercel environment variables.
-   Without them the service still boots, serves its probes, and answers `503` on
-   the credential endpoints.
-2. **The `auth` rewrites must come before `/api/v1/(.*)`** in `vercel.json`.
-   Otherwise the games deployment answers the group with a `503`.
+For it to serve real authentication, **`SUPABASE_URL` and
+`SUPABASE_PUBLISHABLE_KEY`** must be set on Render (`render.yaml` and the
+dashboard). Without them the service still boots, serves its probes, and answers
+`503` on the credential endpoints.
 
 After a deployment, the check that matters is one request to production:
 
 ```bash
 curl -sS -X POST -H 'Content-Type: application/json' \
   -d '{"email":"does-not-exist@example.com","password":"a-long-password"}' \
-  https://unbored.lol/api/v1/auth/sign-in
+  https://api.unbored.lol/api/v1/auth/sign-in
 # 401 with the platform envelope — the whole chain works.
-# 503 "This API is not available in this environment yet." — the request reached
-#     the games deployment: the auth rewrite did not match.
 # 503 on a credential endpoint instead — the service has no Supabase configuration.
 ```
 
-See [deployment/vercel.md](../../docs/deployment/vercel.md#deploying) for the full
-sequence, the environment tables and the troubleshooting table.
+See [deployment/production.md](../../docs/deployment/production.md#verifying-a-deploy)
+for the full sequence, the environment tables and the troubleshooting table.

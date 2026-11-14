@@ -344,8 +344,10 @@ func ClientKey(r *http.Request) string {
 	if id, ok := identity.FromContext(r.Context()); ok && !id.Anonymous && id.UserID != "" {
 		return "user:" + id.UserID
 	}
-	// Behind Vercel the first entry of X-Forwarded-For is the real client. It is
-	// only a bucketing hint — never an authorization input.
+	// The first entry of X-Forwarded-For is taken as the client. That was the
+	// real client behind Vercel; behind Render it has not been verified (see
+	// "Still not verified" in docs/deployment/production.md). It is only a
+	// bucketing hint — never an authorization input.
 	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
 		first, _, _ := strings.Cut(forwarded, ",")
 		if first = strings.TrimSpace(first); first != "" {

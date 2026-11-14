@@ -27,7 +27,7 @@ import (
 //     feedback. It needs a signed-in caller, mails at most a handful of unsent
 //     rows and ignores the request body, so it cannot be used to send anything
 //     the database does not hold.
-//   - FeedbackCronPath, Vercel Cron with CRON_SECRET, a daily safety net for a
+//   - FeedbackCronPath, the daily cron (GitHub Actions) with CRON_SECRET, a safety net for a
 //     row whose notify call never arrived.
 const (
 	// FeedbackNotifyPath lives under /api/v1/cron, the prefix the gateway already
@@ -84,7 +84,7 @@ func (s *feedbackService) notify(w http.ResponseWriter, r *http.Request) {
 	s.flushAndRespond(w, r)
 }
 
-// cron flushes the outbox for Vercel Cron.
+// cron flushes the outbox for the daily cron job.
 func (s *feedbackService) cron(w http.ResponseWriter, r *http.Request) {
 	if s.secret == "" {
 		s.logger.WarnContext(r.Context(), "CRON_SECRET is not set; the feedback cron route is disabled")

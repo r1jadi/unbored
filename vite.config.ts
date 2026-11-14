@@ -35,8 +35,8 @@ function offlineManifest(): Plugin {
 }
 
 /**
- * Old game slugs → their current names. vercel.json does the same at Vercel's
- * edge; these route rules carry it to every other host (Cloudflare, Node).
+ * Old game slugs → their current names, as 301s from the server (on Cloudflare
+ * Workers in production, or a Node build locally).
  */
 function renamedGameRedirects() {
   const renamed = { queens: "crowns", zip: "trail", tango: "sun-and-moon" };
@@ -47,6 +47,36 @@ function renamedGameRedirects() {
     }
   }
   return rules;
+}
+
+/**
+ * Headers for the static files, which Cloudflare serves without running the
+ * Worker: Nitro writes these rules into the build's `_headers`. `nosniff`, and a
+ * same-site `Access-Control-Allow-Origin` instead of a CDN's default `*` (what
+ * vercel.json used to set at Vercel's edge).
+ */
+function staticFileHeaders() {
+  const headers = {
+    "X-Content-Type-Options": "nosniff",
+    "Access-Control-Allow-Origin": "https://unbored.lol",
+  };
+  const paths = [
+    "/assets/**",
+    "/og/**",
+    "/favicon.ico",
+    "/favicon.png",
+    "/favicon.svg",
+    "/apple-touch-icon.png",
+    "/icon-192.png",
+    "/icon-512.png",
+    "/manifest.webmanifest",
+    "/offline-manifest.json",
+    "/sw.js",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/.well-known/security.txt",
+  ];
+  return Object.fromEntries(paths.map((path) => [path, { headers }]));
 }
 
 export default defineConfig(({ command, mode }) => {
@@ -93,9 +123,16 @@ export default defineConfig(({ command, mode }) => {
           client: { files: ["**/server/**"], specifiers: ["server-only"] },
         },
       }),
-      // Only for a build. Vercel is the default, and `NITRO_PRESET` can still override it.
+      // Only for a build. Cloudflare Workers is the default (production runs
+      // there; docs/deployment/production.md), and `NITRO_PRESET` can still
+      // override it, e.g. `NITRO_PRESET=node-server` for a local Node build.
       ...(command === "build"
-        ? [nitro({ defaultPreset: "vercel", routeRules: renamedGameRedirects() })]
+        ? [
+            nitro({
+              defaultPreset: "cloudflare_module",
+              routeRules: { ...staticFileHeaders(), ...renamedGameRedirects() },
+            }),
+          ]
         : []),
       viteReact(),
       offlineManifest(),

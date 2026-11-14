@@ -59,7 +59,7 @@ export const terms = [
   [
     msg("8. Availability, changes and third parties"),
     msg(
-      "The service is provided as-is and may change, including games, scores display, social features and rate limits. Authentication and hosting run on Supabase and Vercel; Google sign-in and linking, when enabled, are subject to Google's terms. No uptime guarantee is made. Support questions go to contactunbored@gmail.com or unbored.lol/support.",
+      "The service is provided as-is and may change, including games, scores display, social features and rate limits. Authentication runs on Supabase, the website on Cloudflare and the API on Render; Google sign-in and linking, when enabled, are subject to Google's terms. No uptime guarantee is made. Support questions go to contactunbored@gmail.com or unbored.lol/support.",
     ),
   ],
   [
@@ -110,13 +110,13 @@ export const privacy = [
   [
     msg("Storage, cookies and local data"),
     msg(
-      "Your session tokens (access and refresh) are saved in this browser's localStorage under one namespaced Unbored key so a reload keeps you signed in; the app re-checks them with the server on load and removes them on sign-out or when the server refuses the session. Appearance and accessibility choices persist in this browser's localStorage, and your language choice in a cookie, so the server can show pages in it. Recent searches, sound and vibration choices and your cookie choice persist in this browser's localStorage. If you accept analytics, PostHog and Vercel Analytics set their own cookies or local identifiers; you can withdraw in Settings → Privacy. To let games run offline, a service worker keeps the app's code, pages and the public game catalogue in this browser, and offline practice runs stay on this device. OAuth PKCE verifiers live in sessionStorage for the duration of one sign-in attempt. Avatar images live in the public `avatars` Supabase Storage bucket under your account folder.",
+      "Your session tokens (access and refresh) are saved in this browser's localStorage under one namespaced Unbored key so a reload keeps you signed in; the app re-checks them with the server on load and removes them on sign-out or when the server refuses the session. Appearance and accessibility choices persist in this browser's localStorage, and your language choice in a cookie, so the server can show pages in it. Recent searches, sound and vibration choices and your cookie choice persist in this browser's localStorage. If you accept analytics, PostHog sets its own cookies and local identifiers; you can withdraw in Settings → Privacy. To let games run offline, a service worker keeps the app's code, pages and the public game catalogue in this browser, and offline practice runs stay on this device. OAuth PKCE verifiers live in sessionStorage for the duration of one sign-in attempt. Avatar images live in the public `avatars` Supabase Storage bucket under your account folder.",
     ),
   ],
   [
     msg("Infrastructure"),
     msg(
-      "Hosting and API: Vercel (web app, Go gateway and Go services on one domain). Identity, database and storage: Supabase (Auth, Postgres with Row Level Security, Storage). OAuth, when enabled: Google. Email (the new-games digest and feedback mail): Resend. Product analytics, only with your consent: PostHog and Vercel Analytics. Push messages pass through your browser's own push service (for example Google, Apple, Mozilla or Microsoft), encrypted so that service can't read them. No other processors are used by this deployment.",
+      "Hosting: Cloudflare (web app, domain and DNS). API: Render (the Go services at api.unbored.lol, in Frankfurt). Identity, database and storage: Supabase (Auth, Postgres with Row Level Security, Storage). OAuth, when enabled: Google. Email (the new-games digest and feedback mail): Resend. Product analytics, only with your consent: PostHog. Push messages pass through your browser's own push service (for example Google, Apple, Mozilla or Microsoft), encrypted so that service can't read them. No other processors are used by this deployment.",
     ),
   ],
   [

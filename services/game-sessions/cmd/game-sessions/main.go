@@ -4,10 +4,9 @@
 // seed and keeps the timeline, and the only way a score comes into existence is a
 // finished run being replayed against the rules its session was issued under.
 //
-// This binary is the service on its own, for local development. The deployed
-// entrypoint serves the same routes from `services/main.go`, because Vercel's Go
-// preset gives a service root three entrypoint names and all three are taken —
-// see docs/deployment/vercel.md.
+// This binary is the service on its own, for local development. In production
+// the same routes are mounted in services/cmd/standalone with every other route
+// group — see docs/deployment/production.md.
 package main
 
 import (

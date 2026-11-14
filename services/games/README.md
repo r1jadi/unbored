@@ -25,8 +25,8 @@ rather than an unexplained `404`.
 
 The play sessions and the submission that verifies a score are the
 [`game-sessions`](../game-sessions/README.md) package's routes. They are served by
-the same _deployment_ (Vercel's Go preset has one entrypoint name left — see
-[deployment/vercel.md](../../docs/deployment/vercel.md)) but not by this package:
+the same _process_ (`services/cmd/standalone` in production — see
+[deployment/production.md](../../docs/deployment/production.md)) but not by this package:
 the route table names `/api/v1/sessions` under the service that answers it.
 
 ## Play counts and boards
@@ -119,7 +119,7 @@ go run ./games/cmd/games            # serves :8080 by default
 ```
 
 ```bash
-# Through the local gateway, which routes by prefix the way vercel.json does
+# Through the local gateway, which routes by prefix like production does
 UPSTREAM_GAMES_URL=http://localhost:8080 SERVICE_NAME=gateway HTTP_ADDR=:8081 \
   go run ./gateway/cmd/gateway
 curl -s localhost:8081/api/v1/games | jq
@@ -131,20 +131,19 @@ rather than a crash loop.
 
 ## Deployment
 
-Deployed as the `games` service in [`vercel.json`](../../vercel.json) with
-`"root": "services/"` and `"entrypoint": "main.go"`. That file is
-[`services/main.go`](../main.go), and it exists only because Vercel's Go framework
-preset recognises exactly three entrypoint names — `main.go`, `cmd/api/main.go` and
-`cmd/server/main.go` — and the other two are taken by the users and auth services.
-It is the same one line as [`cmd/games/main.go`](cmd/games/main.go), so the local
-binary and the deployment cannot drift.
+In production this package runs inside the single API process on Render,
+[`services/cmd/standalone`](../cmd/standalone/main.go), which also answers
+`GET /api/v1`, the probes and the `503` for groups nothing serves yet
+([0016](../../docs/decisions/0016-cloudflare-and-render-hosting.md)). Anonymous
+reads of `/games`, `/games/{slug}` and `/categories` are cached in memory for 60 s
+by `services/internal/apicache`. See
+[deployment/production.md](../../docs/deployment/production.md).
 
-`vercel.json` routes every `/api/v1` path that is not auth or users straight to
-it, so it also answers `GET /api/v1`, the probes and the `503` for groups nothing
-deploys yet ([0015](../../docs/decisions/0015-direct-service-routing.md)). Guest
-reads are cached at Vercel's CDN through `services/internal/cdncache`, which
-`Options` installs. See
-[deployment/vercel.md](../../docs/deployment/vercel.md).
+[`services/main.go`](../main.go) is the old Vercel entrypoint for this service
+(Vercel's Go preset recognised only `main.go`, `cmd/api/main.go` and
+`cmd/server/main.go`). It is no longer deployed but still builds in CI, as does the
+`Vercel-CDN-Cache-Control` header `services/internal/cdncache` sets — inert on
+Render.
 
 ## Tests
 

@@ -52,8 +52,8 @@ info:
     identifier: LicenseRef-Proprietary
 
 servers:
-  - url: https://unbored.lol/api/v1
-    description: Production
+  - url: https://api.unbored.lol/api/v1
+    description: Production (Render)
   - url: http://localhost:8080/api/v1
     description: Local gateway
 
@@ -2147,7 +2147,7 @@ paths:
       tags: [internal]
       summary: Send the next five-new-games digest
       description: |
-        Called by Vercel Cron, not by a browser. Claims at most one digest of five
+        Called by the daily cron job, not by a browser. Claims at most one digest of five
         newly published games, emails it to accounts that opted in to product
         updates, and records every outcome. Answers `idle` while fewer than five
         games are waiting. A run is capped; the next scheduled run continues an
@@ -2178,7 +2178,7 @@ components:
       type: http
       scheme: bearer
       description: |
-        `CRON_SECRET`. Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`
+        `CRON_SECRET`. The cron job sends `Authorization: Bearer <CRON_SECRET>`
         on the scheduled request. It is a machine credential, never a user token,
         and the route answers 503 when it is unset.
     bearerAuth:

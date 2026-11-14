@@ -1,6 +1,6 @@
 # 0015 — Vercel routes each API group straight to its service; the gateway container is retired
 
-- Status: accepted
+- Status: superseded by [0016](0016-cloudflare-and-render-hosting.md) (production left Vercel on 2026-11-13)
 - Date: 2026-11-12
 - Supersedes [0010](0010-auth-service-deployment-topology.md); amends
   [0009](0009-vercel-deployment-topology.md) and
@@ -80,7 +80,7 @@ gateway is not deployed there.
   deployment instead of silently reaching the wrong service.
 - Whether Vercel's CDN acts on `Vercel-CDN-Cache-Control` set directly by a
   routed service has to be checked on the first preview (see
-  [deployment/vercel.md](../deployment/vercel.md#3-verify-the-preview)). If it
+  [deployment/archive/vercel.md](../deployment/archive/vercel.md#3-verify-the-preview)). If it
   does not, guest reads are still correct, just uncached.
 - Reversing the decision means restoring the `api` service, its bindings and
   `Dockerfile.vercel` from git history, and pointing the `/api/v1` rewrites back

@@ -1,8 +1,8 @@
 /**
  * Play sessions, verified scores and the boards they produce.
  *
- * The API this talks to (`services/game-sessions`, mounted with the catalogue —
- * see `docs/deployment/vercel.md`):
+ * The API this talks to (`services/game-sessions`, mounted with every other group
+ * in the production API process — see `docs/deployment/production.md`):
  *
  *   - `POST /sessions` issues a run. The server picks the id and the seed, so the
  *     client cannot choose its own deck. Only a published, playable game can start

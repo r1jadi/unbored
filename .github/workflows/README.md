@@ -7,6 +7,7 @@
 | [database.yml](database.yml) | `supabase/**`, `tests/security/**`, `scripts/test-rls.sh` | Applies every migration to an empty Postgres 16, runs the RLS suite, proves the seed is idempotent |
 | [api-contract.yml](api-contract.yml) | `packages/api-contracts/**`, `services/internal/apiroutes/**` | Routing/contract drift check, `redocly lint` |
 | [security.yml](security.yml) | every push, every pull request, weekly | `gitleaks` over the full history, dependency review on pull requests, workflow hygiene (pinned actions, read-only tokens) |
+| [cron.yml](cron.yml) | daily 09:00 and 10:00 UTC, manual dispatch | Wakes the Render API, then calls `/api/v1/cron/game-digests` or `/api/v1/cron/feedback-emails` with `CRON_SECRET` (secrets `API_ORIGIN`, `CRON_SECRET`; skipped without `API_ORIGIN`) |
 
 ## Conventions for new workflows
 
@@ -18,7 +19,8 @@
 * Use `paths:` filters so a Go change does not rebuild the web app, and set
   `concurrency` with `cancel-in-progress` so a force-push does not queue duplicate
   runs.
-* CI never deploys and never touches a hosted database. Deployment is Vercel's job
-  for the web app, and a deliberate human action for the API.
+* CI never deploys and never touches a hosted database. Cloudflare and Render each
+  deploy from Git on their own. The one workflow that reaches production is
+  `cron.yml`, which calls the API's cron routes daily with `CRON_SECRET`.
 * A new check belongs in the workflow for the thing it checks, not in a catch-all
   job.

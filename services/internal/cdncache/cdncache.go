@@ -1,6 +1,12 @@
 // Package cdncache turns a service's "this answer is the same for every guest"
 // marker into the headers Vercel's CDN acts on.
 //
+// Inert in production since the move to Render
+// (docs/decisions/0016-cloudflare-and-render-hosting.md): nothing in front of the
+// API reads Vercel-CDN-Cache-Control, so guest catalogue reads are cached in
+// memory by services/internal/apicache instead. Kept for the browser
+// Cache-Control it still sets, and for the legacy Vercel entrypoints.
+//
 // A handler marks a response with apiroutes.CDNCachePolicyHeader and a
 // `Cache-Control`-style policy (`s-maxage=60, stale-while-revalidate=300`). This
 // middleware, installed in the service that owns those handlers, rewrites the

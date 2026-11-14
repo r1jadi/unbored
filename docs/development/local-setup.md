@@ -32,7 +32,7 @@ Verification commands used in this repository:
 bun run typecheck    # tsc --noEmit
 bun run lint         # eslint .
 bun run test         # vitest run
-bun run build        # production build, same command Vercel runs
+bun run build        # production build, same command Cloudflare runs
 bun run sitemap:check
 node scripts/check-api-contract.mjs
 ```
@@ -96,12 +96,12 @@ curl -s localhost:8080/api/v1         # version discovery
 ```
 
 `go run ./gateway/cmd/gateway` uses `HTTP_ADDR` when it is set, then `PORT_HTTP`,
-then `PORT`, then `:8080`. The gateway is local only: on Vercel, `vercel.json`
-routes each group straight to its service. `services/cmd/api` is **not** an alias
-for the gateway — that file is the users service's Vercel entrypoint, because the
-Go preset has three fixed slot names. The routing and the
-environment variables the deployment needs are in
-[deployment/vercel.md](../deployment/vercel.md).
+then `PORT`, then `:8080`. The gateway is local only: production runs every group
+in one process, `services/cmd/standalone`, which you can also run locally
+(`go run ./cmd/standalone` from `services/`). `services/cmd/api` is **not** an
+alias for the gateway — it is the users service's old Vercel entrypoint, kept so
+CI still builds it. The environment variables production needs are in
+[deployment/production.md](../deployment/production.md).
 
 Run one service:
 

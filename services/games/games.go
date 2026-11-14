@@ -368,7 +368,7 @@ const (
 // services/internal/cdncache, which Options installs, once the status is known.
 //
 // A request with a token is never marked: it can carry the caller's own standing.
-// The middleware checks that again, and Vercel doesn't cache such a request either.
+// The middleware checks that again, and no shared cache keeps such a request either.
 func cacheForGuests(w http.ResponseWriter, r *http.Request, policy string) {
 	if r.Header.Get("Authorization") != "" {
 		return

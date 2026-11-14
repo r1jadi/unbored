@@ -16,17 +16,17 @@ new.
 
 The full list, with the reason for each classification, is in
 [development/environments.md](../development/environments.md#the-publicsecret-split)
-and `.env.example`; the values the Vercel project needs are in
-[deployment/vercel.md](../deployment/vercel.md#environment-variables).
+and `.env.example`; the values production needs are in
+[deployment/production.md](../deployment/production.md#environment-variables).
 
 ## Where secrets live
 
 | Secret | Development | Preview / production |
 | --- | --- | --- |
-| `SUPABASE_SECRET_KEY` (legacy: `SUPABASE_SERVICE_ROLE_KEY`) | `.env.local`, gitignored | Vercel → Settings → Environment Variables, **Production scope only**; API host secret store |
-| `SUPABASE_JWT_SECRET` | `.env.local` | API host secret store; prefer JWKS + asymmetric keys so this value does not exist. The gateway deployment deliberately has none — it verifies against the project JWKS (see [deployment/vercel.md](../deployment/vercel.md)) |
-| `RESEND_API_KEY` | `.env.local`, gitignored | Vercel → Settings → Environment Variables, server-side only; the games deployment sends the digest |
-| `CRON_SECRET` | `.env.local`, gitignored | Vercel → Settings → Environment Variables; Vercel Cron sends it as a bearer token to the digest route |
+| `SUPABASE_SECRET_KEY` (legacy: `SUPABASE_SERVICE_ROLE_KEY`) | `.env.local`, gitignored | Render → `unbored-api-eu` → Environment (`sync: false` in `render.yaml`, never committed). Never a Cloudflare build variable |
+| `SUPABASE_JWT_SECRET` | `.env.local` | API host secret store; prefer JWKS + asymmetric keys so this value does not exist. Production deliberately has none — the API verifies against the project JWKS (see [deployment/production.md](../deployment/production.md#environment-variables)) |
+| `RESEND_API_KEY` | `.env.local`, gitignored | Render environment, server-side only; the API sends the digest and feedback mail |
+| `CRON_SECRET` | `.env.local`, gitignored | Render environment **and** the GitHub Actions secret of the same name; the cron workflow sends it as a bearer token to `/api/v1/cron/*` |
 | `RAIACCEPT_*` | not set | not set until the payments task; then a secret store, server-side only |
 | Database password | the local container's throwaway value | Supabase-managed; never in this repository |
 
@@ -92,5 +92,5 @@ An exposed key is a live credential. In order:
    unsafe value is a startup error. Anything that weakens security must be
    impossible in production, not merely discouraged.
 6. Document it in `development/environments.md` and `.env.example`, and add it to
-the environment-variable table in `deployment/vercel.md` if the deployment needs
-it.
+the environment-variable table in `deployment/production.md` (and `render.yaml`)
+if the deployment needs it.

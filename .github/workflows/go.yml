@@ -78,9 +78,11 @@ jobs:
             echo "building $service"
             go build -o /dev/null "./${service}/cmd/${service}"
           done
-          # The Vercel entrypoints (vercel.json names them). Each serves the same
-          # wiring as a binary above; they exist only because Vercel's Go preset
-          # recognises three fixed entrypoint names.
+          # The production API (Render runs it from infrastructure/docker/api.Dockerfile).
+          echo "building cmd/standalone (production API)"
+          go build -o /dev/null "./cmd/standalone"
+          # The legacy Vercel entrypoints: no longer deployed (docs/decisions/0016),
+          # kept building so a return to Vercel stays a config change.
           echo "building cmd/server (auth Vercel entrypoint)"
           go build -o /dev/null "./cmd/server"
           echo "building cmd/api (users Vercel entrypoint)"

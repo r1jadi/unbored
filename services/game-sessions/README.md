@@ -94,17 +94,15 @@ than implying a board position.
 
 ## Deployment
 
-Served by the **games deployment**, not a deployment of its own. Vercel's Go
-framework preset recognises exactly three entrypoint names at a service root
-(`main.go`, `cmd/api/main.go`, `cmd/server/main.go`); auth holds `cmd/server` and
-users hold `cmd/api`, so [`services/main.go`](../main.go) mounts the catalogue and
-these routes together. A second container service at the same root was measured not
-to be detected at all — see [docs/deployment/vercel.md](../../docs/deployment/vercel.md).
+Served by the single API process on Render
+([`services/cmd/standalone`](../cmd/standalone/main.go)), not a deployment of its
+own. (On Vercel it shared the games deployment, `services/main.go`, because the Go
+preset had no fourth entrypoint name — see
+[docs/deployment/archive/vercel.md](../../docs/deployment/archive/vercel.md).)
 
 The boundary is unchanged: separate packages, separate backends, separate route
-sets, and a local binary of its own. `vercel.json` routes the group to the games
-deployment, and the public path stays
-`https://unbored.lol/api/v1/sessions`.
+sets, and a local binary of its own. The public path is
+`https://api.unbored.lol/api/v1/sessions`.
 
 | Variable                            | Needed for                                                  |
 | ----------------------------------- | ----------------------------------------------------------- |

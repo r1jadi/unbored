@@ -116,8 +116,8 @@ func New(cfg *config.Config) (*Client, error) {
 		baseURL: strings.TrimRight(cfg.Supabase.ProjectURL, "/"),
 		apiKey:  cfg.Supabase.PublishableKey,
 		secret:  strings.TrimSpace(cfg.Supabase.SecretKey),
-		// Bounded so a slow Supabase never holds a request (and a Vercel
-		// function) open.
+		// Bounded so a slow Supabase never holds a request (and its
+		// connection) open.
 		http: &http.Client{Timeout: 10 * time.Second},
 	}, nil
 }

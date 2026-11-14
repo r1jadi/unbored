@@ -177,7 +177,7 @@ export function CookieConsent() {
               </dt>
               <dd className="mt-0.5 text-muted-foreground">
                 {t(
-                  "PostHog and Vercel Analytics count visits and how games are played. They set cookies, so they only start if you accept. No ads, ever.",
+                  "PostHog counts visits and how games are played. It sets cookies, so it only starts if you accept. No ads, ever.",
                 )}
               </dd>
             </div>

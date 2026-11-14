@@ -4,14 +4,14 @@
 
 ```
                     ┌──────────────────────────────────────────┐
-   browser / PWA ──▶│  Vercel project (one domain)             │
-                    │    web service → /                       │
-                    │      TanStack Start (React 19, SSR)      │
-                    │    /api/v1/<group> → the group's service │
-                    └───────────────┬──────────────────────────┘
-                                    │  /api/v1/<group>  (bearer token)
-   ┌────────────────────────────────▼─────────────────────────────────────┐
-   │  deployed: auth · users · games (+ game-sessions, admin, crons)      │
+   browser / PWA ──▶│  Cloudflare Workers — unbored.lol        │
+                    │    TanStack Start (React 19, SSR)        │
+                    └──────────────────────────────────────────┘
+        │
+        │  https://api.unbored.lol/api/v1/<group>  (bearer token, CORS)
+   ┌────▼─────────────────────────────────────────────────────────────────┐
+   │  Render (Frankfurt): one process, services/cmd/standalone            │
+   │  mounted: auth · users · games (+ game-sessions, admin, crons)       │
    │  each runs: request id · security headers · CORS · rate limit ·      │
    │             body limit · token verification                         │
    │  not deployed yet: scores · leaderboards · feed · recommendations ·  │
@@ -26,9 +26,11 @@
                     └──────────────────────────────────────────┘
 ```
 
-Locally, the Go gateway (`services/gateway`) sits in front of the services and
-routes by prefix; on Vercel the rewrite table does that routing
-([0015](../decisions/0015-direct-service-routing.md)).
+In production every route group is mounted in one Go process
+([0016](../decisions/0016-cloudflare-and-render-hosting.md)). Locally, the Go
+gateway (`services/gateway`) can sit in front of the services run separately and
+route by prefix (`scripts/dev-stack.mjs`), or `go run ./cmd/standalone` runs the
+production shape.
 
 Redis, a job runner and RaiAccept payments are **not** part of this diagram yet;
 where they will attach is described in
@@ -37,15 +39,16 @@ where they will attach is described in
 
 ## The request path, end to end
 
-1. A page is rendered by the web service of the Vercel project. Public pages are
+1. A page is rendered by the website on Cloudflare Workers. Public pages are
    server rendered with canonical URLs and structured data; private pages are
    served with `noindex` (see [web-app.md](web-app.md)).
-2. The browser calls `https://<origin>/api/v1/<group>/...` through
-   `apiFetch` (`src/lib/api/client.ts`). The caller's identity travels in an
-   `Authorization: Bearer <supabase access token>` header and nowhere else. The
-   rewrite table in [`vercel.json`](../../vercel.json) sends each `/api/v1`
-   group to the Go service that owns it, so the web app never renders an API
-   URL — see [deployment/vercel.md](../deployment/vercel.md).
+2. The browser calls `https://api.unbored.lol/api/v1/<group>/...` (the
+   `VITE_API_BASE_URL` build variable) through `apiFetch`
+   (`src/lib/api/client.ts`). The caller's identity travels in an
+   `Authorization: Bearer <supabase access token>` header and nowhere else, so the
+   cross-origin call needs CORS but no cookies. The API process routes each
+   `/api/v1` group to the package that owns it — see
+   [deployment/production.md](../deployment/production.md).
 3. The service strips any client-supplied identity headers, applies the security
    headers, the CORS allowlist, a per-IP rate limit and a 1 MiB body limit. The
    groups and their owners are listed in `services/internal/apiroutes/routes.go`.
@@ -53,7 +56,7 @@ where they will attach is described in
    signature and audience against the Supabase JWKS, derives the user id and role
    from the token, and enforces the route tier (`public`, `optional`,
    `authenticated`, `moderator`, `admin`). Version discovery (`/api/v1`) and
-   `GET /api/v1/health` are answered by the games deployment with no dependency,
+   `GET /api/v1/health` are answered by the API with no dependency,
    so a health check never depends on Supabase.
 5. Domain logic talks to Postgres. A service uses the `service_role` key only for
    work a user cannot be trusted to do (writing a score, hiding a comment,
@@ -75,8 +78,8 @@ where they will attach is described in
 | `tests/`                            | Contract, e2e, integration, load, security and smoke suites. `tests/security/rls_test.sql` is live today.                                                                                                                                                                                                                                                                                                                                                          |
 | `scripts/`                          | Operational helpers: `test-rls.sh`, `generate-sitemap.mjs`, `check-api-contract.mjs`.                                                                                                                                                                                                                                                                                                                                                                              |
 | `.github/workflows/`                | CI: web, go, database, api-contract, security.                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `infrastructure/`                   | Placeholders for container, CDN, monitoring and Terraform work.                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `vercel.json`                       | The deployment: four services (`web` and the Go `auth`, `users` and `games` services) and the rewrites that route each `/api/v1` group to its service. See [deployment/vercel.md](../deployment/vercel.md) and [0015](../decisions/0015-direct-service-routing.md). |
+| `infrastructure/`                   | `docker/api.Dockerfile` (the production API image); placeholders for CDN, monitoring and Terraform work.                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `render.yaml`                       | The API deployment on Render (Blueprint). The website deploys to Cloudflare Workers from the build settings in its dashboard. See [deployment/production.md](../deployment/production.md) and [0016](../decisions/0016-cloudflare-and-render-hosting.md). |
 
 ## Two modules, one workspace
 
@@ -91,12 +94,11 @@ graduation path to per-service modules are in
 | Environment | Web                             | API                                                                          | Database                                                      |
 | ----------- | ------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | development | `npm run dev`, port 8081        | `go run ./gateway/cmd/gateway`, port 8080                                    | local Supabase or the Docker harness in `scripts/test-rls.sh` |
-| preview     | Vercel preview per pull request | the same deployment's api service, `development`-like config                 | shares the staging project                                    |
-| staging     | Vercel preview of `main`        | same deployment as production, separate config                               | separate Supabase project                                     |
-| production  | `https://unbored.lol` | `https://unbored.lol/api/v1` (the api service of the same project) | the hosted Supabase project                                   |
+| preview     | Cloudflare `*.workers.dev` preview build, if enabled | the production API (its origin must be added to `CORS_ALLOWED_ORIGINS`) | the hosted Supabase project |
+| staging     | not set up                      | not set up                                                                   | —                                                             |
+| production  | `https://unbored.lol` (Cloudflare Workers) | `https://api.unbored.lol/api/v1` (Render, Frankfurt)              | the hosted Supabase project                                   |
 
-Enable services mode — the framework preset in the Vercel dashboard — before
-relying on the API column: see [deployment/vercel.md](../deployment/vercel.md).
+Deployment detail: [deployment/production.md](../deployment/production.md).
 
 ## What this foundation deliberately does not do
 

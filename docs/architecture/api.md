@@ -25,7 +25,7 @@ checks. It needs no token and checks nothing behind the gateway, so it answers
 Readiness — which does run the registered dependency checks — stays at the
 unversioned `/readyz`, and `/healthz` remains the plain-text liveness probe for
 orchestrators. Deploying both is described in
-[../deployment/vercel.md](../deployment/vercel.md).
+[../deployment/production.md](../deployment/production.md).
 
 When a breaking change is unavoidable, `v2` is added alongside `v1` and the old
 version is deprecated with a dated removal note in this file. Additive changes
@@ -88,9 +88,9 @@ never consulted for the authorization decision. See
 | `/api/v1/search`                         | search          | games, creators, players                                                                                                                                                                             |
 | `/api/v1/moderation`                     | moderation      | reports and actions                                                                                                                                                                                  |
 | `/api/v1/analytics`                      | analytics       | product analytics                                                                                                                                                                                    |
-| `/api/v1/admin`                          | admin           | the operations dashboard's API — **implemented** (staff-gated reads, moderation writes; the `admin` package is served by the games deployment, see [0013](../decisions/0013-admin-authorization.md)) |
-| `/api/v1/cron/feedback-notify`, `/api/v1/cron/feedback-emails` | games | mails stored player feedback to the team inbox — **implemented** (`feedback-notify`: signed-in caller, right after a send; `feedback-emails`: Vercel Cron safety net, `CRON_SECRET`)                                                                                  |
-| `/api/v1/cron/game-digests`              | games           | the five-new-games email digest — **implemented** (Vercel Cron; `CRON_SECRET`, not a user token)                                                                                                    |
+| `/api/v1/admin`                          | admin           | the operations dashboard's API — **implemented** (staff-gated reads, moderation writes; the `admin` package is mounted in the API process, see [0013](../decisions/0013-admin-authorization.md)) |
+| `/api/v1/cron/feedback-notify`, `/api/v1/cron/feedback-emails` | games | mails stored player feedback to the team inbox — **implemented** (`feedback-notify`: signed-in caller, right after a send; `feedback-emails`: daily GitHub Actions cron safety net, `CRON_SECRET`)                                                                                  |
+| `/api/v1/cron/game-digests`              | games           | the five-new-games email digest — **implemented** (daily GitHub Actions cron; `CRON_SECRET`, not a user token)                                                                                                    |
 
 The gateway proxies a group only when its `UPSTREAM_<SERVICE>_URL` is configured.
 An unconfigured group answers `503` with the standard envelope; it is never
@@ -155,11 +155,12 @@ A score is the server's arithmetic, never the client's claim: `POST /sessions/{i
 replays the submitted run in the database and records what it derives. See
 [ADR 0012](../decisions/0012-server-verified-scores.md) and [docs/games](../games/README.md).
 
-`/api/v1/sessions` is served by the **games deployment**, which mounts the
-`game-sessions` package beside the catalogue: Vercel's Go preset offers one
-remaining entrypoint name at that service root, so two packages share one
-deployment while staying separate packages with separate backends. See
-[../deployment/vercel.md](../deployment/vercel.md).
+`/api/v1/sessions` is served by the `game-sessions` package, mounted beside the
+catalogue. In production every package shares one process
+(`services/cmd/standalone`, see [../deployment/production.md](../deployment/production.md));
+they stay separate packages with separate backends. (On Vercel, `game-sessions`
+shared the games deployment because the Go preset had no fourth entrypoint name —
+see [../deployment/archive/vercel.md](../deployment/archive/vercel.md).)
 
 CI verifies the contract twice: `redocly lint` for structural validity, and the
 drift check that every routed group appears in it (and that nothing documented is

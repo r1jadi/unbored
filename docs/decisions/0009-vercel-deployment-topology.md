@@ -1,6 +1,6 @@
 # 0009 — The Go gateway is a Vercel service of the existing web project
 
-- Status: accepted
+- Status: superseded by [0016](0016-cloudflare-and-render-hosting.md) (production left Vercel on 2026-11-13)
 - Date: 2026-10-06
 - Amended by [0010](0010-auth-service-deployment-topology.md): a second Go
   service needs a private route from the gateway, which requires the gateway to be
@@ -43,7 +43,7 @@ app, using Vercel's Go framework preset:
   root contains a Nitro config, a TanStack Start app and a Node project at once,
   and Vercel refuses to choose between them ("Multiple frameworks detected in
   project root"). (Since the project left Lovable, the web service uses the generic `tanstack-start`;
-  see docs/deployment/vercel.md.) `tanstack-start-lovable` is the Lovable variant of the TanStack
+  see docs/deployment/archive/vercel.md.) `tanstack-start-lovable` is the Lovable variant of the TanStack
   Start preset, which supersedes the generic detectors for a repository holding
   `@lovable.dev/vite-tanstack-config` and `@tanstack/react-start`.
 - `services/cmd/api/main.go` is the deployment entrypoint Vercel detects. It is
@@ -61,7 +61,7 @@ app, using Vercel's Go framework preset:
 Enabling services mode is a **dashboard change**: Vercel builds a project as
 services only when the framework preset is _Services_ and `vercel.json` has a
 `services` key. That step is documented in
-[deployment/vercel.md](../deployment/vercel.md) because no repository change can
+[deployment/archive/vercel.md](../deployment/archive/vercel.md) because no repository change can
 perform it.
 
 ## Consequences

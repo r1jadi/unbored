@@ -8,7 +8,7 @@
 | Routing | TanStack Router, file based, `src/routes/**` |
 | Data (client) | TanStack Query for server state, `src/lib/api/client.ts` for the API |
 | Styling | Tailwind v4 with design tokens in `src/styles.css` |
-| Build output | Nitro (Cloudflare target by default, Vercel in production) |
+| Build output | Nitro, `cloudflare_module` preset (Cloudflare Workers in production) |
 | Tests | Vitest + Testing Library (`src/**/*.test.ts(x)`) |
 
 The app lives at the repository root. That is deliberate — moving a working
@@ -34,8 +34,8 @@ backend work. New screens follow the existing token set in `src/styles.css`.
 
 `src/lib/seo.ts` is the single source of truth:
 
-* `SITE_URL` comes from `VITE_PUBLIC_SITE_URL` (default the current Vercel
-  origin), so moving to a custom domain is an environment change.
+* `SITE_URL` comes from `VITE_PUBLIC_SITE_URL` (default `https://unbored.lol`),
+  so moving to another domain is an environment change.
 * `isIndexable(pathname)` is an **allowlist**: a route is private until it is
   explicitly listed. Private routes get `robots: noindex, nofollow` from the root
   head and are disallowed in `public/robots.txt`.

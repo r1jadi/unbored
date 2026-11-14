@@ -26,7 +26,7 @@ change something safely, not to describe the project to a stranger.
 
 | Document                                     | Read it when you need                                                                                                     |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| [deployment/vercel.md](deployment/vercel.md) | To deploy, to change the routing or the environment variables of the Vercel project, or to verify the API after a deploy. |
+| [deployment/production.md](deployment/production.md) | To deploy the website (Cloudflare) or the API (Render), change their environment variables, or verify them after a deploy. |
 
 ## Security — how it is defended
 

@@ -1098,7 +1098,7 @@ export function signIn(identifier: string, password: string): Promise<AuthSessio
  * on 2026-10-08 — the same refresh token was accepted repeatedly, a minute
  * apart — so until that changes, a refresh token has to be treated as a live
  * credential for its whole lifetime rather than as single-use. See the
- * production verification section of docs/deployment/vercel.md.
+ * "Known gap" section of docs/deployment/production.md.
  */
 export function refreshSession(): Promise<AuthSession> {
   const refreshToken = tokens?.refreshToken;
