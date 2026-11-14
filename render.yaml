@@ -45,12 +45,17 @@ services:
         value: "10"
       - key: AUTH_RATE_LIMIT_BURST
         value: "5"
-      # Where the real client address is (anonymous rate-limit buckets). Unset
-      # means the leftmost X-Forwarded-For entry, which a client can write
-      # itself behind Render. CLIENT_IP_DEBUG serves /debug/client-ip to find
-      # the right CLIENT_IP_SOURCE; turn it off once that is set.
+      # Where the real client address is (anonymous rate-limit buckets).
+      # Render sits behind Cloudflare, which sets CF-Connecting-IP to the real
+      # client and rejects requests that try to send it. X-Forwarded-For is not
+      # safe here: Render keeps whatever the client put in it. Measured
+      # 2026-11-14 with /debug/client-ip; see docs/deployment/production.md.
+      - key: CLIENT_IP_SOURCE
+        value: header:CF-Connecting-IP
+      # Set CLIENT_IP_DEBUG to "1" to serve /debug/client-ip again if Render's
+      # proxies change.
       - key: CLIENT_IP_DEBUG
-        value: "1"
+        value: "0"
       # Filled in on the Render dashboard (sync: false = asked for at setup, never committed).
       - key: SUPABASE_PUBLISHABLE_KEY
         sync: false

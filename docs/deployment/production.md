@@ -134,8 +134,8 @@ Render dashboard and never committed.
 | `CRON_SECRET` | long random value (dashboard) | Bearer token GitHub Actions sends to `/api/v1/cron/*`; unset disables the routes |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | from `npx web-push generate-vapid-keys` (dashboard) | Web push; see [services/notifications](../../services/notifications/README.md#turning-it-on) |
 | `RATE_LIMIT_*`, `AUTH_RATE_LIMIT_*` | see `render.yaml` | Global and credential-endpoint limits |
-| `CLIENT_IP_SOURCE` | to be decided (see below) | Where the client address for anonymous rate limiting comes from |
-| `CLIENT_IP_DEBUG` | `1` for now | Serves `GET /debug/client-ip`; turn it off once `CLIENT_IP_SOURCE` is set |
+| `CLIENT_IP_SOURCE` | `header:CF-Connecting-IP` | Where the client address for anonymous rate limiting comes from (see [Client IP](#client-ip-behind-render)) |
+| `CLIENT_IP_DEBUG` | `0` | `1` serves `GET /debug/client-ip`, to re-check the proxies |
 
 The Dockerfile sets `SERVICE_NAME=api`, `LOG_FORMAT=json` and `LOG_LEVEL=info`;
 Render shows the JSON logs under the service's **Logs** tab.
@@ -208,21 +208,36 @@ lifetime. Enable **refresh token rotation** in the Supabase dashboard
 as a long-lived credential. This is independent of the host and carried over from
 the [Vercel guide](archive/vercel.md#known-gap-refresh-token-rotation-is-off-in-this-supabase-project).
 
+## Client IP behind Render
+
+Anonymous requests are rate limited by IP, and `CLIENT_IP_SOURCE` says where
+that IP comes from. Measured on 2026-11-14 by calling `/debug/client-ip` from
+outside (Supabase `pg_net`) with made-up headers:
+
+| Header | Sent | Arrived |
+|---|---|---|
+| `X-Forwarded-For` | `6.6.6.6` | `6.6.6.6, <client>, <Cloudflare edge>, <Render internal>`: Render keeps the client's value, so the leftmost entry is **spoofable** |
+| `True-Client-IP` | `7.7.7.7` | the real client (overwritten by Cloudflare) |
+| `CF-Connecting-IP` | `8.8.4.4` | the request was refused by Cloudflare (error 1000) |
+| `X-Real-IP` | `9.9.9.9` | removed |
+
+Render runs behind Cloudflare, which always sets `CF-Connecting-IP` to the real
+client and refuses a request that tries to supply it, so production uses
+`CLIENT_IP_SOURCE=header:CF-Connecting-IP`. (`xff-hops:3` also gave the right
+answer, but depends on the exact number of proxies.)
+
+If Render ever stops sending the header, every anonymous visitor falls back to
+the TCP peer, which is a local proxy (`::1`), and they all share one bucket:
+anonymous traffic would start seeing `429`s together. To re-check, set
+`CLIENT_IP_DEBUG=1` and run:
+
+```bash
+curl -sS -H 'X-Forwarded-For: 6.6.6.6' https://api.unbored.lol/debug/client-ip
+```
+
+Pick a mode under `modes` that shows your real address and not `6.6.6.6`.
+
 ## Still not verified
 
-- **The client IP behind Render's proxy.** Anonymous requests are rate limited
-  by IP, and `CLIENT_IP_SOURCE` says where that IP is read from. The default,
-  the first `X-Forwarded-For` entry, was right behind Vercel, which overwrote the
-  header. Render reportedly appends to it instead, so a caller could choose its
-  own bucket. To pick the right mode, call `/debug/client-ip` (on while
-  `CLIENT_IP_DEBUG=1`) with a made-up header:
-
-  ```bash
-  curl -sS -H 'X-Forwarded-For: 6.6.6.6' https://api.unbored.lol/debug/client-ip
-  ```
-
-  Choose a mode under `modes` that shows your real address, not `6.6.6.6`; set
-  it as `CLIENT_IP_SOURCE` in `render.yaml`, and remove `CLIENT_IP_DEBUG`. The IP
-  is never an authorization input.
 - **The production checks above** have not been recorded against the new hosts
   the way the Vercel ones were in [archive/vercel.md](archive/vercel.md#verified-against-production).
