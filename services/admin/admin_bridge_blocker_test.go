@@ -511,3 +511,25 @@ func (g *guardBackend) SendBroadcast(_ context.Context, token, actor, title, bod
 	g.lastActor = actor
 	return supabaseadmin.BroadcastResult{ID: "broadcast-1", Recipients: 3}, nil
 }
+
+func (g *guardBackend) DeepCutReviews(_ context.Context, token, actor, verdict, search string, page supabaseadmin.Page) ([]supabaseadmin.DeepCutReview, error) {
+	g.record("DeepCutReviews")
+	return nil, nil
+}
+
+func (g *guardBackend) DeepCutAnswers(_ context.Context, token, actor string, questionID int) ([]supabaseadmin.DeepCutAnswer, error) {
+	g.record("DeepCutAnswers")
+	return nil, nil
+}
+
+func (g *guardBackend) RuleDeepCut(_ context.Context, token, actor string, questionID int, key, verdict, canonical string, tier int) (supabaseadmin.DeepCutRuling, error) {
+	g.record("RuleDeepCut", key, verdict)
+	g.lastActor = actor
+	return supabaseadmin.DeepCutRuling{QuestionID: questionID, Key: key, Verdict: verdict}, nil
+}
+
+func (g *guardBackend) SetDeepCutTier(_ context.Context, token, actor string, answerID, tier int) (supabaseadmin.DeepCutRetier, error) {
+	g.record("SetDeepCutTier")
+	g.lastActor = actor
+	return supabaseadmin.DeepCutRetier{AnswerID: answerID, Tier: tier}, nil
+}

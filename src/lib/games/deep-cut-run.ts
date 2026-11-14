@@ -18,12 +18,14 @@ import { ApiError } from "@/lib/api/client";
 import { getAccessToken } from "@/lib/auth/session";
 import {
   answerQuestion,
+  checkAnswer,
   DEEP_CUT_QUESTIONS,
   DEEP_CUT_RULES_VERSION,
   deepCutSubmission,
   finishPractice,
   revealQuestion,
   startPractice,
+  type Check,
   type DeepCutMode,
   type DeepCutQuestion,
   type DeepCutTurn,
@@ -83,6 +85,11 @@ export type DeepCutControls = DeepCutState & {
   begin: (mode: DeepCutMode, day?: number) => void;
   /** Answers the live question. An empty answer skips it. */
   submit: (answer: string) => void;
+  /**
+   * Asks whether an answer to the live question would count, without submitting
+   * it. A failed check resolves `unknown`, so the player can still submit.
+   */
+  check: (answer: string) => Promise<Check>;
   /** Moves on from a verdict to the next question (or the result). */
   next: () => void;
   /** Ends the run now: the open question is skipped and the run is scored. */
@@ -219,6 +226,22 @@ export function useDeepCutRun(gameSlug: string): DeepCutControls {
       });
   }, []);
 
+  const check = useCallback(async (answer: string): Promise<Check> => {
+    const current = latest.current;
+    if (current.status !== "question" || !run.current)
+      return { result: "unknown", suggestions: [] };
+    try {
+      return await checkAnswer(
+        run.current.runId,
+        current.question.position,
+        answer.slice(0, 60),
+        controller.current?.signal,
+      );
+    } catch {
+      return { result: "unknown", suggestions: [] };
+    }
+  }, []);
+
   const finish = useCallback((turns: PlayedTurn[], open: boolean) => {
     const current = run.current;
     if (!current) return;
@@ -327,5 +350,5 @@ export function useDeepCutRun(gameSlug: string): DeepCutControls {
     });
   }, [state, begin, finish, deal]);
 
-  return { ...state, signedIn, begin, submit, next, end, restart, retry };
+  return { ...state, signedIn, begin, submit, check, next, end, restart, retry };
 }

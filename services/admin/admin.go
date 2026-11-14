@@ -165,6 +165,10 @@ type Backend interface {
 	SetPlatformSettings(ctx context.Context, token, actor, bannerText string, commentsEnabled, messagesEnabled bool) error
 	Broadcasts(ctx context.Context, token, actor string, page supabaseadmin.Page) ([]supabaseadmin.Broadcast, error)
 	SendBroadcast(ctx context.Context, token, actor, title, body, link string) (supabaseadmin.BroadcastResult, error)
+	DeepCutReviews(ctx context.Context, token, actor, verdict, search string, page supabaseadmin.Page) ([]supabaseadmin.DeepCutReview, error)
+	DeepCutAnswers(ctx context.Context, token, actor string, questionID int) ([]supabaseadmin.DeepCutAnswer, error)
+	RuleDeepCut(ctx context.Context, token, actor string, questionID int, key, verdict, canonical string, tier int) (supabaseadmin.DeepCutRuling, error)
+	SetDeepCutTier(ctx context.Context, token, actor string, answerID, tier int) (supabaseadmin.DeepCutRetier, error)
 }
 
 // staffTier is what a staff request was authorized as: an allowlisted
@@ -472,6 +476,9 @@ func (s *service) register(router *httpx.Router) {
 	router.AdminFunc("PATCH "+PlatformSettingsPath, s.staff(s.setPlatformSettings))
 	router.AuthenticatedFunc("GET "+BroadcastsPath, s.staff(s.listBroadcasts))
 	router.AdminFunc("POST "+BroadcastsPath, s.staff(s.sendBroadcast))
+
+	// Ruling on Deep Cut answers is moderation work, like the comment queue.
+	s.registerDeepCut(router)
 }
 
 // staff authorizes every staff request, after the router verified the token.

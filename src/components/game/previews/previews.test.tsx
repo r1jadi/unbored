@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentType } from "react";
@@ -15,8 +18,11 @@ import {
 } from "@/lib/games/color-merge";
 import { CHECKMATE_BANK } from "@/lib/games/checkmate-bank";
 import { CROSSWORD_MIDIS, CROSSWORD_MINIS } from "@/lib/games/crossword-bank";
+import { tierInfo } from "@/lib/games/deep-cut";
 import { DECANT_DEPTH, isSolved as isDecantSolved, pourAmount } from "@/lib/games/decant";
 import { canPlace, place } from "@/lib/games/gridburst";
+// @ts-expect-error — a plain .mjs script, imported for its exports.
+import { parseBank } from "../../../../scripts/generate-deep-cut-bank.mjs";
 import { GUESSWORK_ANSWERS, GUESSWORK_GUESSES } from "@/lib/games/guesswork-bank";
 import { marksFor, wordSet } from "@/lib/games/guesswork";
 import { HUEDINI_BANK } from "@/lib/games/huedini-bank";
@@ -139,6 +145,13 @@ import { FLAGGED, OPEN } from "@/lib/games/minefield";
 import { SEVEN_SECOND_PREVIEW_BEATS, SevenSecondPreview } from "./SevenSecondPreview";
 import { STACK10_PREVIEW_BEATS, Stack10Preview } from "./Stack10Preview";
 import {
+  DEEP_CUT_PREVIEW_ANSWER,
+  DEEP_CUT_PREVIEW_BEATS,
+  DEEP_CUT_PREVIEW_PROMPT,
+  DEEP_CUT_PREVIEW_TIER,
+  DeepCutPreview,
+} from "./DeepCutPreview";
+import {
   SUDOKU_PREVIEW_BEATS,
   SUDOKU_PREVIEW_OPEN,
   SUDOKU_PREVIEW_SOLVED,
@@ -199,6 +212,7 @@ const SCRIPTED: Row[] = [
   { name: "crossword", beats: CROSSWORD_PREVIEW_BEATS, Preview: CrosswordPreview },
   { name: "crowns", beats: QUEENS_PREVIEW_BEATS, Preview: QueensPreview },
   { name: "decant", beats: DECANT_PREVIEW_BEATS, Preview: DecantPreview },
+  { name: "deep-cut", beats: DEEP_CUT_PREVIEW_BEATS, Preview: DeepCutPreview },
   { name: "dont-break-the-chain", beats: CHAIN_PREVIEW_BEATS, Preview: ChainPreview },
   { name: "dont-touch-the-black", beats: DONT_TOUCH_PREVIEW_BEATS, Preview: DontTouchPreview },
   { name: "fusebox", beats: FUSEBOX_PREVIEW_BEATS, Preview: FuseboxPreview },
@@ -535,6 +549,22 @@ describe("the Sumdoku preview", () => {
     const end = SUMDOKU_PREVIEW_BEATS[SUMDOKU_PREVIEW_BEATS.length - 1];
     expect(end.cells).toEqual(board.solution);
   });
+});
+
+describe("the Deep Cut preview", () => {
+  it("asks a question the bank doesn't have, and scores the tier the real rules give", () => {
+    const { questions } = parseBank(
+      readFileSync(resolve(process.cwd(), "scripts/deep-cut/bank.txt"), "utf8"),
+    );
+    const prompts = questions.map((question: { prompt: string }) => question.prompt.toLowerCase());
+    expect(prompts).not.toContain(DEEP_CUT_PREVIEW_PROMPT.toLowerCase());
+    const end = DEEP_CUT_PREVIEW_BEATS[DEEP_CUT_PREVIEW_BEATS.length - 1];
+    expect(end.typed).toBe(DEEP_CUT_PREVIEW_ANSWER.length);
+    expect(DEEP_CUT_PREVIEW_BEATS.filter((beat) => beat.points !== null)).toEqual([
+      expect.objectContaining({ points: tierInfo(DEEP_CUT_PREVIEW_TIER)!.points }),
+    ]);
+    // Parsing the whole bank is slow under a full parallel run.
+  }, 20_000);
 });
 
 describe("the Guesswork preview", () => {

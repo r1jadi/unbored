@@ -103,6 +103,26 @@ select pg_temp.ok('Australia is not a typo of Austria',
 select pg_temp.ok('a wrong answer is unknown, not a match',
   (select answer_id from public.deep_cut_lookup(pg_temp.qid('us-state'), 'ontario')) is null);
 
+-- ── Suggestions ─────────────────────────────────────────────────────────────
+
+select pg_temp.ok('a shared uncommon word suggests its answer (New York City → New York)',
+  public.deep_cut_suggest(pg_temp.qid('us-state'), 'New York City') = array['New York']);
+
+select pg_temp.ok('a unique start suggests its answer (Rhode → Rhode Island)',
+  public.deep_cut_suggest(pg_temp.qid('us-state'), 'Rhode') = array['Rhode Island']);
+
+select pg_temp.ok('a spelling just past the typo allowance is suggested',
+  'Mississippi' = any(public.deep_cut_suggest(pg_temp.qid('us-state'), 'Missisipi')));
+
+select pg_temp.ok('a word in three or more answers suggests nothing (New)',
+  public.deep_cut_suggest(pg_temp.qid('us-state'), 'New') = '{}');
+
+select pg_temp.ok('an unrelated answer suggests nothing',
+  public.deep_cut_suggest(pg_temp.qid('us-state'), 'Carrot') = '{}');
+
+select pg_temp.ok('never more than two suggestions',
+  coalesce(array_length(public.deep_cut_suggest(pg_temp.qid('us-state'), 'North South Carolina Dakota'), 1), 0) <= 2);
+
 -- ── The days ────────────────────────────────────────────────────────────────
 
 select pg_temp.ok('a day has seven distinct questions, and keeps them',
@@ -112,6 +132,16 @@ select pg_temp.ok('a day has seven distinct questions, and keeps them',
 
 select pg_temp.ok('consecutive days do not repeat a question',
   not (public.deep_cut_day_questions(20001) && public.deep_cut_day_questions(20000)));
+
+select pg_temp.ok('the repeat window grows with the bank (100 questions: 13 days)',
+  public.deep_cut_repeat_window() = (select count(*)::integer / 7 - 1 from public.deep_cut_questions where active)
+  and public.deep_cut_repeat_window() >= 13);
+
+-- Days are chosen once, in order, each looking back at the ones before it.
+do $$ begin for d in 30000..30030 loop perform public.deep_cut_day_questions(d); end loop; end $$;
+select pg_temp.ok('no question comes back within the window',
+  (select bool_and(not (public.deep_cut_day_questions(30000 + d) && public.deep_cut_day_questions(30000 + d - w)))
+     from generate_series(14, 30) d, generate_series(1, 13) w));
 
 -- ── Privileges ──────────────────────────────────────────────────────────────
 
@@ -183,6 +213,51 @@ select pg_temp.ok('a question takes one answer: a second one changes nothing',
           public.deep_cut_answer((select id from t_ctx where name = 'session'), 0, 'zzzz nonsense') r));
 
 select public.deep_cut_reveal((select id from t_ctx where name = 'session'), 1);
+
+-- ── Checking before submitting ──────────────────────────────────────────────
+
+select pg_temp.ok('a check says a listed answer is valid, and nothing more',
+  (select c = jsonb_build_object('outcome', 'checked', 'result', 'valid')
+     from public.deep_cut_answers a
+     join public.deep_cut_turns t on t.question_id = a.question_id,
+          public.deep_cut_check((select id from t_ctx where name = 'session'), 1, a.canonical) c
+    where t.run_id = (select id from t_ctx where name = 'session') and t.position = 1
+    order by a.tier desc limit 1));
+
+select pg_temp.ok('a valid check carries no suggestions',
+  (select not (c ? 'suggestions')
+     from public.deep_cut_answers a
+     join public.deep_cut_turns t on t.question_id = a.question_id,
+          public.deep_cut_check((select id from t_ctx where name = 'session'), 1, a.canonical) c
+    where t.run_id = (select id from t_ctx where name = 'session') and t.position = 1
+    limit 1));
+
+select pg_temp.ok('a check that does not count carries a suggestions list',
+  jsonb_typeof(public.deep_cut_check((select id from t_ctx where name = 'session'), 1, 'Qwxzzy Blorptown')->'suggestions') = 'array');
+
+select pg_temp.ok('a check on a spelling nobody judged is unknown',
+  public.deep_cut_check((select id from t_ctx where name = 'session'), 1, 'Qwxzzy Blorptown')->>'result' = 'unknown');
+
+select pg_temp.ok('a check on nothing is empty',
+  public.deep_cut_check((select id from t_ctx where name = 'session'), 1, '  ?! ')->>'result' = 'empty');
+
+select pg_temp.ok('a check records nothing: the turn stays open and nothing is queued',
+  (select submitted_at is null and verdict is null from public.deep_cut_turns
+    where run_id = (select id from t_ctx where name = 'session') and position = 1)
+  and not exists (select 1 from public.deep_cut_reviews where key = 'qwxzzyblorptown'));
+
+select pg_temp.ok('a question not dealt yet cannot be checked',
+  public.deep_cut_check((select id from t_ctx where name = 'session'), 3, 'Texas')->>'outcome' = 'not_shown');
+
+select pg_temp.ok('an answered question cannot be checked',
+  public.deep_cut_check((select id from t_ctx where name = 'session'), 0, 'Texas')->>'outcome' = 'already_answered');
+
+insert into t_ctx values ('ivy', pg_temp.player('deepcut_ivy'));
+select pg_temp.act_as((select id from t_ctx where name = 'ivy'));
+select pg_temp.ok('another player''s run cannot be checked',
+  public.deep_cut_check((select id from t_ctx where name = 'session'), 1, 'Texas')->>'outcome' = 'not_found');
+select pg_temp.act_as((select id from t_ctx where name = 'ada'));
+
 select pg_temp.ok('a made-up answer scores nothing',
   (select r->'turn'->>'verdict' = 'unverified' and (r->'turn'->>'points')::int = 0
      from public.deep_cut_answer((select id from t_ctx where name = 'session'), 1, 'Qwxzzy Blorptown') r));
@@ -335,6 +410,20 @@ select pg_temp.ok('a rejected answer is wrong, for everyone after',
            where run_id = (select id from t_ctx where name = 'judged') and position = 1),
          'fakeanswerzed')) = 'rejected');
 
+select public.deep_cut_reveal((select id from t_ctx where name = 'judged'), 2);
+select pg_temp.ok('the judge can see an answer being checked on an open turn',
+  (select c->>'outcome' = 'held' and c->>'key' = 'zibblewort' and c->>'answer' = 'Zibble wort'
+     from public.deep_cut_check_context('test-judge-key-0123456789abcdef0123456789',
+       (select id from t_ctx where name = 'judged'), 2, '  Zibble   wort ') c));
+select public.deep_cut_record_review('test-judge-key-0123456789abcdef0123456789',
+  (select question_id from public.deep_cut_turns
+    where run_id = (select id from t_ctx where name = 'judged') and position = 2),
+  'zibblewort', 'Zibble wort', 'rejected', null, null);
+select pg_temp.ok('a check after a rejection is invalid, and the turn is still open',
+  public.deep_cut_check((select id from t_ctx where name = 'judged'), 2, 'Zibble wort')->>'result' = 'invalid'
+  and (select submitted_at is null from public.deep_cut_turns
+        where run_id = (select id from t_ctx where name = 'judged') and position = 2));
+
 -- ── Staff review ────────────────────────────────────────────────────────────
 
 select public.deep_cut_staff_review(
@@ -357,6 +446,172 @@ begin
 end $$;
 reset role;
 select pg_temp.ok('the staff review is closed to clients', true);
+
+-- ── The admin console's queue ───────────────────────────────────────────────
+
+insert into t_ctx values ('mod', pg_temp.player('deepcut_mod'));
+insert into public.user_roles (user_id, role)
+values ((select id from t_ctx where name = 'mod'), 'moderator')
+on conflict (user_id) do update set role = 'moderator';
+
+select pg_temp.act_as((select id from t_ctx where name = 'ada'));
+select public.deep_cut_reveal((select id from t_ctx where name = 'judged'), 3);
+select public.deep_cut_answer((select id from t_ctx where name = 'judged'), 3, 'Plonkberry', true);
+
+select pg_temp.act_as((select id from t_ctx where name = 'ada'));
+set local role authenticated;
+do $$
+begin
+  begin
+    perform * from public.admin_deep_cut_reviews();
+    raise exception 'FAILED: a player read the review queue';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.admin_deep_cut_set_tier(1, 6);
+    raise exception 'FAILED: a player re-tiered an answer';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+select pg_temp.ok('the queue is closed to players', true);
+
+create temp table t_q as
+select r.question_id from public.deep_cut_reviews r where r.key = 'plonkberry';
+grant select on t_q to authenticated;
+
+select pg_temp.act_as((select id from t_ctx where name = 'mod'));
+set local role authenticated;
+select pg_temp.ok('staff see a pending spelling with its question',
+  exists (select 1 from public.admin_deep_cut_reviews('pending', 'plonk')
+           where key = 'plonkberry' and sample = 'Plonkberry' and prompt like 'Name %' and seen = 1));
+
+select pg_temp.ok('staff see a question''s answers',
+  (select count(*) > 5 from public.admin_deep_cut_answers((select question_id from t_q))));
+
+select pg_temp.ok('staff can file a spelling under an existing answer',
+  (select r->>'verdict' = 'accepted' and r->>'previousVerdict' = 'pending'
+     from public.admin_deep_cut_rule(
+       (select question_id from t_q), 'plonkberry', 'accepted',
+       (select canonical from public.admin_deep_cut_answers((select question_id from t_q))
+         order by tier, canonical limit 1),
+       1) r));
+
+select pg_temp.ok('a ruled spelling leaves the pending queue',
+  not exists (select 1 from public.admin_deep_cut_reviews('pending', 'plonk'))
+  and exists (select 1 from public.admin_deep_cut_reviews('accepted', 'plonk') where answer_tier = 1));
+
+select pg_temp.ok('staff can re-tier an answer',
+  (select r->>'tier' = '6'
+     from public.admin_deep_cut_set_tier(
+       (select answer_id from public.admin_deep_cut_reviews('accepted', 'plonk') limit 1), 6) r));
+reset role;
+
+select pg_temp.ok('a re-tiered answer is pinned as staff''s',
+  (select source = 'staff' and tier = 6 from public.deep_cut_answers
+    where id = (select r.answer_id from public.deep_cut_reviews r where r.key = 'plonkberry')));
+
+-- A bank reload keeps the hand-set tier.
+do $$
+declare
+  v_q   public.deep_cut_questions;
+  v_ans jsonb;
+begin
+  select q.* into v_q from public.deep_cut_questions q
+   where q.id = (select r.question_id from public.deep_cut_reviews r where r.key = 'plonkberry');
+  select jsonb_agg(jsonb_build_object('name', a.canonical, 'tier', 1)) into v_ans
+    from public.deep_cut_answers a where a.question_id = v_q.id;
+  perform public.deep_cut_load_question(v_q.slug, v_q.category, v_q.prompt, v_ans);
+end $$;
+select pg_temp.ok('a bank reload keeps a tier staff set by hand',
+  (select tier = 6 from public.deep_cut_answers
+    where id = (select r.answer_id from public.deep_cut_reviews r where r.key = 'plonkberry')));
+
+-- ── Party (hot potato) ──────────────────────────────────────────────────────
+
+select pg_temp.act_as((select id from t_ctx where name = 'ada'));
+
+select pg_temp.ok('a party needs 2 to 8 players',
+  public.deep_cut_party_start(1)->>'outcome' = 'invalid_players'
+  and public.deep_cut_party_start(9)->>'outcome' = 'invalid_players');
+
+insert into t_ctx select 'party', (public.deep_cut_party_start(3)->>'partyId')::uuid;
+
+select pg_temp.ok('rounds come in order',
+  public.deep_cut_party_question((select id from t_ctx where name = 'party'), 1)->>'outcome' = 'out_of_order');
+
+select pg_temp.ok('a round deals a question with nothing said yet',
+  (select r->>'outcome' = 'shown' and r->>'prompt' like 'Name %' and jsonb_array_length(r->'used') = 0
+     from public.deep_cut_party_question((select id from t_ctx where name = 'party'), 0) r));
+
+select pg_temp.ok('a party never deals a question live in a daily set',
+  not ((select question_ids from public.deep_cut_parties where id = (select id from t_ctx where name = 'party'))
+       && public.deep_cut_live_questions()));
+
+create temp table t_party_answer as
+select a.canonical, a.tier
+  from public.deep_cut_parties p
+  join public.deep_cut_answers a on a.question_id = p.question_ids[1]
+ where p.id = (select id from t_ctx where name = 'party')
+ order by a.tier, a.id
+ limit 1;
+
+select pg_temp.ok('a correct answer is valid and scores its tier',
+  (select r->>'result' = 'valid' and (r->>'points')::int = public.deep_cut_tier_points(t.tier)
+     from t_party_answer t,
+          public.deep_cut_party_answer((select id from t_ctx where name = 'party'), 0, 0, t.canonical) r));
+
+select pg_temp.ok('the same answer from the next player is a repeat',
+  (select r->>'result' = 'repeat' and r->>'canonical' = t.canonical
+     from t_party_answer t,
+          public.deep_cut_party_answer((select id from t_ctx where name = 'party'), 0, 1, lower(t.canonical)) r));
+
+select pg_temp.ok('a made-up answer is unknown and records nothing',
+  public.deep_cut_party_answer((select id from t_ctx where name = 'party'), 0, 1, 'Blorptastic Zed')->>'result' = 'unknown'
+  and (select count(*) from public.deep_cut_party_answers where party_id = (select id from t_ctx where name = 'party')) = 1);
+
+select pg_temp.ok('the round shows what was said, by whom',
+  (select r->'used'->0->>'player' = '0' and jsonb_array_length(r->'used') = 1
+     from public.deep_cut_party_question((select id from t_ctx where name = 'party'), 0) r));
+
+select pg_temp.ok('a player outside the party cannot answer',
+  public.deep_cut_party_answer((select id from t_ctx where name = 'party'), 0, 3, 'x')->>'outcome' = 'invalid_player');
+
+select pg_temp.ok('a round not dealt yet cannot be answered',
+  public.deep_cut_party_answer((select id from t_ctx where name = 'party'), 1, 0, 'x')->>'outcome' = 'not_shown');
+
+select pg_temp.ok('the next round is dealt',
+  public.deep_cut_party_question((select id from t_ctx where name = 'party'), 1)->>'outcome' = 'shown');
+select pg_temp.ok('the next round deals a different question',
+  (select cardinality(question_ids) = 2 and question_ids[1] <> question_ids[2] from public.deep_cut_parties
+    where id = (select id from t_ctx where name = 'party')));
+
+select pg_temp.act_as((select id from t_ctx where name = 'ivy'));
+select pg_temp.ok('another player''s party is not found',
+  public.deep_cut_party_question((select id from t_ctx where name = 'party'), 0)->>'outcome' = 'not_found');
+select pg_temp.act_as((select id from t_ctx where name = 'ada'));
+
+select pg_temp.ok('the judge can see an unjudged party answer',
+  (select c->>'outcome' = 'held' and c->>'key' = 'blorptasticzed'
+     from public.deep_cut_party_context('test-judge-key-0123456789abcdef0123456789',
+       (select id from t_ctx where name = 'party'), 0, 'Blorptastic Zed') c));
+
+update public.deep_cut_parties set expires_at = now() - interval '1 second'
+ where id = (select id from t_ctx where name = 'party');
+select pg_temp.ok('an ended party is not found',
+  public.deep_cut_party_question((select id from t_ctx where name = 'party'), 0)->>'outcome' = 'not_found');
+
+set local role anon;
+do $$
+begin
+  begin
+    perform 1 from public.deep_cut_party_answers limit 1;
+    raise exception 'FAILED: anon read party answers';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+select pg_temp.ok('party tables are closed to clients', true);
 
 rollback;
 

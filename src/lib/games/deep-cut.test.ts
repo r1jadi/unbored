@@ -122,20 +122,25 @@ describe("the bank", () => {
     expect(answerKey("Straße")).toBe("strasse");
   });
 
-  it("is valid and loaded by the bank migration", () => {
+  it("is valid and loaded by the latest bank migration", () => {
     const { questions, problems } = parseBank(
       readFileSync(resolve(ROOT, "scripts/deep-cut/bank.txt"), "utf8"),
     );
     expect(problems).toEqual([]);
     expect(questions.length).toBeGreaterThanOrEqual(21);
     const migration = readFileSync(
-      resolve(ROOT, "supabase/migrations/20270102120100_deep_cut_bank.sql"),
+      resolve(ROOT, "supabase/migrations/20270103120100_deep_cut_bank_more.sql"),
       "utf8",
     );
-    for (const question of questions) {
-      expect(migration).toContain(`select public.deep_cut_load_question('${question.slug}'`);
-    }
-  });
+    // One pass over the (large) migration, then a set comparison.
+    const loaded = new Set(
+      [...migration.matchAll(/select public\.deep_cut_load_question\('([a-z0-9-]+)'/g)].map(
+        (match) => match[1],
+      ),
+    );
+    const slugs: string[] = questions.map((question: { slug: string }) => question.slug);
+    expect(slugs.filter((slug) => !loaded.has(slug))).toEqual([]);
+  }, 20_000);
 
   it("never reaches the browser", () => {
     // The answers are the score: no client module may import the bank.

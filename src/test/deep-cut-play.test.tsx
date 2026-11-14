@@ -73,6 +73,17 @@ function dailyServer(): Handler {
         201,
       );
     }
+    if (/questions\/\d\/check$/.test(url)) {
+      const typed = JSON.parse(String(init?.body ?? "{}")).answer as string;
+      if (typed === "Delawhere") {
+        return jsonResponse({ outcome: "checked", result: "invalid", suggestions: ["Delware"] });
+      }
+      return jsonResponse({
+        outcome: "checked",
+        result: typed === "Carrot" ? "invalid" : "valid",
+        suggestions: typed === "Carrot" ? [] : undefined,
+      });
+    }
     const answer = /questions\/(\d)\/answer$/.exec(url);
     if (answer) {
       const typed = JSON.parse(String(init?.body ?? "{}")).answer as string;
@@ -207,6 +218,64 @@ describe("the daily dive", () => {
     expect(await screen.findByText("Snorkeler")).toBeInTheDocument();
   });
 
+  it("turns down an invalid answer before it is submitted, so it can be changed", async () => {
+    const spy = mockFetch(dailyServer());
+    await renderRuntime();
+    fireEvent.click(screen.getByRole("button", { name: "Dive into today's seven" }));
+    await screen.findByRole("heading", { name: "Name a US state" });
+
+    answer("Carrot");
+    expect(await screen.findByText("Not a valid answer. Try another.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Your answer" })).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Submit answer" })).toBeDisabled();
+    expect(spy.mock.calls.some((call) => String(call[0]).endsWith("/answer"))).toBe(false);
+
+    // Typing again clears the warning; a valid answer goes in.
+    answer("Delware");
+    expect(await screen.findByText("+80")).toBeInTheDocument();
+    const sent = spy.mock.calls.filter((call) => String(call[0]).endsWith("/answer"));
+    expect(sent).toHaveLength(1);
+    expect(JSON.parse(String(sent[0]?.[1]?.body))).toEqual({ answer: "Delware" });
+  });
+
+  it("suggests what an invalid answer may have meant, and sends a suggestion on a tap", async () => {
+    const spy = mockFetch(dailyServer());
+    await renderRuntime();
+    fireEvent.click(screen.getByRole("button", { name: "Dive into today's seven" }));
+    await screen.findByRole("heading", { name: "Name a US state" });
+
+    answer("Delawhere");
+    expect(await screen.findByText("Did you mean:")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Delware" }));
+
+    expect(await screen.findByText("+80")).toBeInTheDocument();
+    const sent = spy.mock.calls.filter((call) => String(call[0]).endsWith("/answer"));
+    expect(sent).toHaveLength(1);
+    expect(JSON.parse(String(sent[0]?.[1]?.body))).toEqual({ answer: "Delware" });
+  });
+
+  it("does not submit an answer already turned down when the clock runs out", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const spy = mockFetch(dailyServer());
+    await renderRuntime();
+    fireEvent.click(screen.getByRole("button", { name: "Dive into today's seven" }));
+    await screen.findByRole("heading", { name: "Name a US state" });
+
+    answer("Carrot");
+    await screen.findByText("Not a valid answer. Try another.");
+    await act(async () => {
+      vi.advanceTimersByTime(26_000);
+    });
+    await waitFor(() =>
+      expect(spy.mock.calls.some((call) => String(call[0]).endsWith("/answer"))).toBe(true),
+    );
+    const sent = spy.mock.calls.find((call) => String(call[0]).endsWith("/answer"));
+    expect(JSON.parse(String(sent?.[1]?.body))).toEqual({ answer: "" });
+  });
+
   it("submits whatever is typed when the clock runs out", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const spy = mockFetch(dailyServer());
@@ -228,7 +297,7 @@ describe("the daily dive", () => {
     );
     const sent = spy.mock.calls.find((call) => String(call[0]).endsWith("/answer"));
     expect(JSON.parse(String(sent?.[1]?.body))).toEqual({ answer: "Ontario" });
-    expect(await screen.findByText("Not an answer")).toBeInTheDocument();
+    expect(await screen.findByText("Not a valid answer")).toBeInTheDocument();
   });
 
   it("says when today's dive is done, and offers practice", async () => {

@@ -5,8 +5,11 @@
  *   node scripts/generate-deep-cut-bank.mjs           # check the bank, print a summary
  *   node scripts/generate-deep-cut-bank.mjs --write   # rewrite the bank migration
  *
- * --write rewrites `supabase/migrations/20270102120100_deep_cut_bank.sql`: one
- * `deep_cut_load_question` call per question. The bank never ships to the browser —
+ * --write rewrites `MIGRATION` (below): one `deep_cut_load_question` call per
+ * question. Loading is an upsert, so each bank migration carries the whole bank.
+ * Once a bank migration has been deployed it is never rewritten — point
+ * `MIGRATION` at a new file instead (the first was
+ * `20270102120100_deep_cut_bank.sql`). The bank never ships to the browser —
  * the answers are the score — so there is no client copy to keep in step.
  *
  * The check refuses a bank where, within one question:
@@ -21,11 +24,11 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = "scripts/deep-cut/bank.txt";
-const MIGRATION = "supabase/migrations/20270102120100_deep_cut_bank.sql";
+const MIGRATION = "supabase/migrations/20270103120100_deep_cut_bank_more.sql";
 
 const FOLD = [
   "áàâäãåāăąçćčďéèêëēėęěíìîïīįłñńňóòôöõōőřśšşťúùûüūůűųýÿžźżğı",
@@ -160,7 +163,9 @@ function migration(questions) {
   return lines.join("\n");
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// `pathToFileURL`, not "file://" + the path: on Windows the two differ, and the
+// check would silently do nothing.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { questions, problems } = parseBank(readFileSync(resolve(ROOT, SOURCE), "utf8"));
   if (problems.length > 0) {
     console.error(problems.join("\n"));

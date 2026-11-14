@@ -288,3 +288,74 @@ func TestDeepCutWithoutABackendAnswers503(t *testing.T) {
 		t.Fatalf("a failing database = %d, want 503", status)
 	}
 }
+
+func TestDeepCutCheckPassesAKnownVerdictThrough(t *testing.T) {
+	backend := &fakeDeepCut{fakeBackend: testBackend(), answers: map[string][]string{
+		"deep_cut_check": {`{"outcome":"checked","result":"invalid"}`},
+	}}
+	judge := &fakeJudge{}
+	server := deepCutServer(t, backend, &deepCutJudging{judge: judge, key: "k"})
+
+	status, body := post(t, server, "/api/v1/deep-cut/runs/"+deepCutRun+"/questions/2/check", `{"answer":"  Carrot "}`, token(t, testUserID))
+	if status != http.StatusOK || body["result"] != "invalid" {
+		t.Fatalf("check = %d %v", status, body)
+	}
+	call := backend.called("deep_cut_check")[0]
+	if call.payload["p_answer"] != "Carrot" || call.payload["p_position"] != 2 || call.token == "" {
+		t.Fatalf("check call = %+v", call)
+	}
+	if len(judge.asked) != 0 || len(backend.called("deep_cut_answer")) != 0 {
+		t.Fatal("a known verdict consulted the judge or submitted the answer")
+	}
+}
+
+func TestDeepCutCheckAsksTheJudgeAboutAnUnknownAnswer(t *testing.T) {
+	backend := &fakeDeepCut{fakeBackend: testBackend(), answers: map[string][]string{
+		"deep_cut_check": {
+			`{"outcome":"checked","result":"unknown"}`,
+			`{"outcome":"checked","result":"valid"}`,
+		},
+		"deep_cut_check_context": {`{"outcome":"held","questionId":4,"prompt":"Name a fruit","answer":"Salak","key":"salak","known":["Apple"]}`},
+		"deep_cut_record_review": {`"accepted"`},
+	}}
+	judge := &fakeJudge{ruling: deepcutjudge.Ruling{Valid: true, Canonical: "Snake fruit", Tier: 5}}
+	server := deepCutServer(t, backend, &deepCutJudging{judge: judge, key: "judge-key"})
+
+	status, body := post(t, server, "/api/v1/deep-cut/runs/"+deepCutRun+"/questions/0/check", `{"answer":"Salak"}`, "")
+	if status != http.StatusOK || body["result"] != "valid" {
+		t.Fatalf("check = %d %v", status, body)
+	}
+	ctx := backend.called("deep_cut_check_context")
+	if len(ctx) != 1 || ctx[0].payload["p_answer"] != "Salak" || ctx[0].payload["p_judge_key"] != "judge-key" || ctx[0].token != "" {
+		t.Fatalf("check context calls = %+v", ctx)
+	}
+	if len(backend.called("deep_cut_check")) != 2 || len(backend.called("deep_cut_answer")) != 0 {
+		t.Fatalf("calls = %+v", backend.calls)
+	}
+}
+
+func TestDeepCutCheckStaysUnknownWhenTheJudgeFails(t *testing.T) {
+	backend := &fakeDeepCut{fakeBackend: testBackend(), answers: map[string][]string{
+		"deep_cut_check":         {`{"outcome":"checked","result":"unknown"}`},
+		"deep_cut_check_context": {`{"outcome":"held","questionId":4,"prompt":"Name a fruit","answer":"Zzz","key":"zzz","known":[]}`},
+	}}
+	server := deepCutServer(t, backend, &deepCutJudging{judge: &fakeJudge{err: errors.New("down")}, key: "k"})
+
+	status, body := post(t, server, "/api/v1/deep-cut/runs/"+deepCutRun+"/questions/0/check", `{"answer":"Zzz"}`, "")
+	if status != http.StatusOK || body["result"] != "unknown" {
+		t.Fatalf("check = %d %v", status, body)
+	}
+	if len(backend.called("deep_cut_check")) != 1 || len(backend.called("deep_cut_record_review")) != 0 {
+		t.Fatalf("calls = %+v", backend.calls)
+	}
+}
+
+func TestDeepCutCheckRefusesALongAnswer(t *testing.T) {
+	backend := &fakeDeepCut{fakeBackend: testBackend()}
+	server := deepCutServer(t, backend, nil)
+	long := `{"answer":"` + "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" + `"}`
+	status, _ := post(t, server, "/api/v1/deep-cut/runs/"+deepCutRun+"/questions/0/check", long, "")
+	if status != http.StatusBadRequest || len(backend.calls) != 0 {
+		t.Fatalf("long check = %d, calls %d", status, len(backend.calls))
+	}
+}

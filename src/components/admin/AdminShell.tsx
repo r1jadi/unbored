@@ -15,6 +15,7 @@ import {
   Tags,
   Trophy,
   Users,
+  Waves,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { ErrorState, UserAvatar } from "@/components/common";
@@ -31,6 +32,7 @@ type AdminRoute =
   | "/admin/review"
   | "/admin/comments"
   | "/admin/feedback"
+  | "/admin/deep-cut"
   | "/admin/games"
   | "/admin/categories"
   | "/admin/featured"
@@ -54,6 +56,7 @@ const nav: { label: string; items: AdminNavItem[] }[] = [
       { to: "/admin/review", label: msg("Review queue"), icon: ClipboardCheck, exact: false },
       { to: "/admin/comments", label: msg("Comments"), icon: MessageSquare, exact: false },
       { to: "/admin/feedback", label: msg("Feedback"), icon: MessageSquareHeart, exact: false },
+      { to: "/admin/deep-cut", label: msg("Deep Cut answers"), icon: Waves, exact: false },
     ],
   },
   {
