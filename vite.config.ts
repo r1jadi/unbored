@@ -131,6 +131,10 @@ export default defineConfig(({ command, mode }) => {
             nitro({
               defaultPreset: "cloudflare_module",
               routeRules: { ...staticFileHeaders(), ...renamedGameRedirects() },
+              // Merged into the generated .output/server/wrangler.json. Wrangler
+              // 4.162+ refuses `wrangler preview` (Cloudflare's preview deploys)
+              // without a `previews` block; an empty one is all it needs.
+              cloudflare: { wrangler: { previews: {} } },
             }),
           ]
         : []),
