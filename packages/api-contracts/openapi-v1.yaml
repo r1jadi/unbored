@@ -2483,10 +2483,10 @@ components:
         verdict: { type: string, enum: [correct, wrong, unverified, timeout, skipped] }
         answer: { type: [string, "null"], description: The answer as typed. }
         canonical: { type: [string, "null"], description: The bank's name for the matched answer. }
-        answerId: { type: integer, description: The matched answer's id, or 0. A daily run submits these as its actions. }
+        answerId: { type: integer, description: "The matched answer's id, or 0. A daily run submits these as its actions." }
         tier: { type: [integer, "null"], minimum: 1, maximum: 6 }
         points: { type: integer, enum: [0, 10, 20, 40, 60, 80, 100] }
-        sharePercent: { type: [integer, "null"], description: How many players gave this answer, once twenty have answered. }
+        sharePercent: { type: [integer, "null"], description: "How many players gave this answer, once twenty have answered." }
         commonAnswer: { type: [string, "null"], description: What most people say. }
         deepestAnswers: { type: [string, "null"], description: Some of the rarest answers — practice runs only. }
     Error:
