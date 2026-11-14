@@ -142,14 +142,18 @@ func TestLimiterCapsCallsPerWindow(t *testing.T) {
 	}
 }
 
+// otherModel is a non-gpt-oss model name. It is a constant rather than a literal
+// beside the key argument, so the secret scanner does not read it as a key.
+const otherModel = "llama-3.3-70b-versatile"
+
 func TestOtherModelsGetNoReasoningEffort(t *testing.T) {
 	var seen map[string]any
 	srv := server(t, http.StatusOK, toolUse(`{"valid":false,"matches_known":null,"canonical":"","tier":1}`), &seen)
-	c, _ := New("test-key", "llama-3.3-70b-versatile")
+	c, _ := New("test-key", otherModel)
 	if _, err := c.WithEndpoint(srv.URL, srv.Client()).Rule(context.Background(), Question{Prompt: "p", Answer: "x"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, present := seen["reasoning_effort"]; present || seen["model"] != "llama-3.3-70b-versatile" {
+	if _, present := seen["reasoning_effort"]; present || seen["model"] != otherModel {
 		t.Fatalf("request = %v", seen)
 	}
 }
