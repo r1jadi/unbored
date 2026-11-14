@@ -45,6 +45,12 @@ services:
         value: "10"
       - key: AUTH_RATE_LIMIT_BURST
         value: "5"
+      # Where the real client address is (anonymous rate-limit buckets). Unset
+      # means the leftmost X-Forwarded-For entry, which a client can write
+      # itself behind Render. CLIENT_IP_DEBUG serves /debug/client-ip to find
+      # the right CLIENT_IP_SOURCE; turn it off once that is set.
+      - key: CLIENT_IP_DEBUG
+        value: "1"
       # Filled in on the Render dashboard (sync: false = asked for at setup, never committed).
       - key: SUPABASE_PUBLISHABLE_KEY
         sync: false

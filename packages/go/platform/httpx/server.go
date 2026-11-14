@@ -185,12 +185,16 @@ type ServerOptions struct {
 //
 // Execution order, outermost first:
 //
-//	request id → recovery → security headers → CORS → identity strip →
-//	logging → rate limit → body limit → extra handlers → routes
+//	request id → client ip → recovery → security headers → CORS →
+//	identity strip → logging → rate limit → body limit → extra handlers → routes
 //
 // The client-supplied identity headers are stripped before anything can read
 // them, and the limiter is the outermost layer that can still be keyed by IP.
+// The client address is resolved once, first, from CLIENT_IP_SOURCE.
 func NewServer(opts ServerOptions) *http.Server {
+	if opts.Config.HTTP.ClientIP.Debug {
+		opts.Router.mux.HandleFunc("GET "+ClientIPDebugPath, ClientIPDebugHandler(opts.Config.HTTP.ClientIP))
+	}
 	handler := opts.Router.methodHandler()
 	handler = Chain(handler,
 		BodyLimit(opts.Config.HTTP.MaxRequestBytes),
@@ -202,6 +206,7 @@ func NewServer(opts ServerOptions) *http.Server {
 
 	middlewares := []Middleware{
 		RequestID,
+		ClientIP(opts.Config.HTTP.ClientIP),
 		Recover(opts.Logger),
 		SecurityHeaders(opts.Config.Environment),
 		CORS(opts.Config),

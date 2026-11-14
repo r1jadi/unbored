@@ -134,6 +134,8 @@ Render dashboard and never committed.
 | `CRON_SECRET` | long random value (dashboard) | Bearer token GitHub Actions sends to `/api/v1/cron/*`; unset disables the routes |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | from `npx web-push generate-vapid-keys` (dashboard) | Web push; see [services/notifications](../../services/notifications/README.md#turning-it-on) |
 | `RATE_LIMIT_*`, `AUTH_RATE_LIMIT_*` | see `render.yaml` | Global and credential-endpoint limits |
+| `CLIENT_IP_SOURCE` | to be decided (see below) | Where the client address for anonymous rate limiting comes from |
+| `CLIENT_IP_DEBUG` | `1` for now | Serves `GET /debug/client-ip`; turn it off once `CLIENT_IP_SOURCE` is set |
 
 The Dockerfile sets `SERVICE_NAME=api`, `LOG_FORMAT=json` and `LOG_LEVEL=info`;
 Render shows the JSON logs under the service's **Logs** tab.
@@ -208,10 +210,19 @@ the [Vercel guide](archive/vercel.md#known-gap-refresh-token-rotation-is-off-in-
 
 ## Still not verified
 
-- **The client IP behind Render's proxy.** `httpx.ClientKey` buckets anonymous
-  requests by the first `X-Forwarded-For` entry, which was right behind Vercel.
-  Whether Render's proxy overwrites or appends to a client-supplied
-  `X-Forwarded-For` has not been checked; if it appends, an anonymous caller can
-  pick its own rate-limit bucket. It is never an authorization input.
+- **The client IP behind Render's proxy.** Anonymous requests are rate limited
+  by IP, and `CLIENT_IP_SOURCE` says where that IP is read from. The default,
+  the first `X-Forwarded-For` entry, was right behind Vercel, which overwrote the
+  header. Render reportedly appends to it instead, so a caller could choose its
+  own bucket. To pick the right mode, call `/debug/client-ip` (on while
+  `CLIENT_IP_DEBUG=1`) with a made-up header:
+
+  ```bash
+  curl -sS -H 'X-Forwarded-For: 6.6.6.6' https://api.unbored.lol/debug/client-ip
+  ```
+
+  Choose a mode under `modes` that shows your real address, not `6.6.6.6`; set
+  it as `CLIENT_IP_SOURCE` in `render.yaml`, and remove `CLIENT_IP_DEBUG`. The IP
+  is never an authorization input.
 - **The production checks above** have not been recorded against the new hosts
   the way the Vercel ones were in [archive/vercel.md](archive/vercel.md#verified-against-production).

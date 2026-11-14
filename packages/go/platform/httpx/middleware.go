@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"log/slog"
-	"net"
 	"net/http"
 	"regexp"
 	"strings"
@@ -344,20 +343,13 @@ func ClientKey(r *http.Request) string {
 	if id, ok := identity.FromContext(r.Context()); ok && !id.Anonymous && id.UserID != "" {
 		return "user:" + id.UserID
 	}
-	// The first entry of X-Forwarded-For is taken as the client. That was the
-	// real client behind Vercel; behind Render it has not been verified (see
-	// "Still not verified" in docs/deployment/production.md). It is only a
-	// bucketing hint — never an authorization input.
-	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-		first, _, _ := strings.Cut(forwarded, ",")
-		if first = strings.TrimSpace(first); first != "" {
-			return "ip:" + first
-		}
+	// The address the ClientIP middleware resolved from CLIENT_IP_SOURCE (see
+	// config.ClientIP). Outside that middleware (a handler under test), the
+	// default mode applies. Only a bucketing hint — never an authorization input.
+	if ip := ClientIPFrom(r.Context()); ip != "" {
+		return "ip:" + ip
 	}
-	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		return "ip:" + host
-	}
-	return "ip:" + r.RemoteAddr
+	return "ip:" + ResolveClientIP(r, config.ClientIP{Mode: "xff-first"})
 }
 
 // StripIdentityHeaders removes headers a client might use to impersonate an

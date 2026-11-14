@@ -7,7 +7,9 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -41,7 +43,66 @@ type HTTP struct {
 	MaxRequestBytes   int64
 	MaxHeaderBytes    int
 	RateLimit         RateLimit
+	ClientIP          ClientIP
 }
+
+// ClientIP says where the real client address of a request is found, which is
+// the bucket an anonymous caller is rate limited in. It depends on the proxies
+// in front of the process, so it is configuration (CLIENT_IP_SOURCE):
+//
+//	xff-first      the leftmost X-Forwarded-For entry. Right only behind a proxy
+//	               that overwrites the header (Vercel did); anywhere else the
+//	               client writes that entry itself. The default, for local work.
+//	xff-hops:N     the Nth entry from the right: N trusted proxies each append
+//	               the peer they saw, so that entry was written by the outermost
+//	               one and cannot be chosen by the client.
+//	header:NAME    a single header a trusted edge sets, e.g. True-Client-IP.
+//	remote         the TCP peer, for a process with no proxy in front.
+//
+// Every mode falls back to the TCP peer when its source is missing or is not an
+// IP address. CLIENT_IP_DEBUG=1 additionally serves GET /debug/client-ip, which
+// shows a caller its own forwarding headers so the right mode can be chosen.
+type ClientIP struct {
+	Mode   string // "xff-first", "xff-hops", "header" or "remote"
+	Hops   int    // for xff-hops
+	Header string // for header
+	Debug  bool
+	// Raw is CLIENT_IP_SOURCE as given, kept for error messages; Err is why it
+	// did not parse (reported by Validate, so every problem is listed at once).
+	Raw string
+	Err error
+}
+
+// ParseClientIP reads a CLIENT_IP_SOURCE value. An empty value is xff-first.
+func ParseClientIP(raw string) ClientIP {
+	value := strings.TrimSpace(raw)
+	c := ClientIP{Raw: value}
+	switch {
+	case value == "" || value == "xff-first":
+		c.Mode = "xff-first"
+	case value == "remote":
+		c.Mode = "remote"
+	case strings.HasPrefix(value, "xff-hops:"):
+		hops, err := strconv.Atoi(strings.TrimPrefix(value, "xff-hops:"))
+		if err != nil || hops < 1 || hops > 10 {
+			c.Err = fmt.Errorf("CLIENT_IP_SOURCE %q: xff-hops needs a number of proxies from 1 to 10", value)
+			break
+		}
+		c.Mode, c.Hops = "xff-hops", hops
+	case strings.HasPrefix(value, "header:"):
+		name := strings.TrimSpace(strings.TrimPrefix(value, "header:"))
+		if !headerName.MatchString(name) {
+			c.Err = fmt.Errorf("CLIENT_IP_SOURCE %q: header needs a header name, e.g. header:True-Client-IP", value)
+			break
+		}
+		c.Mode, c.Header = "header", http.CanonicalHeaderKey(name)
+	default:
+		c.Err = fmt.Errorf("CLIENT_IP_SOURCE %q must be xff-first, xff-hops:N, header:NAME or remote", value)
+	}
+	return c
+}
+
+var headerName = regexp.MustCompile(`^[A-Za-z0-9-]{1,64}$`)
 
 // RateLimit configures the in-process token bucket limiter. It protects the
 // API from abuse today; the same interface moves to Redis when the API runs on
@@ -173,6 +234,11 @@ func Load(service string) (*Config, error) {
 				Burst:             EnvInt("RATE_LIMIT_BURST", 60),
 				Shared:            SharedRateLimitFromEnv("api"),
 			},
+			ClientIP: func() ClientIP {
+				c := ParseClientIP(Getenv("CLIENT_IP_SOURCE"))
+				c.Debug = EnvInt("CLIENT_IP_DEBUG", 0) == 1
+				return c
+			}(),
 		},
 		Supabase: Supabase{
 			// The project URL and the publishable key are public: the browser
@@ -262,6 +328,10 @@ func (c *Config) Validate() error {
 		problems = append(problems, errors.New("UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set together"))
 	} else if shared.RESTURL != "" && !strings.HasPrefix(shared.RESTURL, "https://") && !c.Environment.IsDevelopment() {
 		problems = append(problems, errors.New("UPSTASH_REDIS_REST_URL must use https"))
+	}
+
+	if c.HTTP.ClientIP.Err != nil {
+		problems = append(problems, c.HTTP.ClientIP.Err)
 	}
 
 	for _, origin := range c.CORSAllowedOrigins {
