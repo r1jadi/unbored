@@ -39,7 +39,9 @@ function jsonResponse(body: unknown, status = 200) {
 
 /** A stubbed server for one game: today's session, then the verified run. */
 function mockServer(slug: string, rulesVersion: string, verified: number) {
-  const spy = vi.fn(async (input: RequestInfo | URL) => {
+  // `init` is declared so the recorded calls carry the request body.
+  const spy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    void init;
     const url = String(input);
     if (url.includes("/complete")) {
       return jsonResponse({
