@@ -14,6 +14,7 @@ type Loader = () => Promise<{ default: ComponentType<PreviewProps> }>;
 const LOADERS: Record<string, Loader> = {
   "7-second": () => import("./SevenSecondPreview").then((m) => ({ default: m.SevenSecondPreview })),
   "8-puzzle": () => import("./EightPuzzlePreview").then((m) => ({ default: m.EightPuzzlePreview })),
+  ballpark: () => import("./BallparkPreview").then((m) => ({ default: m.BallparkPreview })),
   bolted: () => import("./BoltedPreview").then((m) => ({ default: m.BoltedPreview })),
   cascade: () => import("./CascadePreview").then((m) => ({ default: m.CascadePreview })),
   checkmate: () => import("./CheckmatePreview").then((m) => ({ default: m.CheckmatePreview })),
@@ -37,11 +38,14 @@ const LOADERS: Record<string, Loader> = {
   "mini-sudoku": () =>
     import("./MiniSudokuPreview").then((m) => ({ default: m.MiniSudokuPreview })),
   "one-move": () => import("./OneMovePreview").then((m) => ({ default: m.OneMovePreview })),
+  "only-once": () => import("./OnlyOncePreview").then((m) => ({ default: m.OnlyOncePreview })),
   scatter: () => import("./ScatterPreview").then((m) => ({ default: m.ScatterPreview })),
   "stack-10": () => import("./Stack10Preview").then((m) => ({ default: m.Stack10Preview })),
   sudoku: () => import("./SudokuPreview").then((m) => ({ default: m.SudokuPreview })),
   sumdoku: () => import("./SumdokuPreview").then((m) => ({ default: m.SumdokuPreview })),
   "sun-and-moon": () => import("./TangoPreview").then((m) => ({ default: m.TangoPreview })),
+  "tee-time": () => import("./TeeTimePreview").then((m) => ({ default: m.TeeTimePreview })),
+  "ton-up": () => import("./TonUpPreview").then((m) => ({ default: m.TonUpPreview })),
   trail: () => import("./ZipPreview").then((m) => ({ default: m.ZipPreview })),
   updraft: () => import("./UpdraftPreview").then((m) => ({ default: m.UpdraftPreview })),
   whittle: () => import("./WhittlePreview").then((m) => ({ default: m.WhittlePreview })),

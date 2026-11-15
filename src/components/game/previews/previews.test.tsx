@@ -189,6 +189,30 @@ import {
   ZIP_PREVIEW_SIZE,
   ZipPreview,
 } from "./ZipPreview";
+import { BALLPARK_PRODUCTS } from "@/lib/games/ballpark-bank";
+import { closeness } from "@/lib/games/ballpark";
+import { CONTINENTS } from "@/lib/games/only-once-data";
+import { QUESTION_POOLS } from "@/lib/games/only-once-bank";
+import { TON_UP_CATEGORIES } from "@/lib/games/ton-up-bank";
+import {
+  BALLPARK_PREVIEW_BEATS,
+  BALLPARK_PREVIEW_GUESSES,
+  BALLPARK_PREVIEW_PRODUCT,
+  BallparkPreview,
+} from "./BallparkPreview";
+import {
+  ONLY_ONCE_PREVIEW_BEATS,
+  ONLY_ONCE_PREVIEW_QUESTIONS,
+  ONLY_ONCE_PREVIEW_TYPED,
+  OnlyOncePreview,
+} from "./OnlyOncePreview";
+import { TEE_TIME_PREVIEW_BEATS, TEE_TIME_PREVIEW_RUNS, TeeTimePreview } from "./TeeTimePreview";
+import {
+  TON_UP_PREVIEW_BEATS,
+  TON_UP_PREVIEW_CATEGORY,
+  TON_UP_PREVIEW_DARTS,
+  TonUpPreview,
+} from "./TonUpPreview";
 
 /**
  * A preview claims to show the real game. These pin that claim: if the rules
@@ -230,6 +254,10 @@ const SCRIPTED: Row[] = [
   { name: "sun-and-moon", beats: TANGO_PREVIEW_BEATS, Preview: TangoPreview },
   { name: "trail", beats: ZIP_PREVIEW_BEATS, Preview: ZipPreview },
   { name: "whittle", beats: WHITTLE_PREVIEW_BEATS, Preview: WhittlePreview },
+  { name: "ton-up", beats: TON_UP_PREVIEW_BEATS, Preview: TonUpPreview },
+  { name: "ballpark", beats: BALLPARK_PREVIEW_BEATS, Preview: BallparkPreview },
+  { name: "only-once", beats: ONLY_ONCE_PREVIEW_BEATS, Preview: OnlyOncePreview },
+  { name: "tee-time", beats: TEE_TIME_PREVIEW_BEATS, Preview: TeeTimePreview },
 ];
 
 const loopMs = (beats: readonly { ms: number }[]) => beats.reduce((sum, beat) => sum + beat.ms, 0);
@@ -684,5 +712,61 @@ describe("the Chain preview", () => {
   it("scores one point for each tap it repeats back", () => {
     const last = CHAIN_PREVIEW_BEATS[CHAIN_PREVIEW_BEATS.length - 1];
     expect(last.score).toBe(1 + 2 + 3);
+  });
+});
+
+describe("the Ton Up preview", () => {
+  it("throws three real answers to exactly 100 and floats the ton's score", () => {
+    const category = TON_UP_CATEGORIES[TON_UP_PREVIEW_CATEGORY]!;
+    const values = TON_UP_PREVIEW_DARTS.map(
+      (name) => category.answers.find((answer) => answer.name === name)!.value,
+    );
+    expect(values.reduce((a, b) => a + b, 0)).toBe(100);
+    const floated = TON_UP_PREVIEW_BEATS.flatMap((beat) => (beat.gain === null ? [] : [beat.gain]));
+    expect(floated).toEqual([125]);
+  });
+});
+
+describe("the Ballpark preview", () => {
+  it("uses a product off the shelf and closes in on it by the real marks", () => {
+    expect(BALLPARK_PRODUCTS.some((p) => p.name === BALLPARK_PREVIEW_PRODUCT.name)).toBe(false);
+    const price = BALLPARK_PREVIEW_PRODUCT.cents;
+    expect(BALLPARK_PREVIEW_GUESSES.map((g) => closeness(g, price))).toEqual([
+      "far",
+      "close",
+      "hit",
+    ]);
+    const floated = BALLPARK_PREVIEW_BEATS.flatMap((beat) =>
+      beat.gain === null ? [] : [beat.gain],
+    );
+    expect(floated).toEqual([40]);
+  });
+});
+
+describe("the Only Once preview", () => {
+  it("asks questions the puzzles never ask, and spends an answer that fits both", () => {
+    const asked = new Set(QUESTION_POOLS.flat().map((q) => q.text));
+    expect(asked.has(ONLY_ONCE_PREVIEW_QUESTIONS[1])).toBe(false);
+    expect(CONTINENTS["Europe"]).toContain("France");
+    expect(CONTINENTS["Europe"]).toContain("Portugal");
+    const [first, again] = ONLY_ONCE_PREVIEW_TYPED;
+    expect(again).toBe(first);
+    expect(ONLY_ONCE_PREVIEW_BEATS.filter((beat) => beat.refused).length).toBeGreaterThan(0);
+    const floated = ONLY_ONCE_PREVIEW_BEATS.flatMap((beat) =>
+      beat.gain === null ? [] : [beat.gain],
+    );
+    expect(floated).toEqual([10]);
+  });
+});
+
+describe("the Tee Time preview", () => {
+  it("plays a drive and an approach into the ring for a birdie, by the real rules", () => {
+    const end = TEE_TIME_PREVIEW_RUNS[TEE_TIME_PREVIEW_RUNS.length - 1]!;
+    expect(end.cards).toEqual([{ strokes: 3, putts: 1, pickedUp: false }]);
+    expect(TEE_TIME_PREVIEW_RUNS.every((run) => !run.lastShot?.penalty)).toBe(true);
+    const floated = TEE_TIME_PREVIEW_BEATS.flatMap((beat) =>
+      beat.gain === null ? [] : [beat.gain],
+    );
+    expect(floated).toEqual([40]);
   });
 });

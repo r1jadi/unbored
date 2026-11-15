@@ -188,6 +188,11 @@ export const sqDailyFour: Record<string, string> = {
   "A par {par}, {yards} yards: the ball is {left} yards from the pin.":
     "Vrimë me par {par}, {yards} jardë: topi është {left} jardë larg flamurit.",
   "Tee off": "Fillo raundin",
+  // The feed previews
+  "AA batteries": "Bateri AA",
+  "Pack of 8": "Paketë me 8",
+  "Name a country in Europe": "Thuaj një shtet në Evropë",
+  "Name a country that borders Spain": "Thuaj një shtet që kufizohet me Spanjën",
   "End today's round here?": "Ta mbyllësh raundin e sotëm këtu?",
   "Finished holes keep their points; the rest score nothing. There is one ranked round a day.":
     "Vrimat e mbaruara i mbajnë pikët; të tjerat nuk japin asgjë. Ka një raund të renditur në ditë.",
