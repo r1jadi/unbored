@@ -77,6 +77,10 @@ export function GameArt({
       {id === "whittle" && <Whittle />}
       {id === "guesswork" && <Guesswork />}
       {id === "deep-cut" && <DeepCut />}
+      {id === "ton-up" && <TonUp />}
+      {id === "ballpark" && <Ballpark />}
+      {id === "only-once" && <OnlyOnce />}
+      {id === "tee-time" && <TeeTime />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </GameStage>
   );
@@ -151,6 +155,10 @@ const KNOWN = new Set([
   "whittle",
   "guesswork",
   "deep-cut",
+  "ton-up",
+  "ballpark",
+  "only-once",
+  "tee-time",
 ]);
 
 /**
@@ -757,6 +765,106 @@ function Guesswork() {
         </div>
       ))}
     </div>
+  );
+}
+
+function TonUp() {
+  // A board of rings with three darts in it, and the total they make.
+  return (
+    <div className="relative flex size-[86%] items-center justify-center">
+      {[100, 76, 52, 28].map((size, i) => (
+        <div
+          key={size}
+          className={cn(
+            "absolute rounded-full",
+            i % 2 === 0 ? "bg-foreground/10" : "bg-surface",
+            i === 3 && "bg-primary",
+          )}
+          style={{ width: `${size}%`, height: `${size}%` }}
+        />
+      ))}
+      {[
+        [30, 34],
+        [62, 40],
+        [47, 58],
+      ].map(([left, top]) => (
+        <div
+          key={`${left}-${top}`}
+          className="absolute size-[min(5cqw,5cqh,1.25rem)] rounded-full border-[min(0.6cqw,0.6cqh,0.15rem)] border-background bg-foreground"
+          style={{ left: `${left}%`, top: `${top}%` }}
+        />
+      ))}
+      <span className="relative text-[min(11cqw,11cqh,2.75rem)] font-bold leading-none text-primary-foreground">
+        100
+      </span>
+    </div>
+  );
+}
+
+function Ballpark() {
+  // A price tag, and the arrows of the guesses that closed in on it.
+  return (
+    <div className="flex w-[86%] flex-col items-center gap-[min(3cqw,3cqh,0.75rem)]">
+      <div className="flex items-center gap-[min(2cqw,2cqh,0.5rem)] rounded-[min(3cqw,3cqh,0.75rem)] bg-primary px-[min(5cqw,5cqh,1.25rem)] py-[min(3cqw,3cqh,0.75rem)] text-[min(10cqw,10cqh,2.5rem)] font-bold leading-none text-primary-foreground">
+        $?.??
+      </div>
+      {[
+        ["$4.00", "↑", "bg-foreground/10"],
+        ["$9.00", "↓", "bg-amber-400/40"],
+        ["$7.49", "✓", "bg-primary/25"],
+      ].map(([price, arrow, tone]) => (
+        <div
+          key={price}
+          className={cn(
+            "flex w-[80%] justify-between rounded-[min(2cqw,2cqh,0.5rem)] px-[min(3cqw,3cqh,0.75rem)] py-[min(1.5cqw,1.5cqh,0.4rem)] text-[min(6cqw,6cqh,1.5rem)] font-semibold leading-none",
+            tone,
+          )}
+        >
+          <span>{price}</span>
+          <span>{arrow}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OnlyOnce() {
+  // Seven steps up a mountain, four climbed.
+  return (
+    <div className="flex h-[80%] w-[86%] items-end gap-[min(1.5cqw,1.5cqh,0.4rem)]">
+      {Array.from({ length: 7 }, (_, i) => (
+        <div
+          key={i}
+          className={cn(
+            "flex-1 rounded-t-[min(1.5cqw,1.5cqh,0.4rem)]",
+            i < 4 ? "bg-primary" : "bg-foreground/10",
+          )}
+          style={{ height: `${20 + i * 13}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function TeeTime() {
+  // A hole from above: a bending fairway, a bunker, a green with its flag.
+  return (
+    <svg viewBox="0 0 100 100" className="size-[90%]">
+      <rect width="100" height="100" rx="10" fill="#3f7d3a" />
+      <path
+        d="M50 92 C 50 70, 30 60, 38 40 S 62 20, 62 18"
+        stroke="#62a84f"
+        strokeWidth="18"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <circle cx="62" cy="18" r="11" fill="#86cf6a" />
+      <circle cx="74" cy="28" r="5" fill="#e8d39a" />
+      <circle cx="22" cy="55" r="7" fill="#4a90d9" />
+      <line x1="62" y1="18" x2="62" y2="6" stroke="#fff" strokeWidth="1.5" />
+      <polygon points="62,6 70,8.5 62,11" fill="#e5484d" />
+      <circle cx="50" cy="88" r="2.5" fill="#fff" />
+    </svg>
   );
 }
 

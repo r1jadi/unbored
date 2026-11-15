@@ -804,6 +804,118 @@ export const GAME_RULES = {
       },
     ],
   },
+  "ton-up": {
+    heading: msg("Three darts at 100"),
+    summary: msg("Every answer is worth a number. Name up to three to hit exactly 100."),
+    rules: [
+      {
+        lead: msg("One category a day"),
+        text: msg(
+          "— elements by atomic number, presidents by their number in office, states by when they joined, and more.",
+        ),
+      },
+      {
+        lead: msg("Throw a dart"),
+        text: msg(
+          "by typing an answer and picking it from the list. Its number is added to your total. Each answer once, three darts at most.",
+        ),
+      },
+      {
+        lead: msg("Stand or bust."),
+        text: msg(
+          "Stop whenever you like and keep your total. Go over 100 and you bust: nothing scores.",
+        ),
+      },
+      {
+        lead: msg("Exactly 100 is a ton"),
+        text: msg(
+          "— 1,250 in three darts, 1,500 in two, 1,750 in one. Anything less scores ten times your total. A new category arrives at midnight, your time.",
+        ),
+      },
+    ],
+  },
+  ballpark: {
+    heading: msg("What does it cost?"),
+    summary: msg("One product a day. Six guesses at its price."),
+    rules: [
+      {
+        lead: msg("Type a price"),
+        text: msg("in dollars and press Guess. It's a typical US shelf price for the item shown."),
+      },
+      {
+        lead: msg("Follow the arrow."),
+        text: msg("Up means the price is higher, down means lower. Amber means you're within 25%."),
+      },
+      {
+        lead: msg("Within 5% wins"),
+        text: msg(
+          "— 600 on the first guess, down to 100 on the sixth. Not found, or given up, scores nothing.",
+        ),
+      },
+      {
+        lead: msg("One product a day"),
+        text: msg("for everyone, and one ranked play. A new one arrives at midnight, your time."),
+      },
+    ],
+  },
+  "only-once": {
+    heading: msg("Never the same answer twice"),
+    summary: msg("Seven questions about one kind of thing. Every answer can be used once."),
+    rules: [
+      {
+        lead: msg("Answer seven questions"),
+        text: msg(
+          "about countries, US states or chemical elements. Start typing and pick from the list; you get 25 seconds each, after two to read.",
+        ),
+      },
+      {
+        lead: msg("Each answer once."),
+        text: msg(
+          "The first questions have plenty of right answers; the last have only a few, and the famous one you gave earlier is often among them.",
+        ),
+      },
+      {
+        lead: msg("Wrong costs nothing"),
+        text: msg(
+          "— a wrong or used answer is turned down and you try again. Only the clock ends your day.",
+        ),
+      },
+      {
+        lead: msg("100 a question,"),
+        text: msg("and 1,000 for all seven. A new set arrives at midnight, your time."),
+      },
+    ],
+  },
+  "tee-time": {
+    heading: msg("Today's nine"),
+    summary: msg("A new nine-hole course every day. Every shot is your timing."),
+    rules: [
+      {
+        lead: msg("Aim"),
+        text: msg(
+          "by tapping the course where you want the ball to go. Mind the wind: it pushes every shot.",
+        ),
+      },
+      {
+        lead: msg("Swing"),
+        text: msg(
+          "— tap Swing, then tap again to stop the power meter. Pick a club with the arrows; the suggested one reaches the pin at full power.",
+        ),
+      },
+      {
+        lead: msg("Find the rings."),
+        text: msg(
+          "On the green the putts are automatic: inside the inner ring one, the outer ring two, anywhere else three. Water and out of bounds cost a stroke.",
+        ),
+      },
+      {
+        lead: msg("Par is 300"),
+        text: msg(
+          "on every hole, a birdie 400, an eagle 500. One ranked round a day; a new course arrives at midnight, your time.",
+        ),
+      },
+    ],
+  },
 } satisfies Record<string, GameRules>;
 
 /** A game's rules by its runtime, or null for a runtime with none written. */

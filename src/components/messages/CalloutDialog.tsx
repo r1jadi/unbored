@@ -34,7 +34,15 @@ const orders: Array<{ value: CalloutFormat; label: string; hint: string }> = [
 ];
 
 /** The daily games are one attempt a day already, so they can't be used for this. */
-const DAILY_RUNTIMES = new Set(["crossword", "seven-second", "guesswork"]);
+const DAILY_RUNTIMES = new Set([
+  "crossword",
+  "seven-second",
+  "guesswork",
+  "ton-up",
+  "ballpark",
+  "only-once",
+  "tee-time",
+]);
 
 function Choices<T extends string>({
   label,

@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import { BallparkRuntime } from "@/components/game/BallparkRuntime";
 import { BoltedRuntime } from "@/components/game/BoltedRuntime";
 import { CascadeRuntime } from "@/components/game/CascadeRuntime";
 import { ChainRuntime } from "@/components/game/ChainRuntime";
@@ -18,6 +19,7 @@ import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
 import { MinefieldRuntime } from "@/components/game/MinefieldRuntime";
 import { MiniSudokuRuntime } from "@/components/game/MiniSudokuRuntime";
 import { OneMoveRuntime } from "@/components/game/OneMoveRuntime";
+import { OnlyOnceRuntime } from "@/components/game/OnlyOnceRuntime";
 import { QueensRuntime } from "@/components/game/QueensRuntime";
 import { ScatterRuntime } from "@/components/game/ScatterRuntime";
 import { SevenSecondRuntime } from "@/components/game/SevenSecondRuntime";
@@ -25,10 +27,13 @@ import { Stack10Runtime } from "@/components/game/Stack10Runtime";
 import { SumdokuRuntime } from "@/components/game/SumdokuRuntime";
 import { SudokuRuntime } from "@/components/game/SudokuRuntime";
 import { TangoRuntime } from "@/components/game/TangoRuntime";
+import { TeeTimeRuntime } from "@/components/game/TeeTimeRuntime";
+import { TonUpRuntime } from "@/components/game/TonUpRuntime";
 import { FlipsideRuntime } from "@/components/game/FlipsideRuntime";
 import { UpdraftRuntime } from "@/components/game/UpdraftRuntime";
 import { WhittleRuntime } from "@/components/game/WhittleRuntime";
 import { ZipRuntime } from "@/components/game/ZipRuntime";
+import { BALLPARK_RUNTIME } from "@/lib/games/ballpark";
 import { BOLTED_RUNTIME } from "@/lib/games/bolted";
 import { CASCADE_RUNTIME } from "@/lib/games/cascade";
 import { CHAIN_RUNTIME } from "@/lib/games/chain";
@@ -47,6 +52,7 @@ import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
 import { MINEFIELD_RUNTIME } from "@/lib/games/minefield";
 import { MINI_SUDOKU_RUNTIME } from "@/lib/games/mini-sudoku";
 import { ONE_MOVE_RUNTIME } from "@/lib/games/one-move";
+import { ONLY_ONCE_RUNTIME } from "@/lib/games/only-once";
 import { QUEENS_RUNTIME } from "@/lib/games/queens";
 import { SCATTER_RUNTIME } from "@/lib/games/scatter";
 import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
@@ -55,6 +61,8 @@ import { SUDOKU_RUNTIME } from "@/lib/games/sudoku";
 import { SUMDOKU_RUNTIME } from "@/lib/games/sumdoku";
 import { WHITTLE_RUNTIME } from "@/lib/games/whittle";
 import { TANGO_RUNTIME } from "@/lib/games/tango";
+import { TEE_TIME_RUNTIME } from "@/lib/games/tee-time";
+import { TON_UP_RUNTIME } from "@/lib/games/ton-up";
 import { UPDRAFT_RUNTIME } from "@/lib/games/updraft";
 import { FLIPSIDE_RUNTIME } from "@/lib/games/flipside";
 import { ZIP_RUNTIME } from "@/lib/games/zip";
@@ -105,4 +113,8 @@ export const RUNTIMES: Readonly<Record<string, ComponentType<RuntimeProps>>> = {
   [WHITTLE_RUNTIME]: WhittleRuntime,
   [GUESSWORK_RUNTIME]: GuessworkRuntime,
   [DEEP_CUT_RUNTIME]: ({ slug, title }) => <DeepCutRuntime slug={slug} title={title} />,
+  [TON_UP_RUNTIME]: TonUpRuntime,
+  [BALLPARK_RUNTIME]: BallparkRuntime,
+  [ONLY_ONCE_RUNTIME]: OnlyOnceRuntime,
+  [TEE_TIME_RUNTIME]: TeeTimeRuntime,
 };

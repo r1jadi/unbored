@@ -107,6 +107,18 @@ var families = map[string]Ruleset{
 	// matched while the run was played, or 0. The verifier compares each with the
 	// turn it recorded; the bound only keeps an absurd id out.
 	"deep-cut": {Verifier: "complete_deep_cut_run", MaxActions: 7, ActionCodes: 1 << 24},
+	// Ton Up throws three darts at most, each the index of an answer in the day's
+	// category (the longest has 118). The verifier refuses an index out of range.
+	"ton-up": {Verifier: "complete_ton_up_run", MaxActions: 3, ActionCodes: 1024},
+	// Ballpark carries six guesses at most, each a price in cents up to
+	// 99 999 999.
+	"ballpark": {Verifier: "complete_ballpark_run", MaxActions: 6, ActionCodes: 100_000_000},
+	// Only Once carries seven accepted answers, each an id among the day's kind
+	// (194 countries at most).
+	"only-once": {Verifier: "complete_only_once_run", MaxActions: 7, ActionCodes: 1024},
+	// Tee Time: a shot is club × 36000 + angle × 100 + (power − 1) with eight
+	// clubs, so every code is below 288 000; nine holes of at most nine shots.
+	"tee-time": {Verifier: "complete_tee_time_run", MaxActions: 81, ActionCodes: 8 * 36000},
 }
 
 // overrides are the versions whose bounds differ from their family's: the

@@ -19,6 +19,10 @@ import { board as whittleBoard, boardCode as whittleCode } from "@/lib/games/whi
 import { GJEJE_ANSWERS, GUESSWORK_ANSWERS } from "@/lib/games/guesswork-bank";
 import { answerForDay } from "@/lib/games/guesswork";
 import { board as fuseboxBoard, boardCode, replay as fuseboxReplay } from "@/lib/games/fusebox";
+import { replay as tonUpReplay, scoreOf as tonUpScore } from "@/lib/games/ton-up";
+import { replay as ballparkReplay, scoreOf as ballparkScore } from "@/lib/games/ballpark";
+import { replay as onlyOnceReplay, scoreOf as onlyOnceScore } from "@/lib/games/only-once";
+import { replay as teeTimeReplay, scoreOf as teeTimeScore } from "@/lib/games/tee-time";
 
 /**
  * The other half of tests/security/verifier_vectors.sql.
@@ -223,6 +227,35 @@ describe("the verifier vectors", () => {
     for (const [rules, day, word] of cases) {
       const answers = rules === "gjeje@1" ? GJEJE_ANSWERS : GUESSWORK_ANSWERS;
       expect(answerForDay(Number(day), answers), `${rules} day ${day}`).toBe(word);
+    }
+  });
+
+  it("are the four daily games' runs as the engines score them", () => {
+    const cases = vectors("daily-four");
+    expect(cases.length).toBeGreaterThanOrEqual(8);
+    const engines: Record<string, (day: number, actions: number[]) => [number, number]> = {
+      "ton-up": (day, a) => {
+        const run = tonUpReplay(day, a);
+        return [tonUpScore(run), run.darts.length];
+      },
+      ballpark: (day, a) => {
+        const run = ballparkReplay(day, a);
+        return [ballparkScore(run), run.guesses.length];
+      },
+      "only-once": (day, a) => {
+        const run = onlyOnceReplay(day, a);
+        return [onlyOnceScore(run), run.answers.length];
+      },
+      "tee-time": (day, a) => {
+        const run = teeTimeReplay(day, a);
+        return [teeTimeScore(run), run.moves.length];
+      },
+    };
+    for (const [game, day, actions, score] of cases) {
+      const moves = actions!.split(",").map(Number);
+      const [got, played] = engines[game!]!(Number(day), moves);
+      expect(played, `${game} day ${day} plays every move`).toBe(moves.length);
+      expect(String(got), `${game} day ${day}`).toBe(score);
     }
   });
 

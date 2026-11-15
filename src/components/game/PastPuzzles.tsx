@@ -8,7 +8,15 @@ import { dayDate } from "@/lib/games/share";
 import { t } from "@/lib/settings/language";
 
 /** The runtimes whose board is the day: the crossword, Guesswork and 7 Second. */
-const ARCHIVE_RUNTIMES = new Set(["crossword", "guesswork", "seven-second"]);
+const ARCHIVE_RUNTIMES = new Set([
+  "crossword",
+  "guesswork",
+  "seven-second",
+  "ton-up",
+  "ballpark",
+  "only-once",
+  "tee-time",
+]);
 
 /** How many past days the game page lists; the archive itself goes back further. */
 const SHOWN_DAYS = 14;

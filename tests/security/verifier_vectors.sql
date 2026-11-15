@@ -562,4 +562,54 @@ begin
   end;
 end $$;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Ton Up, Ballpark, Only Once and Tee Time: a day's moves and the score they make
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  got bigint;
+begin
+  for v in select * from (values
+    -- vectors:daily-four:begin
+    ('ton-up', '20405', '0,1,96', '125'),
+    ('ton-up', '20406', '6,45,46', '125'),
+    ('ton-up', '20407', '0,48,49', '125'),
+    ('ton-up', '20408', '0,1,47', '125'),
+    ('ton-up', '20409', '0,3,9', '125'),
+    ('ton-up', '20405', '100', '0'),
+    ('ton-up', '20406', '3,7', '12'),
+    ('ballpark', '20406', '658,263,342', '40'),
+    ('ballpark', '20500', '19800,7920,10296', '40'),
+    ('ballpark', '21000', '658,263,342', '40'),
+    ('ballpark', '20406', '1,2', '0'),
+    ('only-once', '20406', '3,0,26,56,1,114,169', '100'),
+    ('only-once', '20407', '5,8,9,3,14,1,10', '100'),
+    ('only-once', '20408', '1,18,36,0', '40'),
+    ('tee-time', '20406', '35899,72087,268958,599,108391,143792,35299,215481,35499,143394,35099,35292,264651,144482,35799,251275,399,180983', '300'),
+    ('tee-time', '20771', '99,286248,107388,35899,35899,35899,35899,35899,99,35499,215277,108089,270443,99,215698,99,36491,35399,178783', '240')
+    -- vectors:daily-four:end
+  ) as vectors(game, day, actions, score) loop
+    got := case v.game
+      when 'ton-up' then public.ton_up_score(v.day::bigint, string_to_array(v.actions, ',')::integer[])
+      when 'ballpark' then public.ballpark_score(v.day::bigint, string_to_array(v.actions, ',')::integer[])
+      when 'only-once' then public.only_once_score(v.day::bigint, string_to_array(v.actions, ',')::integer[])
+      when 'tee-time' then public.tee_time_score(v.day::bigint, string_to_array(v.actions, ',')::integer[])
+    end;
+    if got::text is distinct from v.score then
+      raise exception 'ASSERTION FAILED: % day % — the database scores %, the engine %',
+        v.game, v.day, got, v.score;
+    end if;
+    raise notice 'ok   % day %: the verifier scores the engine''s run', v.game, v.day;
+  end loop;
+
+  if public.ton_up_score(20405, array[0, 0]) is not null
+     or public.ballpark_score(20406, array[0]) is not null
+     or public.only_once_score(20406, array[3, 3]) is not null
+     or public.tee_time_score(20406, array[288000]) is not null then
+    raise exception 'ASSERTION FAILED: a daily verifier scored moves that are not a legal run';
+  end if;
+end $$;
+
 rollback;

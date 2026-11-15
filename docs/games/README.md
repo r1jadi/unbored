@@ -3,11 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Twenty-nine games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Thirty-three games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword**, **Guesswork**, the daily word, and **Deep Cut**, the rare-answer trivia game. Twenty-five of them — all but 7 Second, the crossword and Guesswork, the three
-daily games — are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
+**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword**, **Guesswork**, the daily word, **Deep Cut**, the rare-answer trivia game, and four more daily games: **Ton Up** (three darts at exactly 100), **Ballpark** (guess the price), **Only Once** (seven questions, never the same answer twice) and **Tee Time** (a daily nine-hole golf course). The daily games — 7 Second, the crossword, Guesswork, Deep Cut and the four above — have one board a day; the rest are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
 
@@ -3608,3 +3607,54 @@ setting off a mine, a life coming back and a run to its last life, and
 
 The client holds the seed, as in every game here, so a client could work out where
 the mines are: the verifier proves a run is legal, not that a person played it.
+
+
+## The four daily games: Ton Up, Ballpark, Only Once and Tee Time
+
+Four daily games share one shape: the session's seed is the player's day number
+(`20270104120400_daily_four_start.sql` adds their runtimes to the day-seeded list in
+`start_game_session`), a signed-in player gets one ranked play a day
+(`already_played`), and the client plays them through one hook,
+`useDailyRun` (`src/lib/games/daily-run.ts`), with the shared screens in
+`src/components/game/DailyShell.tsx`. Each has a pure engine in `src/lib/games/` and
+a verifier, `public.complete_<game>_run`, whose replay is a pure
+`public.<game>_score(day, actions)` that returns null for an illegal run. The
+`daily-four` rows of `tests/security/verifier_vectors.sql` pin the engines and the
+verifiers together.
+
+The banks of Ton Up, Ballpark and Only Once live in the client
+(`*-bank.ts`); only the numbers reach the database, written between markers in the
+sessions migrations by `bun scripts/generate-daily-banks.ts --write`. Each game's
+test fails if the two copies drift.
+
+| Game      | Rules       | A move                                         | Score (×10 on screen)                        |
+| --------- | ----------- | ---------------------------------------------- | -------------------------------------------- |
+| Ton Up    | `ton-up@1`    | an answer's index in the day's category        | the total; a bust 0; a ton 100 + 25 × (4 − darts) |
+| Ballpark  | `ballpark@1`  | a guess in cents, 1 – 99 999 999               | (7 − k) × 10 for a guess within 5% on guess k |
+| Only Once | `only-once@1` | the id of an accepted answer                   | 10 a question, 30 more for all seven         |
+| Tee Time  | `tee-time@1`  | club × 36000 + angle × 100 + (power − 1)       | max(0, par + 3 − strokes) × 10 a finished hole |
+
+**Ton Up.** One category a day (`d mod n`): chemical elements by atomic number, US
+presidents by number, US states by order of statehood, country calling codes, and
+fixed-date days by day of the year. Up to three darts, each answer once; standing
+ends the run on its total. Over 100 is a bust.
+
+**Ballpark.** One product a day with a typical US shelf price. Every guess is marked
+higher or lower, and close when within 25%; within 5% wins. "Within" is integer
+arithmetic on cents: `|guess − price| × 100 ≤ 5 × price`.
+
+**Only Once.** One of 120 generated puzzles a day, over countries (the 193 UN
+members and Vatican City), US states or chemical elements. Every question is a set
+worked out from the facts in `only-once-data.ts`; puzzles narrow from broad to
+narrow, hold at most one "starts with" question, and always admit seven different
+answers. A wrong or used answer is turned down and costs only time; the 25-second
+clock is the player's own and is not replayed. The database holds each answer set
+as a hex bitmask (four ids a digit, lowest first).
+
+**Tee Time.** The course is built from the day by MINSTD, identically in
+`buildCourse` and `public.tee_time_course` (the two can be compared as jsonb), and
+every shot is integer arithmetic in yards: carry = club × power × lie, wind per
+100 yards of carry, a roll along the line, water and out of bounds costing a stroke,
+and automatic putts by ring once the ball stops on the green (by the cup 0, inside
+3 yards 1, inside 9 yards 2, else 3). A hole ends on the green or at par + 4.
+
