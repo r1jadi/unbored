@@ -15,6 +15,7 @@ import { FuseboxRuntime } from "@/components/game/FuseboxRuntime";
 import { GridburstRuntime } from "@/components/game/GridburstRuntime";
 import { DeepCutRuntime } from "@/components/game/DeepCutRuntime";
 import { GuessworkRuntime } from "@/components/game/GuessworkRuntime";
+import { HoneycombRuntime } from "@/components/game/HoneycombRuntime";
 import { HuediniRuntime } from "@/components/game/HuediniRuntime";
 import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
 import { MinefieldRuntime } from "@/components/game/MinefieldRuntime";
@@ -30,6 +31,7 @@ import { SumdokuRuntime } from "@/components/game/SumdokuRuntime";
 import { SudokuRuntime } from "@/components/game/SudokuRuntime";
 import { TangoRuntime } from "@/components/game/TangoRuntime";
 import { TeeTimeRuntime } from "@/components/game/TeeTimeRuntime";
+import { ThenAndNowRuntime } from "@/components/game/ThenAndNowRuntime";
 import { TonUpRuntime } from "@/components/game/TonUpRuntime";
 import { FlipsideRuntime } from "@/components/game/FlipsideRuntime";
 import { UpdraftRuntime } from "@/components/game/UpdraftRuntime";
@@ -50,6 +52,7 @@ import { FUSEBOX_RUNTIME } from "@/lib/games/fusebox";
 import { GRIDBURST_RUNTIME } from "@/lib/games/gridburst";
 import { DEEP_CUT_RUNTIME } from "@/lib/games/deep-cut";
 import { GUESSWORK_RUNTIME } from "@/lib/games/guesswork";
+import { HONEYCOMB_RUNTIME } from "@/lib/games/honeycomb";
 import { HUEDINI_RUNTIME } from "@/lib/games/huedini";
 import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
 import { MINEFIELD_RUNTIME } from "@/lib/games/minefield";
@@ -66,6 +69,7 @@ import { SUMDOKU_RUNTIME } from "@/lib/games/sumdoku";
 import { WHITTLE_RUNTIME } from "@/lib/games/whittle";
 import { TANGO_RUNTIME } from "@/lib/games/tango";
 import { TEE_TIME_RUNTIME } from "@/lib/games/tee-time";
+import { THEN_AND_NOW_RUNTIME } from "@/lib/games/then-and-now";
 import { TON_UP_RUNTIME } from "@/lib/games/ton-up";
 import { UPDRAFT_RUNTIME } from "@/lib/games/updraft";
 import { FLIPSIDE_RUNTIME } from "@/lib/games/flipside";
@@ -123,4 +127,6 @@ export const RUNTIMES: Readonly<Record<string, ComponentType<RuntimeProps>>> = {
   [TEE_TIME_RUNTIME]: TeeTimeRuntime,
   [FOURSORT_RUNTIME]: FoursortRuntime,
   [PIXELOCK_RUNTIME]: PixelockRuntime,
+  [THEN_AND_NOW_RUNTIME]: ThenAndNowRuntime,
+  [HONEYCOMB_RUNTIME]: HoneycombRuntime,
 };

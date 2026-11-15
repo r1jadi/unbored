@@ -17,7 +17,7 @@ export const ARCHIVE_DAYS = 30;
 
 /** The daily word games: their seed is the day number itself. */
 const DAY_SEEDED =
-  /^(crossword|fjalekryqi|guesswork|gjeje|ton-up|ballpark|only-once|tee-time|foursort|pixelock)@/;
+  /^(crossword|fjalekryqi|guesswork|gjeje|ton-up|ballpark|only-once|tee-time|foursort|pixelock|then-and-now|honeycomb)@/;
 const SEVEN_SECOND = /^seven-second@/;
 /** As `seven_second_seed` hashes the day on the server. */
 const SEVEN_SECOND_HASH = 2_654_435_761n;

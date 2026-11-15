@@ -155,17 +155,27 @@ export function refusal(run: PixelockRun, move: number): "over" | "unknown" | "s
 }
 
 /** Whether a move would be right: filling ink, or crossing out blank. */
-export function isRight(run: PixelockRun, move: number): boolean {
-  return inked(pictureOf(run), move >> 1) === ((move & 1) === FILL);
+export function isRight(
+  run: PixelockRun,
+  move: number,
+  picture: PixelockPicture = pictureOf(run),
+): boolean {
+  return inked(picture, move >> 1) === ((move & 1) === FILL);
 }
 
-/** Makes a move. A refused move returns the same run object. */
-export function move(run: PixelockRun, m: number): PixelockRun {
+/**
+ * Makes a move. A refused move returns the same run object. The picture is the
+ * day's; only the feed preview, which draws a picture of its own, passes another.
+ */
+export function move(
+  run: PixelockRun,
+  m: number,
+  picture: PixelockPicture = pictureOf(run),
+): PixelockRun {
   if (refusal(run, m) !== null) return run;
-  const picture = pictureOf(run);
   const cell = m >> 1;
   const ink = inked(picture, cell);
-  const right = isRight(run, m);
+  const right = isRight(run, m, picture);
   const cells = [...run.cells];
   cells[cell] = ink ? FILLED : CROSSED;
   const mistakes = right ? run.mistakes : run.mistakes + 1;
@@ -212,8 +222,13 @@ export function replay(day: string | number, actions: readonly number[]): Pixelo
 }
 
 /** Whether a line's filled cells are all shown: its clue can be dimmed. */
-export function lineDone(run: PixelockRun, kind: "row" | "column", index: number): boolean {
-  const ink = inkOf(pictureOf(run));
+export function lineDone(
+  run: PixelockRun,
+  kind: "row" | "column",
+  index: number,
+  picture: PixelockPicture = pictureOf(run),
+): boolean {
+  const ink = inkOf(picture);
   const take = kind === "row" ? rowLine : columnLine;
   const shown = take(run.cells, index);
   return take(ink, index).every((on, i) => !on || shown[i] === FILLED);

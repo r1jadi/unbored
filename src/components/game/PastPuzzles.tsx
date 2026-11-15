@@ -18,6 +18,8 @@ const ARCHIVE_RUNTIMES = new Set([
   "tee-time",
   "foursort",
   "pixelock",
+  "then-and-now",
+  "honeycomb",
 ]);
 
 /** How many past days the game page lists; the archive itself goes back further. */

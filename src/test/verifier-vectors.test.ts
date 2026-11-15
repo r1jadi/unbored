@@ -25,6 +25,8 @@ import { replay as onlyOnceReplay, scoreOf as onlyOnceScore } from "@/lib/games/
 import { replay as teeTimeReplay, scoreOf as teeTimeScore } from "@/lib/games/tee-time";
 import { replay as foursortReplay, scoreOf as foursortScore } from "@/lib/games/foursort";
 import { replay as pixelockReplay, scoreOf as pixelockScore } from "@/lib/games/pixelock";
+import { replay as thenAndNowReplay, scoreOf as thenAndNowScore } from "@/lib/games/then-and-now";
+import { replay as honeycombReplay, scoreOf as honeycombScore } from "@/lib/games/honeycomb";
 
 /**
  * The other half of tests/security/verifier_vectors.sql.
@@ -272,6 +274,27 @@ describe("the verifier vectors", () => {
       pixelock: (day, a) => {
         const run = pixelockReplay(day, a);
         return [pixelockScore(run), run.moves.length];
+      },
+    };
+    for (const [game, day, actions, score] of cases) {
+      const moves = actions!.split(",").map(Number);
+      const [got, played] = engines[game!]!(Number(day), moves);
+      expect(played, `${game} day ${day} plays every move`).toBe(moves.length);
+      expect(String(got), `${game} day ${day}`).toBe(score);
+    }
+  });
+
+  it("are Then & Now's and Honeycomb's runs as the engines score them", () => {
+    const cases = vectors("then-and-now-honeycomb");
+    expect(cases.length).toBeGreaterThanOrEqual(8);
+    const engines: Record<string, (day: number, actions: number[]) => [number, number]> = {
+      "then-and-now": (day, a) => {
+        const run = thenAndNowReplay(day, a);
+        return [thenAndNowScore(run), run.tries.length];
+      },
+      honeycomb: (day, a) => {
+        const run = honeycombReplay(day, a);
+        return [honeycombScore(run), run.found.length];
       },
     };
     for (const [game, day, actions, score] of cases) {

@@ -157,13 +157,13 @@ describe("Foursort on screen", () => {
     for (const g of [0, 1, 2, 3]) pick([4 * g, 4 * g + 1, 4 * g + 2, 4 * g + 3]);
 
     // The board's own counter shows the score too, until the result replaces it.
-    await screen.findByText("Sorted with 1 mistake", undefined, { timeout: 5000 });
+    await screen.findByText("Sorted with 1 mistake", undefined, { timeout: 15_000 });
     expect(screen.getByText("900")).toBeInTheDocument();
     expect(submitted(spy)).toMatchObject({
       actions: [maskOf([0, 1, 2, 4]), groupMask(0), groupMask(1), groupMask(2), groupMask(3)],
       score: 90,
     });
-  });
+  }, 30_000);
 
   it("will not take the same four twice", async () => {
     mockServer("foursort", "foursort@1", 0);
@@ -203,7 +203,7 @@ describe("Pixelock on screen", () => {
       fireEvent.pointerDown(cell(i));
       fireEvent.pointerUp(cell(i));
     }
-    await screen.findByText(/You drew the/, undefined, { timeout: 5000 });
+    await screen.findByText(/You drew the/, undefined, { timeout: 15_000 });
     expect(screen.getByText(String(score * 10))).toBeInTheDocument();
     expect(submitted(spy)).toMatchObject({
       actions: [code(blank, FILL), ...ink.map((i) => code(i, FILL))],

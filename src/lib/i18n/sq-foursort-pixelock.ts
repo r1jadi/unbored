@@ -117,4 +117,6 @@ export const sqFoursortPixelock: Record<string, string> = {
   Moon: "Hënë",
   Penguin: "Pinguin",
   Sun: "Diell",
+  // The feed preview's own picture.
+  "Ice cream": "Akullore",
 };

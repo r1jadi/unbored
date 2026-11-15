@@ -194,6 +194,20 @@ import { closeness } from "@/lib/games/ballpark";
 import { CONTINENTS } from "@/lib/games/only-once-data";
 import { QUESTION_POOLS } from "@/lib/games/only-once-bank";
 import { TON_UP_CATEGORIES } from "@/lib/games/ton-up-bank";
+import { FOURSORT_PUZZLES } from "@/lib/games/foursort-bank";
+import { GROUP_POINTS, MAX_MISTAKES as FOURSORT_MISTAKES } from "@/lib/games/foursort";
+import { PIXELOCK_PICTURES } from "@/lib/games/pixelock-bank";
+import { THEN_AND_NOW_PUZZLES } from "@/lib/games/then-and-now-bank";
+import { HONEYCOMB_PUZZLES } from "@/lib/games/honeycomb-bank";
+import { MIN_LENGTH, usesAllSeven, wordPoints } from "@/lib/games/honeycomb";
+import {
+  cluesOf as pixelockClues,
+  inkOf as pixelockInk,
+  LIFE_POINTS,
+  LIVES,
+  solveByLines,
+  SOLVE_POINTS,
+} from "@/lib/games/pixelock";
 import {
   BALLPARK_PREVIEW_BEATS,
   BALLPARK_PREVIEW_GUESSES,
@@ -207,6 +221,29 @@ import {
   OnlyOncePreview,
 } from "./OnlyOncePreview";
 import { TEE_TIME_PREVIEW_BEATS, TEE_TIME_PREVIEW_RUNS, TeeTimePreview } from "./TeeTimePreview";
+import {
+  FOURSORT_PREVIEW_BEATS,
+  FOURSORT_PREVIEW_GROUPS,
+  FOURSORT_PREVIEW_GUESSES,
+  FoursortPreview,
+} from "./FoursortPreview";
+import {
+  PIXELOCK_PREVIEW_BEATS,
+  PIXELOCK_PREVIEW_INK,
+  PIXELOCK_PREVIEW_PICTURE,
+  PixelockPreview,
+} from "./PixelockPreview";
+import {
+  THEN_AND_NOW_PREVIEW_BEATS,
+  THEN_AND_NOW_PREVIEW_EVENTS,
+  ThenAndNowPreview,
+} from "./ThenAndNowPreview";
+import {
+  HONEYCOMB_PREVIEW_BEATS,
+  HONEYCOMB_PREVIEW_PUZZLE,
+  HONEYCOMB_PREVIEW_WORDS,
+  HoneycombPreview,
+} from "./HoneycombPreview";
 import {
   TON_UP_PREVIEW_BEATS,
   TON_UP_PREVIEW_CATEGORY,
@@ -258,6 +295,10 @@ const SCRIPTED: Row[] = [
   { name: "ballpark", beats: BALLPARK_PREVIEW_BEATS, Preview: BallparkPreview },
   { name: "only-once", beats: ONLY_ONCE_PREVIEW_BEATS, Preview: OnlyOncePreview },
   { name: "tee-time", beats: TEE_TIME_PREVIEW_BEATS, Preview: TeeTimePreview },
+  { name: "foursort", beats: FOURSORT_PREVIEW_BEATS, Preview: FoursortPreview },
+  { name: "pixelock", beats: PIXELOCK_PREVIEW_BEATS, Preview: PixelockPreview },
+  { name: "then-and-now", beats: THEN_AND_NOW_PREVIEW_BEATS, Preview: ThenAndNowPreview },
+  { name: "honeycomb", beats: HONEYCOMB_PREVIEW_BEATS, Preview: HoneycombPreview },
 ];
 
 const loopMs = (beats: readonly { ms: number }[]) => beats.reduce((sum, beat) => sum + beat.ms, 0);
@@ -768,5 +809,84 @@ describe("the Tee Time preview", () => {
       beat.gain === null ? [] : [beat.gain],
     );
     expect(floated).toEqual([40]);
+  });
+});
+
+describe("the Foursort preview", () => {
+  it("uses words no day's puzzle has, and scores a near miss and two groups by the real rules", () => {
+    const used = new Set(
+      FOURSORT_PUZZLES.flatMap((p) => p.groups.flatMap((g) => g.words.map((w) => w.toLowerCase()))),
+    );
+    const words = FOURSORT_PREVIEW_GROUPS.flatMap((g) => g.words.map((w) => w.toLowerCase()));
+    expect(new Set(words).size).toBe(16);
+    expect(words.filter((w) => used.has(w))).toEqual([]);
+    expect(FOURSORT_PREVIEW_GUESSES).toHaveLength(3);
+
+    const end = FOURSORT_PREVIEW_BEATS[FOURSORT_PREVIEW_BEATS.length - 1]!.run;
+    expect(end.found).toEqual([0, 3]);
+    expect(end.mistakes).toBe(1);
+    expect(end.mistakes).toBeLessThan(FOURSORT_MISTAKES);
+    expect(FOURSORT_PREVIEW_BEATS.filter((beat) => beat.notice === "One away…")).toHaveLength(1);
+    const floated = FOURSORT_PREVIEW_BEATS.flatMap((beat) => (beat.gain ? [beat.gain.points] : []));
+    expect(floated).toEqual([GROUP_POINTS, GROUP_POINTS]);
+  });
+});
+
+describe("the Pixelock preview", () => {
+  it("draws a picture no day uses, one the clues alone solve, and floats its score", () => {
+    const drawn = PIXELOCK_PREVIEW_PICTURE.rows.join("");
+    expect(PIXELOCK_PICTURES.some((p) => p.rows.join("") === drawn)).toBe(false);
+    expect(PIXELOCK_PICTURES.some((p) => p.name === PIXELOCK_PREVIEW_PICTURE.name)).toBe(false);
+    expect(solveByLines(pixelockClues(PIXELOCK_PREVIEW_PICTURE))).toEqual(
+      pixelockInk(PIXELOCK_PREVIEW_PICTURE),
+    );
+
+    const end = PIXELOCK_PREVIEW_BEATS[PIXELOCK_PREVIEW_BEATS.length - 1]!.run;
+    expect(end.ending).toBe("solved");
+    expect(end.mistakes).toBe(0);
+    const floated = PIXELOCK_PREVIEW_BEATS.flatMap((beat) =>
+      beat.gain === null ? [] : [beat.gain],
+    );
+    expect(floated).toEqual([PIXELOCK_PREVIEW_INK + SOLVE_POINTS + LIFE_POINTS * LIVES]);
+  });
+});
+
+describe("the Then & Now preview", () => {
+  it("uses events no day's puzzle has, oldest first, and solves them on the second try", () => {
+    const used = new Set(THEN_AND_NOW_PUZZLES.flatMap((p) => p.events.map((e) => e.text)));
+    expect(THEN_AND_NOW_PREVIEW_EVENTS.filter((e) => used.has(e.text))).toEqual([]);
+    const years = THEN_AND_NOW_PREVIEW_EVENTS.map((e) => e.year);
+    years.slice(1).forEach((year, i) => expect(year).toBeGreaterThan(years[i]!));
+
+    const end = THEN_AND_NOW_PREVIEW_BEATS[THEN_AND_NOW_PREVIEW_BEATS.length - 1]!.run;
+    expect(end.ending).toBe("solved");
+    expect(end.tries).toHaveLength(2);
+    const floated = THEN_AND_NOW_PREVIEW_BEATS.flatMap((beat) =>
+      beat.gain === null ? [] : [beat.gain],
+    );
+    expect(floated).toEqual([100]);
+  });
+});
+
+describe("the Honeycomb preview", () => {
+  it("uses letters no day has, and scores three words that follow the rules", () => {
+    const set = (letters: string) => [...letters].sort().join("");
+    expect(
+      HONEYCOMB_PUZZLES.some((p) => set(p.letters) === set(HONEYCOMB_PREVIEW_PUZZLE.letters)),
+    ).toBe(false);
+    const { letters } = HONEYCOMB_PREVIEW_PUZZLE;
+    for (const word of HONEYCOMB_PREVIEW_WORDS) {
+      expect(word.length).toBeGreaterThanOrEqual(MIN_LENGTH);
+      expect(word).toContain(letters[0]);
+      expect([...word].every((ch) => letters.includes(ch))).toBe(true);
+    }
+    expect(usesAllSeven(HONEYCOMB_PREVIEW_PUZZLE, "kitchen")).toBe(true);
+    const floated = HONEYCOMB_PREVIEW_BEATS.flatMap((beat) =>
+      beat.gain ? [beat.gain.points] : [],
+    );
+    expect(floated).toEqual(
+      HONEYCOMB_PREVIEW_WORDS.map((w) => wordPoints(HONEYCOMB_PREVIEW_PUZZLE, w)),
+    );
+    expect(floated).toEqual([1, 5, 14]);
   });
 });

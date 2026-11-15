@@ -125,6 +125,10 @@ var families = map[string]Ruleset{
 	// Pixelock: a move is cell × 2 + mode on a 10 × 10 grid, and every move shows
 	// one cell, so a hundred moves at most.
 	"pixelock": {Verifier: "complete_pixelock_run", MaxActions: 100, ActionCodes: 200},
+	// Then & Now: a try is an order of six ids as sum(id × 6^place), four tries.
+	"then-and-now": {Verifier: "complete_then_and_now_run", MaxActions: 4, ActionCodes: 46656},
+	// Honeycomb: a move is a word's place in the day's list, at most 64 words.
+	"honeycomb": {Verifier: "complete_honeycomb_run", MaxActions: 64, ActionCodes: 64},
 }
 
 // overrides are the versions whose bounds differ from their family's: the

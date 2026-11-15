@@ -83,6 +83,8 @@ export function GameArt({
       {id === "tee-time" && <TeeTime />}
       {id === "foursort" && <Foursort />}
       {id === "pixelock" && <Pixelock />}
+      {id === "then-and-now" && <ThenAndNow />}
+      {id === "honeycomb" && <Honeycomb />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </GameStage>
   );
@@ -163,6 +165,8 @@ const KNOWN = new Set([
   "tee-time",
   "foursort",
   "pixelock",
+  "then-and-now",
+  "honeycomb",
 ]);
 
 /**
@@ -912,6 +916,59 @@ function Pixelock() {
           />
         )),
       )}
+    </div>
+  );
+}
+
+function ThenAndNow() {
+  // A column of event cards, the top three locked in green, the rest still to sort.
+  return (
+    <div className="flex w-[78%] flex-col gap-[min(1.6cqw,1.6cqh,0.4rem)]">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          className={cn(
+            "flex h-[min(11cqw,11cqh,2.75rem)] items-center justify-between rounded-[min(2cqw,2cqh,0.5rem)] px-[min(3cqw,3cqh,0.75rem)]",
+            i < 3 ? "bg-emerald-500/30" : "bg-foreground/10",
+          )}
+        >
+          <div className="h-[22%] w-[55%] rounded-full bg-foreground/25" />
+          {i < 3 && (
+            <span className="text-[min(4cqw,4cqh,1rem)] font-bold leading-none">
+              {["1440", "1879", "1969"][i]}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Honeycomb() {
+  // Seven hexagons, the centre one lit, and a letter in each.
+  const spots = [
+    [50, 50, "E"],
+    [50, 19, "K"],
+    [76, 34.5, "I"],
+    [76, 65.5, "T"],
+    [50, 81, "C"],
+    [24, 65.5, "H"],
+    [24, 34.5, "N"],
+  ] as const;
+  return (
+    <div className="relative aspect-square w-[80%]">
+      {spots.map(([x, y, letter], i) => (
+        <div
+          key={letter}
+          className={cn(
+            "absolute flex size-[32%] -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[min(8cqw,8cqh,2rem)] font-bold [clip-path:polygon(25%_5%,75%_5%,100%_50%,75%_95%,25%_95%,0%_50%)]",
+            i === 0 ? "bg-primary text-primary-foreground" : "bg-foreground/10",
+          )}
+          style={{ left: `${x}%`, top: `${y}%` }}
+        >
+          {letter}
+        </div>
+      ))}
     </div>
   );
 }

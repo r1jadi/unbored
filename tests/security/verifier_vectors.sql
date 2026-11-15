@@ -656,4 +656,48 @@ begin
   end if;
 end $$;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Then & Now and Honeycomb: a day's moves and the score they make
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  got bigint;
+begin
+  for v in select * from (values
+    -- vectors:then-and-now-honeycomb:begin
+    ('then-and-now', '20406', '44790', '120'),
+    ('then-and-now', '20407', '38125,29600,29670,44790', '60'),
+    ('then-and-now', '20408', '38125,30710,34815,20530', '10'),
+    ('then-and-now', '20409', '38280', '20'),
+    ('honeycomb', '20406', '0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26', '111'),
+    ('honeycomb', '20407', '3,0,7', '16'),
+    ('honeycomb', '20408', '1', '5'),
+    ('honeycomb', '20409', '25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0', '102')
+    -- vectors:then-and-now-honeycomb:end
+  ) as vectors(game, day, actions, score) loop
+    got := case v.game
+      when 'then-and-now' then public.then_and_now_score(v.day::bigint, string_to_array(v.actions, ',')::integer[])
+      when 'honeycomb' then public.honeycomb_score(v.day::bigint, string_to_array(v.actions, ',')::integer[])
+    end;
+    if got::text is distinct from v.score then
+      raise exception 'ASSERTION FAILED: % day % — the database scores %, the engine %',
+        v.game, v.day, got, v.score;
+    end if;
+    raise notice 'ok   % day %: the verifier scores the engine''s run', v.game, v.day;
+  end loop;
+
+  -- Not legal: an id twice in an order, a locked event moved, a repeated try, a try
+  -- after the end; a word twice, a word id past the day's list.
+  if public.then_and_now_score(20406, array[0]) is not null
+     or public.then_and_now_score(20406, array[38280, 38281]) is not null
+     or public.then_and_now_score(20406, array[38125, 38125]) is not null
+     or public.then_and_now_score(20406, array[44790, 38125]) is not null
+     or public.honeycomb_score(20406, array[1, 1]) is not null
+     or public.honeycomb_score(20406, array[63]) is not null then
+    raise exception 'ASSERTION FAILED: Then & Now or Honeycomb scored moves that are not a legal run';
+  end if;
+end $$;
+
 rollback;

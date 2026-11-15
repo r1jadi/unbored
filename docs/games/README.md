@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Thirty-five games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Thirty-seven games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword**, **Guesswork**, the daily word, **Deep Cut**, the rare-answer trivia game, and four more daily games: **Ton Up** (three darts at exactly 100), **Ballpark** (guess the price), **Only Once** (seven questions, never the same answer twice) **Tee Time** (a daily nine-hole golf course), **Foursort** (sixteen words, four hidden groups) and **Pixelock** (a daily picture logic puzzle). The daily games — 7 Second, the crossword, Guesswork, Deep Cut and the six above — have one board a day; the rest are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
+**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword**, **Guesswork**, the daily word, **Deep Cut**, the rare-answer trivia game, and four more daily games: **Ton Up** (three darts at exactly 100), **Ballpark** (guess the price), **Only Once** (seven questions, never the same answer twice) **Tee Time** (a daily nine-hole golf course), **Foursort** (sixteen words, four hidden groups), **Pixelock** (a daily picture logic puzzle), **Then & Now** (six events in the order they happened) and **Honeycomb** (seven letters, every word they make). The daily games — 7 Second, the crossword, Guesswork, Deep Cut and the eight above — have one board a day; the rest are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
 
@@ -3691,4 +3691,41 @@ live in `public.pixelock_pictures()`, written by `bun scripts/generate-daily-ban
 --write`; `pixelock.test.ts` fails if the two copies drift, and also if any picture
 cannot be solved by line logic alone (`solveByLines`), so no day needs a guess.
 
-Neither has a feed preview yet.
+Both have feed previews (`src/components/game/previews/`), played through the real
+rules on content no day uses. Foursort's has sixteen words of its own (a near miss,
+then two groups found; the preview test fails if any word turns up in the bank), and
+Pixelock's draws an ice cream of its own row by row, passing its picture to `move`;
+the test checks the picture is in no day's bank and solves line by line.
+
+## Then & Now and Honeycomb
+
+Two more daily games in the same shape: day-seeded sessions
+(`20270106120200_then_and_now_honeycomb_start.sql`), one ranked play a day,
+`useDailyRun` and `DailyShell`, a pure engine, a verifier whose replay is
+`public.<game>_score(day, actions)`, the `then-and-now-honeycomb` rows of
+`tests/security/verifier_vectors.sql`, and
+`20270106120300_then_and_now_honeycomb_playable.sql` for the catalogue. Both have feed
+previews on content of their own.
+
+| Game       | Rules            | A move                                  | Score (×10 on screen)                              |
+| ---------- | ---------------- | --------------------------------------- | -------------------------------------------------- |
+| Then & Now | `then-and-now@1` | an order of six ids, as Σ id × 6^place  | 10 an event in place; all six add 20 × tries left  |
+| Honeycomb  | `honeycomb@1`    | a word's place in the day's sorted list | 1 for four letters, else the length; +7 all seven  |
+
+**Then & Now.** Six events a day (`d mod n` of `then-and-now-bank.ts`), listed oldest
+first, so event id `i` belongs in place `i` and the verifier needs no bank. A try
+locks every event in its right place; a later try may not move a locked event or
+repeat an earlier order. Four tries. The board's first order is shuffled from the day
+with at most two events already in place. Event text is translated on screen.
+
+**Honeycomb.** Seven letters a day, never `s`, the first being the centre every word
+must hold. The words are generated from Debian/Ubuntu's `wamerican` list by
+`bun scripts/generate-honeycomb-bank.ts <word-list> --write` (lowercase a–z, four
+letters or more, a blocklist of slurs and sexual terms built on the objectionable-text
+filter's), keeping puzzles of 20 to 60 words with at least one that uses all seven;
+see `honeycomb-word-list.md` for the list's notice. The database holds only each
+word's points (`public.honeycomb_points`, written by
+`bun scripts/generate-daily-banks.ts --write`). A typed word that is not in the list
+costs nothing and is not a move. The ranks (Egg to Royal) are the screen's, by share
+of the day's points; the run ends when the player stops or finds every word, and its
+registry row takes the longer session length (12 hours). Found words are not saved across a reload.

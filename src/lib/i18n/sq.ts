@@ -15,9 +15,11 @@ import { sqFoursortPixelock } from "@/lib/i18n/sq-foursort-pixelock";
 import { sqGames } from "@/lib/i18n/sq-games";
 import { sqHints } from "@/lib/i18n/sq-hints";
 import { sqRules } from "@/lib/i18n/sq-rules";
+import { sqThenAndNowHoneycomb } from "@/lib/i18n/sq-then-and-now-honeycomb";
 
 export const sq: Record<string, string> = {
   // First, so an existing translation of a shared word always wins.
+  ...sqThenAndNowHoneycomb,
   ...sqFoursortPixelock,
   ...sqDailyFour,
   ...sqAdmin,

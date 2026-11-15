@@ -28,9 +28,11 @@ const LOADERS: Record<string, Loader> = {
   "dont-touch-the-black": () =>
     import("./DontTouchPreview").then((m) => ({ default: m.DontTouchPreview })),
   flipside: () => import("./FlipsidePreview").then((m) => ({ default: m.FlipsidePreview })),
+  foursort: () => import("./FoursortPreview").then((m) => ({ default: m.FoursortPreview })),
   fusebox: () => import("./FuseboxPreview").then((m) => ({ default: m.FuseboxPreview })),
   gridburst: () => import("./GridburstPreview").then((m) => ({ default: m.GridburstPreview })),
   guesswork: () => import("./GuessworkPreview").then((m) => ({ default: m.GuessworkPreview })),
+  honeycomb: () => import("./HoneycombPreview").then((m) => ({ default: m.HoneycombPreview })),
   huedini: () => import("./HuediniPreview").then((m) => ({ default: m.HuediniPreview })),
   "memory-flash": () =>
     import("./MemoryFlashPreview").then((m) => ({ default: m.MemoryFlashPreview })),
@@ -39,12 +41,15 @@ const LOADERS: Record<string, Loader> = {
     import("./MiniSudokuPreview").then((m) => ({ default: m.MiniSudokuPreview })),
   "one-move": () => import("./OneMovePreview").then((m) => ({ default: m.OneMovePreview })),
   "only-once": () => import("./OnlyOncePreview").then((m) => ({ default: m.OnlyOncePreview })),
+  pixelock: () => import("./PixelockPreview").then((m) => ({ default: m.PixelockPreview })),
   scatter: () => import("./ScatterPreview").then((m) => ({ default: m.ScatterPreview })),
   "stack-10": () => import("./Stack10Preview").then((m) => ({ default: m.Stack10Preview })),
   sudoku: () => import("./SudokuPreview").then((m) => ({ default: m.SudokuPreview })),
   sumdoku: () => import("./SumdokuPreview").then((m) => ({ default: m.SumdokuPreview })),
   "sun-and-moon": () => import("./TangoPreview").then((m) => ({ default: m.TangoPreview })),
   "tee-time": () => import("./TeeTimePreview").then((m) => ({ default: m.TeeTimePreview })),
+  "then-and-now": () =>
+    import("./ThenAndNowPreview").then((m) => ({ default: m.ThenAndNowPreview })),
   "ton-up": () => import("./TonUpPreview").then((m) => ({ default: m.TonUpPreview })),
   trail: () => import("./ZipPreview").then((m) => ({ default: m.ZipPreview })),
   updraft: () => import("./UpdraftPreview").then((m) => ({ default: m.UpdraftPreview })),

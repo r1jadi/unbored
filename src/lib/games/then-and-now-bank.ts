@@ -1,0 +1,310 @@
+/**
+ * Then & Now's puzzles: six events a day, to be put in the order they happened.
+ *
+ * Day `d` plays puzzle `d mod n`. Every puzzle lists its events **oldest first**,
+ * so an event's id is its place in time and the right order is always 0 – 5. That
+ * is why the database needs no copy of this bank: the verifier only checks that an
+ * order is 0, 1, 2, 3, 4, 5. `then-and-now.test.ts` checks every list is in
+ * strictly increasing years.
+ *
+ * Years are the commonly cited ones; a negative year is BC. A puzzle's place in the
+ * list is its day: only add at the end.
+ */
+
+export type ThenAndNowEvent = {
+  readonly text: string;
+  readonly year: number;
+};
+
+export type ThenAndNowPuzzle = {
+  readonly theme: string;
+  readonly events: readonly [
+    ThenAndNowEvent,
+    ThenAndNowEvent,
+    ThenAndNowEvent,
+    ThenAndNowEvent,
+    ThenAndNowEvent,
+    ThenAndNowEvent,
+  ];
+};
+
+function p(theme: string, ...events: [string, number][]): ThenAndNowPuzzle {
+  if (events.length !== 6) throw new Error(`${theme} needs six events`);
+  return {
+    theme,
+    events: events.map(([text, year]) => ({ text, year })) as unknown as ThenAndNowPuzzle["events"],
+  };
+}
+
+export const THEN_AND_NOW_PUZZLES: readonly ThenAndNowPuzzle[] = [
+  p(
+    "Inventions",
+    ["Gutenberg's printing press", 1440],
+    ["Bell patents the telephone", 1876],
+    ["Edison's practical light bulb", 1879],
+    ["The Wright brothers' first flight", 1903],
+    ["Baird demonstrates television", 1926],
+    ["The World Wide Web is proposed", 1989],
+  ),
+  p(
+    "Space",
+    ["Sputnik 1 is launched", 1957],
+    ["Yuri Gagarin orbits Earth", 1961],
+    ["Apollo 11 lands on the Moon", 1969],
+    ["The Hubble telescope is launched", 1990],
+    ["The first crew boards the ISS", 2000],
+    ["The first photo of a black hole", 2019],
+  ),
+  p(
+    "Music",
+    ['Elvis releases "Heartbreak Hotel"', 1956],
+    ["The Beatles play The Ed Sullivan Show", 1964],
+    ["Woodstock", 1969],
+    ["MTV goes on air", 1981],
+    ["Apple releases the iPod", 2001],
+    ["Spotify launches", 2008],
+  ),
+  p(
+    "Sport",
+    ["The first modern Olympics, Athens", 1896],
+    ["The first FIFA World Cup", 1930],
+    ["Jesse Owens wins four golds in Berlin", 1936],
+    ["Roger Bannister runs a four-minute mile", 1954],
+    ["The first Super Bowl", 1967],
+    ["Usain Bolt runs 100 m in 9.58 s", 2009],
+  ),
+  p(
+    "The web grows up",
+    ["Windows 95 is released", 1995],
+    ["Google is founded", 1998],
+    ["Facebook launches", 2004],
+    ["YouTube is founded", 2005],
+    ["Twitter launches", 2006],
+    ["The first iPhone goes on sale", 2007],
+  ),
+  p(
+    "The ancient world",
+    ["The Great Pyramid of Giza is built", -2560],
+    ["The first ancient Olympic Games", -776],
+    ["Rome is founded, by legend", -753],
+    ["Alexander the Great dies", -323],
+    ["Julius Caesar is assassinated", -44],
+    ["The Colosseum is completed", 80],
+  ),
+  p(
+    "Discoveries",
+    ["Columbus reaches the Americas", 1492],
+    ["Magellan's expedition sails round the world", 1522],
+    ["Captain Cook lands at Botany Bay", 1770],
+    ["Darwin publishes On the Origin of Species", 1859],
+    ["Fleming discovers penicillin", 1928],
+    ["The structure of DNA is described", 1953],
+  ),
+  p(
+    "Landmarks",
+    ["The Statue of Liberty is dedicated", 1886],
+    ["The Eiffel Tower is completed", 1889],
+    ["The Empire State Building opens", 1931],
+    ["The Golden Gate Bridge opens", 1937],
+    ["The Sydney Opera House opens", 1973],
+    ["The Burj Khalifa opens", 2010],
+  ),
+  p(
+    "At the movies",
+    ["The first Academy Awards", 1929],
+    ["Disney's Snow White and the Seven Dwarfs", 1937],
+    ["Star Wars", 1977],
+    ["Jurassic Park", 1993],
+    ["Toy Story", 1995],
+    ["Avatar", 2009],
+  ),
+  p(
+    "The 20th century",
+    ["World War I begins", 1914],
+    ["The Wall Street Crash", 1929],
+    ["World War II ends", 1945],
+    ["The Berlin Wall is built", 1961],
+    ["The Berlin Wall falls", 1989],
+    ["Euro notes and coins arrive", 2002],
+  ),
+  p(
+    "Science",
+    ["Newton publishes the Principia", 1687],
+    ["Franklin's kite experiment", 1752],
+    ["Röntgen discovers X-rays", 1895],
+    ["Einstein's special relativity", 1905],
+    ["The first human heart transplant", 1967],
+    ["Dolly the sheep is born", 1996],
+  ),
+  p(
+    "Games",
+    ["Monopoly goes on sale", 1935],
+    ["Scrabble gets its name", 1948],
+    ["Pong arrives in arcades", 1972],
+    ["The Rubik's Cube is invented", 1974],
+    ["Tetris is created", 1984],
+    ["The first Pokémon games, in Japan", 1996],
+  ),
+  p(
+    "On the move",
+    ["The Stockton and Darlington Railway opens", 1825],
+    ["Ford's Model T", 1908],
+    ["The Titanic sinks", 1912],
+    ["The Boeing 747 enters service", 1970],
+    ["Concorde's first passenger flight", 1976],
+    ["The Channel Tunnel opens", 1994],
+  ),
+  p(
+    "Medicine",
+    ["Jenner's smallpox vaccine", 1796],
+    ["Ether is first shown as an anaesthetic", 1846],
+    ["Bayer sells aspirin", 1899],
+    ["Insulin is first used on a patient", 1922],
+    ["Salk's polio vaccine is announced", 1955],
+    ["Smallpox is declared eradicated", 1980],
+  ),
+  p(
+    "Books",
+    ["Don Quixote, part one", 1605],
+    ["Shakespeare's First Folio", 1623],
+    ["Pride and Prejudice", 1813],
+    ["Frankenstein", 1818],
+    ["Nineteen Eighty-Four", 1949],
+    ["Harry Potter and the Philosopher's Stone", 1997],
+  ),
+  p(
+    "Staying in touch",
+    ['Morse sends "What hath God wrought"', 1844],
+    ["Marconi's transatlantic radio signal", 1901],
+    ["The first email between computers", 1971],
+    ["The first handheld mobile phone call", 1973],
+    ["The first text message", 1992],
+    ["WhatsApp launches", 2009],
+  ),
+  p(
+    "Art",
+    ["Leonardo begins the Mona Lisa", 1503],
+    ["The Sistine Chapel ceiling is finished", 1512],
+    ["Van Gogh paints The Starry Night", 1889],
+    ["Picasso paints Guernica", 1937],
+    ["Warhol's Campbell's Soup Cans", 1962],
+    ["A Banksy shreds itself at auction", 2018],
+  ),
+  p(
+    "Food and drink",
+    ["Coca-Cola is invented", 1886],
+    ["Sliced bread goes on sale", 1928],
+    ["The McDonald brothers open their first restaurant", 1940],
+    ["Instant noodles are invented", 1958],
+    ["Pringles go on sale", 1968],
+    ["The first Starbucks opens", 1971],
+  ),
+  p(
+    "New countries",
+    ["The US Declaration of Independence", 1776],
+    ["The Kingdom of Italy is proclaimed", 1861],
+    ["Albania declares independence", 1912],
+    ["India becomes independent", 1947],
+    ["The State of Israel is proclaimed", 1948],
+    ["Kosovo declares independence", 2008],
+  ),
+  p(
+    "Toys",
+    ["The teddy bear", 1902],
+    ["The Slinky", 1945],
+    ["The modern LEGO brick", 1958],
+    ["Barbie", 1959],
+    ["Nintendo's Game Boy", 1989],
+    ["Furby", 1998],
+  ),
+  p(
+    "Forces of nature",
+    ["Vesuvius buries Pompeii", 79],
+    ["The Great Fire of London", 1666],
+    ["Krakatoa erupts", 1883],
+    ["The San Francisco earthquake", 1906],
+    ["The Chernobyl disaster", 1986],
+    ["The Indian Ocean tsunami", 2004],
+  ),
+  p(
+    "Explorers",
+    ["Marco Polo returns to Venice", 1295],
+    ["Vasco da Gama reaches India", 1498],
+    ["Lewis and Clark set out west", 1804],
+    ["Amundsen reaches the South Pole", 1911],
+    ["Hillary and Tenzing climb Everest", 1953],
+    ["The Trieste reaches the Challenger Deep", 1960],
+  ),
+  p(
+    "Money",
+    ["The Bank of England is founded", 1694],
+    ["Diners Club, the first charge card", 1950],
+    ["The first cash machine, in London", 1967],
+    ["PayPal is founded", 1998],
+    ["The euro is launched for banks", 1999],
+    ["The Bitcoin paper is published", 2008],
+  ),
+  p(
+    "Computers",
+    ["ENIAC is completed", 1945],
+    ["The transistor is invented", 1947],
+    ["Apple is founded", 1976],
+    ["The IBM PC", 1981],
+    ["The first Macintosh", 1984],
+    ["Linux is released", 1991],
+  ),
+  p(
+    "Wild things",
+    ["The last accepted sighting of a dodo", 1662],
+    ["London Zoo opens", 1828],
+    ["Darwin visits the Galápagos", 1835],
+    ["Yellowstone, the first national park", 1872],
+    ["Laika goes into orbit", 1957],
+    ["The WWF is founded", 1961],
+  ),
+  p(
+    "Fashion",
+    ["Levi Strauss patents riveted jeans", 1873],
+    ["Chanel No. 5", 1921],
+    ["The bikini is unveiled", 1946],
+    ["Velcro is patented", 1955],
+    ["Nike's swoosh is designed", 1971],
+    ["Crocs go on sale", 2002],
+  ),
+  p(
+    "Built to last",
+    ["Machu Picchu is built", 1450],
+    ["St Peter's Basilica is consecrated", 1626],
+    ["The Taj Mahal is completed", 1653],
+    ["Big Ben's tower is completed", 1859],
+    ["The Panama Canal opens", 1914],
+    ["The Hoover Dam is completed", 1936],
+  ),
+  p(
+    "Online",
+    ["The first emoji set, in Japan", 1999],
+    ["Wikipedia launches", 2001],
+    ["The first YouTube video", 2005],
+    ["Instagram launches", 2010],
+    ["TikTok launches worldwide", 2017],
+    ["ChatGPT is released", 2022],
+  ),
+  p(
+    "Turning points",
+    ["Magna Carta is sealed", 1215],
+    ["The Glorious Revolution", 1688],
+    ["The storming of the Bastille", 1789],
+    ["The Haitian Revolution begins", 1791],
+    ["The Russian Revolution", 1917],
+    ["The Velvet Revolution", 1989],
+  ),
+  p(
+    "Big moments in sport",
+    ["The first Wimbledon", 1877],
+    ["The first Tour de France", 1903],
+    ["The first European Cup", 1956],
+    ['Maradona\'s "Hand of God"', 1986],
+    ["Michael Phelps wins eight golds", 2008],
+    ["Leicester City win the Premier League", 2016],
+  ),
+];

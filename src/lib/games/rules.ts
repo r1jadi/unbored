@@ -972,6 +972,62 @@ export const GAME_RULES = {
       },
     ],
   },
+  "then-and-now": {
+    heading: msg("Put history in order"),
+    summary: msg("Six events a day. Swap them into the order they happened."),
+    rules: [
+      {
+        lead: msg("Oldest at the top."),
+        text: msg("Tap two events to swap them, and keep going until the order looks right."),
+      },
+      {
+        lead: msg("Submit your order."),
+        text: msg(
+          "Every event in its right place locks in green and shows its year; the rest stay to be moved.",
+        ),
+      },
+      {
+        lead: msg("Four tries"),
+        text: msg("to get all six. One theme a day, the same for everyone."),
+      },
+      {
+        lead: msg("100 an event in place,"),
+        text: msg(
+          "and getting all six adds 200 for every try left: 1,200 first time. A new timeline arrives at midnight, your time.",
+        ),
+      },
+    ],
+  },
+  honeycomb: {
+    heading: msg("Seven letters"),
+    summary: msg("Make as many words as you can. Every word needs the centre letter."),
+    rules: [
+      {
+        lead: msg("Four letters or more,"),
+        text: msg(
+          "from the seven on the hive. Letters can be used again; the centre one is always in.",
+        ),
+      },
+      {
+        lead: msg("Longer is better."),
+        text: msg(
+          "A four-letter word is worth 10, a longer one 10 a letter, and a word that uses all seven letters 70 more.",
+        ),
+      },
+      {
+        lead: msg("Climb the ranks"),
+        text: msg(
+          "from Egg to Royal as your score grows. Every day has at least one word that uses all seven.",
+        ),
+      },
+      {
+        lead: msg("Stop when you're done."),
+        text: msg(
+          "Your words are your score. One ranked hive a day; new letters at midnight, your time.",
+        ),
+      },
+    ],
+  },
 } satisfies Record<string, GameRules>;
 
 /** A game's rules by its runtime, or null for a runtime with none written. */
