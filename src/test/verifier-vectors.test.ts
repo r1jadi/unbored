@@ -23,6 +23,8 @@ import { replay as tonUpReplay, scoreOf as tonUpScore } from "@/lib/games/ton-up
 import { replay as ballparkReplay, scoreOf as ballparkScore } from "@/lib/games/ballpark";
 import { replay as onlyOnceReplay, scoreOf as onlyOnceScore } from "@/lib/games/only-once";
 import { replay as teeTimeReplay, scoreOf as teeTimeScore } from "@/lib/games/tee-time";
+import { replay as foursortReplay, scoreOf as foursortScore } from "@/lib/games/foursort";
+import { replay as pixelockReplay, scoreOf as pixelockScore } from "@/lib/games/pixelock";
 
 /**
  * The other half of tests/security/verifier_vectors.sql.
@@ -249,6 +251,27 @@ describe("the verifier vectors", () => {
       "tee-time": (day, a) => {
         const run = teeTimeReplay(day, a);
         return [teeTimeScore(run), run.moves.length];
+      },
+    };
+    for (const [game, day, actions, score] of cases) {
+      const moves = actions!.split(",").map(Number);
+      const [got, played] = engines[game!]!(Number(day), moves);
+      expect(played, `${game} day ${day} plays every move`).toBe(moves.length);
+      expect(String(got), `${game} day ${day}`).toBe(score);
+    }
+  });
+
+  it("are Foursort's and Pixelock's runs as the engines score them", () => {
+    const cases = vectors("foursort-pixelock");
+    expect(cases.length).toBeGreaterThanOrEqual(8);
+    const engines: Record<string, (day: number, actions: number[]) => [number, number]> = {
+      foursort: (day, a) => {
+        const run = foursortReplay(day, a);
+        return [foursortScore(run), run.guesses.length];
+      },
+      pixelock: (day, a) => {
+        const run = pixelockReplay(day, a);
+        return [pixelockScore(run), run.moves.length];
       },
     };
     for (const [game, day, actions, score] of cases) {

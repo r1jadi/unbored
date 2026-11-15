@@ -693,6 +693,8 @@ export const sqGames: Record<string, string> = {
 
   // The speed bonus, and Crowns' free undo
   "+{bonus} speed": "+{bonus} shpejtësi",
+  "+{bonus} speed bonus": "+{bonus} bonus shpejtësie",
+  "if you end now · {total} total": "nëse e mbyll tani · {total} gjithsej",
   "Clear board": "Pastro tabelën",
   "crown, clashing with another crown": "kurorë, në konflikt me një kurorë tjetër",
   "Hint: this crown comes off.": "Ndihmë: kjo kurorë duhet hequr.",

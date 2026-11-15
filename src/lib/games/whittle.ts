@@ -102,6 +102,12 @@ export type WhittleRun = {
   readonly level: number;
   /** The current board's marks. */
   readonly marks: readonly WhittleMark[];
+  /**
+   * Where the current board's moves begin in `moves`. Everything before it solved
+   * an earlier board and is fixed; everything from it on is kept as short as the
+   * marks allow (see `mark`).
+   */
+  readonly boardStart: number;
   readonly levelsCleared: number;
   readonly score: number;
   readonly outcome: WhittleOutcome;
@@ -353,6 +359,7 @@ export function createRun(seed: string | number | bigint): WhittleRun {
     moves: [],
     level: 1,
     marks: freshMarks(),
+    boardStart: 0,
     levelsCleared: 0,
     score: 0,
     outcome: "playing",
@@ -369,26 +376,62 @@ export function canMark(run: WhittleRun, cell: number, mark: number): boolean {
 }
 
 /**
+ * The shortest moves that take a fresh board to these marks without solving it on
+ * the way: one per marked cell, circles first (a circle never changes a sum), then
+ * crosses, each in cell order. Null when some prefix of those crosses would solve
+ * the board early — a board with more than one answer can do that — and the moves
+ * as played have to stand instead.
+ */
+function shortestMoves(drawn: WhittleBoard, marks: readonly WhittleMark[]): number[] | null {
+  const moves: number[] = [];
+  for (let cell = 0; cell < CELLS; cell += 1) {
+    if (marks[cell] === CIRCLED) moves.push(encodeMove(cell, CIRCLED));
+  }
+  const partial = freshMarks();
+  for (let cell = 0; cell < CELLS; cell += 1) {
+    if (marks[cell] !== CROSSED) continue;
+    partial[cell] = CROSSED;
+    if (isSolved(drawn, partial)) return null;
+    moves.push(encodeMove(cell, CROSSED));
+  }
+  return moves;
+}
+
+/**
  * Sets a cell's mark. A move that solves the board scores fifty points and starts
  * the next. An impossible move returns the same run.
+ *
+ * A move that doesn't solve the board rewrites the board's moves to the shortest
+ * ones that reach its marks. Every tap, undo and clear is a move, and a run holds at
+ * most `WHITTLE_MAX_ACTIONS` of them, so without this a long run spent its budget on
+ * marks it had already taken back, and ended by itself when the budget ran out. The
+ * server replays the moves it is sent from the seed, and the score depends only on
+ * the boards solved, so the shorter moves score exactly the same. `replay` comes
+ * back to the same run, because it rewrites them the same way.
  */
 export function mark(run: WhittleRun, cell: number, to: number): WhittleRun {
   if (!canMark(run, cell, to)) return run;
-  const moves = [...run.moves, encodeMove(cell, to)];
-  const atBound = moves.length >= WHITTLE_MAX_ACTIONS;
   const marks = [...run.marks];
   marks[cell] = to as WhittleMark;
+  const drawn = board(run.seed, run.level);
+  const solved = isSolved(drawn, marks);
+  const shortest = solved ? null : shortestMoves(drawn, marks);
+  const moves = shortest
+    ? [...run.moves.slice(0, run.boardStart), ...shortest]
+    : [...run.moves, encodeMove(cell, to)];
+  const atBound = moves.length >= WHITTLE_MAX_ACTIONS;
   const bound = {
     outcome: atBound ? "over" : "playing",
     ending: atBound ? "bound" : null,
   } as const;
 
-  if (isSolved(board(run.seed, run.level), marks)) {
+  if (solved) {
     return {
       ...run,
       moves,
       level: run.level + 1,
       marks: freshMarks(),
+      boardStart: moves.length,
       levelsCleared: run.levelsCleared + 1,
       score: run.score + WHITTLE_POINTS_PER_BOARD,
       ...bound,

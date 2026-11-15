@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { FinishLaterAction } from "@/components/game/FinishLaterAction";
 import { Button } from "@/components/ui/button";
 import { RunLeaveContext } from "@/lib/games/run-progress";
 import { points } from "@/lib/format";
@@ -68,6 +69,7 @@ export function EndRunButton({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("Keep playing")}</AlertDialogCancel>
+            <FinishLaterAction />
             <AlertDialogAction onClick={onEnd}>{t("End run")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

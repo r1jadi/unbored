@@ -612,4 +612,48 @@ begin
   end if;
 end $$;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Foursort and Pixelock: a day's moves and the score they make
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  got bigint;
+begin
+  for v in select * from (values
+    -- vectors:foursort-pixelock:begin
+    ('foursort', '20406', '15,240,3840,61440', '100'),
+    ('foursort', '20407', '23,240,263,15,61440,3840', '80'),
+    ('foursort', '20408', '3840,12305,20497,36881,12321', '15'),
+    ('foursort', '20409', '240', '15'),
+    ('pixelock', '20406', '26,28,30,32,40,44,46,48,50,52,54,60,62,64,66,68,70,74,76,80,82,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,118,120,124,126,128,130,132,134,136,146,148,150,152,154', '177'),
+    ('pixelock', '20407', '1,3,18,6,8,10,12,22,24,26,28,30,32,34,36,40,42,44,48,50,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,86,88,90,92,96,98,100,102,104,106,108,110,112,114,116,118,126,132,146,152,166,172,186,188,190,192', '158'),
+    ('pixelock', '20408', '5,8,10,24,26,28,30,32,34,42,44', '10'),
+    ('pixelock', '20409', '8,28,30,48,50', '5')
+    -- vectors:foursort-pixelock:end
+  ) as vectors(game, day, actions, score) loop
+    got := case v.game
+      when 'foursort' then public.foursort_score(v.day::bigint, string_to_array(v.actions, ',')::integer[])
+      when 'pixelock' then public.pixelock_score(v.day::bigint, string_to_array(v.actions, ',')::integer[])
+    end;
+    if got::text is distinct from v.score then
+      raise exception 'ASSERTION FAILED: % day % — the database scores %, the engine %',
+        v.game, v.day, got, v.score;
+    end if;
+    raise notice 'ok   % day %: the verifier scores the engine''s run', v.game, v.day;
+  end loop;
+
+  -- Not legal: three words, a repeated guess, a guess touching a found group, a
+  -- move after the end; a cell shown twice, a code out of range.
+  if public.foursort_score(20406, array[7]) is not null
+     or public.foursort_score(20406, array[23, 23]) is not null
+     or public.foursort_score(20406, array[15, 23]) is not null
+     or public.foursort_score(20406, array[15, 240, 3840, 61440, 23]) is not null
+     or public.pixelock_score(20406, array[26, 27]) is not null
+     or public.pixelock_score(20406, array[200]) is not null then
+    raise exception 'ASSERTION FAILED: Foursort or Pixelock scored moves that are not a legal run';
+  end if;
+end $$;
+
 rollback;

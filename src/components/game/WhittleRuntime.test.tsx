@@ -63,11 +63,12 @@ describe("Whittle Clear board", () => {
     expect(latest.marks[6]).toBe(CIRCLED);
     expect(clear).toBeEnabled();
 
-    const movesBefore = latest.moves.length;
+    expect(latest.moves).toEqual([62, 1]);
     act(() => fireEvent.click(clear));
     expect(latest.marks.every((m) => m === UNMARKED)).toBe(true);
-    // Each cleared cell is a real move, so the server's replay agrees.
-    expect(latest.moves.length).toBe(movesBefore + 2);
+    // A cleared board needs no moves at all: taking marks back doesn't use up the
+    // run's moves, and the server's replay agrees.
+    expect(latest.moves).toEqual([]);
     expect(clear).toBeDisabled();
 
     const undo = screen.getByRole("button", { name: "Undo" });

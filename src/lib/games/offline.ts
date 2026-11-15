@@ -25,9 +25,9 @@ import type { PlaySession, RunResult, RunSubmission } from "@/lib/games/sessions
 
 const OFFLINE_PREFIX = "offline-";
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** The day-seeded games — the crossword or Fjalekryqi, Guesswork or Gjeje, Ton Up, Ballpark, Only Once, Tee Time. */
+/** The day-seeded games — the crossword or Fjalekryqi, Guesswork or Gjeje, Ton Up, Ballpark, Only Once, Tee Time, Foursort, Pixelock. */
 const DAILY_CROSSWORD =
-  /^(crossword|fjalekryqi|guesswork|gjeje|ton-up|ballpark|only-once|tee-time)@/;
+  /^(crossword|fjalekryqi|guesswork|gjeje|ton-up|ballpark|only-once|tee-time|foursort|pixelock)@/;
 
 /** The game each offline run on this page belongs to, for its result. */
 const offlineGames = new Map<string, string>();

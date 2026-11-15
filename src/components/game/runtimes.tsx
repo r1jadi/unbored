@@ -10,6 +10,7 @@ import { CrosswordRuntime } from "@/components/game/CrosswordRuntime";
 import { DecantRuntime } from "@/components/game/DecantRuntime";
 import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
 import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
+import { FoursortRuntime } from "@/components/game/FoursortRuntime";
 import { FuseboxRuntime } from "@/components/game/FuseboxRuntime";
 import { GridburstRuntime } from "@/components/game/GridburstRuntime";
 import { DeepCutRuntime } from "@/components/game/DeepCutRuntime";
@@ -20,6 +21,7 @@ import { MinefieldRuntime } from "@/components/game/MinefieldRuntime";
 import { MiniSudokuRuntime } from "@/components/game/MiniSudokuRuntime";
 import { OneMoveRuntime } from "@/components/game/OneMoveRuntime";
 import { OnlyOnceRuntime } from "@/components/game/OnlyOnceRuntime";
+import { PixelockRuntime } from "@/components/game/PixelockRuntime";
 import { QueensRuntime } from "@/components/game/QueensRuntime";
 import { ScatterRuntime } from "@/components/game/ScatterRuntime";
 import { SevenSecondRuntime } from "@/components/game/SevenSecondRuntime";
@@ -43,6 +45,7 @@ import { CROSSWORD_RUNTIME } from "@/lib/games/crossword";
 import { DECANT_RUNTIME } from "@/lib/games/decant";
 import { DONT_TOUCH_RUNTIME } from "@/lib/games/dont-touch";
 import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
+import { FOURSORT_RUNTIME } from "@/lib/games/foursort";
 import { FUSEBOX_RUNTIME } from "@/lib/games/fusebox";
 import { GRIDBURST_RUNTIME } from "@/lib/games/gridburst";
 import { DEEP_CUT_RUNTIME } from "@/lib/games/deep-cut";
@@ -53,6 +56,7 @@ import { MINEFIELD_RUNTIME } from "@/lib/games/minefield";
 import { MINI_SUDOKU_RUNTIME } from "@/lib/games/mini-sudoku";
 import { ONE_MOVE_RUNTIME } from "@/lib/games/one-move";
 import { ONLY_ONCE_RUNTIME } from "@/lib/games/only-once";
+import { PIXELOCK_RUNTIME } from "@/lib/games/pixelock";
 import { QUEENS_RUNTIME } from "@/lib/games/queens";
 import { SCATTER_RUNTIME } from "@/lib/games/scatter";
 import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
@@ -117,4 +121,6 @@ export const RUNTIMES: Readonly<Record<string, ComponentType<RuntimeProps>>> = {
   [BALLPARK_RUNTIME]: BallparkRuntime,
   [ONLY_ONCE_RUNTIME]: OnlyOnceRuntime,
   [TEE_TIME_RUNTIME]: TeeTimeRuntime,
+  [FOURSORT_RUNTIME]: FoursortRuntime,
+  [PIXELOCK_RUNTIME]: PixelockRuntime,
 };

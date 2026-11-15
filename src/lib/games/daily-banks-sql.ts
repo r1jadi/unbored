@@ -1,5 +1,5 @@
 /**
- * The database's copies of the Ton Up, Ballpark and Only Once banks, as the SQL
+ * The database's copies of the Ton Up, Ballpark, Only Once and Pixelock banks, as the SQL
  * that sits between each sessions migration's `-- name:begin` and `-- name:end`
  * markers. `scripts/generate-daily-banks.ts` writes them there; the games' tests
  * read the migrations and compare, so the two can never drift apart silently.
@@ -7,6 +7,7 @@
 
 import { BALLPARK_PRODUCTS } from "@/lib/games/ballpark-bank";
 import { KINDS, ONLY_ONCE_PUZZLES, toHexMask } from "@/lib/games/only-once-bank";
+import { PIXELOCK_PICTURES } from "@/lib/games/pixelock-bank";
 import { TON_UP_CATEGORIES } from "@/lib/games/ton-up-bank";
 
 export function tonUpBlocks(): Record<string, string> {
@@ -37,11 +38,21 @@ export function onlyOnceBlocks(): Record<string, string> {
   return { "only-once-bank": `    '[${rows.join(",\n     ")}]'` };
 }
 
+export function pixelockBlocks(): Record<string, string> {
+  return {
+    "pixelock-bank": PIXELOCK_PICTURES.map(
+      (picture, i) =>
+        `    '${picture.rows.join("")}'${i < PIXELOCK_PICTURES.length - 1 ? "," : ""} -- ${i}: ${picture.name}`,
+    ).join("\n"),
+  };
+}
+
 /** Every migration that holds a bank, and the blocks it should hold. */
 export const BANK_TARGETS: readonly { file: string; blocks: () => Record<string, string> }[] = [
   { file: "supabase/migrations/20270104120000_ton_up_sessions.sql", blocks: tonUpBlocks },
   { file: "supabase/migrations/20270104120100_ballpark_sessions.sql", blocks: ballparkBlocks },
   { file: "supabase/migrations/20270104120200_only_once_sessions.sql", blocks: onlyOnceBlocks },
+  { file: "supabase/migrations/20270105120100_pixelock_sessions.sql", blocks: pixelockBlocks },
 ];
 
 /** The text between a block's markers in a migration, or null when it has none. */

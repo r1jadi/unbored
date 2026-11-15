@@ -18,7 +18,7 @@ import { HintButton, HintNote } from "@/components/game/Hint";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { SavedRunCard } from "@/components/game/SavedRunCard";
 import { RulesList } from "@/components/game/RulesList";
-import { SpeedBonusStat, SpeedMeter } from "@/components/game/SpeedMeter";
+import { SpeedBonusEstimate, SpeedBonusStat, SpeedMeter } from "@/components/game/SpeedMeter";
 import { RunEndActions } from "@/components/game/RunEndActions";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import {
@@ -316,11 +316,19 @@ function Board({
   return (
     <div className="flex flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="flex items-center justify-between gap-3 py-2">
-        <dl className="flex items-baseline gap-1">
-          <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
-          <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
-          <BestScore slug={session.gameSlug} score={run.score} />
-        </dl>
+        <div className="flex flex-col">
+          <dl className="flex items-baseline gap-1">
+            <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
+            <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
+            <BestScore slug={session.gameSlug} score={run.score} />
+          </dl>
+          <SpeedBonusEstimate
+            startedAt={startedAt}
+            score={run.score}
+            solvedParMs={parMs(run.levelsCleared)}
+            running={!verifying && run.outcome === "playing"}
+          />
+        </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="tabular">{t("Board {level}", { level: run.level })}</span>
           {session.ranked ? (
@@ -358,6 +366,7 @@ function Board({
           solvedParMs={parMs(run.levelsCleared)}
           boardParMs={parMs(run.levelsCleared + 1)}
           running={!verifying && run.outcome === "playing"}
+          showBonus={false}
         />
       </div>
 

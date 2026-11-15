@@ -163,6 +163,60 @@ describe("a run", () => {
   });
 });
 
+describe("a run's moves", () => {
+  it("don't grow with marks taken back: a long run can't run out of moves by undoing", () => {
+    let run = play(createRun(1), LINE_ONE.slice(0, 3));
+    const before = run.moves;
+    // Thousands of taps, undos and clears that end where they started.
+    for (let round = 0; round < 3000; round += 1) {
+      run = mark(run, 0, CROSSED);
+      run = mark(run, 0, CIRCLED);
+      run = mark(run, 0, UNMARKED);
+    }
+    expect(run.outcome).toBe("playing");
+    expect(run.moves).toEqual(before);
+    // The board still solves, and scores the same.
+    run = play(run, LINE_ONE.slice(3));
+    expect(run).toMatchObject({ level: 2, score: 50, levelsCleared: 1 });
+  });
+
+  it("keep a solved board's moves, and replay to the same run", () => {
+    let run = play(createRun(1), LINE_ONE);
+    run = play(run, [1, 2, 0, 11, 42, 12]);
+    expect(run.moves.slice(0, LINE_ONE.length)).toEqual(LINE_ONE);
+    expect(run.moves.slice(LINE_ONE.length)).toEqual([12, 42]);
+    expect(replay(1, run.moves)).toEqual(run);
+    expect(run.moves.length).toBeLessThanOrEqual(LINE_ONE.length + 25);
+  });
+
+  it("replay to the same run, whatever was tapped", () => {
+    // A small LCG, so the taps are the same every time.
+    let state = 7;
+    const next = (n: number) => {
+      state = (Math.imul(state, 1103515245) + 12345) >>> 0;
+      return state % n;
+    };
+    for (const seed of [1, 42, 77, 2024]) {
+      let run = createRun(seed);
+      let taps = 0;
+      for (let step = 0; step < 4000; step += 1) {
+        // Mostly the hint's crosses, so boards get solved; some noise on top.
+        const hint = next(4) !== 0 ? whittleHint(run) : null;
+        const after =
+          hint !== null
+            ? mark(run, hint.cell, hint.action === "cross" ? CROSSED : UNMARKED)
+            : mark(run, next(25), next(3));
+        if (after !== run) taps += 1;
+        run = after;
+        expect(run.moves.length - run.boardStart).toBeLessThanOrEqual(25 + taps);
+      }
+      expect(run.levelsCleared, `seed ${seed}`).toBeGreaterThan(0);
+      expect(run.moves.length).toBeLessThan(taps);
+      expect(replay(seed, run.moves)).toEqual(run);
+    }
+  });
+});
+
 describe("a hint", () => {
   it("can be followed from a fresh board to the solve", () => {
     for (const seed of [1, 42, 77]) {

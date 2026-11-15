@@ -246,6 +246,17 @@ export async function saveRunProgress(
 }
 
 /**
+ * What a run's moves are, as a short key: their count and a hash of them. The count
+ * alone isn't enough, because a game may rewrite its moves shorter (Whittle keeps a
+ * board's moves to the fewest its marks need), so a new set can have the old count.
+ */
+function movesKey(actions: readonly number[]): string {
+  let hash = 0;
+  for (const action of actions) hash = (Math.imul(hash, 31) + action) | 0;
+  return `${actions.length}:${hash}`;
+}
+
+/**
  * Keeps a live run saved while it is played.
  *
  * `live` is the run to keep, or null when there is nothing to save (a guest, a
@@ -260,28 +271,29 @@ export function useSaveProgress(
   startedAt: RefObject<number>,
 ): void {
   const latest = useRef(live);
-  const saved = useRef(0);
+  const saved = useRef("");
   latest.current = live;
 
   const sessionId = live?.session.id ?? null;
   const count = live?.actions.length ?? 0;
+  const key = live ? movesKey(live.actions) : "";
   const eligible =
     live !== null && live.session.ranked && RESUMABLE_RULES.has(live.session.rulesVersion);
 
   useEffect(() => {
-    if (!eligible || !sessionId || count === 0 || count === saved.current) return;
+    if (!eligible || !sessionId || count === 0 || key === saved.current) return;
     const timer = setTimeout(() => {
       const current = latest.current;
       if (!current) return;
       const played = startedAt.current ? Date.now() - startedAt.current : 0;
-      saved.current = current.actions.length;
+      saved.current = movesKey(current.actions);
       void saveRunProgress(current.session.id, current.actions, played).then((ok) => {
         // A failed save is tried again with the next move.
-        if (!ok) saved.current = 0;
+        if (!ok) saved.current = "";
       });
     }, SAVE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [eligible, sessionId, count, startedAt]);
+  }, [eligible, sessionId, count, key, startedAt]);
 
   // Leaving or hiding the page saves straight away: that is when the delay above
   // would otherwise lose the last moves.
@@ -290,9 +302,10 @@ export function useSaveProgress(
     const flush = () => {
       const current = latest.current;
       if (!current || current.actions.length === 0) return;
-      if (current.actions.length === saved.current) return;
+      const currentKey = movesKey(current.actions);
+      if (currentKey === saved.current) return;
       const played = startedAt.current ? Date.now() - startedAt.current : 0;
-      saved.current = current.actions.length;
+      saved.current = currentKey;
       void saveRunProgress(current.session.id, current.actions, played, { keepalive: true });
     };
     const onHide = () => {

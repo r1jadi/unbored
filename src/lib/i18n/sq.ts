@@ -11,12 +11,14 @@ import { sqApp } from "@/lib/i18n/sq-app";
 import { sqContent } from "@/lib/i18n/sq-content";
 import { sqDailyFour } from "@/lib/i18n/sq-daily-four";
 import { sqFeatures } from "@/lib/i18n/sq-features";
+import { sqFoursortPixelock } from "@/lib/i18n/sq-foursort-pixelock";
 import { sqGames } from "@/lib/i18n/sq-games";
 import { sqHints } from "@/lib/i18n/sq-hints";
 import { sqRules } from "@/lib/i18n/sq-rules";
 
 export const sq: Record<string, string> = {
   // First, so an existing translation of a shared word always wins.
+  ...sqFoursortPixelock,
   ...sqDailyFour,
   ...sqAdmin,
   ...sqContent,

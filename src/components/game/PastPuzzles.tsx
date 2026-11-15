@@ -16,6 +16,8 @@ const ARCHIVE_RUNTIMES = new Set([
   "ballpark",
   "only-once",
   "tee-time",
+  "foursort",
+  "pixelock",
 ]);
 
 /** How many past days the game page lists; the archive itself goes back further. */

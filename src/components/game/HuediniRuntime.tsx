@@ -35,6 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { FinishLaterAction } from "@/components/game/FinishLaterAction";
 import { Button } from "@/components/ui/button";
 import { points } from "@/lib/format";
 import { formatClockGain } from "@/lib/games/clock";
@@ -536,6 +537,7 @@ function Board({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("Keep playing")}</AlertDialogCancel>
+            <FinishLaterAction />
             <AlertDialogAction onClick={onFinish}>{t("End run")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

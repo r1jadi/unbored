@@ -27,6 +27,8 @@ func TestLookupRoutesEachFamilyToItsVerifier(t *testing.T) {
 		"ballpark@1":    "complete_ballpark_run",
 		"only-once@1":   "complete_only_once_run",
 		"tee-time@1":    "complete_tee_time_run",
+		"foursort@1":    "complete_foursort_run",
+		"pixelock@1":    "complete_pixelock_run",
 	} {
 		if got := Lookup(version).Verifier; got != verifier {
 			t.Errorf("Lookup(%q).Verifier = %q, want %q", version, got, verifier)

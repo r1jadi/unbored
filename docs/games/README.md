@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Thirty-three games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Thirty-five games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword**, **Guesswork**, the daily word, **Deep Cut**, the rare-answer trivia game, and four more daily games: **Ton Up** (three darts at exactly 100), **Ballpark** (guess the price), **Only Once** (seven questions, never the same answer twice) and **Tee Time** (a daily nine-hole golf course). The daily games — 7 Second, the crossword, Guesswork, Deep Cut and the four above — have one board a day; the rest are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
+**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword**, **Guesswork**, the daily word, **Deep Cut**, the rare-answer trivia game, and four more daily games: **Ton Up** (three darts at exactly 100), **Ballpark** (guess the price), **Only Once** (seven questions, never the same answer twice) **Tee Time** (a daily nine-hole golf course), **Foursort** (sixteen words, four hidden groups) and **Pixelock** (a daily picture logic puzzle). The daily games — 7 Second, the crossword, Guesswork, Deep Cut and the six above — have one board a day; the rest are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
 
@@ -3658,3 +3658,37 @@ every shot is integer arithmetic in yards: carry = club × power × lie, wind pe
 and automatic putts by ring once the ball stops on the green (by the cup 0, inside
 3 yards 1, inside 9 yards 2, else 3). A hole ends on the green or at par + 4.
 
+## Foursort and Pixelock
+
+Two more daily games in the same shape as the four above: the session's seed is the
+player's day (`20270105120200_foursort_pixelock_start.sql` adds them to the
+day-seeded list), one ranked play a day, `useDailyRun` and `DailyShell` on the
+client, a pure engine in `src/lib/games/`, and a verifier
+`public.complete_<game>_run` whose replay is a pure `public.<game>_score(day,
+actions)` that returns null for an illegal run. The `foursort-pixelock` rows of
+`tests/security/verifier_vectors.sql` pin the engines and the verifiers together;
+`20270105120300_foursort_pixelock_playable.sql` flips the catalogue.
+
+| Game     | Rules        | A move                                           | Score (×10 on screen)                                    |
+| -------- | ------------ | ------------------------------------------------ | -------------------------------------------------------- |
+| Foursort | `foursort@1` | the 16-bit mask of the four word ids picked      | 15 a group; all four add 10 × (4 − mistakes)             |
+| Pixelock | `pixelock@1` | cell × 2 + mode (0 fill, 1 cross out), cell 0–99 | 1 a cell rightly filled; the picture adds 50 + 25 a life |
+
+**Foursort.** Sixteen words a day (`d mod n` of `foursort-bank.ts`) hiding four
+groups of four. A word's id is `4 × group + place`, so a group is always the same
+four ids and the verifier needs no bank: the words never reach the database. A guess
+must be exactly four ids, may not touch a group already found and may not repeat an
+earlier guess. Four mistakes end the day; three of a group is shown as "one away"
+(the client's courtesy, not a rule). The board's order is shuffled from the day for
+the screen only.
+
+**Pixelock.** A 10 × 10 nonogram a day (`d mod n` of `pixelock-bank.ts`): every row
+and column is clued with its runs of filled cells. Every move is checked against the
+picture, so a wrong one costs one of three lives and shows the cell as it is (a
+revealed filled cell counts toward the picture but scores nothing). The run is
+solved when every filled cell is shown, whatever is crossed out. Each picture's cells
+live in `public.pixelock_pictures()`, written by `bun scripts/generate-daily-banks.ts
+--write`; `pixelock.test.ts` fails if the two copies drift, and also if any picture
+cannot be solved by line logic alone (`solveByLines`), so no day needs a guess.
+
+Neither has a feed preview yet.

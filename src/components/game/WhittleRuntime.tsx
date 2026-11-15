@@ -17,7 +17,7 @@ import { GameExits } from "@/components/game/GameExits";
 import { HintButton, HintNote } from "@/components/game/Hint";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
 import { RulesList } from "@/components/game/RulesList";
-import { SpeedBonusStat, SpeedMeter } from "@/components/game/SpeedMeter";
+import { SpeedBonusEstimate, SpeedBonusStat, SpeedMeter } from "@/components/game/SpeedMeter";
 import { RunEndActions } from "@/components/game/RunEndActions";
 import { SavedRunCard } from "@/components/game/SavedRunCard";
 import {
@@ -30,6 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { FinishLaterAction } from "@/components/game/FinishLaterAction";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { whittleHint, whittleProgress } from "@/lib/games/whittle-hints";
@@ -335,8 +336,15 @@ function Board({
   onMark: (cell: number, mark: number) => void;
   onFinish: () => void;
 }) {
+  // Every mark the player makes, for the tap sound. Not `run.moves.length`: the run
+  // keeps a board's moves as short as its marks allow, so an undo can shorten them.
+  const [taps, setTaps] = useState(run.moves.length);
+  const markCell = (cell: number, to: WhittleMark) => {
+    setTaps((n) => n + 1);
+    onMark(cell, to);
+  };
   useGameSounds({
-    moves: run.moves.length,
+    moves: taps,
     score: run.score,
     cleared: run.levelsCleared,
     over: run.outcome === "over",
@@ -385,7 +393,7 @@ function Board({
     const previous = run.marks[cell];
     if (!accepting || previous === to) return;
     setHistory((steps) => [...steps, { cell, previous }]);
-    onMark(cell, to);
+    markCell(cell, to);
   }
 
   /** A tap: none, then crossed out, then circled, then none again. */
@@ -399,7 +407,7 @@ function Board({
     const step = history[history.length - 1];
     if (!accepting || !step) return;
     setHistory((steps) => steps.slice(0, -1));
-    if (run.marks[step.cell] !== step.previous) onMark(step.cell, step.previous);
+    if (run.marks[step.cell] !== step.previous) markCell(step.cell, step.previous);
     setSelected(step.cell);
     cellRefs.current[step.cell]?.focus();
   }
@@ -412,7 +420,7 @@ function Board({
     );
     if (cleared.length === 0) return;
     setHistory((steps) => [...steps, ...cleared]);
-    for (const { cell } of cleared) onMark(cell, UNMARKED);
+    for (const { cell } of cleared) markCell(cell, UNMARKED);
     setSelected(0);
     cellRefs.current[0]?.focus();
   }
@@ -457,11 +465,19 @@ function Board({
   return (
     <div className="flex flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="flex items-center justify-between gap-3 py-2">
-        <dl className="flex items-baseline gap-1">
-          <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
-          <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
-          <BestScore slug={session.gameSlug} score={run.score} />
-        </dl>
+        <div className="flex flex-col">
+          <dl className="flex items-baseline gap-1">
+            <dt className="text-xs text-muted-foreground">{t("Score")}</dt>
+            <dd className="text-2xl font-semibold tabular">{points(run.score)}</dd>
+            <BestScore slug={session.gameSlug} score={run.score} />
+          </dl>
+          <SpeedBonusEstimate
+            startedAt={startedAt}
+            score={run.score}
+            solvedParMs={parMs(run.levelsCleared)}
+            running={!verifying && run.outcome === "playing"}
+          />
+        </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="tabular">{t("Board {level}", { level: run.level })}</span>
           {session.ranked ? (
@@ -495,6 +511,7 @@ function Board({
           solvedParMs={parMs(run.levelsCleared)}
           boardParMs={parMs(run.levelsCleared + 1)}
           running={!verifying && run.outcome === "playing"}
+          showBonus={false}
         />
       </div>
 
@@ -621,6 +638,7 @@ function Board({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("Keep playing")}</AlertDialogCancel>
+            <FinishLaterAction />
             <AlertDialogAction onClick={onFinish}>{t("End run")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

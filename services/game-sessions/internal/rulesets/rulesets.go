@@ -119,6 +119,12 @@ var families = map[string]Ruleset{
 	// Tee Time: a shot is club × 36000 + angle × 100 + (power − 1) with eight
 	// clubs, so every code is below 288 000; nine holes of at most nine shots.
 	"tee-time": {Verifier: "complete_tee_time_run", MaxActions: 81, ActionCodes: 8 * 36000},
+	// Foursort: a guess is the 16-bit mask of four word ids; three groups and
+	// four mistakes make seven guesses at most.
+	"foursort": {Verifier: "complete_foursort_run", MaxActions: 7, ActionCodes: 1 << 16},
+	// Pixelock: a move is cell × 2 + mode on a 10 × 10 grid, and every move shows
+	// one cell, so a hundred moves at most.
+	"pixelock": {Verifier: "complete_pixelock_run", MaxActions: 100, ActionCodes: 200},
 }
 
 // overrides are the versions whose bounds differ from their family's: the

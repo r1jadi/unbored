@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { UserAvatar } from "@/components/common";
@@ -10,7 +10,7 @@ afterEach(() => {
 });
 
 describe("End run", () => {
-  it("is the one choice: the score is kept and the run can be continued", async () => {
+  it("offers Finish later too, like the quit control, when the run can be continued", async () => {
     const leave = vi.fn();
     const end = vi.fn();
     render(
@@ -21,10 +21,23 @@ describe("End run", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "End run" }));
     await screen.findByText("Your score of 420 is kept, and you can pick this run up again later.");
-    expect(screen.queryByRole("button", { name: "Finish later" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Finish later" }));
+    expect(leave).toHaveBeenCalledOnce();
+    expect(end).not.toHaveBeenCalled();
+  });
 
-    fireEvent.click(screen.getByRole("alertdialog").querySelectorAll("button")[1]!);
+  it("still ends the run with End run", async () => {
+    const leave = vi.fn();
+    const end = vi.fn();
+    render(
+      <RunLeaveContext.Provider value={{ resumable: true, leave }}>
+        <EndRunButton score={42} disabled={false} onEnd={end} />
+      </RunLeaveContext.Provider>,
+    );
 
+    fireEvent.click(screen.getByRole("button", { name: "End run" }));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "End run" }));
     expect(end).toHaveBeenCalledOnce();
     expect(leave).not.toHaveBeenCalled();
   });
@@ -38,6 +51,7 @@ describe("End run", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "End run" }));
     await screen.findByText("Your score of 420 is kept and sent for verification.");
+    expect(screen.queryByRole("button", { name: "Finish later" })).toBeNull();
   });
 });
 

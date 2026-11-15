@@ -81,6 +81,8 @@ export function GameArt({
       {id === "ballpark" && <Ballpark />}
       {id === "only-once" && <OnlyOnce />}
       {id === "tee-time" && <TeeTime />}
+      {id === "foursort" && <Foursort />}
+      {id === "pixelock" && <Pixelock />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </GameStage>
   );
@@ -159,6 +161,8 @@ const KNOWN = new Set([
   "ballpark",
   "only-once",
   "tee-time",
+  "foursort",
+  "pixelock",
 ]);
 
 /**
@@ -865,6 +869,50 @@ function TeeTime() {
       <polygon points="62,6 70,8.5 62,11" fill="#e5484d" />
       <circle cx="50" cy="88" r="2.5" fill="#fff" />
     </svg>
+  );
+}
+
+function Foursort() {
+  // One group found and locked in as a bar, twelve words still to sort, four picked.
+  return (
+    <div className="flex w-[86%] flex-col gap-[min(1.5cqw,1.5cqh,0.4rem)]">
+      <div className="h-[min(12cqw,12cqh,3rem)] rounded-[min(2cqw,2cqh,0.5rem)] bg-amber-300" />
+      {[0, 1, 2].map((row) => (
+        <div key={row} className="grid grid-cols-4 gap-[min(1.5cqw,1.5cqh,0.4rem)]">
+          {[0, 1, 2, 3].map((col) => (
+            <div
+              key={col}
+              className={cn(
+                "h-[min(12cqw,12cqh,3rem)] rounded-[min(2cqw,2cqh,0.5rem)]",
+                (row + col) % 3 === 1 && row < 2 ? "bg-foreground" : "bg-foreground/10",
+              )}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Pixelock() {
+  // A heart half drawn on its grid, a cell crossed out, and the clues along two edges.
+  const heart = [".##.##.", "#######", "#######", ".#####.", "..###..", "...#..."];
+  const drawn = 4;
+  return (
+    <div className="grid w-[80%] grid-cols-7 gap-[min(0.8cqw,0.8cqh,0.2rem)]">
+      {heart.flatMap((row, r) =>
+        [...row].map((cell, c) => (
+          <div
+            key={`${r}-${c}`}
+            className={cn(
+              "aspect-square rounded-[min(0.8cqw,0.8cqh,0.2rem)]",
+              cell === "#" && r < drawn ? "bg-primary" : "bg-foreground/10",
+              cell === "#" && r >= drawn && "bg-foreground/25",
+            )}
+          />
+        )),
+      )}
+    </div>
   );
 }
 

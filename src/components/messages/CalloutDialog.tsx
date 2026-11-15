@@ -42,6 +42,8 @@ const DAILY_RUNTIMES = new Set([
   "ballpark",
   "only-once",
   "tee-time",
+  "foursort",
+  "pixelock",
 ]);
 
 function Choices<T extends string>({

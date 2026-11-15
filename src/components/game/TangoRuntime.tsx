@@ -29,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { FinishLaterAction } from "@/components/game/FinishLaterAction";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { tangoHint, tangoRight } from "@/lib/games/hints";
@@ -471,6 +472,7 @@ function Board({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("Keep playing")}</AlertDialogCancel>
+            <FinishLaterAction />
             <AlertDialogAction onClick={onFinish}>{t("End run")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

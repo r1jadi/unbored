@@ -916,6 +916,62 @@ export const GAME_RULES = {
       },
     ],
   },
+  foursort: {
+    heading: msg("Four groups of four"),
+    summary: msg("Sixteen words. Find the four things they have in common."),
+    rules: [
+      {
+        lead: msg("Pick four words"),
+        text: msg(
+          "you think belong together and press Submit. Right, and the group is locked in with its link.",
+        ),
+      },
+      {
+        lead: msg("Four mistakes"),
+        text: msg("and the day is over. Three of the four right? You'll be told you're one away."),
+      },
+      {
+        lead: msg("Watch for red herrings."),
+        text: msg("Some words fit more than one group, but only one way sorts all sixteen."),
+      },
+      {
+        lead: msg("150 a group,"),
+        text: msg(
+          "and finding all four adds 100 for every mistake you have left: 1,000 for a perfect day. A new set arrives at midnight, your time.",
+        ),
+      },
+    ],
+  },
+  pixelock: {
+    heading: msg("Draw the picture"),
+    summary: msg("A 10 × 10 grid, a clue on every line. The filled cells draw today's picture."),
+    rules: [
+      {
+        lead: msg("Read the clues."),
+        text: msg(
+          "The numbers by a row or column are its runs of filled cells, in order: 3 1 means three in a row, a gap, then one.",
+        ),
+      },
+      {
+        lead: msg("Fill or cross out"),
+        text: msg(
+          "— pick a tool and tap a cell, or drag across a line. Every picture can be solved without guessing.",
+        ),
+      },
+      {
+        lead: msg("Three lives."),
+        text: msg(
+          "A wrong cell costs one, and shows you what it really is. The third ends the day.",
+        ),
+      },
+      {
+        lead: msg("10 a filled cell,"),
+        text: msg(
+          "then 500 for finishing the picture and 250 for every life left. A new picture arrives at midnight, your time.",
+        ),
+      },
+    ],
+  },
 } satisfies Record<string, GameRules>;
 
 /** A game's rules by its runtime, or null for a runtime with none written. */

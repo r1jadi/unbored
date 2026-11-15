@@ -1,11 +1,11 @@
 /**
- * Writes the banks of Ton Up, Ballpark and Only Once into their migrations.
+ * Writes the banks of Ton Up, Ballpark, Only Once and Pixelock into their migrations.
  *
  *   bun scripts/generate-daily-banks.ts           # report whether they match
  *   bun scripts/generate-daily-banks.ts --write   # rewrite the migrations' blocks
  *
  * The client's banks (`src/lib/games/ton-up-bank.ts`, `ballpark-bank.ts` and
- * `only-once-bank.ts`) are the source. The database only needs the numbers — each
+ * `only-once-bank.ts`, `pixelock-bank.ts`) are the source. The database only needs the numbers — each
  * category's values, each product's price, each puzzle's answer sets — and holds
  * them between `-- name:begin` and `-- name:end` markers in the sessions
  * migrations (`src/lib/games/daily-banks-sql.ts` builds them). The games' tests
