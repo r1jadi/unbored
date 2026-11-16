@@ -1,79 +1,6 @@
-import type { ComponentType } from "react";
+import { lazy, type ComponentType } from "react";
 
-import { BallparkRuntime } from "@/components/game/BallparkRuntime";
-import { BoltedRuntime } from "@/components/game/BoltedRuntime";
-import { CascadeRuntime } from "@/components/game/CascadeRuntime";
-import { ChainRuntime } from "@/components/game/ChainRuntime";
-import { CheckmateRuntime } from "@/components/game/CheckmateRuntime";
-import { ColorMergeRuntime } from "@/components/game/ColorMergeRuntime";
-import { CrosswordRuntime } from "@/components/game/CrosswordRuntime";
-import { DecantRuntime } from "@/components/game/DecantRuntime";
-import { DontTouchRuntime } from "@/components/game/DontTouchRuntime";
-import { EightPuzzleRuntime } from "@/components/game/EightPuzzleRuntime";
-import { FoursortRuntime } from "@/components/game/FoursortRuntime";
-import { FuseboxRuntime } from "@/components/game/FuseboxRuntime";
-import { GridburstRuntime } from "@/components/game/GridburstRuntime";
-import { DeepCutRuntime } from "@/components/game/DeepCutRuntime";
-import { GuessworkRuntime } from "@/components/game/GuessworkRuntime";
-import { HoneycombRuntime } from "@/components/game/HoneycombRuntime";
-import { HuediniRuntime } from "@/components/game/HuediniRuntime";
-import { MemoryFlashRuntime } from "@/components/game/MemoryFlashRuntime";
-import { MinefieldRuntime } from "@/components/game/MinefieldRuntime";
-import { MiniSudokuRuntime } from "@/components/game/MiniSudokuRuntime";
-import { OneMoveRuntime } from "@/components/game/OneMoveRuntime";
-import { OnlyOnceRuntime } from "@/components/game/OnlyOnceRuntime";
-import { PixelockRuntime } from "@/components/game/PixelockRuntime";
-import { QueensRuntime } from "@/components/game/QueensRuntime";
-import { ScatterRuntime } from "@/components/game/ScatterRuntime";
-import { SevenSecondRuntime } from "@/components/game/SevenSecondRuntime";
-import { Stack10Runtime } from "@/components/game/Stack10Runtime";
-import { SumdokuRuntime } from "@/components/game/SumdokuRuntime";
-import { SudokuRuntime } from "@/components/game/SudokuRuntime";
-import { TangoRuntime } from "@/components/game/TangoRuntime";
-import { TeeTimeRuntime } from "@/components/game/TeeTimeRuntime";
-import { ThenAndNowRuntime } from "@/components/game/ThenAndNowRuntime";
-import { TonUpRuntime } from "@/components/game/TonUpRuntime";
-import { FlipsideRuntime } from "@/components/game/FlipsideRuntime";
-import { UpdraftRuntime } from "@/components/game/UpdraftRuntime";
-import { WhittleRuntime } from "@/components/game/WhittleRuntime";
-import { ZipRuntime } from "@/components/game/ZipRuntime";
-import { BALLPARK_RUNTIME } from "@/lib/games/ballpark";
-import { BOLTED_RUNTIME } from "@/lib/games/bolted";
-import { CASCADE_RUNTIME } from "@/lib/games/cascade";
-import { CHAIN_RUNTIME } from "@/lib/games/chain";
-import { CHECKMATE_RUNTIME } from "@/lib/games/checkmate";
-import { COLOR_MERGE_RUNTIME } from "@/lib/games/color-merge";
-import { CROSSWORD_RUNTIME } from "@/lib/games/crossword";
-import { DECANT_RUNTIME } from "@/lib/games/decant";
-import { DONT_TOUCH_RUNTIME } from "@/lib/games/dont-touch";
-import { EIGHT_PUZZLE_RUNTIME } from "@/lib/games/eight-puzzle";
-import { FOURSORT_RUNTIME } from "@/lib/games/foursort";
-import { FUSEBOX_RUNTIME } from "@/lib/games/fusebox";
-import { GRIDBURST_RUNTIME } from "@/lib/games/gridburst";
-import { DEEP_CUT_RUNTIME } from "@/lib/games/deep-cut";
-import { GUESSWORK_RUNTIME } from "@/lib/games/guesswork";
-import { HONEYCOMB_RUNTIME } from "@/lib/games/honeycomb";
-import { HUEDINI_RUNTIME } from "@/lib/games/huedini";
-import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
-import { MINEFIELD_RUNTIME } from "@/lib/games/minefield";
-import { MINI_SUDOKU_RUNTIME } from "@/lib/games/mini-sudoku";
-import { ONE_MOVE_RUNTIME } from "@/lib/games/one-move";
-import { ONLY_ONCE_RUNTIME } from "@/lib/games/only-once";
-import { PIXELOCK_RUNTIME } from "@/lib/games/pixelock";
-import { QUEENS_RUNTIME } from "@/lib/games/queens";
-import { SCATTER_RUNTIME } from "@/lib/games/scatter";
-import { SEVEN_SECOND_RUNTIME } from "@/lib/games/seven-second";
-import { STACK10_RUNTIME } from "@/lib/games/stack10";
-import { SUDOKU_RUNTIME } from "@/lib/games/sudoku";
-import { SUMDOKU_RUNTIME } from "@/lib/games/sumdoku";
-import { WHITTLE_RUNTIME } from "@/lib/games/whittle";
-import { TANGO_RUNTIME } from "@/lib/games/tango";
-import { TEE_TIME_RUNTIME } from "@/lib/games/tee-time";
-import { THEN_AND_NOW_RUNTIME } from "@/lib/games/then-and-now";
-import { TON_UP_RUNTIME } from "@/lib/games/ton-up";
-import { UPDRAFT_RUNTIME } from "@/lib/games/updraft";
-import { FLIPSIDE_RUNTIME } from "@/lib/games/flipside";
-import { ZIP_RUNTIME } from "@/lib/games/zip";
+import { t } from "@/lib/settings/language";
 
 /** What the play screen hands every runtime. */
 export type RuntimeProps = {
@@ -83,50 +10,98 @@ export type RuntimeProps = {
   autoStart: boolean;
 };
 
+type Loader = () => Promise<{ default: ComponentType<RuntimeProps> }>;
+
 /**
- * Every runtime this bundle ships, by the catalogue's `games.runtime` value.
+ * How to load each runtime, by the catalogue's `games.runtime` value.
  *
- * The play screen looks a game's runtime up here; one that is missing gets the
- * honest "no runtime yet" screen rather than a board with another game's rules.
- * Adding a game is one entry. Stack 10, Chain and Memory Flash predate Tap to
- * play's skip of the rules, so they take no `autoStart`.
+ * Every game is its own chunk: opening one downloads that game, not all of
+ * them. The keys are plain strings (each game's `*_RUNTIME` constant, checked
+ * by `runtimes.test.ts`) so that importing this map pulls in no game's code.
+ * Stack 10, Chain, Memory Flash and Deep Cut predate Tap to play's skip of the
+ * rules, so they take no `autoStart`.
  */
-export const RUNTIMES: Readonly<Record<string, ComponentType<RuntimeProps>>> = {
-  [STACK10_RUNTIME]: ({ slug, title }) => <Stack10Runtime slug={slug} title={title} />,
-  [CHAIN_RUNTIME]: ({ slug, title }) => <ChainRuntime slug={slug} title={title} />,
-  [MEMORY_FLASH_RUNTIME]: ({ slug, title }) => <MemoryFlashRuntime slug={slug} title={title} />,
-  [ONE_MOVE_RUNTIME]: OneMoveRuntime,
-  [COLOR_MERGE_RUNTIME]: ColorMergeRuntime,
-  [DONT_TOUCH_RUNTIME]: DontTouchRuntime,
-  [SEVEN_SECOND_RUNTIME]: SevenSecondRuntime,
-  [QUEENS_RUNTIME]: QueensRuntime,
-  [ZIP_RUNTIME]: ZipRuntime,
-  [EIGHT_PUZZLE_RUNTIME]: EightPuzzleRuntime,
-  [TANGO_RUNTIME]: TangoRuntime,
-  [SUDOKU_RUNTIME]: SudokuRuntime,
-  [CROSSWORD_RUNTIME]: CrosswordRuntime,
-  [GRIDBURST_RUNTIME]: GridburstRuntime,
-  [UPDRAFT_RUNTIME]: UpdraftRuntime,
-  [FLIPSIDE_RUNTIME]: FlipsideRuntime,
-  [DECANT_RUNTIME]: DecantRuntime,
-  [MINI_SUDOKU_RUNTIME]: MiniSudokuRuntime,
-  [SCATTER_RUNTIME]: ScatterRuntime,
-  [HUEDINI_RUNTIME]: HuediniRuntime,
-  [CASCADE_RUNTIME]: CascadeRuntime,
-  [CHECKMATE_RUNTIME]: CheckmateRuntime,
-  [BOLTED_RUNTIME]: BoltedRuntime,
-  [FUSEBOX_RUNTIME]: FuseboxRuntime,
-  [MINEFIELD_RUNTIME]: MinefieldRuntime,
-  [SUMDOKU_RUNTIME]: SumdokuRuntime,
-  [WHITTLE_RUNTIME]: WhittleRuntime,
-  [GUESSWORK_RUNTIME]: GuessworkRuntime,
-  [DEEP_CUT_RUNTIME]: ({ slug, title }) => <DeepCutRuntime slug={slug} title={title} />,
-  [TON_UP_RUNTIME]: TonUpRuntime,
-  [BALLPARK_RUNTIME]: BallparkRuntime,
-  [ONLY_ONCE_RUNTIME]: OnlyOnceRuntime,
-  [TEE_TIME_RUNTIME]: TeeTimeRuntime,
-  [FOURSORT_RUNTIME]: FoursortRuntime,
-  [PIXELOCK_RUNTIME]: PixelockRuntime,
-  [THEN_AND_NOW_RUNTIME]: ThenAndNowRuntime,
-  [HONEYCOMB_RUNTIME]: HoneycombRuntime,
+const LOADERS: Readonly<Record<string, Loader>> = {
+  "stack-10": () =>
+    import("./Stack10Runtime").then(({ Stack10Runtime }) => ({
+      default: ({ slug, title }: RuntimeProps) => <Stack10Runtime slug={slug} title={title} />,
+    })),
+  chain: () =>
+    import("./ChainRuntime").then(({ ChainRuntime }) => ({
+      default: ({ slug, title }: RuntimeProps) => <ChainRuntime slug={slug} title={title} />,
+    })),
+  "memory-flash": () =>
+    import("./MemoryFlashRuntime").then(({ MemoryFlashRuntime }) => ({
+      default: ({ slug, title }: RuntimeProps) => <MemoryFlashRuntime slug={slug} title={title} />,
+    })),
+  "deep-cut": () =>
+    import("./DeepCutRuntime").then(({ DeepCutRuntime }) => ({
+      default: ({ slug, title }: RuntimeProps) => <DeepCutRuntime slug={slug} title={title} />,
+    })),
+  "one-move": () => import("./OneMoveRuntime").then((m) => ({ default: m.OneMoveRuntime })),
+  "color-merge": () =>
+    import("./ColorMergeRuntime").then((m) => ({ default: m.ColorMergeRuntime })),
+  "dont-touch": () => import("./DontTouchRuntime").then((m) => ({ default: m.DontTouchRuntime })),
+  "seven-second": () =>
+    import("./SevenSecondRuntime").then((m) => ({ default: m.SevenSecondRuntime })),
+  queens: () => import("./QueensRuntime").then((m) => ({ default: m.QueensRuntime })),
+  zip: () => import("./ZipRuntime").then((m) => ({ default: m.ZipRuntime })),
+  "eight-puzzle": () =>
+    import("./EightPuzzleRuntime").then((m) => ({ default: m.EightPuzzleRuntime })),
+  tango: () => import("./TangoRuntime").then((m) => ({ default: m.TangoRuntime })),
+  sudoku: () => import("./SudokuRuntime").then((m) => ({ default: m.SudokuRuntime })),
+  crossword: () => import("./CrosswordRuntime").then((m) => ({ default: m.CrosswordRuntime })),
+  gridburst: () => import("./GridburstRuntime").then((m) => ({ default: m.GridburstRuntime })),
+  updraft: () => import("./UpdraftRuntime").then((m) => ({ default: m.UpdraftRuntime })),
+  flipside: () => import("./FlipsideRuntime").then((m) => ({ default: m.FlipsideRuntime })),
+  decant: () => import("./DecantRuntime").then((m) => ({ default: m.DecantRuntime })),
+  "mini-sudoku": () =>
+    import("./MiniSudokuRuntime").then((m) => ({ default: m.MiniSudokuRuntime })),
+  scatter: () => import("./ScatterRuntime").then((m) => ({ default: m.ScatterRuntime })),
+  huedini: () => import("./HuediniRuntime").then((m) => ({ default: m.HuediniRuntime })),
+  cascade: () => import("./CascadeRuntime").then((m) => ({ default: m.CascadeRuntime })),
+  checkmate: () => import("./CheckmateRuntime").then((m) => ({ default: m.CheckmateRuntime })),
+  bolted: () => import("./BoltedRuntime").then((m) => ({ default: m.BoltedRuntime })),
+  fusebox: () => import("./FuseboxRuntime").then((m) => ({ default: m.FuseboxRuntime })),
+  minefield: () => import("./MinefieldRuntime").then((m) => ({ default: m.MinefieldRuntime })),
+  sumdoku: () => import("./SumdokuRuntime").then((m) => ({ default: m.SumdokuRuntime })),
+  whittle: () => import("./WhittleRuntime").then((m) => ({ default: m.WhittleRuntime })),
+  guesswork: () => import("./GuessworkRuntime").then((m) => ({ default: m.GuessworkRuntime })),
+  "ton-up": () => import("./TonUpRuntime").then((m) => ({ default: m.TonUpRuntime })),
+  ballpark: () => import("./BallparkRuntime").then((m) => ({ default: m.BallparkRuntime })),
+  "only-once": () => import("./OnlyOnceRuntime").then((m) => ({ default: m.OnlyOnceRuntime })),
+  "tee-time": () => import("./TeeTimeRuntime").then((m) => ({ default: m.TeeTimeRuntime })),
+  foursort: () => import("./FoursortRuntime").then((m) => ({ default: m.FoursortRuntime })),
+  pixelock: () => import("./PixelockRuntime").then((m) => ({ default: m.PixelockRuntime })),
+  "then-and-now": () =>
+    import("./ThenAndNowRuntime").then((m) => ({ default: m.ThenAndNowRuntime })),
+  honeycomb: () => import("./HoneycombRuntime").then((m) => ({ default: m.HoneycombRuntime })),
 };
+
+/** Shown when a game's code could not be downloaded (offline, or a stale deploy). */
+function LoadFailed() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+      <h1 className="text-xl font-semibold">{t("Couldn't load this game")}</h1>
+      <p className="max-w-sm text-sm text-muted-foreground">
+        {t("Check your connection and try again.")}
+      </p>
+    </div>
+  );
+}
+
+/** The runtime ids this bundle ships. */
+export const RUNTIME_IDS: readonly string[] = Object.keys(LOADERS);
+
+/**
+ * Every runtime this bundle ships, as lazy components made once, by the
+ * catalogue's `games.runtime` value. The play screen renders one inside
+ * `Suspense`; a runtime that is missing gets the honest "no runtime yet" screen
+ * rather than a board with another game's rules. Adding a game is one entry.
+ */
+export const RUNTIMES: Readonly<Record<string, ComponentType<RuntimeProps>>> = Object.fromEntries(
+  Object.entries(LOADERS).map(([id, load]) => [
+    id,
+    lazy(() => load().catch(() => ({ default: LoadFailed }))),
+  ]),
+);

@@ -186,7 +186,7 @@ function PlatformSettingsCard({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
-export function SystemSettings() {
+function SystemSettings() {
   const services = useAdminSystemServices();
   const session = useAdminSession();
 

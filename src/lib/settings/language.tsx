@@ -5,7 +5,8 @@
  * Strings are written in English in the code and wrapped in `t()`; the English
  * text is the key, and `sq.ts` maps it to Albanian. `src/lib/i18n.test.ts` scans
  * every `t("…")` in the source and fails on one with no Albanian entry, so a
- * partial translation cannot ship. Adding a language means adding a complete
+ * partial translation cannot ship. `t()` must only run while rendering, never at
+ * module load (use `msg()` there), because the dictionary may still be loading. Adding a language means adding a complete
  * dictionary — never an entry in the selector alone.
  *
  * The choice lives in a cookie, not only in `localStorage`, because the server
@@ -20,9 +21,30 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 import { createContext, useContext, type ReactNode } from "react";
 
 import { readWithLegacy, safeLocalStorage } from "@/lib/storage";
-import { sq } from "@/lib/i18n/sq";
 
 export type Language = "en" | "sq";
+
+/**
+ * The Albanian dictionary. It is large, so the browser fetches it only for a
+ * page in Albanian: `src/client.tsx` awaits `loadLanguage()` before hydrating,
+ * so the first render already has it and matches the server's HTML. The server
+ * (`src/server.ts`) and the tests register it up front with `registerDictionary`.
+ * Until it is there, `t()` shows English.
+ */
+let sq: Readonly<Record<string, string>> = {};
+let sqLoaded = false;
+
+/** Registers the Albanian dictionary directly (server entry and tests). */
+export function registerDictionary(dictionary: Readonly<Record<string, string>>): void {
+  sq = dictionary;
+  sqLoaded = true;
+}
+
+/** Fetches the dictionary this page's language needs; English needs none. */
+export async function loadLanguage(): Promise<void> {
+  if (sqLoaded || currentLanguage() !== "sq") return;
+  registerDictionary((await import("@/lib/i18n/sq")).sq);
+}
 
 /** Kept for the screens that typed their labels: any English source string. */
 export type TranslationKey = string;

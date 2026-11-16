@@ -45,7 +45,7 @@ const kindIcon = {
  * comparison against a previous period, because the API does not compute one —
  * an invented "+3.1%" is indistinguishable from a measured one.
  */
-export function Overview() {
+function Overview() {
   const overview = useAdminOverview();
   const services = useAdminSystemServices();
 

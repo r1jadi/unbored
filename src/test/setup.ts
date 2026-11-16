@@ -48,3 +48,14 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+// The browser fetches the Albanian dictionary on demand (`loadLanguage`); tests
+// render in either language synchronously, so they have it from the start.
+// Imported lazily, after the env stubs above.
+beforeAll(async () => {
+  const [{ registerDictionary }, { sq }] = await Promise.all([
+    import("@/lib/settings/language"),
+    import("@/lib/i18n/sq"),
+  ]);
+  registerDictionary(sq);
+});

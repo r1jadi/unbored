@@ -44,7 +44,7 @@ const windows = [
  * the database returned rather than a gap-filled range invented here. Every total
  * beside it is that series' sum, so the number and the picture cannot disagree.
  */
-export function AnalyticsAdmin() {
+function AnalyticsAdmin() {
   const [days, setDays] = useState("28");
   const analytics = useAdminAnalytics(Number(days));
 

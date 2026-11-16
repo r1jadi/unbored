@@ -29,7 +29,7 @@ export const Route = createFileRoute("/admin/categories")({
  * There is no create, rename or delete here, and none is invented: the schema has
  * no admin write path for categories, so this screen only reports them.
  */
-export function CategoriesAdmin() {
+function CategoriesAdmin() {
   const categories = useAdminCategories();
 
   const columns: Column<AdminCategory>[] = [

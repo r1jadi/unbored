@@ -69,7 +69,7 @@ const targetTone: Record<AdminReport["targetKind"], BadgeTone> = {
  * written in the same transaction as every decision taken here or on the games,
  * comments and accounts screens.
  */
-export function ReportsAdmin() {
+function ReportsAdmin() {
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(0);
   const reports = useAdminReports({

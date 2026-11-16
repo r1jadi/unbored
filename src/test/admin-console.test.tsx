@@ -10,14 +10,22 @@ import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminShell } from "@/components/admin/AdminShell";
-import { FeaturedAdmin } from "@/routes/admin.featured";
-import { GamesAdmin } from "@/routes/admin.games";
-import { NotificationsAdmin } from "@/routes/admin.notifications";
-import { Overview } from "@/routes/admin.index";
-import { ReviewQueue } from "@/routes/admin.review";
-import { SystemSettings } from "@/routes/admin.settings";
-import { UsersAdmin } from "@/routes/admin.users";
+import { Route as FeaturedAdminRoute } from "@/routes/admin.featured";
+import { Route as GamesAdminRoute } from "@/routes/admin.games";
+import { Route as NotificationsAdminRoute } from "@/routes/admin.notifications";
+import { Route as OverviewRoute } from "@/routes/admin.index";
+import { Route as ReviewQueueRoute } from "@/routes/admin.review";
+import { Route as SystemSettingsRoute } from "@/routes/admin.settings";
+import { Route as UsersAdminRoute } from "@/routes/admin.users";
 import { clearSession, signIn } from "@/lib/auth/session";
+
+const FeaturedAdmin = FeaturedAdminRoute.options.component as () => ReactElement;
+const GamesAdmin = GamesAdminRoute.options.component as () => ReactElement;
+const NotificationsAdmin = NotificationsAdminRoute.options.component as () => ReactElement;
+const Overview = OverviewRoute.options.component as () => ReactElement;
+const ReviewQueue = ReviewQueueRoute.options.component as () => ReactElement;
+const SystemSettings = SystemSettingsRoute.options.component as () => ReactElement;
+const UsersAdmin = UsersAdminRoute.options.component as () => ReactElement;
 
 const adminId = "3f7c2b1e-4d5a-4c9b-8e2f-1a2b3c4d5e6f";
 const playerId = "9c1f0b2a-7e63-4a5d-9f10-5e6d7c8b9a01";

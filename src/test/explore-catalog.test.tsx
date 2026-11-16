@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -8,7 +9,9 @@ import {
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Explore } from "@/routes/explore";
+import { Route as ExploreRoute } from "@/routes/explore";
+
+const Explore = ExploreRoute.options.component as () => ReactElement;
 
 /**
  * Explore is the busiest catalogue screen: three independent reads (the daily

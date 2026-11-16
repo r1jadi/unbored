@@ -41,7 +41,7 @@ export const Route = createFileRoute("/admin/leaderboards")({
  * makes this list a ledger rather than a leaderboard somebody typed in. The list
  * is ordered by the database and read a page at a time.
  */
-export function ScoresAdmin() {
+function ScoresAdmin() {
   const [game, setGame] = useState("");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);

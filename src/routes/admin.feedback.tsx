@@ -72,7 +72,7 @@ function CategoryLabel({ category }: { category: FeedbackCategory }) {
  * the database on every request. Each row is also mailed to the team inbox; the
  * badge says whether that copy went out.
  */
-export function FeedbackAdmin() {
+function FeedbackAdmin() {
   const [category, setCategory] = useState("all");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);

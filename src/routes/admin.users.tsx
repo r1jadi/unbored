@@ -70,7 +70,7 @@ type Pending = { user: AdminUser; suspended: boolean } | null;
  * write, and they are changed with the documented procedure rather than from the
  * dashboard.
  */
-export function UsersAdmin() {
+function UsersAdmin() {
   const [role, setRole] = useState("");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);

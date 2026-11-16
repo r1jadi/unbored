@@ -29,7 +29,7 @@ const FIELD =
  * recipients is how many rows were written, and read is how many have been opened.
  * Sends immediately; there are no drafts or schedules.
  */
-export function NotificationsAdmin() {
+function NotificationsAdmin() {
   const session = useAdminSession();
   const history = useAdminBroadcasts({ limit: 50, offset: 0 });
   const isAdmin = session.status === "ready" && session.data.isAdmin;

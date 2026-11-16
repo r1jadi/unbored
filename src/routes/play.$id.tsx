@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Clock, Flame, Volume2, VolumeX, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { GameExits } from "@/components/game/GameExits";
@@ -295,12 +295,21 @@ export function PlaySurface({
         )}
 
         {state.status === "ready" && Runtime && playable && (
-          <Runtime
-            key={state.game.slug}
-            slug={state.game.slug}
-            title={state.game.title}
-            autoStart={autoStart}
-          />
+          // Each game is its own chunk: the clock shows while it downloads.
+          <Suspense
+            fallback={
+              <div className="flex flex-1 items-center justify-center">
+                <Clock className="size-5 animate-pulse text-muted-foreground" />
+              </div>
+            }
+          >
+            <Runtime
+              key={state.game.slug}
+              slug={state.game.slug}
+              title={state.game.title}
+              autoStart={autoStart}
+            />
+          </Suspense>
         )}
 
         {state.status === "ready" && !(hasShippedRuntime && playable) && (

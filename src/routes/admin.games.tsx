@@ -67,7 +67,7 @@ type Pending = { game: AdminGame; status: Exclude<GameStatus, "draft"> } | null;
  * database and is reported only after it is accepted: a failed write toasts its
  * own error and leaves the row as it was.
  */
-export function GamesAdmin() {
+function GamesAdmin() {
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);

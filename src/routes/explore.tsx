@@ -58,7 +58,7 @@ function SectionError({ children, onRetry }: { children: ReactNode; onRetry: () 
  * this week's runs against last week's, and "Featured" is what staff chose; each is
  * hidden while it has nothing to show, as are categories with no published game.
  */
-export function Explore() {
+function Explore() {
   const daily = useGames({ category: "daily", limit: DAILY_LIMIT });
   // One catalogue read feeds both "New" (its first five, newest first) and
   // "Popular" (all of it, by plays).

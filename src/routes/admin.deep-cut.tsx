@@ -133,7 +133,7 @@ function Verdict({ review }: { review: AdminDeepCutReview }) {
  * judge, and move any answer to a better tier — a tier set here survives the
  * next bank load.
  */
-export function DeepCutAdmin() {
+function DeepCutAdmin() {
   const [verdict, setVerdict] = useState<DeepCutVerdict | "all">("pending");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);

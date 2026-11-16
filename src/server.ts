@@ -3,6 +3,12 @@ import "./lib/error-capture";
 import { CSP_NONCE_HEADER, contentSecurityPolicy, createCspNonce } from "./lib/csp";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { sq } from "./lib/i18n/sq";
+import { registerDictionary } from "./lib/settings/language";
+
+// The server renders either language on any request, so it always has the
+// Albanian dictionary; the browser fetches it only for Albanian pages.
+registerDictionary(sq);
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;

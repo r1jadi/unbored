@@ -30,7 +30,7 @@ type Slot = Pick<AdminFeaturedGame, "gameId" | "slug" | "title">;
  * feed. The order is edited here and saved as one write, so players never see half a
  * reorder, and every game added or removed is recorded in the moderation log.
  */
-export function FeaturedAdmin() {
+function FeaturedAdmin() {
   const saved = useAdminFeatured();
   const games = useAdminGames({ status: "published", limit: 100, offset: 0 });
   const [slots, setSlots] = useState<Slot[] | null>(null);

@@ -55,7 +55,7 @@ type Pending = { comment: AdminComment; hidden: boolean } | null;
  * the audit row in one transaction, so the list refreshes from the source rather
  * than from local state that could drift from it.
  */
-export function CommentsAdmin() {
+function CommentsAdmin() {
   const [state, setState] = useState<CommentState>("all");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);

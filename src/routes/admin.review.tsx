@@ -42,7 +42,7 @@ type Pending = { game: AdminGame; decision: "published" | "rejected" } | null;
  * added to it here, and the count above the list is that same query's length
  * rather than a separate statistic that could disagree with it.
  */
-export function ReviewQueue() {
+function ReviewQueue() {
   const queue = useAdminGames({ status: "review", limit: ADMIN_LIMIT });
   const [pending, setPending] = useState<Pending>(null);
   const [busy, setBusy] = useState<string | null>(null);

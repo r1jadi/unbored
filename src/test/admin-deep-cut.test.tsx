@@ -1,8 +1,11 @@
+import type { ReactElement } from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { clearSession, signIn } from "@/lib/auth/session";
-import { DeepCutAdmin } from "@/routes/admin.deep-cut";
+import { Route as DeepCutAdminRoute } from "@/routes/admin.deep-cut";
+
+const DeepCutAdmin = DeepCutAdminRoute.options.component as () => ReactElement;
 
 const ME = "3f7c2b1e-4d5a-4c9b-8e2f-1a2b3c4d5e6f";
 
