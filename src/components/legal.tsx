@@ -1,7 +1,7 @@
 // Substantive terms and privacy text based on the implemented service.
 //
 // The operator is Rijad Halili, an individual; contact contactunbored@gmail.com;
-// governing law: the Republic of Kosovo. Effective date: 2026-11-12. This is
+// governing law: the Republic of Kosovo. Effective date: 2026-11-16. This is
 // product-accurate copy, not legal advice: have counsel review it.
 
 import { msg, t } from "@/lib/settings/language";
@@ -92,7 +92,7 @@ export const privacy = [
   [
     msg("What we do not collect"),
     msg(
-      "No payment data (no payments feature exists), no advertising trackers, and no device fingerprint inventory beyond what the browser necessarily sends. Nothing is sold. Analytics do not start, and set no cookies, until you accept them.",
+      "No payment data (no payments feature exists) and no device fingerprint inventory beyond what the browser necessarily sends. Nothing is sold. Analytics do not start, and set no cookies, until you accept them.",
     ),
   ],
   [
@@ -110,13 +110,13 @@ export const privacy = [
   [
     msg("Storage, cookies and local data"),
     msg(
-      "Your session tokens (access and refresh) are saved in this browser's localStorage under one namespaced Unbored key so a reload keeps you signed in; the app re-checks them with the server on load and removes them on sign-out or when the server refuses the session. Appearance and accessibility choices persist in this browser's localStorage, and your language choice in a cookie, so the server can show pages in it. Recent searches, sound and vibration choices and your cookie choice persist in this browser's localStorage. If you accept analytics, PostHog sets its own cookies and local identifiers; you can withdraw in Settings → Privacy. To let games run offline, a service worker keeps the app's code, pages and the public game catalogue in this browser, and offline practice runs stay on this device. OAuth PKCE verifiers live in sessionStorage for the duration of one sign-in attempt. Avatar images live in the public `avatars` Supabase Storage bucket under your account folder.",
+      "Your session tokens (access and refresh) are saved in this browser's localStorage under one namespaced Unbored key so a reload keeps you signed in; the app re-checks them with the server on load and removes them on sign-out or when the server refuses the session. Appearance and accessibility choices persist in this browser's localStorage, and your language choice in a cookie, so the server can show pages in it. Recent searches, sound and vibration choices and your cookie choice persist in this browser's localStorage. If you accept analytics, PostHog sets its own cookies and local identifiers; you can withdraw in Settings → Privacy. Google AdSense, which shows the ads, may set its own advertising cookies to choose and measure them; in the EU, the UK and Switzerland, Google asks for your consent first in its own message, and in US states with privacy laws that message offers a “Do not sell or share my personal information” link. To let games run offline, a service worker keeps the app's code, pages and the public game catalogue in this browser, and offline practice runs stay on this device. OAuth PKCE verifiers live in sessionStorage for the duration of one sign-in attempt. Avatar images live in the public `avatars` Supabase Storage bucket under your account folder.",
     ),
   ],
   [
     msg("Infrastructure"),
     msg(
-      "Hosting: Cloudflare (web app, domain and DNS). API: Render (the Go services at api.unbored.lol, in Frankfurt). Identity, database and storage: Supabase (Auth, Postgres with Row Level Security, Storage). OAuth, when enabled: Google. Email (the new-games digest and feedback mail): Resend. Product analytics, only with your consent: PostHog. Push messages pass through your browser's own push service (for example Google, Apple, Mozilla or Microsoft), encrypted so that service can't read them. No other processors are used by this deployment.",
+      "Hosting: Cloudflare (web app, domain and DNS). API: Render (the Go services at api.unbored.lol, in Frankfurt). Identity, database and storage: Supabase (Auth, Postgres with Row Level Security, Storage). OAuth, when enabled: Google. Email (the new-games digest and feedback mail): Resend. Product analytics, only with your consent: PostHog. Advertising: Google AdSense, which in its own messages asks visitors in the EU, the UK and Switzerland for consent and offers visitors in US states with privacy laws an opt-out. Push messages pass through your browser's own push service (for example Google, Apple, Mozilla or Microsoft), encrypted so that service can't read them. No other processors are used by this deployment.",
     ),
   ],
   [
@@ -142,7 +142,7 @@ export const privacy = [
 export function LegalBody({ sections }: { sections: string[][] }) {
   return (
     <div className="space-y-5 text-sm leading-relaxed">
-      <p className="text-xs text-muted-foreground">{t("Last updated November 12, 2026")}</p>
+      <p className="text-xs text-muted-foreground">{t("Last updated November 16, 2026")}</p>
       {sections.map(([h, b]) => (
         <section key={h}>
           <h2 className="font-semibold">{t(h)}</h2>

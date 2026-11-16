@@ -893,6 +893,10 @@ export const sqApp: Record<string, string> = {
   "Accept all": "Prano të gjitha",
   "Always on": "Gjithmonë aktive",
   "Analytics cookies": "Cookies për analitikë",
+  Ads: "Reklamat",
+  "Asked by Google": "E pyet Google",
+  "Google AdSense shows the ads that keep Unbored free, and may set its own cookies. In the EU, the UK and Switzerland, Google asks you first; in US states with privacy laws, it offers a link to opt out.":
+    "Google AdSense shfaq reklamat që e mbajnë Unbored falas dhe mund të vendosë cookies të veta. Në BE, Mbretërinë e Bashkuar dhe Zvicër, Google të pyet më parë; në shtetet e SHBA-së me ligje privatësie, ofron një lidhje për të refuzuar.",
   "Bring back the cookie jar": "Rikthe kavanozin e biskotave",
   "Change your mind any time in Settings → Privacy.":
     "Ndrysho mendje kur të duash te Cilësimet → Privatësia.",
@@ -905,8 +909,8 @@ export const sqApp: Record<string, string> = {
   "Essentials only": "Vetëm të domosdoshmet",
   "Go on, have a bite.": "Hajde, kafshoje një herë.",
   "Okay, you clearly like cookies.": "Në rregull, dukesh se i do biskotat.",
-  "PostHog counts visits and how games are played. It sets cookies, so it only starts if you accept. No ads, ever.":
-    "PostHog numëron vizitat dhe si luhen lojërat. Vendos cookies, ndaj niset vetëm nëse pranon. Asnjë reklamë, kurrë.",
+  "PostHog counts visits and how games are played. It sets cookies, so it only starts if you accept.":
+    "PostHog numëron vizitat dhe si luhen lojërat. Vendos cookies, ndaj niset vetëm nëse pranon.",
   "Psst — want a cookie?": "Pss — do një biskotë?",
   Show: "Shfaq",
   "Take a bite of the cookie": "Kafsho biskotën",

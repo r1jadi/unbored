@@ -79,7 +79,10 @@ export function HoneycombRuntime({
           headline={t("Rank: {rank}", { rank: t(RANKS[rankIndex(run)]!.name) })}
           stats={[
             { label: t("Words"), value: `${run.found.length}/${puzzleOf(run).words.length}` },
-            { label: t("Points"), value: `${scoreOf(run)}/${maxScore(puzzleOf(run))}` },
+            {
+              label: t("Points"),
+              value: `${points(scoreOf(run))}/${points(maxScore(puzzleOf(run)))}`,
+            },
           ]}
           share={honeycombShare(run)}
         >
@@ -189,8 +192,8 @@ function Board({
       const gained = wordPoints(puzzle, word);
       setNotice({
         text: usesAllSeven(puzzle, word)
-          ? t("All seven! +{n}", { n: gained })
-          : t("+{n}", { n: gained }),
+          ? t("All seven! +{n}", { n: points(gained) })
+          : t("+{n}", { n: points(gained) }),
         good: true,
       });
       onFind(result.id);
@@ -272,7 +275,9 @@ function Board({
               />
             ))}
           </div>
-          <p className="sr-only">{t("{score} of {max} points", { score, max })}</p>
+          <p className="sr-only">
+            {t("{score} of {max} points", { score: points(score), max: points(max) })}
+          </p>
         </div>
 
         <p
@@ -353,7 +358,9 @@ function Board({
           </div>
         )}
         <p className="text-center text-xs text-muted-foreground">
-          {t("Royal at {n} points.", { n: Math.ceil((max * RANKS[RANKS.length - 1]!.at) / 100) })}
+          {t("Royal at {n} points.", {
+            n: points(Math.ceil((max * RANKS[RANKS.length - 1]!.at) / 100)),
+          })}
         </p>
       </div>
     </div>

@@ -26,6 +26,7 @@ import {
   startOrder,
 } from "@/lib/games/then-and-now";
 import { resetLanguageForTests } from "@/lib/settings/language";
+import { points } from "@/lib/format";
 
 /**
  * Then & Now and Honeycomb on screen, driven through the real API client against a
@@ -208,7 +209,7 @@ describe("Honeycomb on screen", () => {
     for (const ch of puzzle.words[other]!) fireEvent.keyDown(window, { key: ch });
     fireEvent.keyDown(window, { key: "Enter" });
     expect(
-      await screen.findByText(`+${wordPoints(puzzle, puzzle.words[other]!)}`),
+      await screen.findByText(`+${points(wordPoints(puzzle, puzzle.words[other]!))}`),
     ).toBeInTheDocument();
 
     for (const ch of puzzle.words[other]!) fireEvent.keyDown(window, { key: ch });

@@ -177,7 +177,18 @@ export function CookieConsent() {
               </dt>
               <dd className="mt-0.5 text-muted-foreground">
                 {t(
-                  "PostHog counts visits and how games are played. It sets cookies, so it only starts if you accept. No ads, ever.",
+                  "PostHog counts visits and how games are played. It sets cookies, so it only starts if you accept.",
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="flex items-center justify-between font-medium">
+                {t("Ads")}
+                <span className="text-[11px] text-muted-foreground">{t("Asked by Google")}</span>
+              </dt>
+              <dd className="mt-0.5 text-muted-foreground">
+                {t(
+                  "Google AdSense shows the ads that keep Unbored free, and may set its own cookies. In the EU, the UK and Switzerland, Google asks you first; in US states with privacy laws, it offers a link to opt out.",
                 )}
               </dd>
             </div>

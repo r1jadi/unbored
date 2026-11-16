@@ -22,9 +22,7 @@
       "name": "stack",
       "runtimeExecutable": "node",
       "runtimeArgs": [
-        "scripts/dev-stack.mjs",
-        "--gateway-port",
-        "8090"
+        "scripts/dev-stack.mjs"
       ],
       "port": 8081
     }

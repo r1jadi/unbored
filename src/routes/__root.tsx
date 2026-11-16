@@ -22,6 +22,7 @@ import { useTwoFactorRequired } from "@/lib/auth/security";
 import { initializeSession, SESSION_BOOT_SCRIPT, useAuth } from "@/lib/auth/session";
 import { applyAnalyticsConsent, identifyUser, resetAnalytics } from "@/lib/analytics";
 import { useConsent } from "@/lib/consent";
+import { ADSENSE_CLIENT, loadAdSense } from "@/lib/ads";
 import { CookieConsent } from "@/components/layout/CookieConsent";
 import { LogoLoader } from "@/components/layout/Logo";
 import { ACCESSIBILITY_BOOT_SCRIPT, restoreAccessibility } from "@/lib/settings/accessibility";
@@ -193,6 +194,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { title: notFound ? t("Page not found — {SITE_NAME}", { SITE_NAME }) : SITE_NAME },
         { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
         { name: "theme-color", content: "#16171b" },
+        // Lets AdSense verify the site from the server-rendered page, since the
+        // ad script itself only loads after hydration.
+        { name: "google-adsense-account", content: ADSENSE_CLIENT },
         { name: "apple-mobile-web-app-capable", content: "yes" },
         { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
         { name: "apple-mobile-web-app-title", content: "Unbored" },
@@ -207,14 +211,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { children: NEW_YEAR_BOOT_SCRIPT },
         { children: SESSION_BOOT_SCRIPT },
         ...(page.scripts ?? []),
-        // Google AdSense. Gets the CSP nonce like every head script, and
-        // `'strict-dynamic'` lets it load the ad scripts it needs. The hosts it
-        // talks to are allowed in src/lib/csp.ts.
-        {
-          src: "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4469987351010196",
-          async: true,
-          crossOrigin: "anonymous",
-        },
+        // Google AdSense is loaded after hydration: see src/lib/ads.ts.
       ],
       links: [
         {
@@ -287,6 +284,11 @@ function RootComponent() {
     if (consent === undefined) return;
     applyAnalyticsConsent(analyticsAllowed);
   }, [consent, analyticsAllowed]);
+  // Ads load after hydration, never during SSR; Google asks for ad consent
+  // where the law needs it (see lib/ads.ts).
+  useEffect(() => {
+    loadAdSense();
+  }, []);
   useEffect(() => {
     if (auth.status === "restoring" || !analyticsAllowed) return;
     if (analyticsUserId) identifyUser(analyticsUserId, { role: analyticsRole });
