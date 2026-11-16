@@ -1123,10 +1123,10 @@ paths:
                 properties:
                   sessionId: { type: string, format: uuid }
                   gameSlug: { type: string }
-                  score: { type: integer, minimum: 0, description: The verified score, as the server derived it. }
+                  score: { type: integer, minimum: 0, description: "The verified score, as the server derived it." }
                   personalBest: { type: [integer, "null"] }
                   rank: { type: [integer, "null"] }
-                  duplicate: { type: boolean, description: True when this account had already claimed the run. }
+                  duplicate: { type: boolean, description: "True when this account had already claimed the run." }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
