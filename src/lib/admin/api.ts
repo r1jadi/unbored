@@ -26,6 +26,7 @@ import { ApiError, apiFetch, type ApiRequestOptions } from "@/lib/api/client";
 import { getAccessToken } from "@/lib/auth/session";
 
 import { shortDate } from "@/lib/format";
+import { SITE_URL } from "@/lib/seo";
 import { t } from "@/lib/settings/language";
 /** Routes implemented by `services/admin`. Kept together so they cannot drift. */
 const Routes = {
@@ -499,6 +500,26 @@ export async function saveAdminPlatformSettings(
   });
 }
 
+/**
+ * An announcement's link is a path inside the app. A full Unbored address pasted from
+ * the address bar means the same page, so it is cut down to its path. Anything else is
+ * left alone for the server to refuse.
+ */
+export function internalLink(value: string): string {
+  const link = value.trim();
+  if (!/^https?:\/\//i.test(link)) return link;
+  try {
+    const url = new URL(link);
+    const own = [new URL(SITE_URL).host];
+    if (typeof window !== "undefined") own.push(window.location.host);
+    const host = url.host.replace(/^www\./, "");
+    if (!own.some((candidate) => candidate.replace(/^www\./, "") === host)) return link;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return link;
+  }
+}
+
 export async function sendAdminBroadcast(message: {
   title: string;
   body: string;
@@ -507,7 +528,7 @@ export async function sendAdminBroadcast(message: {
   return apiFetch<{ id: string; recipients: number }>(Routes.broadcasts, {
     method: "POST",
     token: requireToken(),
-    body: message,
+    body: { ...message, link: internalLink(message.link) },
   });
 }
 
@@ -519,7 +540,7 @@ export async function updateAdminBroadcast(
   return apiFetch<{ id: string }>(Routes.broadcast(id), {
     method: "PATCH",
     token: requireToken(),
-    body: message,
+    body: { ...message, link: internalLink(message.link) },
   });
 }
 

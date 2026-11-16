@@ -17,6 +17,7 @@ import { Route as OverviewRoute } from "@/routes/admin.index";
 import { Route as ReviewQueueRoute } from "@/routes/admin.review";
 import { Route as SystemSettingsRoute } from "@/routes/admin.settings";
 import { Route as UsersAdminRoute } from "@/routes/admin.users";
+import { internalLink } from "@/lib/admin/api";
 import { clearSession, signIn } from "@/lib/auth/session";
 
 const FeaturedAdmin = FeaturedAdminRoute.options.component as () => ReactElement;
@@ -665,13 +666,17 @@ describe("announcements", () => {
     const form = screen.getByRole("button", { name: "Save changes" }).closest("form")!;
     expect(within(form).getByLabelText("Message")).toHaveValue("Sent before");
     fireEvent.change(within(form).getByLabelText("Title"), { target: { value: "Fixed news" } });
+    // A full Unbored address is sent as the path it points at.
+    fireEvent.change(within(form).getByLabelText("Link inside Unbored (optional)"), {
+      target: { value: "https://unbored.lol/settings/appearance" },
+    });
     fireEvent.click(within(form).getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => expect(writeTo(spy, "PATCH")).toBeDefined());
     expect(JSON.parse((writeTo(spy, "PATCH")![1] as RequestInit).body as string)).toEqual({
       title: "Fixed news",
       body: "Sent before",
-      link: "",
+      link: "/settings/appearance",
     });
   });
 
@@ -689,6 +694,18 @@ describe("announcements", () => {
 
     fireEvent.click(confirm);
     await waitFor(() => expect(writeTo(spy, "DELETE")).toBeDefined());
+  });
+
+  it("cuts a full Unbored address down to its path, and nothing else", () => {
+    expect(internalLink(" https://unbored.lol/settings/appearance ")).toBe("/settings/appearance");
+    expect(internalLink("https://www.unbored.lol/games/sudoku?mode=daily#top")).toBe(
+      "/games/sudoku?mode=daily#top",
+    );
+    expect(internalLink("/games/sudoku")).toBe("/games/sudoku");
+    expect(internalLink("https://evil.example/settings")).toBe("https://evil.example/settings");
+    expect(internalLink("https://unbored.lol.evil.example/x")).toBe(
+      "https://unbored.lol.evil.example/x",
+    );
   });
 
   it("shows a moderator the list without edit or delete", async () => {
