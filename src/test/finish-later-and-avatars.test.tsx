@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { UserAvatar } from "@/components/common";
 import { EndRunButton } from "@/components/game/EndRunButton";
-import { RunLeaveContext } from "@/lib/games/run-progress";
+import { canContinueRun, canFinishLater, RunLeaveContext } from "@/lib/games/run-progress";
+import type { PlaySession } from "@/lib/games/sessions";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -51,6 +52,49 @@ describe("End run", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "End run" }));
     await screen.findByText("Your score of 420 is kept and sent for verification.");
+    expect(screen.queryByRole("button", { name: "Finish later" })).toBeNull();
+  });
+});
+
+describe("Finish later is for timed games", () => {
+  const session = (rulesVersion: string, ranked = true): PlaySession => ({
+    id: "cccccccc-1111-4111-8111-cccccccccccc",
+    gameSlug: "game",
+    rulesVersion,
+    seed: "1",
+    tileCount: 0,
+    startedAt: "2026-11-16T12:00:00.000Z",
+    expiresAt: "2026-11-16T14:00:00.000Z",
+    ranked,
+  });
+
+  it("is offered on a countdown game", () => {
+    for (const rules of ["zip@2", "tango@2", "decant@2", "checkmate@1"]) {
+      expect(canFinishLater(session(rules)), rules).toBe(true);
+    }
+  });
+
+  it("isn't offered on an untimed game, which can still be continued once ended", () => {
+    for (const rules of ["cascade@1", "stack-10@2", "sudoku@4", "whittle@1"]) {
+      expect(canFinishLater(session(rules)), rules).toBe(false);
+      expect(canContinueRun(session(rules)), rules).toBe(true);
+    }
+  });
+
+  it("isn't offered on a game that isn't saved as it is played, or to a guest", () => {
+    expect(canFinishLater(session("seven-second@1"))).toBe(false);
+    expect(canFinishLater(session("zip@2", false))).toBe(false);
+  });
+
+  it("End run on an untimed game still promises a continue, without Finish later", async () => {
+    render(
+      <RunLeaveContext.Provider value={{ resumable: false, continuable: true, leave: vi.fn() }}>
+        <EndRunButton score={42} disabled={false} onEnd={vi.fn()} />
+      </RunLeaveContext.Provider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "End run" }));
+    await screen.findByText("Your score of 420 is kept, and you can pick this run up again later.");
     expect(screen.queryByRole("button", { name: "Finish later" })).toBeNull();
   });
 });

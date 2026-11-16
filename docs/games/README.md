@@ -3207,11 +3207,13 @@ and look are its own.
 | ------- | -------------------------------------------------------------------------- |
 | Board   | 8×8, six kinds (each a shape and a hue), no line of three as dealt         |
 | Goal    | `20 + 10 × level` tiles cleared per level: 30, 40, 50, …                   |
-| Clock   | 60 s to start, +20 s per level cleared, tapered                            |
-| Score   | 1 point per cleared tile × its wave (shown ×10)                            |
+| Clock   | None since `20261206120000_cascade_untimed.sql` (the budget is a day)      |
+| Bombs   | From level 2 (`cascade@2`): one every `max(3, 8 − level)` swaps, at most 3 |
+| Fuse    | `max(5, 11 − level)` swaps; one reaching 0 ends the run                    |
+| Score   | 1 point per cleared tile × its wave, +5 per bomb defused (shown ×10)       |
 | Slack   | 20 s: how late after its clock a run may still reach the server            |
 | Actions | 4096 at most: `cell × 2 + direction`, 0 right and 1 down (0 to 127)        |
-| Rules   | `cascade@1`                                                                |
+| Rules   | `cascade@2` (bombs); `cascade@1` still replays, without them               |
 | Runtime | `cascade` (the catalogue's `games.runtime` value)                          |
 
 ### One stream of tiles
@@ -3258,6 +3260,29 @@ Cleared tiles count towards the level's goal. Meeting it moves to the next level
 (more than one, if a cascade is big enough), carrying the rest over, and winds the
 clock back by `20 s × clock_taper_pct(level)`.
 
+### Bombs (`cascade@2`)
+
+Countdown bombs, as the genre has them, on Cascade's own terms. A bomb is an
+ordinary tile of its kind with a countdown: it lines up, clears and falls like any
+other, and its countdown falls with it.
+
+1. A cleared bomb — in a line, or caught in a blast — is **defused**, for 5 points
+   (50 on screen) on top of its tile, in the wave that cleared it.
+2. Once a swap's cascade has settled (and any fresh deal is done; bombs stay where
+   they stand on the new tiles), **every countdown goes down by one**. One that
+   reaches 0 ends the run there, scored as it stands. Nothing may follow it: the
+   verifier refuses any later swap (`invalid_actions`). A run a bomb ended can't be
+   continued.
+3. Otherwise, from level 2, one more swap is counted, and once `max(3, 8 − level)`
+   have been counted with fewer than 3 bombs on the board, a bomb **drops** onto the
+   top row: the column is the next draw from the generator, `(state >> 16) mod 8`,
+   moved right (wrapping) past any bomb already there, and its countdown is
+   `max(5, 11 − level)`. The count restarts. With 3 bombs on the board the next one
+   waits for room.
+
+Level 1 never has a bomb. A level-2 bomb drops six swaps in with nine to go; from
+level 6 one drops every three swaps with five to go.
+
 ### How a run ends, and the server's clock
 
 As in Decant: the session is issued when the player presses Start, the run ends
@@ -3269,7 +3294,9 @@ a valid submission: the score never goes down.
 ### Verified scores
 
 **The database decides the score**: see
-`supabase/migrations/20261202120000_cascade_sessions.sql`.
+`supabase/migrations/20261202120000_cascade_sessions.sql`, and
+`supabase/migrations/20270108120000_cascade_bombs.sql` for `cascade@2`
+(`public.cascade_resolve_bombs` carries the countdowns through a cascade).
 
 - `public.cascade_first_board(seed)`, `public.cascade_deal(state)` and
   `public.cascade_resolve(board, state, from, to)` are the deal and the cascade;

@@ -308,7 +308,8 @@ function FollowingBoard({
  * The all-games board.
  *
  * Each row is a player's rating: their best score in every game, turned into a
- * percentile of that game's players, summed. The server ranks it; this renders
+ * percentile of that game's players, weighted by the game's difficulty, summed.
+ * The server ranks it; this renders
  * it. The Following tab narrows the same global board to the caller and the
  * people they follow, keeping global ranks, exactly as a game's board does.
  */
@@ -430,7 +431,7 @@ export function OverallBoardList({
         </summary>
         <p>
           {t(
-            "Your best score in each game becomes a percentile of everyone who played it, up to 100 per game. Your rating adds them up. Play {minGames} games to get ranked.",
+            "Your best score in each game becomes a percentile of everyone who played it, up to 100. Harder games count for more: medium games ×1.25 and hard ones like Sudoku, Checkmate or Cascade ×1.5. Your rating adds them up. Play {minGames} games to get ranked.",
             { minGames },
           )}
         </p>

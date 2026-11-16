@@ -39,7 +39,8 @@ export function EndRunButton({
 }) {
   const [confirming, setConfirming] = useState(false);
   const leave = useContext(RunLeaveContext);
-  const later = leave?.resumable === true;
+  // Any saved run can be picked up again after it is ended, timed or not.
+  const later = leave?.continuable === true || leave?.resumable === true;
 
   return (
     <>

@@ -1,6 +1,6 @@
 # 0012 — Scores are verified by the database, and the session service holds no master key
 
-* Status: accepted
+* Status: accepted (amended by [0017](0017-claiming-guest-runs.md): a finished guest run can now be claimed)
 * Date: 2026-10-13
 
 ## Context

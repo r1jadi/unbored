@@ -595,8 +595,12 @@ export const GAME_RULES = {
         text: "leave a special tile behind. Four makes a line tile that clears its whole row or column when it goes; five, or an L or T, makes a burst that clears the 3×3 around it.",
       },
       {
+        lead: "Watch for bombs.",
+        text: "From level 2, bombs drop in with a countdown that goes down by one every swap. Match a bomb, or catch it in a special's blast, to defuse it for 50 points. If one reaches 0, the run ends — your score so far is kept.",
+      },
+      {
         lead: "No clock.",
-        text: "Each level asks for more tiles cleared (30, then 40, 50, …). Take your time: the run ends when you end it.",
+        text: "Each level asks for more tiles cleared (30, then 40, 50, …), and bombs come faster and with shorter fuses. Take your time between swaps: the run ends when you end it, or when a bomb goes off.",
       },
     ],
   },

@@ -1,4 +1,4 @@
-import { Loader2, RotateCcw, Shapes, ShieldCheck, Trophy, TriangleAlert } from "lucide-react";
+import { Bomb, Loader2, RotateCcw, Shapes, ShieldCheck, Trophy, TriangleAlert } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -169,7 +169,7 @@ export function CascadeRuntime({
   }
 
   if (state.status === "finished") {
-    return <Finished slug={slug} result={state.result} onRestart={state.restart} />;
+    return <Finished slug={slug} result={state.result} run={state.run} onRestart={state.restart} />;
   }
 
   return (
@@ -222,46 +222,97 @@ function Intro({
   );
 }
 
-/** One step of a swap's playback: a board, and how its tiles move into it. */
+/** Each cell's bomb countdown at one frame (0: no bomb). */
+type Timers = readonly number[];
+
+/** One step of a swap's playback: a board, its bombs, and how its tiles move into it. */
 type Frame =
-  | { kind: "swap"; board: CascadeBoard; from: number; to: number; ms: number }
+  | { kind: "swap"; board: CascadeBoard; timers: Timers; from: number; to: number; ms: number }
   | {
       kind: "clear";
       board: CascadeBoard;
+      timers: Timers;
       cleared: ReadonlySet<number>;
       created: ReadonlyMap<number, number>;
       wave: number;
       points: number;
+      defused: number;
       ms: number;
     }
-  | { kind: "fall"; board: CascadeBoard; fall: readonly number[]; wave: number; ms: number }
-  | { kind: "deal"; board: CascadeBoard; ms: number };
+  | {
+      kind: "fall";
+      board: CascadeBoard;
+      timers: Timers;
+      fall: readonly number[];
+      wave: number;
+      ms: number;
+    }
+  | { kind: "deal"; board: CascadeBoard; timers: Timers; ms: number }
+  | {
+      kind: "explode";
+      board: CascadeBoard;
+      timers: Timers;
+      cells: ReadonlySet<number>;
+      ms: number;
+    };
 
-/** A swap's playback: the slide, then each wave's clear and fall, then any fresh deal. */
-function framesFor(move: CascadeMove, settled: CascadeBoard): Frame[] {
+/**
+ * A swap's playback: the slide, then each wave's clear and fall, then any fresh
+ * deal, and a bomb going off if one did. `before` is the countdowns the swap
+ * started from; bombs move with their tiles.
+ */
+function framesFor(move: CascadeMove, settled: CascadeBoard, before: Timers): Frame[] {
+  const swappedTimers = [...before];
+  [swappedTimers[move.from], swappedTimers[move.to]] = [
+    swappedTimers[move.to],
+    swappedTimers[move.from],
+  ];
   const frames: Frame[] = [
-    { kind: "swap", board: move.swapped, from: move.from, to: move.to, ms: 150 },
+    {
+      kind: "swap",
+      board: move.swapped,
+      timers: swappedTimers,
+      from: move.from,
+      to: move.to,
+      ms: 150,
+    },
   ];
   move.waves.forEach((wave, index) => {
-    const before = index === 0 ? move.swapped : move.waves[index - 1].board;
+    const board = index === 0 ? move.swapped : move.waves[index - 1].board;
+    const timers = index === 0 ? swappedTimers : move.waves[index - 1].timers;
     frames.push({
       kind: "clear",
-      board: before,
+      board,
+      timers,
       cleared: new Set(wave.cleared),
       created: new Map(wave.created),
       wave: index + 1,
       points: wave.points,
-      ms: 200,
+      defused: wave.defused,
+      ms: wave.defused > 0 ? 320 : 200,
     });
     frames.push({
       kind: "fall",
       board: wave.board,
+      timers: wave.timers,
       fall: wave.fall,
       wave: index + 1,
       ms: 140 + Math.max(...wave.fall) * 45,
     });
   });
-  if (move.reshuffled) frames.push({ kind: "deal", board: settled, ms: 520 });
+  const last = move.waves[move.waves.length - 1]?.timers ?? swappedTimers;
+  if (move.reshuffled) frames.push({ kind: "deal", board: settled, timers: last, ms: 520 });
+  if (move.exploded.length > 0) {
+    // The countdown that reached zero shows as 0 while it goes off.
+    const timers = last.map((timer) => (timer > 0 ? timer - 1 : 0));
+    frames.push({
+      kind: "explode",
+      board: settled,
+      timers,
+      cells: new Set(move.exploded),
+      ms: 900,
+    });
+  }
   return frames;
 }
 
@@ -310,7 +361,11 @@ function Board({
   });
   const [shown, setShown] = useState(run);
   if (frames.move !== run.lastMove) {
-    const list = run.lastMove && !prefersReducedMotion() ? framesFor(run.lastMove, run.board) : [];
+    // `shown` is still the run before this swap: its countdowns are where the swap began.
+    const list =
+      run.lastMove && !prefersReducedMotion()
+        ? framesFor(run.lastMove, run.board, shown.timers)
+        : [];
     setFrames({ list, at: 0, move: run.lastMove });
     if (list.length === 0) setShown(run);
   }
@@ -458,8 +513,11 @@ function Board({
   };
 
   const board = frame ? frame.board : run.board;
+  const timers = frame ? frame.timers : run.timers;
+  const bombs = timers.filter((timer) => timer > 0);
+  const nearest = bombs.length > 0 ? Math.min(...bombs) : null;
   const goal = goalFor(shown.level);
-  const wave = frame && frame.kind !== "swap" && frame.kind !== "deal" ? frame.wave : 0;
+  const wave = frame && (frame.kind === "clear" || frame.kind === "fall") ? frame.wave : 0;
 
   return (
     <div className="flex flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -485,7 +543,7 @@ function Board({
       </div>
 
       <p className="py-1 text-center text-sm text-muted-foreground" aria-live="polite">
-        {statusLine(run, verifying, selected, wave, frame)}
+        {statusLine(run, verifying, selected, wave, frame, nearest)}
       </p>
 
       <div className="mx-auto flex w-full max-w-md items-center gap-3 pb-1 text-xs text-muted-foreground">
@@ -525,6 +583,7 @@ function Board({
                 key={cell}
                 cell={cell}
                 tile={tile}
+                timer={timers[cell]}
                 frame={frame}
                 frameIndex={frames.at}
                 selected={selected === cell}
@@ -547,6 +606,21 @@ function Board({
             >
               +{points(frame.points)}
               {frame.wave > 1 && <span className="ml-2 text-base text-primary">×{frame.wave}</span>}
+              {frame.defused > 0 && (
+                <span className="block text-sm font-medium text-success">
+                  {frame.defused === 1 ? "Bomb defused!" : `${frame.defused} bombs defused!`}
+                </span>
+              )}
+            </div>
+          )}
+          {frame?.kind === "explode" && (
+            <div
+              className="cascade-boom pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl"
+              aria-hidden
+            >
+              <span className="rounded-full bg-background/85 px-4 py-2 text-xl font-semibold text-destructive">
+                Boom!
+              </span>
             </div>
           )}
           {levelUp && (
@@ -563,7 +637,9 @@ function Board({
         <p className="text-center text-xs text-muted-foreground" aria-live="polite">
           {verifying
             ? "The swaps you made are your score if the server agrees."
-            : "No clock: play as long as you like, then end the run."}
+            : shown.level < 2 && run.rulesVersion !== "cascade@1"
+              ? "No clock, but from level 2 bombs drop in: clear them before they reach 0."
+              : "No clock: play as long as you like, then end the run."}
         </p>
         <Button variant="ghost" size="sm" disabled={!accepting} onClick={() => setConfirming(true)}>
           End run
@@ -593,6 +669,7 @@ function Board({
 function Cell({
   cell,
   tile,
+  timer,
   frame,
   frameIndex,
   selected,
@@ -607,6 +684,8 @@ function Cell({
 }: {
   cell: number;
   tile: number;
+  /** Swaps left on this cell's bomb; 0 for no bomb. */
+  timer: number;
   frame: Frame | undefined;
   frameIndex: number;
   selected: boolean;
@@ -642,6 +721,8 @@ function Cell({
   } else if (frame?.kind === "deal") {
     motion = "cascade-fall";
     vars["--fall"] = CASCADE_SIZE;
+  } else if (frame?.kind === "explode" && frame.cells.has(cell)) {
+    motion = "cascade-explode";
   } else if (nope) {
     const other = cell === nope.a ? nope.b : nope.a;
     motion = "cascade-nope";
@@ -655,7 +736,9 @@ function Cell({
   const special = specialOf(shown);
   const label = `Row ${rowOf(cell) + 1}, column ${columnOf(cell) + 1}: ${
     CASCADE_TILES[colour - 1]?.name ?? "empty"
-  }${special ? ` ${SPECIAL_NAMES[special]}` : ""}${selected ? ", picked up" : ""}`;
+  }${special ? ` ${SPECIAL_NAMES[special]}` : ""}${
+    timer > 0 ? `, bomb: ${timer} ${timer === 1 ? "swap" : "swaps"} left` : ""
+  }${selected ? ", picked up" : ""}`;
 
   return (
     <button
@@ -686,7 +769,7 @@ function Cell({
         )}
         style={vars as CSSProperties}
       >
-        <CascadeTile colour={colour} special={special} />
+        <CascadeTile colour={colour} special={special} timer={timer} />
       </span>
     </button>
   );
@@ -699,12 +782,18 @@ function statusLine(
   selected: number | null,
   wave: number,
   frame: Frame | undefined,
+  nearest: number | null,
 ): string {
+  if (frame?.kind === "explode") return "A bomb went off!";
   if (verifying) return "Verifying your run with the server…";
-  if (run.outcome === "over") return "Run ended.";
+  if (run.outcome === "over") return run.ending === "bomb" ? "A bomb went off!" : "Run ended.";
   if (frame?.kind === "deal") return "No swaps left: a fresh board.";
   if (wave > 1) return `Cascade ×${wave}!`;
   if (selected !== null) return "Now tap a neighbour to swap with it.";
+  if (nearest !== null && nearest <= 2) {
+    return nearest === 1 ? "A bomb goes off after this swap!" : "A bomb is about to go off!";
+  }
+  if (nearest !== null) return "Clear the bomb before it counts down to 0.";
   return "Swap two neighbours to line up three.";
 }
 
@@ -712,23 +801,30 @@ function statusLine(
 function Finished({
   slug,
   result,
+  run,
   onRestart,
 }: {
   slug: string;
   result: RunResult;
+  run: CascadeRun;
   onRestart: () => void;
 }) {
+  const blown = run.ending === "bomb";
   return (
     <div className="flex flex-1 flex-col justify-center-safe gap-4 overflow-y-auto px-6 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] text-center">
       <div className="enter flex flex-col items-center gap-2">
         <div className="flex size-12 items-center justify-center rounded-full bg-surface-2">
-          {result.ranked ? (
+          {blown ? (
+            <Bomb className="size-5 text-destructive" />
+          ) : result.ranked ? (
             <Trophy className="size-5 text-muted-foreground" />
           ) : (
             <ShieldCheck className="size-5 text-muted-foreground" />
           )}
         </div>
-        <p className="text-sm text-muted-foreground">Run ended</p>
+        <p className="text-sm text-muted-foreground">
+          {blown ? "A bomb went off. Your score is kept." : "Run ended"}
+        </p>
         <p className="text-5xl font-semibold tabular">{points(result.score)}</p>
         <p className="text-sm text-muted-foreground">
           {`${result.clearedColumns} ${result.clearedColumns === 1 ? "level" : "levels"} cleared, ${
@@ -756,6 +852,12 @@ function Finished({
           <div className="rounded-xl bg-surface p-3">
             <dt className="text-xs text-muted-foreground">Rank</dt>
             <dd className="font-semibold tabular">#{result.rank}</dd>
+          </div>
+        )}
+        {run.rulesVersion !== "cascade@1" && (
+          <div className="rounded-xl bg-surface p-3">
+            <dt className="text-xs text-muted-foreground">Bombs defused</dt>
+            <dd className="font-semibold tabular">{run.defused}</dd>
           </div>
         )}
       </dl>

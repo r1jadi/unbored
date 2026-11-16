@@ -18,36 +18,46 @@
 
 import { createContext, useContext, useEffect } from "react";
 
-import { RESUMABLE_RULES } from "@/lib/games/saved-runs";
+import { FINISH_LATER_RULES, RESUMABLE_RULES } from "@/lib/games/saved-runs";
 import type { PlaySession } from "@/lib/games/sessions";
 import { t } from "@/lib/settings/language";
 
 /**
  * The play screen's setter: `true` from the moment a run can be lost, with the
- * runtime's way to end that run and save its score, and whether the run can
- * instead be left and continued later (a signed-in player's untimed run, which
- * is saved to their account as it is played).
+ * runtime's way to end that run and save its score, whether the run can instead be
+ * left as it is with Finish later (`resumable`: a signed-in player's timed run,
+ * saved as it is played), and whether it can be continued after it is ended
+ * (`continuable`: any run saved as it is played).
  */
 export type RunProgressReporter = (
   active: boolean,
   endRun?: () => void,
   resumable?: boolean,
+  continuable?: boolean,
 ) => void;
 
 export const RunProgressContext = createContext<RunProgressReporter | null>(null);
 
 /**
  * What a live run's own controls need from the play screen: whether the run can
- * be left to finish later, and how to leave. Provided by the play screen; absent
- * elsewhere, where a run can only be ended.
+ * be left to finish later, whether it can be continued once ended, and how to
+ * leave. Provided by the play screen; absent elsewhere, where a run can only be
+ * ended.
  */
-export const RunLeaveContext = createContext<{ resumable: boolean; leave: () => void } | null>(
-  null,
-);
+export const RunLeaveContext = createContext<{
+  resumable: boolean;
+  continuable?: boolean;
+  leave: () => void;
+} | null>(null);
 
 /** Whether a run under this session is saved as it is played and can be continued. */
-export function canFinishLater(session: PlaySession | undefined): boolean {
+export function canContinueRun(session: PlaySession | undefined): boolean {
   return !!session && session.ranked && RESUMABLE_RULES.has(session.rulesVersion);
+}
+
+/** Whether a run under this session can be left mid-run with Finish later: a timed one. */
+export function canFinishLater(session: PlaySession | undefined): boolean {
+  return canContinueRun(session) && FINISH_LATER_RULES.has(session!.rulesVersion);
 }
 
 /**
@@ -63,12 +73,13 @@ export function useReportRunProgress(
 ): void {
   const report = useContext(RunProgressContext);
   const resumable = canFinishLater(session);
+  const continuable = canContinueRun(session);
 
   useEffect(() => {
     if (!report) return;
-    report(active, active ? endRun : undefined, active && resumable);
+    report(active, active ? endRun : undefined, active && resumable, active && continuable);
     return () => report(false);
-  }, [report, active, endRun, resumable]);
+  }, [report, active, endRun, resumable, continuable]);
 }
 
 /** What the End run dialog tells the player will happen to this run. */
@@ -78,7 +89,7 @@ export function endRunMessage(session: PlaySession, score: number): string {
       score,
     });
   }
-  return canFinishLater(session)
+  return canContinueRun(session)
     ? t("Your score of {score} is kept, and you can pick this run up again later.", { score })
     : t("Your score of {score} is kept and sent for verification.", { score });
 }

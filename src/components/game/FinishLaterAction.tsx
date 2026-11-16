@@ -11,9 +11,10 @@ import { t } from "@/lib/settings/language";
  * The play screen's quit control already offers it, but the End run button under
  * the board is the one players reach for, and its dialog used to offer only End
  * run — so a run that could be left and continued looked as if it couldn't. This
- * shows exactly when the play screen would: a signed-in player's live run that is
- * saved as it is played. Anywhere else (a guest, an offline run, a callout, a
- * runtime mounted outside the play screen) it renders nothing.
+ * shows exactly when the play screen would: a signed-in player's live timed run
+ * that is saved as it is played. Anywhere else (an untimed game, a guest, an
+ * offline run, a callout, a runtime mounted outside the play screen) it renders
+ * nothing.
  */
 export function FinishLaterAction() {
   const leave = useContext(RunLeaveContext);

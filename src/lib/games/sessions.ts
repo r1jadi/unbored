@@ -44,6 +44,7 @@ import {
   startChallengeRun,
 } from "@/lib/games/challenge-run";
 import { getQueryClient } from "@/lib/query";
+import { noteGuestRun } from "@/lib/games/guest-claim";
 import {
   browserOffline,
   isOfflineSession,
@@ -286,6 +287,7 @@ import {
   type GuessworkRun,
 } from "@/lib/games/guesswork";
 import {
+  CASCADE_LEGACY_RULES_VERSION,
   CASCADE_RULES_VERSION,
   createRun as createCascadeRun,
   finish as finishCascadeRun,
@@ -526,6 +528,15 @@ export function completeRun(
       void client.invalidateQueries({ queryKey: ["my-game-streak", result.gameSlug] });
       void client.invalidateQueries({ queryKey: ["my-daily-streak"] });
       void client.invalidateQueries({ queryKey: ["my-saved-runs"] });
+      // A guest's verified run can still be saved once they have an account.
+      if (!result.ranked && !token && !challenge) {
+        noteGuestRun({
+          sessionId: result.sessionId,
+          gameSlug: result.gameSlug,
+          score: result.score,
+          finishedAt: Date.now(),
+        });
+      }
       // A resent submission is the same game, not another one.
       if (!result.duplicate) noteGameFinished();
       if (challenge) announceChallengeRunDone(result.score);
@@ -3847,6 +3858,16 @@ export type CascadeRunControls = CascadeRunState & {
 };
 
 /**
+ * The player's saved Cascade run: one under today's rules (bombs), or else one
+ * started before bombs, which carries on under the rules it was started with.
+ */
+function fetchSavedCascadeRun(gameSlug: string) {
+  return fetchSavedRun(gameSlug, CASCADE_RULES_VERSION).then(
+    (saved) => saved ?? fetchSavedRun(gameSlug, CASCADE_LEGACY_RULES_VERSION),
+  );
+}
+
+/**
  * Plays one run of Cascade against the session API.
  *
  * An untimed run: the session is issued when the player presses Start, and the run
@@ -3882,12 +3903,12 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
     skipSaved.current = false;
     // While the rules show, a run to continue takes their place.
     if (attempt === 0) {
-      void fetchSavedRun(gameSlug, CASCADE_RULES_VERSION).then((saved) => {
+      void fetchSavedCascadeRun(gameSlug).then((saved) => {
         if (saved && !controller.signal.aborted) {
           setState({
             status: "saved",
             session: saved.session,
-            run: replayCascadeRun(saved.session.seed, saved.actions),
+            run: replayCascadeRun(saved.session.seed, saved.actions, saved.session.rulesVersion),
             playedMs: saved.playedMs,
           });
         }
@@ -3899,14 +3920,14 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
     submitting.current = false;
     setState({ status: "starting" });
 
-    (fresh ? Promise.resolve(null) : fetchSavedRun(gameSlug, CASCADE_RULES_VERSION))
+    (fresh ? Promise.resolve(null) : fetchSavedCascadeRun(gameSlug))
       .then((saved) => {
         if (controller.signal.aborted) return null;
         if (saved) {
           setState({
             status: "saved",
             session: saved.session,
-            run: replayCascadeRun(saved.session.seed, saved.actions),
+            run: replayCascadeRun(saved.session.seed, saved.actions, saved.session.rulesVersion),
             playedMs: saved.playedMs,
           });
           return null;
@@ -3918,7 +3939,7 @@ export function useCascadeRun(gameSlug: string, autoStart = false): CascadeRunCo
       })
       .then((session) => {
         if (!session || controller.signal.aborted) return;
-        const run = createCascadeRun(session.seed);
+        const run = createCascadeRun(session.seed, session.rulesVersion);
         startedAt.current = Date.now();
         setState({ status: "playing", session, run });
       })

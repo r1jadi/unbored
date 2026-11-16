@@ -469,8 +469,8 @@ export const sqGames: Record<string, string> = {
   You: "Ti",
   "You're not following anyone yet": "Ende nuk ndjek askënd",
   "You're rated in": "Je i vlerësuar në",
-  "Your best score in each game becomes a percentile of everyone who played it, up to 100 per game. Your rating adds them up. Play {minGames} games to get ranked.":
-    "Rezultati yt më i mirë në çdo lojë bëhet përqindësh i të gjithë atyre që e luajtën, deri në 100 për lojë. Vlerësimi yt i mbledh. Luaj {minGames} lojëra për të hyrë në renditje.",
+  "Your best score in each game becomes a percentile of everyone who played it, up to 100. Harder games count for more: medium games ×1.25 and hard ones like Sudoku, Checkmate or Cascade ×1.5. Your rating adds them up. Play {minGames} games to get ranked.":
+    "Rezultati yt më i mirë në çdo lojë bëhet përqindësh i të gjithë atyre që e luajtën, deri në 100. Lojërat më të vështira vlejnë më shumë: ato mesatare ×1,25 dhe ato të vështira si Sudoku, Checkmate apo Cascade ×1,5. Vlerësimi yt i mbledh. Luaj {minGames} lojëra për të hyrë në renditje.",
   "{title} leaderboard": "Renditja e {title}",
   "All game": "Të gjitha lojërat",
   "All games": "Të gjitha lojërat",
@@ -605,6 +605,16 @@ export const sqGames: Record<string, string> = {
   "Make a free account and your next score goes on the leaderboard, with a streak to keep.":
     "Krijo një llogari falas dhe rezultati yt i radhës del në renditje, me një seri ditësh për ta mbajtur.",
   "Create a free account": "Krijo një llogari falas",
+  "Save your score of {score}": "Ruaj rezultatin tënd prej {score}",
+  "Make a free account or sign in, and this run goes on the leaderboard with a streak to keep.":
+    "Krijo një llogari falas ose identifikohu, dhe kjo lojë del në renditje, me një seri ditësh për ta mbajtur.",
+  "Sign up and save": "Regjistrohu dhe ruaje",
+  "Sign in to save": "Identifikohu për ta ruajtur",
+  "Your score of {score} in {game} is saved to your account.":
+    "Rezultati yt prej {score} në {game} u ruajt në llogarinë tënde.",
+  "You'd already played today's {game}, so your guest run wasn't added.":
+    "E kishe luajtur tashmë {game} e sotme, ndaj loja si mysafir nuk u shtua.",
+  "That guest run can't be saved any more.": "Ajo lojë si mysafir nuk mund të ruhet më.",
 
   // Saved runs
   "Continue run": "Vazhdo lojën",

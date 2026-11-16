@@ -253,6 +253,62 @@ func (c *Client) CompleteRun(ctx context.Context, request CompleteRequest) (Resu
 	return result, nil
 }
 
+// ClaimRequest asks to adopt a finished guest run for the signed-in caller. It
+// carries no score: the database records the one its verifier already derived.
+type ClaimRequest struct {
+	SessionID   string
+	AccessToken string
+}
+
+// Claim is the database's answer to a claim: the outcome and, once the run is
+// the caller's, the verified score with where it now stands.
+type Claim struct {
+	Outcome      string
+	SessionID    string
+	GameSlug     string
+	Score        *int64
+	PersonalBest *int64
+	Rank         *int64
+}
+
+// claimResultRow is the `public.claim_result` composite, as PostgREST sends it.
+type claimResultRow struct {
+	Outcome      string  `json:"outcome"`
+	SessionID    *string `json:"session_id"`
+	GameSlug     *string `json:"game_slug"`
+	Score        *int64  `json:"score"`
+	PersonalBest *int64  `json:"personal_best"`
+	BoardRank    *int64  `json:"board_rank"`
+}
+
+// ClaimRun adopts a finished guest run with `claim_guest_run`. The caller's token
+// is required: `auth.uid()` is who the run becomes, and a body never names a user.
+func (c *Client) ClaimRun(ctx context.Context, request ClaimRequest) (Claim, error) {
+	var row claimResultRow
+	payload := map[string]any{"p_session_id": request.SessionID}
+	if err := c.rpc(ctx, "claim-run", "claim_guest_run", payload, request.AccessToken, &row); err != nil {
+		return Claim{}, err
+	}
+	claim := Claim{
+		Outcome:      row.Outcome,
+		Score:        row.Score,
+		PersonalBest: row.PersonalBest,
+		Rank:         row.BoardRank,
+	}
+	if row.SessionID != nil {
+		claim.SessionID = *row.SessionID
+	}
+	if row.GameSlug != nil {
+		claim.GameSlug = *row.GameSlug
+	}
+	if claim.Rank != nil && claim.GameSlug != "" {
+		if rank, ok := c.boardRank(ctx, claim.GameSlug, request.AccessToken); ok {
+			claim.Rank = &rank
+		}
+	}
+	return claim, nil
+}
+
 // boardRank reads the caller's rank as the board itself ranks them. Each verifier
 // counts every score, but the board leaves out players who opted out of
 // leaderboards, so the verifier's number can disagree with the page it links to.

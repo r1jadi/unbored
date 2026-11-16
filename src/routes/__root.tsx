@@ -18,6 +18,7 @@ import { useDocumentTitle } from "@/lib/document-title";
 import { AppShell } from "@/components/layout/AppShell";
 import { SafeAreaDiagnostics } from "@/components/dev/SafeAreaDiagnostics";
 import { Toaster } from "@/components/ui/sonner";
+import { GuestRunClaimer } from "@/components/game/GuestRunClaimer";
 import { useTwoFactorRequired } from "@/lib/auth/security";
 import { initializeSession, SESSION_BOOT_SCRIPT, useAuth } from "@/lib/auth/session";
 import { applyAnalyticsConsent, identifyUser, resetAnalytics } from "@/lib/analytics";
@@ -337,6 +338,8 @@ function RootComponent() {
           <Outlet />
         </AppShell>
       )}
+      {/* A guest run the player asked to keep is saved once they have an account. */}
+      <GuestRunClaimer />
       {/* Dev-only safe-area/PWA probe (dead-code-eliminated in production). */}
       {import.meta.env.DEV ? <SafeAreaDiagnostics /> : null}
       {/* The page draws under the status bar (`viewport-fit=cover`), so the

@@ -521,7 +521,7 @@ describe("after a run", () => {
     expect(
       screen.getByText(/This was a guest run, so it is not on the leaderboard\./),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /sign in to rank your scores/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /sign in to save/i })).toBeInTheDocument();
     expect(screen.queryByText("Rank")).not.toBeInTheDocument();
   });
 

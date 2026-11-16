@@ -42,17 +42,24 @@ export const CASCADE_TILES: readonly { fill: string; name: string; shape: string
 /** What a screen reader says for a special. */
 export const SPECIAL_NAMES = ["", "row line", "column line", "burst"] as const;
 
+/** A bomb's countdown is urgent from this many swaps left: it pulses. */
+export const BOMB_URGENT_AT = 2;
+
 /**
  * One tile: its shape in its hue, with a line tile's band or a burst's ring
- * drawn over it. Purely visual; `colour` is 1 to 6.
+ * drawn over it, and a bomb's countdown when it carries one. Purely visual;
+ * `colour` is 1 to 6.
  */
 export function CascadeTile({
   colour,
   special = 0,
+  timer = 0,
   className,
 }: {
   colour: number;
   special?: number;
+  /** Swaps left on this tile's bomb; 0 for no bomb. */
+  timer?: number;
   className?: string;
 }) {
   const tile = CASCADE_TILES[colour - 1];
@@ -88,6 +95,32 @@ export function CascadeTile({
         <rect x="10.6" y="2.5" width="2.8" height="19" rx="1.4" fill="white" opacity="0.92" />
       )}
       {special === BURST && <circle cx="12" cy="12" r="3" fill="white" opacity="0.92" />}
+      {timer > 0 && (
+        <g className={cn(timer <= BOMB_URGENT_AT && "cascade-bomb-urgent")}>
+          {/* The fuse: a short spark off the top right, so a bomb reads at a glance. */}
+          <path d="M17 6.5 L19.6 3.9" stroke="white" strokeWidth="1.4" strokeLinecap="round" />
+          <circle cx="20.2" cy="3.3" r="1.3" fill="oklch(0.85 0.17 80)" />
+          <circle
+            cx="12"
+            cy="12.5"
+            r="5.6"
+            fill="oklch(0.22 0.02 260)"
+            stroke="white"
+            strokeWidth="1.2"
+          />
+          <text
+            x="12"
+            y="12.6"
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize="7.2"
+            fontWeight="700"
+            fill={timer <= BOMB_URGENT_AT ? "oklch(0.75 0.2 25)" : "white"}
+          >
+            {timer}
+          </text>
+        </g>
+      )}
     </svg>
   );
 }

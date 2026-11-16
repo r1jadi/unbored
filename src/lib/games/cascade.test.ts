@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BOMB_FROM_LEVEL,
+  BOMB_POINTS,
+  bombEvery,
+  bombTimer,
   BURST,
+  CASCADE_LEGACY_RULES_VERSION,
   budgetMs,
   CASCADE_RULES_VERSION,
   CASCADE_SIZE,
@@ -14,6 +19,7 @@ import {
   firstBoard,
   goalFor,
   isSwapLegal,
+  replay,
   RIGHT,
   ROW_LINE,
   submission,
@@ -56,9 +62,11 @@ const plain = (): number[] =>
 const onBoard = (board: number[]): CascadeRun => ({ ...createRun("1"), board });
 
 /** Plays a seed's run by always making the first legal swap. */
-function autoplay(seed: string, swaps: number): CascadeRun {
-  let run = createRun(seed);
-  for (let i = 0; i < swaps; i += 1) run = swap(run, findSwap(run.board)!);
+function autoplay(seed: string, swaps: number, rules = CASCADE_LEGACY_RULES_VERSION): CascadeRun {
+  let run = createRun(seed, rules);
+  for (let i = 0; i < swaps && run.outcome === "playing"; i += 1) {
+    run = swap(run, findSwap(run.board)!);
+  }
   return run;
 }
 
@@ -199,7 +207,7 @@ describe("the run", () => {
 
   it("replays a submission to the same run", () => {
     const played = autoplay("99", 25);
-    let replayed = createRun("99");
+    let replayed = createRun("99", CASCADE_LEGACY_RULES_VERSION);
     for (const action of submission(played).actions) replayed = swap(replayed, action);
     expect(replayed.score).toBe(played.score);
     expect(replayed.board).toEqual(played.board);
@@ -218,4 +226,116 @@ const SEED_1_FORTY = {
   level: 4,
   cleared: 150,
   board: "41631262 43151515 15546513 26234642 42556224 53112334 12113251 26434112",
+};
+
+describe("bombs (cascade@2)", () => {
+  const timersOf = (cells: Record<number, number>): number[] =>
+    Array.from({ length: 64 }, (_, cell) => cells[cell] ?? 0);
+
+  it("are the new rules, and the old ones never have any", () => {
+    expect(CASCADE_RULES_VERSION).toBe("cascade@2");
+    const legacy = autoplay("1", 40);
+    expect(legacy.rulesVersion).toBe("cascade@1");
+    expect(legacy.timers.every((timer) => timer === 0)).toBe(true);
+  });
+
+  it("don't drop on level one", () => {
+    let run = createRun("1");
+    while (run.level < BOMB_FROM_LEVEL) {
+      expect(run.timers.every((timer) => timer === 0)).toBe(true);
+      run = swap(run, findSwap(run.board)!);
+    }
+  });
+
+  it("drop onto the top row every few swaps from level two, with a countdown", () => {
+    let run = createRun("1");
+    while (run.timers.every((timer) => timer === 0)) run = swap(run, findSwap(run.board)!);
+    const cell = run.timers.findIndex((timer) => timer > 0);
+    expect(cell).toBeLessThan(8);
+    expect(run.lastMove!.dropped).toBe(cell);
+    expect(run.timers[cell]).toBe(bombTimer(run.level));
+    expect(run.sinceBomb).toBe(0);
+  });
+
+  it("count down once a swap, get harder every level, and stay within limits", () => {
+    expect([2, 3, 4, 5, 9].map(bombEvery)).toEqual([6, 5, 4, 3, 3]);
+    expect([2, 3, 6, 9].map(bombTimer)).toEqual([9, 8, 5, 5]);
+    // A bomb far from any line ticks down by one, and nothing else changes it.
+    const board = plain();
+    board[1] = 1;
+    board[10] = 1;
+    const run = { ...createRun("1"), board, timers: timersOf({ 63: 4 }) };
+    const after = swap(run, encodeSwap(2, DOWN));
+    expect(after.timers[63]).toBe(3);
+  });
+
+  it("are defused by a match, for a bonus", () => {
+    // Row 0 is 1 2 3 …; a 1 below cell 2 swapped up makes 1 1 1 — through the bomb on cell 0.
+    const board = plain();
+    board[1] = 1;
+    board[10] = 1;
+    const run = { ...createRun("1"), board, timers: timersOf({ 0: 3 }) };
+    const after = swap(run, encodeSwap(2, DOWN));
+    const first = after.lastMove!.waves[0];
+    expect(first.defused).toBe(1);
+    expect(first.points).toBe(3 + BOMB_POINTS);
+    expect(after.defused).toBe(1);
+    expect(after.timers[0]).toBe(0);
+    expect(after.outcome).toBe("playing");
+  });
+
+  it("fall with their tile", () => {
+    // Row 1 is 3 4 5 6 …; a 3 at cell 9 and one below cell 10, swapped up, make
+    // 3 3 3 across cells 8–10. The bomb on cell 0, above the line, falls to cell 8.
+    const board = plain();
+    board[9] = 3;
+    board[18] = 3;
+    const run = { ...createRun("1"), board, timers: timersOf({ 0: 5 }) };
+    const after = swap(run, encodeSwap(10, DOWN));
+    const first = after.lastMove!.waves[0];
+    expect(first.cleared).toEqual([8, 9, 10]);
+    expect(first.timers[0]).toBe(0);
+    expect(first.timers[8]).toBe(5);
+    // Then the swap's countdown: one less, wherever it fell to.
+    expect(after.timers.indexOf(4)).toBeGreaterThanOrEqual(8);
+  });
+
+  it("end the run when a countdown reaches zero", () => {
+    const board = plain();
+    board[1] = 1;
+    board[10] = 1;
+    const run = { ...createRun("1"), board, timers: timersOf({ 63: 1 }) };
+    const after = swap(run, encodeSwap(2, DOWN));
+    expect(after.outcome).toBe("over");
+    expect(after.ending).toBe("bomb");
+    expect(after.lastMove!.exploded).toEqual([63]);
+    // The swap that set it off still scored, and nothing more is taken.
+    expect(after.score).toBeGreaterThan(0);
+    expect(swap(after, findSwap(after.board)!)).toBe(after);
+  });
+
+  it("replays a submission to the same run, bombs and all", () => {
+    const played = autoplay("42", 18, CASCADE_RULES_VERSION);
+    const replayed = replay("42", submission(played).actions);
+    expect(replayed.score).toBe(played.score);
+    expect(replayed.board).toEqual(played.board);
+    expect(replayed.timers).toEqual(played.timers);
+  });
+
+  it("plays seed 1's first-swap line until a bomb ends it", () => {
+    const run = autoplay("1", 100, CASCADE_RULES_VERSION);
+    expect(run.ending).toBe("bomb");
+    expect(run.actions).toHaveLength(SEED_1_BOMBS.swaps);
+    expect(run.score).toBe(SEED_1_BOMBS.score);
+    expect(run.defused).toBe(SEED_1_BOMBS.defused);
+    expect(rows(run.board)).toBe(SEED_1_BOMBS.board);
+  });
+});
+
+/** Seed 1 under cascade@2, first-legal swaps until a bomb goes off: the verifier's line. */
+const SEED_1_BOMBS = {
+  swaps: 25,
+  score: 137,
+  defused: 1,
+  board: "32421434 11663413 61453351 43556623 43421422 25363365 33163251 46434112",
 };

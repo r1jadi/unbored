@@ -2,13 +2,15 @@
 
 Play sessions: the only way a run exists, and the only way a score does.
 
-Two endpoints, and both are optional-auth. A guest plays; a signed-in player's run
-can also become a ranked score.
+Start and complete are optional-auth: a guest plays, and a signed-in player's run
+can also become a ranked score. Claim lets that guest, once signed in, keep the run
+they just finished.
 
 | Route                                        | Auth     | What it does                                                                                                                             |
 | -------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST /api/v1/sessions`                      | optional | Issues a run of a published, playable game. The server picks the id, the seed, the rules version and the expiry.                         |
 | `POST /api/v1/sessions/{sessionID}/complete` | optional | Submits a finished run for verification. The score in the body is a **claim**: the database replays the run and records what it derives. |
+| `POST /api/v1/sessions/{sessionID}/claim`    | required | Saves a finished guest run to the caller's account (`public.claim_guest_run`): the score the database already verified, once, within 24 hours. No body. |
 
 `x-status` in [`packages/api-contracts/openapi-v1.yaml`](../../packages/api-contracts/openapi-v1.yaml)
 is the authority for the shapes; the rules themselves are in

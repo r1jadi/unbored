@@ -24,6 +24,16 @@
  * with no line of three already on it and at least one swap to make, and when a
  * cascade settles on a board with no swap left, a fresh board is dealt.
  *
+ * ## Bombs (`cascade@2`)
+ *
+ * From level 2 a bomb drops onto the top row every few swaps. A bomb is an
+ * ordinary tile of its kind carrying a countdown: every swap takes one off once
+ * its cascade has settled, and a countdown that reaches zero ends the run. Clear
+ * the bomb — in a line, or caught in a blast — and it is defused, for a bonus.
+ * Where it lands is the next draw from the run's generator, so the server places
+ * it exactly where this module does. `cascade@1` runs have no bombs and replay as
+ * they always did.
+ *
  * ## The endless game, against the clock
  *
  * Like Decant, a run is a series of levels against one clock the server times:
@@ -38,8 +48,34 @@ import { taperedBonusMs } from "@/lib/games/clock";
 /** The `runtime` value the catalogue must carry for these rules to play a game. */
 export const CASCADE_RUNTIME = "cascade";
 
-/** The rules the server can verify. Sent with every run and pinned to a session. */
-export const CASCADE_RULES_VERSION = "cascade@1";
+/** The rules new runs are played under. Sent with every run and pinned to a session. */
+export const CASCADE_RULES_VERSION = "cascade@2";
+
+/** The rules before bombs. Runs started under them still replay, without bombs. */
+export const CASCADE_LEGACY_RULES_VERSION = "cascade@1";
+
+/** Whether a rules version has bombs. */
+export const hasBombs = (rulesVersion: string): boolean =>
+  rulesVersion !== CASCADE_LEGACY_RULES_VERSION;
+
+/** The first level bombs drop on. */
+export const BOMB_FROM_LEVEL = 2;
+
+/** The most bombs on the board at once. */
+export const BOMB_MAX = 3;
+
+/** Points for defusing a bomb, on top of the tile (shown ×10: `SCORE_SCALE`). */
+export const BOMB_POINTS = 5;
+
+/** Swaps between one bomb and the next on a level: 6 on level 2, down to 3. */
+export function bombEvery(level: number): number {
+  return Math.max(3, 8 - level);
+}
+
+/** The countdown a bomb drops with on a level: 9 on level 2, down to 5. */
+export function bombTimer(level: number): number {
+  return Math.max(5, 11 - level);
+}
 
 /** The board is square: this many cells a side. */
 export const CASCADE_SIZE = 8;
@@ -97,7 +133,7 @@ export const specialOf = (tile: Tile): number => Math.floor(tile / 8);
 export const rowOf = (cell: number): number => Math.floor(cell / CASCADE_SIZE);
 export const columnOf = (cell: number): number => cell % CASCADE_SIZE;
 
-export type CascadeEnding = "time" | "stopped" | "bound";
+export type CascadeEnding = "time" | "stopped" | "bound" | "bomb";
 export type CascadeOutcome = "playing" | "over";
 
 /** One wave of a cascade: what cleared, what was left behind, and where it fell. */
@@ -108,6 +144,10 @@ export type CascadeWave = {
   readonly created: readonly (readonly [number, Tile])[];
   /** The board once the wave has fallen and refilled. */
   readonly board: CascadeBoard;
+  /** Each cell's bomb countdown once the wave has fallen (0: no bomb). */
+  readonly timers: readonly number[];
+  /** Bombs this wave defused. */
+  readonly defused: number;
   /** How many rows the tile now in each cell fell to get there. */
   readonly fall: readonly number[];
   readonly points: number;
@@ -122,6 +162,10 @@ export type CascadeMove = {
   readonly waves: readonly CascadeWave[];
   /** Whether the board was left without a swap, so a fresh one was dealt. */
   readonly reshuffled: boolean;
+  /** The cells whose countdown reached zero: the run ended there. */
+  readonly exploded: readonly number[];
+  /** The cell a new bomb dropped onto after this swap, or null. */
+  readonly dropped: number | null;
 };
 
 /** One run, as this module knows it. */
@@ -132,6 +176,12 @@ export type CascadeRun = {
   /** Every swap, as `cell × 2 + direction`, in order. This *is* the submission. */
   readonly actions: readonly number[];
   readonly board: CascadeBoard;
+  /** Each cell's bomb countdown: swaps left before it goes off (0: no bomb). */
+  readonly timers: readonly number[];
+  /** Swaps made since the last bomb dropped, from level 2. */
+  readonly sinceBomb: number;
+  /** Bombs defused over the run. */
+  readonly defused: number;
   /** The generator, after every tile drawn so far. */
   readonly rng: number;
   /** The level being played, 1-based. */
@@ -366,10 +416,12 @@ export function blastOf(cell: number, special: number): number[] {
  */
 function resolve(
   start: CascadeBoard,
+  startTimers: readonly number[],
   swappedCells: readonly [number, number],
   rng: Rng,
-): { board: Tile[]; waves: CascadeWave[] } {
+): { board: Tile[]; timers: number[]; waves: CascadeWave[] } {
   let board = [...start];
+  let timers = [...startTimers];
   const waves: CascadeWave[] = [];
   for (let wave = 1; wave <= CASCADE_MAX_WAVES; wave += 1) {
     const lines = linesOn(board);
@@ -419,7 +471,14 @@ function resolve(
     }
 
     const next = [...board];
-    for (const cell of clear) next[cell] = 0;
+    const nextTimers = [...timers];
+    let defused = 0;
+    for (const cell of clear) {
+      next[cell] = 0;
+      // A bomb caught in the clear is defused.
+      if (nextTimers[cell] > 0) defused += 1;
+      nextTimers[cell] = 0;
+    }
     for (const [cell, tile] of created) next[cell] = tile;
 
     // Gravity, then the refill: each column falls, then fills from its lowest gap up.
@@ -429,8 +488,12 @@ function resolve(
       for (let row = 7; row >= 0; row -= 1) {
         const tile = next[row * 8 + column];
         if (tile === 0) continue;
+        // A bomb falls with its tile.
+        const timer = nextTimers[row * 8 + column];
         next[row * 8 + column] = 0;
+        nextTimers[row * 8 + column] = 0;
         next[write * 8 + column] = tile;
+        nextTimers[write * 8 + column] = timer;
         fall[write * 8 + column] = write - row;
         write -= 1;
       }
@@ -445,23 +508,34 @@ function resolve(
       cleared: [...clear].sort((a, b) => a - b),
       created: [...created].sort((a, b) => a[0] - b[0]),
       board: next,
+      timers: nextTimers,
+      defused,
       fall,
-      points: clear.size * CASCADE_POINTS_PER_TILE * wave,
+      points: clear.size * CASCADE_POINTS_PER_TILE * wave + defused * BOMB_POINTS,
     });
     board = next;
+    timers = nextTimers;
   }
-  return { board, waves };
+  return { board, timers, waves };
 }
 
-/** A fresh run on level one. */
-export function createRun(seed: string | number | bigint): CascadeRun {
+const NO_TIMERS: readonly number[] = Array.from({ length: CASCADE_CELLS }, () => 0);
+
+/** A fresh run on level one, under the given rules (bombs, unless `cascade@1`). */
+export function createRun(
+  seed: string | number | bigint,
+  rulesVersion: string = CASCADE_RULES_VERSION,
+): CascadeRun {
   const normalised = toBigInt(seed).toString();
   const { board, rng } = firstBoard(normalised);
   return {
     seed: normalised,
-    rulesVersion: CASCADE_RULES_VERSION,
+    rulesVersion,
     actions: [],
     board,
+    timers: NO_TIMERS,
+    sinceBomb: 0,
+    defused: 0,
     rng,
     level: 1,
     progress: 0,
@@ -482,15 +556,27 @@ export function canSwap(run: CascadeRun, action: number): boolean {
 /**
  * Makes a swap and resolves its cascade. Tiles cleared count towards the level's
  * goal, and a goal met moves on a level — more than one, if a cascade clears
- * enough — carrying the rest over. A board left with no swap is dealt afresh. A
- * swap that is not allowed returns the same run object.
+ * enough — carrying the rest over. A board left with no swap is dealt afresh; its
+ * bombs stay where they were, on the new tiles. A swap that is not allowed
+ * returns the same run object.
+ *
+ * With bombs, once the board has settled every countdown left goes down by one,
+ * and one that reaches zero ends the run. Otherwise, from level 2, every
+ * `bombEvery(level)` swaps a bomb drops onto the top row: the column is the next
+ * draw from the generator (mod 8), moved right past any bomb already there, and
+ * its countdown is `bombTimer(level)`. No bomb drops while `BOMB_MAX` are on the
+ * board; the next one waits for room.
  */
 export function swap(run: CascadeRun, action: number): CascadeRun {
   if (!canSwap(run, action)) return run;
   const [from, to] = swapCells(action)!;
   const rng = { state: run.rng };
   const after = swapped(run.board, from, to);
-  const { board: settled, waves } = resolve(after, [from, to], rng);
+  const timersAfter = swapped(run.timers, from, to);
+  const resolved = resolve(after, timersAfter, [from, to], rng);
+  const { board: settled, waves } = resolved;
+  // A copy: the countdown below must not reach back into the last wave's record.
+  const timers = [...resolved.timers];
   let board = settled;
   let reshuffled = false;
   if (findSwap(board) === null) {
@@ -508,21 +594,48 @@ export function swap(run: CascadeRun, action: number): CascadeRun {
     levelsCleared += 1;
   }
 
+  const exploded: number[] = [];
+  let dropped: number | null = null;
+  let sinceBomb = run.sinceBomb;
+  if (hasBombs(run.rulesVersion)) {
+    for (let cell = 0; cell < CASCADE_CELLS; cell += 1) {
+      if (timers[cell] === 0) continue;
+      timers[cell] -= 1;
+      if (timers[cell] === 0) exploded.push(cell);
+    }
+    if (exploded.length === 0 && level >= BOMB_FROM_LEVEL) {
+      sinceBomb += 1;
+      const bombs = timers.filter((timer) => timer > 0).length;
+      if (sinceBomb >= bombEvery(level) && bombs < BOMB_MAX) {
+        rng.state = (Math.imul(rng.state, MULTIPLIER) + INCREMENT) >>> 0;
+        let cell = (rng.state >>> 16) % CASCADE_SIZE;
+        while (timers[cell] > 0) cell = (cell + 1) % CASCADE_SIZE;
+        timers[cell] = bombTimer(level);
+        dropped = cell;
+        sinceBomb = 0;
+      }
+    }
+  }
+
   const actions = [...run.actions, action];
   const atBound = actions.length >= CASCADE_MAX_ACTIONS;
+  const blown = exploded.length > 0;
   return {
     ...run,
     actions,
     board,
+    timers,
+    sinceBomb,
+    defused: run.defused + waves.reduce((sum, wave) => sum + wave.defused, 0),
     rng: rng.state,
     level,
     progress,
     levelsCleared,
     cleared: run.cleared + tiles,
     score: run.score + waves.reduce((sum, wave) => sum + wave.points, 0),
-    lastMove: { from, to, swapped: after, waves, reshuffled },
-    outcome: atBound ? "over" : "playing",
-    ending: atBound ? "bound" : null,
+    lastMove: { from, to, swapped: after, waves, reshuffled, exploded, dropped },
+    outcome: blown || atBound ? "over" : "playing",
+    ending: blown ? "bomb" : atBound ? "bound" : null,
   };
 }
 
@@ -548,6 +661,13 @@ export function submission(run: CascadeRun): CascadeSubmission {
 }
 
 /** The run these moves make, from the seed: how a saved run comes back. */
-export function replay(seed: string | number | bigint, actions: readonly number[]): CascadeRun {
-  return actions.reduce((run: CascadeRun, action) => apply(run, action), createRun(seed));
+export function replay(
+  seed: string | number | bigint,
+  actions: readonly number[],
+  rulesVersion: string = CASCADE_RULES_VERSION,
+): CascadeRun {
+  return actions.reduce(
+    (run: CascadeRun, action) => apply(run, action),
+    createRun(seed, rulesVersion),
+  );
 }

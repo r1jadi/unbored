@@ -5,13 +5,13 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CascadeRuntime } from "@/components/game/CascadeRuntime";
 import { buttonNamed } from "@/test/queries";
 import { clearSession } from "@/lib/auth/session";
-import { findSwap, firstBoard, isSwapLegal, swapCells } from "@/lib/games/cascade";
+import { createRun, findSwap, firstBoard, isSwapLegal, swap, swapCells } from "@/lib/games/cascade";
 
 /**
  * Cascade on screen.
@@ -27,7 +27,7 @@ function sessionPayload(overrides: Record<string, unknown> = {}) {
   return {
     id: "11111111-2222-4333-8444-555555555555",
     gameSlug: "cascade",
-    rulesVersion: "cascade@1",
+    rulesVersion: "cascade@2",
     seed: "1",
     tileCount: 4096,
     startedAt: "2026-11-27T12:00:00.000Z",
@@ -144,7 +144,7 @@ describe("Cascade", () => {
     const start = spy.mock.calls.find((call) => String(call[0]).endsWith("/api/v1/sessions"));
     expect(JSON.parse(String(start?.[1]?.body ?? "{}"))).toMatchObject({
       gameSlug: "cascade",
-      rulesVersion: "cascade@1",
+      rulesVersion: "cascade@2",
     });
   });
 
@@ -198,5 +198,42 @@ describe("Cascade", () => {
     await screen.findByText("Run ended");
     expect(screen.getByText("30")).toBeInTheDocument();
     expect(screen.getByText("1 level cleared, 6 tiles matched.")).toBeInTheDocument();
+  });
+
+  it("drops a bomb from level 2, shows its countdown, and ends the run when it goes off", async () => {
+    const spy = mockPlayback();
+    await renderRuntime();
+    await startRun();
+
+    // Seed 1 played by first-legal swaps, as the engine plays it: the tenth swap
+    // drops the first bomb, and the twenty-fifth sets one off (cascade.test.ts).
+    let run = createRun("1");
+    let sawBomb = false;
+    while (run.outcome === "playing") {
+      const [a, b] = swapCells(findSwap(run.board)!)!;
+      await waitFor(() => expect(cellButton(a)).toHaveAttribute("aria-disabled", "false"));
+      tapCell(a);
+      tapCell(b);
+      run = swap(run, findSwap(run.board)!);
+      if (!sawBomb && run.timers.some((timer) => timer > 0)) {
+        const cell = run.timers.findIndex((timer) => timer > 0);
+        await waitFor(() =>
+          expect(cellButton(cell)).toHaveAccessibleName(
+            new RegExp(`bomb: ${run.timers[cell]} swaps left`),
+          ),
+        );
+        sawBomb = true;
+      }
+    }
+    expect(sawBomb).toBe(true);
+    expect(run.ending).toBe("bomb");
+
+    // The run a bomb ended is submitted as it stands, and the result says why.
+    await screen.findByText("A bomb went off. Your score is kept.");
+    expect(submitted(spy)).toMatchObject({
+      score: run.score,
+      progress: { rulesVersion: "cascade@2", actions: [...run.actions] },
+    });
+    expect(screen.getByText("Bombs defused")).toBeInTheDocument();
   });
 });

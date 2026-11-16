@@ -1083,6 +1083,57 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "503": { $ref: "#/components/responses/Unavailable" }
 
+  /sessions/{sessionID}/claim:
+    parameters:
+      - name: sessionID
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: claimSession
+      tags: [sessions]
+      summary: Save a finished guest run to the caller's account
+      description: |
+        "Sign up and save this score". A guest run is verified and closed with no
+        owner; this adopts it for the signed-in caller and records the score the
+        server already derived when the guest finished. There is no body and no
+        score in the request: claiming moves ownership, never a value.
+
+        Only a run that was played without an account, finished and verified, not
+        abandoned and not a challenge run can be claimed, once, within 24 hours of
+        finishing. Anything else — someone else's run, an unfinished one, an id that
+        never existed — answers `404` alike. A run that finished too long ago answers
+        `409`, and so does a daily game's run when the caller has already finished
+        that day's board: one ranked attempt a day holds.
+
+        Retries are safe: a repeated claim by the same account answers `200` with
+        `duplicate: true`.
+      security:
+        - bearerAuth: []
+      x-status: available
+      responses:
+        "200":
+          description: The run is the caller's, and its verified score is on the boards.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [sessionId, gameSlug, score, personalBest, rank, duplicate]
+                properties:
+                  sessionId: { type: string, format: uuid }
+                  gameSlug: { type: string }
+                  score: { type: integer, minimum: 0, description: The verified score, as the server derived it. }
+                  personalBest: { type: [integer, "null"] }
+                  rank: { type: [integer, "null"] }
+                  duplicate: { type: boolean, description: True when this account had already claimed the run. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
   /deep-cut/runs/{runID}/questions/{position}:
     parameters:
       - { name: runID, in: path, required: true, schema: { type: string, format: uuid } }

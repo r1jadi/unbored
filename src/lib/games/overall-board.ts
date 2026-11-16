@@ -13,7 +13,8 @@ import { t } from "@/lib/settings/language";
  *
  * Scores are on different scales in different games, so the server turns each
  * player's best score in a game into a percentile — the share of that game's
- * players they matched or beat, 1 to 100 — and the rating is the sum. A player
+ * players they matched or beat, 1 to 100 — weights it by the game's difficulty
+ * (×1, ×1.25 or ×1.5: `public.game_difficulty_weight`), and the rating is the sum. A player
  * is ranked once they are rated in `minGames` games; below that they still get
  * their rating as `me`, with no rank. All of it comes from
  * `GET /api/v1/games/leaderboard`; nothing is computed here.
@@ -22,7 +23,7 @@ import { t } from "@/lib/settings/language";
 export type OverallEntry = {
   rank: number;
   username: string;
-  /** The sum of the player's per-game percentiles. */
+  /** The sum of the player's per-game percentiles, each weighted by its game's difficulty. */
   rating: number;
   /** How many games the rating covers. */
   games: number;

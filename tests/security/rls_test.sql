@@ -5125,16 +5125,55 @@ select rls_test.ok(
 );
 -- The all-games board is public too, and is derived from the same scores: the
 -- player on top of the three boards above is rated in at least three games, and
--- a rating is never more than 100 per game.
+-- a rating is never more than 150 per game (a hard game's 100, weighted ×1.5).
 select rls_test.ok(
   (select count(*) >= 1 from public.overall_leaderboard(null, 10, 0)),
   'the all-games board ranks a player rated in three games'
 );
 select rls_test.ok(
-  (select bool_and(games >= 3 and rating between 0 and 100 * games and rank >= 1)
+  (select bool_and(games >= 3 and rating between 0 and 150 * games and rank >= 1)
      from public.overall_leaderboard(null, 10, 0)),
-  'every all-games row covers at least three games, at most 100 points each'
+  'every all-games row covers at least three games, at most 150 points each'
 );
+-- Harder games count for more (20270109120000_difficulty_weighted_rating.sql).
+select rls_test.ok(
+  public.game_difficulty_weight(1::smallint) = 1.00
+  and public.game_difficulty_weight(2::smallint) = 1.25
+  and public.game_difficulty_weight(3::smallint) = 1.50,
+  'a game''s percentile counts ×1, ×1.25 or ×1.5 by its difficulty');
+select rls_test.ok(
+  (select difficulty = 3 from public.games where slug = 'cascade')
+  and (select difficulty = 1 from public.games where slug = 'one-move')
+  and (select bool_and(difficulty between 1 and 3) from public.games),
+  'every game has a difficulty tier, and the hard and easy ones are set');
+-- Checked as the owner: the expected sum reads preferences a visitor cannot.
+reset role;
+select rls_test.ok(
+  (select bool_and(b.rating = (
+     select round(sum(t.pct * public.game_difficulty_weight(t.difficulty)))::bigint
+       from (
+         select bb.user_id, bb.difficulty,
+                round(100 * cume_dist() over (partition by bb.game_id order by bb.score)) as pct
+           from (select s.user_id, s.game_id, g.difficulty, max(s.score) as score
+                   from public.scores s
+                   join public.games g on g.id = s.game_id and g.status = 'published'
+                  where not exists (select 1 from public.user_preferences up
+                                     where up.user_id = s.user_id and not up.show_on_leaderboards)
+                  group by s.user_id, s.game_id, g.difficulty) bb
+       ) t
+      where t.user_id = b.user_id))
+     from public.overall_leaderboard(null, 10, 0) b),
+  'an all-games rating is the sum of the player''s percentiles, each weighted by its game''s difficulty');
+set local role anon;
+do $$
+begin
+  if exists (select 1 from public.games g where g.status = 'published' and g.slug in ('stack-10', 'sudoku')) then
+    perform rls_test.ok(
+      (select (select difficulty from public.games where slug = 'sudoku')
+            > (select difficulty from public.games where slug = 'stack-10')),
+      'Sudoku is rated harder than Stack 10');
+  end if;
+end $$;
 select rls_test.visible($$select * from public.overall_standing('22222222-2222-4222-8222-222222222222', null)$$, 0,
   'a player with no recorded score has no all-games standing'
 );
@@ -7237,6 +7276,176 @@ select rls_test.visible(
       and follower_id = '22222222-2222-4222-8222-222222222222'$$, 1,
   'a private account still sees who follows it');
 reset role;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Claiming a guest run (20270107120000_claim_guest_runs.sql): "sign up and save
+-- this score". Only a finished, verified, recent anonymous run, once, by the first
+-- signed-in caller, with the score the verifier derived; a daily board keeps its
+-- one ranked attempt.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+select set_config('app.admin_bridge_actor', '', true);
+
+insert into auth.users (id, email) values
+  ('c1a1c1a1-2027-4107-8107-c1a1c1a10001', 'claim-one@example.com'),
+  ('c1a1c1a1-2027-4107-8107-c1a1c1a10002', 'claim-two@example.com');
+
+create table rls_test.claim_vars (name text primary key, game uuid);
+insert into rls_test.claim_vars
+select 'game', g.id from public.games g where g.status = 'published' order by g.slug limit 1;
+
+-- Guest runs, as the verifiers leave them: closed, scored on the session, no owner.
+insert into public.game_sessions
+  (id, game_id, user_id, seed, started_at, completed_at, verified_score, verified_digest, expires_at)
+select v.id, (select game from rls_test.claim_vars where name = 'game'), null, v.seed,
+       v.finished - interval '90 seconds', v.finished, v.score, repeat('b', 32), v.finished + interval '1 hour'
+  from (values
+    ('c1a1c1a1-0000-4000-8000-000000000001'::uuid, 101::bigint, now() - interval '5 minutes', 7001::bigint),  -- to claim
+    ('c1a1c1a1-0000-4000-8000-000000000002'::uuid, 102::bigint, now() - interval '25 hours',  7002::bigint),  -- too old
+    ('c1a1c1a1-0000-4000-8000-000000000003'::uuid, 103::bigint, now() - interval '5 minutes', 7003::bigint),  -- daily, board played
+    ('c1a1c1a1-0000-4000-8000-000000000004'::uuid, 104::bigint, now() - interval '5 minutes', 7004::bigint)   -- for user two
+  ) as v(id, score, finished, seed);
+
+-- Unfinished and abandoned guest runs.
+insert into public.game_sessions (id, game_id, user_id, seed, expires_at)
+values ('c1a1c1a1-0000-4000-8000-000000000005', (select game from rls_test.claim_vars where name = 'game'),
+        null, 7005, now() + interval '1 hour');
+insert into public.game_sessions (id, game_id, user_id, seed, abandoned_at, expires_at)
+values ('c1a1c1a1-0000-4000-8000-000000000006', (select game from rls_test.claim_vars where name = 'game'),
+        null, 7006, now(), now() + interval '1 hour');
+
+-- User one already finished the board session 3 was played on (a daily game's seed).
+insert into public.game_sessions
+  (id, game_id, user_id, seed, completed_at, verified_score, verified_digest, expires_at)
+values ('c1a1c1a1-0000-4000-8000-000000000007', (select game from rls_test.claim_vars where name = 'game'),
+        'c1a1c1a1-2027-4107-8107-c1a1c1a10001', 7003, now(), 5, repeat('c', 32), now() + interval '1 hour');
+
+-- A visitor cannot claim at all.
+set local role anon;
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+select rls_test.denied(
+  $$select public.claim_guest_run('c1a1c1a1-0000-4000-8000-000000000001')$$,
+  'a visitor cannot claim a guest run');
+reset role;
+
+set local role authenticated;
+select rls_test.dm_as('c1a1c1a1-2027-4107-8107-c1a1c1a10001');
+select rls_test.denied(
+  $$update public.game_sessions set user_id = 'c1a1c1a1-2027-4107-8107-c1a1c1a10001'
+     where id = 'c1a1c1a1-0000-4000-8000-000000000001'$$,
+  'a player cannot adopt a guest run by writing the row');
+select rls_test.says(
+  $$public.claim_guest_run(gen_random_uuid())$$, 'not_found', 'an unknown run is not found');
+select rls_test.says(
+  $$public.claim_guest_run('c1a1c1a1-0000-4000-8000-000000000005')$$, 'not_found',
+  'an unfinished run cannot be claimed');
+select rls_test.says(
+  $$public.claim_guest_run('c1a1c1a1-0000-4000-8000-000000000006')$$, 'not_found',
+  'an abandoned run cannot be claimed');
+select rls_test.says(
+  $$public.claim_guest_run('c1a1c1a1-0000-4000-8000-000000000007')$$, 'not_found',
+  'a player''s own ranked run is not a guest run to claim');
+select rls_test.says(
+  $$public.claim_guest_run('c1a1c1a1-0000-4000-8000-000000000002')$$, 'expired',
+  'a run finished more than a day ago has lapsed');
+select rls_test.says(
+  $$public.claim_guest_run('c1a1c1a1-0000-4000-8000-000000000003')$$, 'already_played',
+  'a board the player already finished keeps its one ranked attempt');
+select rls_test.says_field(
+  $$public.claim_guest_run('c1a1c1a1-0000-4000-8000-000000000001')$$, 'score', '101',
+  'a claim records the verified score');
+select rls_test.says(
+  $$public.claim_guest_run('c1a1c1a1-0000-4000-8000-000000000001')$$, 'duplicate',
+  'claiming again is the same claim');
+reset role;
+
+select rls_test.ok(
+  (select count(*) = 1 and min(score) = 101 and min(user_id::text) = 'c1a1c1a1-2027-4107-8107-c1a1c1a10001'
+          and min(created_at) < now() - interval '4 minutes'
+          and min(duration_ms) between 89000 and 91000
+     from public.scores where session_id = 'c1a1c1a1-0000-4000-8000-000000000001'),
+  'one score row, the player''s, dated and timed as the run was played');
+select rls_test.ok(
+  (select user_id = 'c1a1c1a1-2027-4107-8107-c1a1c1a10001' from public.game_sessions
+    where id = 'c1a1c1a1-0000-4000-8000-000000000001'),
+  'and the run is now the player''s');
+select rls_test.ok(
+  (select count(*) = 0 from public.scores
+    where session_id in ('c1a1c1a1-0000-4000-8000-000000000002', 'c1a1c1a1-0000-4000-8000-000000000003')),
+  'refused claims record nothing');
+
+-- Another account cannot take a run that was claimed, and claims its own.
+set local role authenticated;
+select rls_test.dm_as('c1a1c1a1-2027-4107-8107-c1a1c1a10002');
+select rls_test.says(
+  $$public.claim_guest_run('c1a1c1a1-0000-4000-8000-000000000001')$$, 'not_found',
+  'a claimed run cannot be claimed by another account');
+select rls_test.says(
+  $$public.claim_guest_run('c1a1c1a1-0000-4000-8000-000000000004')$$, 'claimed',
+  'another guest run is claimed by its own player');
+reset role;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Cascade bombs (20270108120000_cascade_bombs.sql): complete_cascade_run replays
+-- cascade@2 with bombs, exactly as src/lib/games/cascade.ts plays it, and still
+-- replays cascade@1 without them. The lines are the engine's first-legal-swap
+-- lines (cascade.test.ts).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+insert into auth.users (id, email) values
+  ('b0b0b0b0-2027-4108-8108-b0b0b0b00001', 'bombs@example.com');
+
+insert into public.game_sessions (id, game_id, user_id, seed, rules_version, started_at, expires_at)
+select v.id, g.id, 'b0b0b0b0-2027-4108-8108-b0b0b0b00001', v.seed, v.rules,
+       now() - interval '1 minute', now() + interval '1 hour'
+  from public.games g,
+       (values
+         ('b0b0b0b0-0000-4000-8000-000000000001'::uuid, 1::bigint,  'cascade@2'),  -- ends on a bomb
+         ('b0b0b0b0-0000-4000-8000-000000000002'::uuid, 1::bigint,  'cascade@2'),  -- a swap after it
+         ('b0b0b0b0-0000-4000-8000-000000000003'::uuid, 42::bigint, 'cascade@2'),  -- still going
+         ('b0b0b0b0-0000-4000-8000-000000000004'::uuid, 42::bigint, 'cascade@2'),  -- the wrong score
+         ('b0b0b0b0-0000-4000-8000-000000000005'::uuid, 1::bigint,  'cascade@1')   -- before bombs
+       ) as v(id, seed, rules)
+ where g.slug = 'cascade';
+
+select rls_test.ok(public.cascade_rules_version() = 'cascade@2', 'new Cascade runs pin cascade@2');
+select rls_test.ok(
+  exists (select 1 from public.game_runtimes where runtime = 'cascade' and rules_version = 'cascade@2')
+  and exists (select 1 from public.game_runtimes where runtime = 'cascade' and rules_version = 'cascade@1'),
+  'the start gate issues cascade@2, and still knows cascade@1');
+select rls_test.ok(public.run_resumable('cascade@2') and public.run_resumable('cascade@1'),
+  'both Cascade rules can be saved and continued');
+
+set local role authenticated;
+select rls_test.dm_as('b0b0b0b0-2027-4108-8108-b0b0b0b00001');
+select rls_test.says_field(
+  $$public.complete_cascade_run('b0b0b0b0-0000-4000-8000-000000000001',
+      '{0,6,16,21,25,44,49,4,52,75,40,8,4,57,60,96,6,22,80,86,48,0,50,66,50}', 137, 1000)$$,
+  'outcome', 'recorded',
+  'a cascade@2 run that a bomb ended is recorded with the engine''s score (137, one bomb defused)');
+select rls_test.says(
+  $$public.complete_cascade_run('b0b0b0b0-0000-4000-8000-000000000002',
+      '{0,6,16,21,25,44,49,4,52,75,40,8,4,57,60,96,6,22,80,86,48,0,50,66,50,82}', 137, 1000)$$,
+  'invalid_actions', 'nothing may follow a bomb going off, even a legal swap');
+select rls_test.says(
+  $$public.complete_cascade_run('b0b0b0b0-0000-4000-8000-000000000003',
+      '{5,5,4,13,11,12,18,5,6,28,28,36,20,20,0,5,16,2}', 110, 1000)$$,
+  'recorded', 'a cascade@2 run ended by the player mid-way, a bomb still ticking, is recorded');
+select rls_test.says_field(
+  $$public.complete_cascade_run('b0b0b0b0-0000-4000-8000-000000000004',
+      '{5,5,4,13,11,12,18,5,6,28,28,36,20,20,0,5,16,2}', 109, 1000)$$,
+  'score', '110', 'a claim the bomb replay contradicts is refused with the real score');
+select rls_test.says_field(
+  $$public.complete_cascade_run('b0b0b0b0-0000-4000-8000-000000000005',
+      '{0,6,16,21,25,44,49,4,52,75,40,24,5,21,4,5,0,8,41,38,4,9,41,53,36,2,12,20,28,38,0,5,3,6,17,34,19,3,43,48,23,19,4,23,39,19,18,5,51,4,36,56,54,11,13,42,29,11,26,15}', 282, 1000)$$,
+  'outcome', 'recorded', 'a cascade@1 run still replays without bombs, to its old score');
+reset role;
+
+select rls_test.ok(
+  (select count(*) = 3 from public.scores s
+     join public.game_sessions gs on gs.id = s.session_id
+    where gs.user_id = 'b0b0b0b0-2027-4108-8108-b0b0b0b00001'),
+  'the three verified runs are on the board, and the refused ones are not');
 
 rollback;
 

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { board as boltedBoard } from "@/lib/games/bolted";
-import { createRun, findSwap, swap } from "@/lib/games/cascade";
+import { CASCADE_LEGACY_RULES_VERSION, createRun, findSwap, swap } from "@/lib/games/cascade";
 import { puzzleFor } from "@/lib/games/checkmate";
 import {
   cellsCode as minefieldCells,
@@ -58,7 +58,8 @@ describe("the verifier vectors", () => {
     const cases = vectors("cascade");
     expect(cases.length).toBeGreaterThanOrEqual(3);
     for (const [seed, actions, score, board] of cases) {
-      let run = createRun(seed!);
+      // The vectors are cascade@1 lines: no bombs.
+      let run = createRun(seed!, CASCADE_LEGACY_RULES_VERSION);
       for (const action of actions!.split(",").map(Number)) run = swap(run, action);
       expect(run.actions.join(","), `seed ${seed}`).toBe(actions);
       expect(String(run.score), `seed ${seed}`).toBe(score);
@@ -69,7 +70,8 @@ describe("the verifier vectors", () => {
   it("follow each Cascade line with legal swaps only", () => {
     // The lines are first-legal-swap play, so each must be what findSwap picks.
     for (const [seed, actions] of vectors("cascade")) {
-      let run = createRun(seed!);
+      // The vectors are cascade@1 lines: no bombs.
+      let run = createRun(seed!, CASCADE_LEGACY_RULES_VERSION);
       for (const action of actions!.split(",").map(Number)) {
         expect(findSwap(run.board)).toBe(action);
         run = swap(run, action);

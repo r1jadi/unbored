@@ -56,6 +56,25 @@ export const RESUMABLE_RULES: ReadonlySet<string> = new Set([
   "sumdoku@1",
   "whittle@1",
   "cascade@1",
+  "cascade@2",
+  "checkmate@1",
+]);
+
+/**
+ * The saved runs that can be left mid-run with Finish later: the ones on a
+ * countdown, whose clock stops while the run waits and starts again, by the
+ * server's own measure, when it is continued. An untimed run (Cascade, Stack 10)
+ * has nothing to pause, so it is only ended — and, once ended, can still be
+ * continued from its end screen. 7 Second and the other one-attempt or real-time
+ * games are not saved at all, so they are not here either.
+ */
+export const FINISH_LATER_RULES: ReadonlySet<string> = new Set([
+  "zip@2",
+  "eight-puzzle@2",
+  "tango@2",
+  "decant@2",
+  "bolted@1",
+  "huedini@1",
   "checkmate@1",
 ]);
 

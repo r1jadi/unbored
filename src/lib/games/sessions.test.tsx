@@ -15,6 +15,7 @@ import {
   type PlaySession,
   type RunResult,
 } from "@/lib/games/sessions";
+import { guestRunFor, resetGuestClaimForTests } from "@/lib/games/guest-claim";
 import { submission } from "@/lib/games/stack10";
 import { winningCell } from "@/lib/games/one-move";
 
@@ -225,6 +226,36 @@ describe("completeRun", () => {
       progress: { rulesVersion: "stack-10@1", actions: GREEDY_LINE },
     });
     expect(result.score).toBe(55);
+  });
+
+  it("keeps a guest's verified run so it can be saved after sign-up", async () => {
+    resetGuestClaimForTests();
+    mockFetch(() =>
+      jsonResponse(resultPayload({ score: 40, ranked: false, rank: null, personalBest: null })),
+    );
+
+    await completeRun(
+      "cccccccc-1111-4111-8111-cccccccccccc",
+      { rulesVersion: "stack-10@1", actions: GREEDY_LINE, score: 40 },
+      4200,
+    );
+
+    expect(guestRunFor("stack-10")).toMatchObject({
+      sessionId: "cccccccc-1111-4111-8111-cccccccccccc",
+      score: 40,
+    });
+    expect(guestRunFor("chain")).toBeNull();
+  });
+
+  it("doesn't keep a ranked run as a guest's", async () => {
+    resetGuestClaimForTests();
+    mockFetch(() => jsonResponse(resultPayload()));
+    await completeRun(
+      "cccccccc-1111-4111-8111-cccccccccccc",
+      { rulesVersion: "stack-10@1", actions: GREEDY_LINE, score: 55 },
+      4200,
+    );
+    expect(guestRunFor("stack-10")).toBeNull();
   });
 
   it("escapes a session id so it cannot address another endpoint", async () => {

@@ -107,6 +107,20 @@ type fakeBackend struct {
 	lastStart supabaseplay.StartRequest
 	lastRun   supabaseplay.CompleteRequest
 	runCalls  int
+
+	claim      supabaseplay.Claim
+	claimErr   error
+	lastClaim  supabaseplay.ClaimRequest
+	claimCalls int
+}
+
+func (b *fakeBackend) ClaimRun(_ context.Context, request supabaseplay.ClaimRequest) (supabaseplay.Claim, error) {
+	b.claimCalls++
+	b.lastClaim = request
+	if b.claimErr != nil {
+		return supabaseplay.Claim{}, b.claimErr
+	}
+	return b.claim, nil
 }
 
 func (b *fakeBackend) StartSession(_ context.Context, request supabaseplay.StartRequest) (supabaseplay.Start, error) {

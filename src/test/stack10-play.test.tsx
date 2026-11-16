@@ -391,7 +391,7 @@ describe("finishing a run", () => {
     expect(
       screen.getByText(/This was a guest run, so it is not on the leaderboard\./),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /sign in to rank your scores/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /sign in to save/i })).toBeInTheDocument();
     // No rank or personal best is shown for a run that has none.
     expect(screen.queryByText("Rank")).not.toBeInTheDocument();
   });

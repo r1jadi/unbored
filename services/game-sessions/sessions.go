@@ -25,8 +25,9 @@
 //   - **The caller's own token is the credential.** Both writes go to the Data
 //     API with the access token the request arrived with, so `auth.uid()` inside
 //     those functions *is* the caller. A body can therefore never name a user,
-//     and a guest run (no token) is verified and closed without ever becoming a
-//     ranked score.
+//     and a guest run (no token) is verified and closed without becoming a
+//     ranked score — until its player signs in and claims it (`claim_guest_run`,
+//     docs/decisions/0017-claiming-guest-runs.md).
 //
 //   - **A refusal is data, not an exception.** The verifier answers with an
 //     outcome — `recorded`, `duplicate`, `expired`, `score_mismatch`, and so on —
@@ -87,6 +88,7 @@ var (
 type Backend interface {
 	StartSession(ctx context.Context, request supabaseplay.StartRequest) (supabaseplay.Start, error)
 	CompleteRun(ctx context.Context, request supabaseplay.CompleteRequest) (supabaseplay.Result, error)
+	ClaimRun(ctx context.Context, request supabaseplay.ClaimRequest) (supabaseplay.Claim, error)
 }
 
 // ── Response shapes ─────────────────────────────────────────────────────────
@@ -143,11 +145,14 @@ func newService(backend Backend, logger *slog.Logger) *service {
 	return s
 }
 
-// register mounts the session routes. Both are optional-auth: a visitor without
-// an account can play, and their run is verified and left unranked.
+// register mounts the session routes. Start and complete are optional-auth: a
+// visitor without an account can play, and their run is verified and left
+// unranked. Claim is how that visitor, once signed in, keeps the run.
 func (s *service) register(router *httpx.Router) {
 	router.OptionalAuthFunc("POST /api/v1/sessions", s.startSession)
 	router.OptionalAuthFunc("POST /api/v1/sessions/{sessionID}/complete", s.completeSession)
+	// Claiming a guest run needs an account: the run becomes the caller's.
+	router.Authenticated("POST /api/v1/sessions/{sessionID}/claim", http.HandlerFunc(s.claimSession))
 	s.registerDeepCut(router)
 }
 
@@ -400,6 +405,74 @@ func (s *service) completeSession(w http.ResponseWriter, r *http.Request) {
 			"You've already completed today's challenge. Only the first run counts."))
 	default:
 		s.unexpectedOutcome(w, r, "submit a run", result.Outcome)
+	}
+}
+
+// claimView is a claimed guest run as the API exposes it. `duplicate` is true
+// when this account had already claimed it, which is the same answer to a retry.
+type claimView struct {
+	SessionID    string `json:"sessionId"`
+	GameSlug     string `json:"gameSlug"`
+	Score        int64  `json:"score"`
+	PersonalBest *int64 `json:"personalBest"`
+	Rank         *int64 `json:"rank"`
+	Duplicate    bool   `json:"duplicate"`
+}
+
+// claimSession adopts a finished guest run for the signed-in caller: "sign up and
+// save this score". There is no body: the score is the one the verifier derived
+// when the guest finished, and the caller is the token.
+func (s *service) claimSession(w http.ResponseWriter, r *http.Request) {
+	if s.backend == nil {
+		s.notConfigured(w, r, "claim a run")
+		return
+	}
+
+	sessionID := strings.TrimSpace(r.PathValue("sessionID"))
+	if !sessionIDPattern.MatchString(sessionID) {
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
+			"That is not a valid session id.",
+			apierr.Detail{Field: "sessionID", Rule: "format"}))
+		return
+	}
+
+	claim, err := s.backend.ClaimRun(r.Context(), supabaseplay.ClaimRequest{
+		SessionID:   sessionID,
+		AccessToken: callerToken(r),
+	})
+	if err != nil {
+		s.dataFailure(w, r, "claim a run", err)
+		return
+	}
+
+	switch claim.Outcome {
+	case "claimed", "duplicate":
+		httpx.WriteJSON(w, r, http.StatusOK, claimView{
+			SessionID:    claim.SessionID,
+			GameSlug:     claim.GameSlug,
+			Score:        deref(claim.Score),
+			PersonalBest: claim.PersonalBest,
+			Rank:         claim.Rank,
+			Duplicate:    claim.Outcome == "duplicate",
+		})
+	case "not_found":
+		// Someone else's run, an unfinished one and one that never existed are
+		// the same answer, so run ids cannot be probed.
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeNotFound, "No such run to save."))
+	// The rule names the refusal, so a client tells the two conflicts apart
+	// without reading the sentence.
+	case "expired":
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeConflict,
+			"That run finished too long ago to be saved.",
+			apierr.Detail{Field: "sessionID", Rule: "expired"}))
+	case "already_played":
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeConflict,
+			"You've already completed today's challenge. Only the first run counts.",
+			apierr.Detail{Field: "sessionID", Rule: "already_played"}))
+	case "unauthenticated":
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnauthorized, "Sign in to save a run."))
+	default:
+		s.unexpectedOutcome(w, r, "claim a run", claim.Outcome)
 	}
 }
 

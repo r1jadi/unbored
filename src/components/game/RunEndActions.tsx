@@ -1,12 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { History, Home, RotateCcw, Share2, Trophy, Users } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 
 import { InstallAsk } from "@/components/game/InstallAsk";
 import { StreakNote } from "@/components/game/StreakNote";
 import { Button } from "@/components/ui/button";
 import { titleFromSlug, useGame } from "@/lib/games/catalog";
 import { useMyDailyRank } from "@/lib/games/daily-rank";
+import { guestRunFor, holdGuestRun, subscribeGuestRun } from "@/lib/games/guest-claim";
 import { hasContinuableRun } from "@/lib/games/saved-runs";
 import { shareResult, shareText, type DailyShare } from "@/lib/games/share";
 import { useProfile } from "@/lib/users/profile";
@@ -19,7 +20,8 @@ import { t } from "@/lib/settings/language";
  * and the leaderboard — sit side by side under it at equal weight, so leaving is
  * as easy to find as the leaderboard without stacking a third full-width button.
  * For You lands on this game's card, so the player carries on from where they
- * were in the feed rather than from the top. A guest's sign-in prompt is a plain text link: an offer, not another choice.
+ * were in the feed rather than from the top. A guest's offer to save the run (or, for an
+ * offline run, to rank the next one) sits last: an offer, not another choice.
  *
  * `children` replaces Play again when a run cannot be replayed (7 Second's daily
  * ranked attempt shows when the next deck arrives instead).
@@ -107,28 +109,63 @@ export function RunEndActions({
       {/* After a third finished game: add to the Home Screen, turn on push. */}
       <InstallAsk />
       {/* A guest's run is over and was not ranked: the moment an account means
-          most. This run cannot be claimed afterwards (a guest session has no
-          owner), so the offer is about the next one, said plainly. */}
-      {!ranked && (
-        <div className="mt-2 rounded-xl bg-surface p-3 text-left">
-          <p className="text-sm font-medium">{t("Guest runs aren't ranked")}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {t(
-              "Make a free account and your next score goes on the leaderboard, with a streak to keep.",
-            )}
-          </p>
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Button asChild variant="secondary" size="sm">
-              <Link to="/signup">{t("Create a free account")}</Link>
-            </Button>
-            <Button asChild variant="link" size="sm" className="px-1 text-muted-foreground">
-              <Link to="/login" search={{ redirect: `/games/${slug}` }}>
-                {t("Sign in to rank your scores")}
-              </Link>
-            </Button>
-          </div>
+          most. A verified guest run can be saved to the account they make or
+          sign in to; an offline run never reached the server, so for that one
+          the offer is about the next run, said plainly. */}
+      {!ranked && <GuestOffer slug={slug} />}
+    </div>
+  );
+}
+
+/** The guest's way to an account: save this run when it can be, or rank the next. */
+function GuestOffer({ slug }: { slug: string }) {
+  const getRun = useCallback(() => guestRunFor(slug), [slug]);
+  const run = useSyncExternalStore(subscribeGuestRun, getRun, () => null);
+  if (run) {
+    const keep = () => holdGuestRun(run);
+    return (
+      <div className="mt-2 rounded-xl bg-surface p-3 text-left">
+        <p className="text-sm font-medium">
+          {t("Save your score of {score}", { score: run.score.toLocaleString() })}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {t(
+            "Make a free account or sign in, and this run goes on the leaderboard with a streak to keep.",
+          )}
+        </p>
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Button asChild variant="secondary" size="sm">
+            <Link to="/signup" onClick={keep}>
+              {t("Sign up and save")}
+            </Link>
+          </Button>
+          <Button asChild variant="link" size="sm" className="px-1 text-muted-foreground">
+            <Link to="/login" search={{ redirect: `/games/${slug}` }} onClick={keep}>
+              {t("Sign in to save")}
+            </Link>
+          </Button>
         </div>
-      )}
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 rounded-xl bg-surface p-3 text-left">
+      <p className="text-sm font-medium">{t("Guest runs aren't ranked")}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        {t(
+          "Make a free account and your next score goes on the leaderboard, with a streak to keep.",
+        )}
+      </p>
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Button asChild variant="secondary" size="sm">
+          <Link to="/signup">{t("Create a free account")}</Link>
+        </Button>
+        <Button asChild variant="link" size="sm" className="px-1 text-muted-foreground">
+          <Link to="/login" search={{ redirect: `/games/${slug}` }}>
+            {t("Sign in to rank your scores")}
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }

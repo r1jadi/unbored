@@ -167,12 +167,13 @@ export function Play({
     active: boolean;
     endRun?: () => void;
     resumable?: boolean;
+    continuable?: boolean;
   }>({
     active: false,
   });
   const report = useCallback(
-    (active: boolean, endRun?: () => void, resumable?: boolean) =>
-      setProgress({ active, endRun, resumable }),
+    (active: boolean, endRun?: () => void, resumable?: boolean, continuable?: boolean) =>
+      setProgress({ active, endRun, resumable, continuable }),
     [],
   );
 
@@ -183,6 +184,7 @@ export function Play({
         progress={progress.active}
         endRun={progress.endRun}
         resumable={progress.resumable === true && !calloutWith}
+        continuable={progress.continuable === true && !calloutWith}
         autoStart={autoStart}
         calloutWith={calloutWith}
         archiveDay={archiveDay}
@@ -199,14 +201,15 @@ export function Play({
  * handed over `endRun`, confirming submits the run and the runtime shows its
  * verified score, from where leaving is a single tap. A runtime that offers no
  * way to end its run keeps the old choice, to leave without a score. A run that
- * is saved as it is played (`resumable`) can also be left as it is, to finish
- * later: opening the game again offers Continue run or New run.
+ * is timed and saved as it is played (`resumable`) can also be left as it is, to
+ * finish later: opening the game again offers Continue run or New run.
  */
 export function PlaySurface({
   id,
   progress,
   endRun,
   resumable = false,
+  continuable = false,
   autoStart = false,
   calloutWith,
   archiveDay,
@@ -214,8 +217,10 @@ export function PlaySurface({
   id: string;
   progress: boolean;
   endRun?: () => void;
-  /** The live run is saved to the player's account and can be continued later. */
+  /** The live run is timed and saved, so it can be left with Finish later. */
   resumable?: boolean;
+  /** The live run is saved, so it can be continued after it is ended. */
+  continuable?: boolean;
   /** Start the run without the rules screen (`?start=1`). */
   autoStart?: boolean;
   calloutWith?: string;
@@ -254,7 +259,10 @@ export function PlaySurface({
 
   // `quit` is a dependency: this screen stays mounted when the route's game
   // changes, and a stale one would leave to the previous game's place in the feed.
-  const leave = useMemo(() => ({ resumable, leave: quit }), [resumable, quit]);
+  const leave = useMemo(
+    () => ({ resumable, continuable, leave: quit }),
+    [resumable, continuable, quit],
+  );
 
   return (
     <RunLeaveContext.Provider value={leave}>
