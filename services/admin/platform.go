@@ -16,6 +16,8 @@ const (
 	FeaturedPath = "/api/v1/admin/featured"
 	// BroadcastsPath lists and sends announcements.
 	BroadcastsPath = "/api/v1/admin/broadcasts"
+	// BroadcastPath edits or deletes one announcement that was already sent.
+	BroadcastPath = "/api/v1/admin/broadcasts/{broadcastID}"
 	// PlatformSettingsPath reads and changes what can be set at runtime.
 	PlatformSettingsPath = "/api/v1/admin/system/settings"
 
@@ -189,27 +191,8 @@ func (s *service) sendBroadcast(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAdminTier(w, r) {
 		return
 	}
-	var body sendBroadcastRequest
-	if !s.decode(w, r, &body) {
-		return
-	}
-	title, text, link := strings.TrimSpace(body.Title), strings.TrimSpace(body.Body), strings.TrimSpace(body.Link)
-	if n := utf8.RuneCountInString(title); n < 3 || n > 80 {
-		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
-			"A title is 3 to 80 characters.",
-			apierr.Detail{Field: "title", Rule: "length"}))
-		return
-	}
-	if n := utf8.RuneCountInString(text); n < 3 || n > 300 {
-		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
-			"A message is 3 to 300 characters.",
-			apierr.Detail{Field: "body", Rule: "length"}))
-		return
-	}
-	if link != "" && (len(link) > 200 || !broadcastLink.MatchString(link)) {
-		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
-			"A link must be a path inside Unbored, such as /games/sudoku.",
-			apierr.Detail{Field: "link", Rule: "format"}))
+	title, text, link, ok := s.broadcastBody(w, r)
+	if !ok {
 		return
 	}
 	result, err := s.backend.SendBroadcast(r.Context(), s.token(r), s.actor(r), title, text, link)
@@ -218,6 +201,76 @@ func (s *service) sendBroadcast(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, r, http.StatusCreated, result)
+}
+
+// broadcastBody reads and validates the words of an announcement, for sending one and
+// for editing one. The database holds the same rules.
+func (s *service) broadcastBody(w http.ResponseWriter, r *http.Request) (title, text, link string, ok bool) {
+	var body sendBroadcastRequest
+	if !s.decode(w, r, &body) {
+		return "", "", "", false
+	}
+	title, text, link = strings.TrimSpace(body.Title), strings.TrimSpace(body.Body), strings.TrimSpace(body.Link)
+	if n := utf8.RuneCountInString(title); n < 3 || n > 80 {
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
+			"A title is 3 to 80 characters.",
+			apierr.Detail{Field: "title", Rule: "length"}))
+		return "", "", "", false
+	}
+	if n := utf8.RuneCountInString(text); n < 3 || n > 300 {
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
+			"A message is 3 to 300 characters.",
+			apierr.Detail{Field: "body", Rule: "length"}))
+		return "", "", "", false
+	}
+	if link != "" && (len(link) > 200 || !broadcastLink.MatchString(link)) {
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
+			"A link must be a path inside Unbored, such as /games/sudoku.",
+			apierr.Detail{Field: "link", Rule: "format"}))
+		return "", "", "", false
+	}
+	return title, text, link, true
+}
+
+// updateBroadcast rewrites an announcement that was already sent, in the console and
+// in every inbox that holds it. Nobody is notified again.
+func (s *service) updateBroadcast(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdminTier(w, r) {
+		return
+	}
+	id, ok := s.pathID(w, r, "broadcastID", "announcement")
+	if !ok {
+		return
+	}
+	title, text, link, ok := s.broadcastBody(w, r)
+	if !ok {
+		return
+	}
+	if err := s.backend.UpdateBroadcast(r.Context(), s.token(r), s.actor(r), id, title, text, link); err != nil {
+		s.moderationFailure(w, r, "edit a broadcast", err)
+		return
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, broadcastChangeView{ID: strings.ToLower(id)})
+}
+
+// deleteBroadcast removes an announcement from the console and from every inbox.
+func (s *service) deleteBroadcast(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdminTier(w, r) {
+		return
+	}
+	id, ok := s.pathID(w, r, "broadcastID", "announcement")
+	if !ok {
+		return
+	}
+	if err := s.backend.DeleteBroadcast(r.Context(), s.token(r), s.actor(r), id); err != nil {
+		s.moderationFailure(w, r, "delete a broadcast", err)
+		return
+	}
+	httpx.WriteJSON(w, r, http.StatusOK, broadcastChangeView{ID: strings.ToLower(id)})
+}
+
+type broadcastChangeView struct {
+	ID string `json:"id"`
 }
 
 // requireAdminTier re-checks the tier the staff wrapper authorized. With the secret

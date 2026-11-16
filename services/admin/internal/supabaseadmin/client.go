@@ -896,3 +896,15 @@ func (c *Client) SendBroadcast(ctx context.Context, token, actor, title, body, l
 	}
 	return result, nil
 }
+
+// UpdateBroadcast rewrites a sent announcement, and the copy in every inbox.
+func (c *Client) UpdateBroadcast(ctx context.Context, token, actor, id, title, body, link string) error {
+	payload := map[string]any{"p_id": id, "p_title": title, "p_body": body, "p_link": nullable(link)}
+	return c.invoke(ctx, "update-broadcast", "admin_update_broadcast", "admin_update_broadcast_svc", payload, token, actor, nil)
+}
+
+// DeleteBroadcast removes a sent announcement, and the copy in every inbox.
+func (c *Client) DeleteBroadcast(ctx context.Context, token, actor, id string) error {
+	payload := map[string]any{"p_id": id}
+	return c.invoke(ctx, "delete-broadcast", "admin_delete_broadcast", "admin_delete_broadcast_svc", payload, token, actor, nil)
+}

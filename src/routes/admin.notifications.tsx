@@ -1,13 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Send } from "lucide-react";
+import { Pencil, Send, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { AdminListStates, AdminPage, SectionCard, StatCard } from "@/components/admin/ui";
 import { Button } from "@/components/ui/button";
 import {
   asApiError,
+  deleteAdminBroadcast,
   formatStamp,
   sendAdminBroadcast,
+  updateAdminBroadcast,
+  type AdminBroadcast,
   useAdminBroadcasts,
   useAdminSession,
 } from "@/lib/admin/api";
@@ -27,7 +30,8 @@ const FIELD =
  * Announcements to every player who hasn't opted out in Settings. Each writes one row
  * per player into the inbox and pushes to devices that allow it. The numbers are real:
  * recipients is how many rows were written, and read is how many have been opened.
- * Sends immediately; there are no drafts or schedules.
+ * Sends immediately; there are no drafts or schedules. An administrator can edit or
+ * delete one afterwards, which changes or removes it in every inbox too.
  */
 function NotificationsAdmin() {
   const session = useAdminSession();
@@ -159,17 +163,7 @@ function NotificationsAdmin() {
           ) : (
             <ul className="divide-y divide-border">
               {rows.map((row) => (
-                <li key={row.id} className="px-4 py-3">
-                  <p className="text-sm font-medium">{row.title}</p>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{row.body}</p>
-                  <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    <span>{formatStamp(row.createdAt) ?? "—"}</span>
-                    {row.sentByUsername && <span>@{row.sentByUsername}</span>}
-                    <span>{t("{n} recipients", { n: row.recipients })}</span>
-                    <span>{t("{n} read", { n: row.readCount })}</span>
-                    {row.link && <span className="font-mono">{row.link}</span>}
-                  </p>
-                </li>
+                <SentRow key={row.id} row={row} canManage={isAdmin} onChanged={history.retry} />
               ))}
             </ul>
           )}
@@ -183,5 +177,184 @@ function NotificationsAdmin() {
         )}
       </div>
     </AdminPage>
+  );
+}
+
+/** One sent announcement. An administrator can rewrite it or take it back out of every inbox. */
+function SentRow({
+  row,
+  canManage,
+  onChanged,
+}: {
+  row: AdminBroadcast;
+  canManage: boolean;
+  onChanged: () => void;
+}) {
+  const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
+  const [title, setTitle] = useState(row.title);
+  const [body, setBody] = useState(row.body);
+  const [link, setLink] = useState(row.link ?? "");
+  const [busy, setBusy] = useState(false);
+
+  const valid = title.trim().length >= 3 && body.trim().length >= 3;
+
+  function startEdit() {
+    setTitle(row.title);
+    setBody(row.body);
+    setLink(row.link ?? "");
+    setMode("edit");
+  }
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    if (!valid || busy) return;
+    setBusy(true);
+    try {
+      await updateAdminBroadcast(row.id, { title, body, link });
+      toast.success(t("Announcement updated."));
+      setMode("view");
+      onChanged();
+    } catch (error) {
+      toast.error(asApiError(error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await deleteAdminBroadcast(row.id);
+      toast.success(t("Announcement deleted."));
+      onChanged();
+    } catch (error) {
+      toast.error(asApiError(error).message);
+      setMode("view");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (mode === "edit") {
+    return (
+      <li className="px-4 py-3">
+        <form className="space-y-3" onSubmit={(e) => void save(e)}>
+          <label className="block space-y-1.5">
+            <span className="text-sm">{t("Title")}</span>
+            <input
+              value={title}
+              maxLength={80}
+              onChange={(e) => setTitle(e.target.value)}
+              className={FIELD}
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-sm">{t("Message")}</span>
+            <textarea
+              value={body}
+              maxLength={300}
+              rows={3}
+              onChange={(e) => setBody(e.target.value)}
+              className={FIELD}
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-sm">{t("Link inside Unbored (optional)")}</span>
+            <input
+              value={link}
+              maxLength={200}
+              placeholder="/games/sudoku"
+              onChange={(e) => setLink(e.target.value)}
+              className={FIELD}
+            />
+          </label>
+          <p className="text-xs text-muted-foreground">
+            {t("Changes show in every inbox. Nobody is notified again.")}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" size="sm" disabled={!valid || busy}>
+              {t("Save changes")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => setMode("view")}
+            >
+              {t("Cancel")}
+            </Button>
+          </div>
+        </form>
+      </li>
+    );
+  }
+
+  return (
+    <li className="px-4 py-3">
+      <p className="text-sm font-medium">{row.title}</p>
+      <p className="mt-0.5 text-sm text-muted-foreground">{row.body}</p>
+      <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span>{formatStamp(row.createdAt) ?? "—"}</span>
+        {row.sentByUsername && <span>@{row.sentByUsername}</span>}
+        <span>{t("{n} recipients", { n: row.recipients })}</span>
+        <span>{t("{n} read", { n: row.readCount })}</span>
+        {row.link && <span className="font-mono">{row.link}</span>}
+      </p>
+      {canManage && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {mode === "delete" ? (
+            <>
+              <p role="alert" className="w-full text-sm text-warning">
+                {t("This removes it from every player's inbox and can't be undone.")}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                disabled={busy}
+                onClick={() => void remove()}
+              >
+                <Trash2 />
+                {t("Yes, delete for everyone")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => setMode("view")}
+              >
+                {t("Cancel")}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                aria-label={t("Edit {title}", { title: row.title })}
+                onClick={startEdit}
+              >
+                <Pencil />
+                {t("Edit")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                aria-label={t("Delete {title}", { title: row.title })}
+                onClick={() => setMode("delete")}
+              >
+                <Trash2 />
+                {t("Delete")}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+    </li>
   );
 }

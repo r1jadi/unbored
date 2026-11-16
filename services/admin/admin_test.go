@@ -991,6 +991,18 @@ func (f *fakeBackend) SendBroadcast(_ context.Context, token, actor, title, body
 	return supabaseadmin.BroadcastResult{ID: "broadcast-1", Recipients: 3}, nil
 }
 
+func (f *fakeBackend) UpdateBroadcast(_ context.Context, token, actor, id, title, body, link string) error {
+	f.record("UpdateBroadcast", id, title, body, link)
+	f.lastActor = actor
+	return nil
+}
+
+func (f *fakeBackend) DeleteBroadcast(_ context.Context, token, actor, id string) error {
+	f.record("DeleteBroadcast", id)
+	f.lastActor = actor
+	return nil
+}
+
 func (f *fakeBackend) DeepCutReviews(_ context.Context, token, actor, verdict, search string, page supabaseadmin.Page) ([]supabaseadmin.DeepCutReview, error) {
 	f.record("DeepCutReviews", verdict, search)
 	f.lastPage = page

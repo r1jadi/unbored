@@ -89,6 +89,15 @@ export const sqFeatures: Record<string, string> = {
     "Moderatorët shqyrtojnë çdo raportim. Personit që raporton nuk i thuhet kush e dërgoi.",
   "Move {title} down": "Zhvendos {title} poshtë",
   "Move {title} up": "Zhvendos {title} lart",
+  "Announcement deleted.": "Njoftimi u fshi.",
+  "Announcement updated.": "Njoftimi u përditësua.",
+  "Changes show in every inbox. Nobody is notified again.":
+    "Ndryshimet shfaqen në çdo kuti. Askush nuk njoftohet përsëri.",
+  "Delete {title}": "Fshi {title}",
+  "Edit {title}": "Ndrysho {title}",
+  "This removes it from every player's inbox and can't be undone.":
+    "Kjo e heq nga kutia e çdo lojtari dhe nuk mund të zhbëhet.",
+  "Yes, delete for everyone": "Po, fshije për të gjithë",
   "New announcement": "Njoftim i ri",
   "New comments are paused for now.": "Komentet e reja janë pezulluar për momentin.",
   "New in {time}": "E re pas {time}",

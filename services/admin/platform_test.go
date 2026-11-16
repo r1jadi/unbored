@@ -101,3 +101,74 @@ func TestPlatformWritesValidateBeforeTheDatabase(t *testing.T) {
 		t.Error("an invalid write reached the database")
 	}
 }
+
+const broadcastA = "33333333-3333-4333-8333-333333333333"
+
+func broadcastPath(id string) string {
+	return strings.Replace(BroadcastPath, "{broadcastID}", id, 1)
+}
+
+// Editing and deleting change what every player sees, so they sit on the same tier
+// as sending.
+func TestOnlyAnAdministratorEditsOrDeletesABroadcast(t *testing.T) {
+	t.Setenv("ADMIN_EMAILS", "admin@example.com")
+	backend := &guardBackend{fakeBackend: &fakeBackend{}, dbRole: "moderator"}
+	server, sign := newAllowlistServer(t, backend)
+	words := map[string]any{"title": "Big news", "body": "Something newer", "link": "/games/sudoku"}
+
+	moderator := sign(testModerator, "moderator", "mod@example.com")
+	if status, payload := call(t, server, http.MethodPatch, broadcastPath(broadcastA), moderator, words); status != http.StatusForbidden {
+		t.Errorf("a moderator editing = %d, want 403 (%v)", status, payload)
+	}
+	if status, payload := call(t, server, http.MethodDelete, broadcastPath(broadcastA), moderator, nil); status != http.StatusForbidden {
+		t.Errorf("a moderator deleting = %d, want 403 (%v)", status, payload)
+	}
+	if backend.called("UpdateBroadcast") || backend.called("DeleteBroadcast") {
+		t.Fatal("a refused write reached the database")
+	}
+
+	admin := sign(testAdmin, "admin", "admin@example.com")
+	status, payload := call(t, server, http.MethodPatch, broadcastPath(broadcastA), admin, words)
+	if status != http.StatusOK || payload["id"] != broadcastA {
+		t.Errorf("edit = %d %v, want 200 with the id", status, payload)
+	}
+	if !backend.called("UpdateBroadcast") || backend.lastActor != testAdmin {
+		t.Errorf("the edit was attributed to %q, want the verified administrator", backend.lastActor)
+	}
+	status, payload = call(t, server, http.MethodDelete, broadcastPath(broadcastA), admin, nil)
+	if status != http.StatusOK || payload["id"] != broadcastA {
+		t.Errorf("delete = %d %v, want 200 with the id", status, payload)
+	}
+	if !backend.called("DeleteBroadcast") {
+		t.Error("the delete never reached the database")
+	}
+}
+
+func TestBroadcastEditsValidateBeforeTheDatabase(t *testing.T) {
+	t.Setenv("ADMIN_EMAILS", "admin@example.com")
+	backend := &guardBackend{fakeBackend: &fakeBackend{}}
+	server, sign := newAllowlistServer(t, backend)
+	token := sign(testAdmin, "admin", "admin@example.com")
+
+	cases := []struct {
+		name   string
+		method string
+		path   string
+		body   map[string]any
+	}{
+		{"bad id on edit", http.MethodPatch, broadcastPath("nope"), map[string]any{"title": "Big news", "body": "Something new"}},
+		{"bad id on delete", http.MethodDelete, broadcastPath("nope"), nil},
+		{"short title", http.MethodPatch, broadcastPath(broadcastA), map[string]any{"title": "x", "body": "Something new"}},
+		{"outside link", http.MethodPatch, broadcastPath(broadcastA), map[string]any{"title": "Big news", "body": "Something new", "link": "//evil.example"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if status, payload := call(t, server, c.method, c.path, token, c.body); status != http.StatusBadRequest {
+				t.Errorf("%s = %d, want 400 (%v)", c.name, status, payload)
+			}
+		})
+	}
+	if backend.called("UpdateBroadcast") || backend.called("DeleteBroadcast") {
+		t.Error("an invalid write reached the database")
+	}
+}

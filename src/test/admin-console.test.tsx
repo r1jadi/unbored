@@ -635,6 +635,71 @@ describe("announcements", () => {
       ),
     ).toBe(false);
   });
+
+  const sent = {
+    id: "b1",
+    title: "Earlier news",
+    body: "Sent before",
+    link: null,
+    sentByUsername: "rijad",
+    recipients: 40,
+    readCount: 12,
+    createdAt: "2026-11-01T00:00:00Z",
+  };
+  const sentPage = () => jsonResponse({ items: [sent], hasMore: false });
+  const writeTo = (spy: ReturnType<typeof adminApi>, method: string) =>
+    spy.mock.calls.find(
+      ([input, init]) =>
+        String(input).includes("/admin/broadcasts/b1") && (init as RequestInit)?.method === method,
+    );
+
+  it("lets an administrator edit a sent announcement", async () => {
+    const spy = adminApi("admin", {
+      "/admin/broadcasts/b1": () => jsonResponse({ id: "b1" }),
+      "/admin/broadcasts": sentPage,
+    });
+    await signedIn(spy);
+    await renderPage(() => <NotificationsAdmin />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Earlier news" }));
+    const form = screen.getByRole("button", { name: "Save changes" }).closest("form")!;
+    expect(within(form).getByLabelText("Message")).toHaveValue("Sent before");
+    fireEvent.change(within(form).getByLabelText("Title"), { target: { value: "Fixed news" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(writeTo(spy, "PATCH")).toBeDefined());
+    expect(JSON.parse((writeTo(spy, "PATCH")![1] as RequestInit).body as string)).toEqual({
+      title: "Fixed news",
+      body: "Sent before",
+      link: "",
+    });
+  });
+
+  it("asks for confirmation before it deletes an announcement", async () => {
+    const spy = adminApi("admin", {
+      "/admin/broadcasts/b1": () => jsonResponse({ id: "b1" }),
+      "/admin/broadcasts": sentPage,
+    });
+    await signedIn(spy);
+    await renderPage(() => <NotificationsAdmin />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Delete Earlier news" }));
+    const confirm = await screen.findByRole("button", { name: "Yes, delete for everyone" });
+    expect(writeTo(spy, "DELETE")).toBeUndefined();
+
+    fireEvent.click(confirm);
+    await waitFor(() => expect(writeTo(spy, "DELETE")).toBeDefined());
+  });
+
+  it("shows a moderator the list without edit or delete", async () => {
+    const spy = adminApi("moderator", { "/admin/broadcasts": sentPage });
+    await signedIn(spy);
+    await renderPage(() => <NotificationsAdmin />);
+
+    await screen.findByText("Earlier news");
+    expect(screen.queryByRole("button", { name: "Edit Earlier news" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete Earlier news" })).toBeNull();
+  });
 });
 
 describe("the system screen", () => {

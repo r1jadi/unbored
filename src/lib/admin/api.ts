@@ -48,6 +48,7 @@ const Routes = {
   report: (id: string) => `/admin/reports/${id}`,
   comment: (id: string) => `/admin/comments/${id}`,
   user: (id: string) => `/admin/users/${id}`,
+  broadcast: (id: string) => `/admin/broadcasts/${id}`,
   userAvatar: (id: string) => `/admin/users/${id}/avatar`,
 } as const;
 
@@ -507,6 +508,26 @@ export async function sendAdminBroadcast(message: {
     method: "POST",
     token: requireToken(),
     body: message,
+  });
+}
+
+/** Rewrites a sent announcement, in the console and in every inbox. Nobody is re-notified. */
+export async function updateAdminBroadcast(
+  id: string,
+  message: { title: string; body: string; link: string },
+): Promise<{ id: string }> {
+  return apiFetch<{ id: string }>(Routes.broadcast(id), {
+    method: "PATCH",
+    token: requireToken(),
+    body: message,
+  });
+}
+
+/** Removes a sent announcement from the console and from every inbox. */
+export async function deleteAdminBroadcast(id: string): Promise<{ id: string }> {
+  return apiFetch<{ id: string }>(Routes.broadcast(id), {
+    method: "DELETE",
+    token: requireToken(),
   });
 }
 

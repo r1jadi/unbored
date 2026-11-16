@@ -165,6 +165,8 @@ type Backend interface {
 	SetPlatformSettings(ctx context.Context, token, actor, bannerText string, commentsEnabled, messagesEnabled bool) error
 	Broadcasts(ctx context.Context, token, actor string, page supabaseadmin.Page) ([]supabaseadmin.Broadcast, error)
 	SendBroadcast(ctx context.Context, token, actor, title, body, link string) (supabaseadmin.BroadcastResult, error)
+	UpdateBroadcast(ctx context.Context, token, actor, id, title, body, link string) error
+	DeleteBroadcast(ctx context.Context, token, actor, id string) error
 	DeepCutReviews(ctx context.Context, token, actor, verdict, search string, page supabaseadmin.Page) ([]supabaseadmin.DeepCutReview, error)
 	DeepCutAnswers(ctx context.Context, token, actor string, questionID int) ([]supabaseadmin.DeepCutAnswer, error)
 	RuleDeepCut(ctx context.Context, token, actor string, questionID int, key, verdict, canonical string, tier int) (supabaseadmin.DeepCutRuling, error)
@@ -476,6 +478,8 @@ func (s *service) register(router *httpx.Router) {
 	router.AdminFunc("PATCH "+PlatformSettingsPath, s.staff(s.setPlatformSettings))
 	router.AuthenticatedFunc("GET "+BroadcastsPath, s.staff(s.listBroadcasts))
 	router.AdminFunc("POST "+BroadcastsPath, s.staff(s.sendBroadcast))
+	router.AdminFunc("PATCH "+BroadcastPath, s.staff(s.updateBroadcast))
+	router.AdminFunc("DELETE "+BroadcastPath, s.staff(s.deleteBroadcast))
 
 	// Ruling on Deep Cut answers is moderation work, like the comment queue.
 	s.registerDeepCut(router)

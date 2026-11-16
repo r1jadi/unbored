@@ -512,6 +512,18 @@ func (g *guardBackend) SendBroadcast(_ context.Context, token, actor, title, bod
 	return supabaseadmin.BroadcastResult{ID: "broadcast-1", Recipients: 3}, nil
 }
 
+func (g *guardBackend) UpdateBroadcast(_ context.Context, token, actor, id, title, body, link string) error {
+	g.record("UpdateBroadcast", id, title, body, link)
+	g.lastActor = actor
+	return nil
+}
+
+func (g *guardBackend) DeleteBroadcast(_ context.Context, token, actor, id string) error {
+	g.record("DeleteBroadcast", id)
+	g.lastActor = actor
+	return nil
+}
+
 func (g *guardBackend) DeepCutReviews(_ context.Context, token, actor, verdict, search string, page supabaseadmin.Page) ([]supabaseadmin.DeepCutReview, error) {
 	g.record("DeepCutReviews")
 	return nil, nil

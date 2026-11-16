@@ -233,6 +233,8 @@ begin
     'select public.admin_set_featured_games(''{}'')',
     'select public.admin_set_platform_settings(null, true, true)',
     $q$select public.admin_send_broadcast('Hello there', 'A real message')$q$,
+    $q$select public.admin_update_broadcast(gen_random_uuid(), 'Hello there', 'A real message')$q$,
+    'select public.admin_delete_broadcast(gen_random_uuid())',
     'select * from public.admin_broadcasts()'
   ] loop
     if pg_temp.fails_with(v_state) is distinct from '42501' then
@@ -254,6 +256,10 @@ begin
   perform public.admin_set_featured_games('{}');
   if pg_temp.fails_with($q$select public.admin_send_broadcast('Hello there', 'A real message')$q$) is distinct from '42501' then
     raise exception 'a moderator sent a broadcast';
+  end if;
+  if pg_temp.fails_with($q$select public.admin_update_broadcast(gen_random_uuid(), 'Hello there', 'A real message')$q$) is distinct from '42501'
+     or pg_temp.fails_with('select public.admin_delete_broadcast(gen_random_uuid())') is distinct from '42501' then
+    raise exception 'a moderator edited or deleted a broadcast';
   end if;
   if pg_temp.fails_with('select public.admin_set_platform_settings(null, false, true)') is distinct from '42501' then
     raise exception 'a moderator changed platform settings';
@@ -303,6 +309,48 @@ begin
   if pg_temp.fails_with($q$select public.admin_send_broadcast_svc('10000000-0000-4000-8000-000000000003', 'Elsewhere', 'Click this link', '//evil.example')$q$)
      is distinct from '23514' then
     raise exception 'a broadcast linked outside the app';
+  end if;
+
+  -- Editing rewrites the row and every inbox copy; deleting removes both.
+  perform public.admin_update_broadcast_svc(
+    '10000000-0000-4000-8000-000000000003', (v_result ->> 'id')::uuid, 'Hello again', 'A fixed message', null
+  );
+  if not exists (
+    select 1 from public.broadcasts b
+     where b.id = (v_result ->> 'id')::uuid and b.title = 'Hello again' and b.link is null
+  ) or exists (
+    select 1 from public.notifications n
+     where n.payload ->> 'broadcast' = v_result ->> 'id'
+       and (n.payload ->> 'title' <> 'Hello again'
+            or n.payload ->> 'text' <> 'A fixed message'
+            or n.payload ->> 'link' is not null
+            or n.payload ->> 'reason' <> 'announcement')
+  ) then
+    raise exception 'an edit did not reach the broadcast and every inbox';
+  end if;
+  if pg_temp.fails_with(format(
+    $q$select public.admin_update_broadcast_svc('10000000-0000-4000-8000-000000000003', %L, 'Elsewhere', 'Click this link', '//evil.example')$q$,
+    v_result ->> 'id'
+  )) is distinct from '23514' then
+    raise exception 'an edit linked outside the app';
+  end if;
+  if pg_temp.fails_with($q$select public.admin_update_broadcast_svc('10000000-0000-4000-8000-000000000003', gen_random_uuid(), 'Hello there', 'A real message')$q$)
+     is distinct from 'P0002' then
+    raise exception 'editing a missing broadcast did not say so';
+  end if;
+
+  perform public.admin_delete_broadcast_svc(
+    '10000000-0000-4000-8000-000000000003', (v_result ->> 'id')::uuid
+  );
+  if exists (select 1 from public.broadcasts b where b.id = (v_result ->> 'id')::uuid)
+     or exists (select 1 from public.notifications n where n.payload ->> 'broadcast' = v_result ->> 'id') then
+    raise exception 'a deleted broadcast is still in the console or an inbox';
+  end if;
+  if pg_temp.fails_with(format(
+    $q$select public.admin_delete_broadcast_svc('10000000-0000-4000-8000-000000000003', %L)$q$,
+    v_result ->> 'id'
+  )) is distinct from 'P0002' then
+    raise exception 'deleting a missing broadcast did not say so';
   end if;
 
   -- Opting out is respected.
