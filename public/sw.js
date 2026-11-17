@@ -115,7 +115,9 @@ async function cacheBuild(parallel = 8) {
   // One file at a time would be slow and all at once can trip a rate limit; a
   // few in parallel is enough. A file that fails is fetched again on use.
   for (let i = 0; i < missing.length; i += parallel) {
-    await Promise.all(missing.slice(i, i + parallel).map((url) => cache.add(url).catch(() => undefined)));
+    await Promise.all(
+      missing.slice(i, i + parallel).map((url) => cache.add(url).catch(() => undefined)),
+    );
   }
   await cache.put(
     "/__build-version",

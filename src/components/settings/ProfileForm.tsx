@@ -3,6 +3,16 @@ import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Field } from "@/components/auth/AuthLayout";
 import { Avatar, EmptyState, ErrorState } from "@/components/common";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +21,7 @@ import { ApiError } from "@/lib/api/client";
 import {
   avatarUrl,
   changeAvatar,
+  removeAvatar,
   fieldError,
   profileErrorMessage,
   refreshProfile,
@@ -131,6 +142,7 @@ function Editor({ profile }: { profile: Profile }) {
   // refresh — except after a conflict, where the draft is the thing at fault.
   const [draft, setDraft] = useState<{ displayName: string; username: string; bio: string }>();
   const [busy, setBusy] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [banner, setBanner] = useState<string>();
   const [errors, setErrors] = useState<{ displayName?: string; username?: string; bio?: string }>(
     {},
@@ -222,6 +234,20 @@ function Editor({ profile }: { profile: Profile }) {
     }
   }
 
+  async function removePhoto() {
+    setConfirmRemove(false);
+    setBusy(true);
+    setBanner(undefined);
+    try {
+      await removeAvatar();
+      toast.success(t("Photo removed"));
+    } catch (error) {
+      setBanner(profileErrorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <form className="space-y-4 px-4 md:px-0" onSubmit={submit}>
       <div className="flex items-center gap-4">
@@ -242,7 +268,34 @@ function Editor({ profile }: { profile: Profile }) {
         >
           {t("Change photo")}
         </Button>
+        {profile.avatarPath && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-destructive"
+            disabled={busy}
+            onClick={() => setConfirmRemove(true)}
+          >
+            {t("Remove photo")}
+          </Button>
+        )}
       </div>
+      <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Remove your photo?")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("Your profile will show your initials instead. You can add a new photo any time.")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void removePhoto()}>
+              {t("Remove photo")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Field
         id="name"
         label={t("Display name")}

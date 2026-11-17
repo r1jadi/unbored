@@ -49,7 +49,7 @@ describe("the end screen's guest offer", () => {
     act(() => claim.noteGuestRun({ ...run, finishedAt: Date.now() }));
     render(<RunEndActions slug="whittle" ranked={false} onRestart={() => undefined} />);
 
-    expect(screen.getByText("Save your score of 124")).toBeInTheDocument();
+    expect(screen.getByText("Save your score of 1,240")).toBeInTheDocument();
     expect(claim.heldGuestRun()).toBeNull();
 
     fireEvent.click(screen.getByText("Sign up and save"));

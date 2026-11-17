@@ -180,6 +180,10 @@ export const sqApp: Record<string, string> = {
   "Display name": "Emri i shfaqur",
   "No profile yet": "Ende pa profil",
   "Photo updated": "Fotoja u përditësua",
+  "Photo removed": "Fotoja u hoq",
+  "Remove your photo?": "Ta heqësh foton?",
+  "Your profile will show your initials instead. You can add a new photo any time.":
+    "Profili yt do të shfaqë inicialet e tua. Mund të shtosh një foto të re kurdo.",
   "Profile saved": "Profili u ruajt",
   "Save changes": "Ruaj ndryshimet",
   "Sign in to edit your profile": "Identifikohu për të ndryshuar profilin",

@@ -298,9 +298,7 @@ export async function updateProfile(patch: ProfilePatch): Promise<Profile> {
  * folder; then the users service screens it (OpenAI moderation) and, only if it
  * passes, publishes it and points the profile at it. Nobody else can see the
  * picture before that. A refused picture is answered with the service's own
- * message, shown as it is. A large photo is shrunk first (`prepareAvatar`). Replacing a picture leaves the previous object in place: removing
- * it is a deletion the UI does not offer, and a failed cleanup must never break a
- * successful upload.
+ * message, shown as it is. A large photo is shrunk first (`prepareAvatar`). The service deletes the picture it replaced.
  */
 export async function changeAvatar(chosen: File): Promise<Profile> {
   // A photo straight off a phone is usually over the bucket's 2 MB: it is
@@ -365,6 +363,33 @@ export async function changeAvatar(chosen: File): Promise<Profile> {
     body: { uploadPath: objectPath },
   });
   adopt({ status: "ready", profile });
+  return profile;
+}
+
+/**
+ * Removes the profile picture, so the account shows its initials again.
+ *
+ * The profile is cleared first (a player's own token may clear the path, never set
+ * one), then the file itself is deleted from the public bucket, which the bucket
+ * lets an owner do inside their own folder. A failed file delete is not an error
+ * to the player: the picture is already gone from their profile.
+ */
+export async function removeAvatar(): Promise<Profile> {
+  const previous = state.status === "ready" ? state.profile.avatarPath : null;
+  const profile = await updateProfile({
+    avatarPath: null,
+    expectedUpdatedAt: currentUpdatedAt(),
+  });
+  const token = getAccessToken();
+  const baseUrl = publicConfig.supabase.url.replace(/\/+$/, "");
+  const publishableKey = publicConfig.supabase.publishableKey;
+  if (previous && token && baseUrl !== "" && publishableKey !== "") {
+    const encodedPath = previous.split("/").map(encodeURIComponent).join("/");
+    await fetch(`${baseUrl}/storage/v1/object/${AVATAR_BUCKET}/${encodedPath}`, {
+      method: "DELETE",
+      headers: { apikey: publishableKey, Authorization: `Bearer ${token}` },
+    }).catch(() => undefined);
+  }
   return profile;
 }
 

@@ -375,7 +375,21 @@ export function titleFromSlug(slug: string): string {
   return translateContent(englishTitleFromSlug(slug));
 }
 
+/**
+ * Games whose name isn't a reading of their slug: renamed after launch, or written
+ * with "&". Without these, a shared link and the tab showed "Updraft" before the
+ * page loaded and "Flutter" after. Keep in step with the catalogue's titles.
+ */
+const TITLES_NOT_FROM_SLUG: Readonly<Record<string, string>> = {
+  updraft: "Flutter",
+  crossword: "Daily Crossword",
+  "then-and-now": "Then & Now",
+  "sun-and-moon": "Sun & Moon",
+};
+
 function englishTitleFromSlug(slug: string): string {
+  const named = TITLES_NOT_FROM_SLUG[slug];
+  if (named) return named;
   return slug
     .split("-")
     .filter(Boolean)

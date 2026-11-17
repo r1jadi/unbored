@@ -353,6 +353,9 @@ describe("presentation helpers", () => {
     expect(titleFromSlug("dont-touch-the-black")).toBe("Don't Touch the Black");
     expect(titleFromSlug("7-second")).toBe("7 Second");
     expect(titleFromSlug("the-end")).toBe("The End");
+    // Names that are not a reading of the slug.
+    expect(titleFromSlug("updraft")).toBe("Flutter");
+    expect(titleFromSlug("then-and-now")).toBe("Then & Now");
   });
 });
 

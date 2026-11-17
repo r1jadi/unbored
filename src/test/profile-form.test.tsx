@@ -5,7 +5,7 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProfileForm } from "@/components/settings/ProfileForm";
@@ -385,6 +385,50 @@ describe("ProfileForm", () => {
     expect(patchRequests(spy)).toHaveLength(0);
     // Once saved, the player is taken to their profile to see it.
     expect(await screen.findByText("Your profile")).toBeInTheDocument();
+  });
+
+  it("removes the photo after a confirmation and deletes the stored file", async () => {
+    const photoPath = `${testUserID}/0b6a3c2e-1f4d-4e8a-9c7b-2d5e6f708192.png`;
+    let current: string | null = photoPath;
+    const spy = mockFetch((url, init) => {
+      if (url.endsWith("/auth/sign-in")) return jsonResponse(sessionPayload());
+      if (url.includes("/storage/v1/object/")) return jsonResponse({});
+      if (init?.method === "PATCH") current = null;
+      return jsonResponse(profilePayload({ avatarPath: current }));
+    });
+    await signInAs();
+    await renderForm();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Remove photo" }));
+    // Nothing happens until the player confirms.
+    expect(patchRequests(spy)).toHaveLength(0);
+    const confirm = await screen.findByRole("alertdialog");
+    await act(async () => {
+      fireEvent.click(within(confirm).getByRole("button", { name: "Remove photo" }));
+    });
+
+    await waitFor(() => expect(patchRequests(spy)).toHaveLength(1));
+    const patch = JSON.parse(String(patchRequests(spy)[0]![1]!.body)) as Record<string, unknown>;
+    expect(patch.avatarPath).toBeNull();
+    const deleted = spy.mock.calls.find(([, init]) => init?.method === "DELETE");
+    expect(String(deleted?.[0])).toContain(`/storage/v1/object/avatars/${photoPath}`);
+    // With no photo left, there is nothing to remove.
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Remove photo" })).not.toBeInTheDocument(),
+    );
+  });
+
+  it("offers no removal when there is no photo", async () => {
+    mockFetch((url) =>
+      url.endsWith("/auth/sign-in")
+        ? jsonResponse(sessionPayload())
+        : jsonResponse(profilePayload({ avatarPath: null })),
+    );
+    await signInAs();
+    await renderForm();
+
+    expect(await screen.findByRole("button", { name: "Change photo" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove photo" })).not.toBeInTheDocument();
   });
 
   it("asks for a sign-in instead of showing a profile, and calls nothing", async () => {

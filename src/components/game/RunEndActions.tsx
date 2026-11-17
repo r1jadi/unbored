@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useSyncExternalStore, type ReactNode } 
 import { InstallAsk } from "@/components/game/InstallAsk";
 import { StreakNote } from "@/components/game/StreakNote";
 import { Button } from "@/components/ui/button";
+import { points } from "@/lib/format";
 import { titleFromSlug, useGame } from "@/lib/games/catalog";
 import { useMyDailyRank } from "@/lib/games/daily-rank";
 import { guestRunFor, holdGuestRun, subscribeGuestRun } from "@/lib/games/guest-claim";
@@ -126,7 +127,7 @@ function GuestOffer({ slug }: { slug: string }) {
     return (
       <div className="mt-2 rounded-xl bg-surface p-3 text-left">
         <p className="text-sm font-medium">
-          {t("Save your score of {score}", { score: run.score.toLocaleString() })}
+          {t("Save your score of {score}", { score: points(run.score).toLocaleString() })}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {t(

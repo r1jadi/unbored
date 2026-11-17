@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth/session";
+import { points } from "@/lib/format";
 import { titleFromSlug } from "@/lib/games/catalog";
 import { claimHeldGuestRun, type ClaimOutcome } from "@/lib/games/guest-claim";
 import { t } from "@/lib/settings/language";
@@ -35,7 +36,7 @@ function announce(outcome: ClaimOutcome): void {
     case "saved":
       toast.success(
         t("Your score of {score} in {game} is saved to your account.", {
-          score: outcome.run.score.toLocaleString(),
+          score: points(outcome.run.score).toLocaleString(),
           game: titleFromSlug(outcome.run.gameSlug),
         }),
       );
