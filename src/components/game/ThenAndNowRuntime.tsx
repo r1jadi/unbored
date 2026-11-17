@@ -3,6 +3,7 @@ import { useCallback, useState, type ReactNode } from "react";
 
 import { DailyFrame, DailyResult, RankChip } from "@/components/game/DailyShell";
 import { Button } from "@/components/ui/button";
+import { isPracticeBoard } from "@/lib/games/offline";
 import { useDailyRun, type DailyEngine } from "@/lib/games/daily-run";
 import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
@@ -69,6 +70,7 @@ export function ThenAndNowRuntime({
           run={run}
           verifying={verifying}
           ranked={<RankChip session={session} />}
+          practice={isPracticeBoard(session)}
           onSubmit={onSubmit}
           onStop={onStop}
         />
@@ -133,12 +135,15 @@ function Board({
   run,
   verifying,
   ranked,
+  practice,
   onSubmit,
   onStop,
 }: {
   run: ThenAndNowRun;
   verifying: boolean;
   ranked: ReactNode;
+  /** An Unlimited round or a past day: not today's board, and not ranked. */
+  practice: boolean;
   onSubmit: (code: number) => void;
   onStop: () => void;
 }) {
@@ -199,7 +204,7 @@ function Board({
       <div className="mx-auto flex w-full max-w-md flex-col gap-3 pt-1">
         <div className="text-center">
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            {t("Today's theme")}
+            {practice ? t("The theme") : t("Today's theme")}
           </p>
           <h2 className="text-xl font-semibold">{t(puzzle.theme)}</h2>
           <p className="text-sm text-muted-foreground">

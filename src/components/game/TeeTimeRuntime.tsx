@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode, type Ref } fr
 
 import { DailyFrame, DailyResult, EndRunButton, RankChip } from "@/components/game/DailyShell";
 import { Button } from "@/components/ui/button";
+import { isPracticeBoard } from "@/lib/games/offline";
 import { useDailyRun, type DailyEngine } from "@/lib/games/daily-run";
 import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
@@ -81,6 +82,7 @@ export function TeeTimeRuntime({
           run={run}
           verifying={verifying}
           ranked={<RankChip session={session} />}
+          practice={isPracticeBoard(session)}
           onShot={onShot}
           onStop={onStop}
         />
@@ -210,12 +212,15 @@ function Board({
   run,
   verifying,
   ranked,
+  practice,
   onShot,
   onStop,
 }: {
   run: TeeTimeRun;
   verifying: boolean;
   ranked: ReactNode;
+  /** An Unlimited round or a past day: not today's board, and not ranked. */
+  practice: boolean;
   onShot: (club: number, angle: number, power: number) => void;
   onStop: () => void;
 }) {
@@ -457,10 +462,14 @@ function Board({
         <div className="flex justify-center">
           <EndRunButton
             label={t("End round")}
-            title={t("End today's round here?")}
-            body={t(
-              "Finished holes keep their points; the rest score nothing. There is one ranked round a day.",
-            )}
+            title={practice ? t("End this round here?") : t("End today's round here?")}
+            body={
+              practice
+                ? t("Finished holes keep their points. It's practice, so nothing is lost.")
+                : t(
+                    "Finished holes keep their points; the rest score nothing. There is one ranked round a day.",
+                  )
+            }
             keep={t("Keep playing")}
             disabled={verifying || run.outcome !== "playing"}
             onConfirm={onStop}

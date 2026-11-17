@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { DailyFrame, DailyResult, EndRunButton, RankChip } from "@/components/game/DailyShell";
 import { Button } from "@/components/ui/button";
+import { isPracticeBoard } from "@/lib/games/offline";
 import { useDailyRun, type DailyEngine } from "@/lib/games/daily-run";
 import { articled, QUESTIONS_PER_PUZZLE } from "@/lib/games/only-once-bank";
 import {
@@ -70,6 +71,7 @@ export function OnlyOnceRuntime({
           run={run}
           verifying={verifying}
           ranked={<RankChip session={session} />}
+          practice={isPracticeBoard(session)}
           onAnswer={onAnswer}
           onTimeOut={onTimeOut}
           onStop={onStop}
@@ -155,6 +157,7 @@ function Board({
   run,
   verifying,
   ranked,
+  practice,
   onAnswer,
   onTimeOut,
   onStop,
@@ -162,6 +165,8 @@ function Board({
   run: OnlyOnceRun;
   verifying: boolean;
   ranked: ReactNode;
+  /** An Unlimited round or a past day: not today's board, and not ranked. */
+  practice: boolean;
   onAnswer: (id: number) => void;
   onTimeOut: () => void;
   onStop: () => void;
@@ -349,10 +354,14 @@ function Board({
           <div className="flex justify-center pt-2">
             <EndRunButton
               label={t("End run")}
-              title={t("End today's seven here?")}
-              body={t(
-                "Questions answered keep their points; the rest score nothing. There is one ranked play a day.",
-              )}
+              title={practice ? t("End these seven here?") : t("End today's seven here?")}
+              body={
+                practice
+                  ? t("Questions answered keep their points. It's practice, so nothing is lost.")
+                  : t(
+                      "Questions answered keep their points; the rest score nothing. There is one ranked play a day.",
+                    )
+              }
               keep={t("Keep playing")}
               onConfirm={onStop}
             />

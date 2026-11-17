@@ -188,13 +188,20 @@ describe("in English", () => {
     expect(screen.getByText("400")).toBeInTheDocument();
   });
 
-  it("says so when today's word is already played", async () => {
-    mockFetch(() =>
+  it("says so when today's word is already played, and offers Unlimited", async () => {
+    const spy = mockFetch(() =>
       jsonResponse({ error: { code: "conflict", message: "Already played today." } }, 409),
     );
     await renderRuntime();
     fireEvent.click(screen.getByRole("button", { name: "Play today's word" }));
     await screen.findByText("You've played today's word");
+
+    // Unlimited is practice on another word, dealt here: the server is not asked.
+    const calls = spy.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Keep playing: Unlimited" }));
+    expect(await screen.findByText("Unlimited · practice")).toBeInTheDocument();
+    expect(keyboard()).toBeInTheDocument();
+    expect(spy.mock.calls.length).toBe(calls);
   });
 });
 

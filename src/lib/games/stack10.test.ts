@@ -1,21 +1,38 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  bustLimit,
+  bustsLeft,
   canPlace,
-  createRun,
+  createRun as createEngineRun,
   finish,
   heavyBonus,
   place,
   pressurePercent,
+  previewTile,
   progress,
+  STACK10_BUSTS,
   STACK10_COLUMNS,
+  STACK10_DRAW_TABLE,
+  STACK10_LEGACY_RULES_VERSION,
   STACK10_MAX_TILES,
   STACK10_RULES_VERSION,
   STACK10_TILES,
   submission,
-  tileAt,
+  tileAt as engineTileAt,
   type Stack10Run,
 } from "@/lib/games/stack10";
+
+/**
+ * Most vectors below are `stack-10@2`'s: the database still verifies sessions
+ * pinned to it, and the engine still replays them. These two wrappers pin those
+ * tests to the legacy rules; the `stack-10@3` tests at the bottom call the engine
+ * directly, under the version new runs pin.
+ */
+const LEGACY = STACK10_LEGACY_RULES_VERSION;
+const tileAt = (seed: string | number | bigint, placed: number) =>
+  engineTileAt(seed, placed, LEGACY);
+const createRun = (seed: string | number | bigint) => createEngineRun(seed, LEGACY);
 
 /**
  * The engine's tests are pinned to the *database's* numbers.
@@ -235,7 +252,8 @@ describe("the run beyond the retired deck", () => {
   it("never produces the retired cleared outcome", () => {
     expect(createRun("1").outcome).toBe("playing");
     expect(playLine("1", SEED_ONE_PERFECT).outcome).not.toBe("cleared");
-    expect(STACK10_RULES_VERSION).toBe("stack-10@2");
+    expect(LEGACY).toBe("stack-10@2");
+    expect(STACK10_RULES_VERSION).toBe("stack-10@3");
   });
 
   it("stops at the submission bound, and offers no move after it", () => {
@@ -294,7 +312,7 @@ describe("the submission is the run", () => {
   it("sends the action list, the score and the rules version the session pinned", () => {
     const run = playLine("1", SEED_ONE_ENDLESS);
     expect(submission(run)).toEqual({
-      rulesVersion: STACK10_RULES_VERSION,
+      rulesVersion: LEGACY,
       actions: SEED_ONE_ENDLESS,
       score: 435,
       tilesPlaced: 67,
@@ -329,5 +347,153 @@ describe("ending a run", () => {
   it("leaves a run that is already over exactly as it is", () => {
     const stopped = finish(createRun("1"));
     expect(finish(stopped)).toBe(stopped);
+  });
+});
+
+// ── stack-10@3: the winnable rules ──────────────────────────────────────────
+
+/** Seed 1's first twenty tiles under `stack-10@3`, from the generator directly. */
+const SEED_ONE_V3_TILES = [9, 3, 5, 3, 3, 6, 2, 2, 1, 5, 2, 4, 8, 5, 4, 3, 2, 3, 1, 8];
+
+/**
+ * The greedy line under `stack-10@3`, seed 1: clear when a column can, otherwise
+ * the fullest column the tile fits, otherwise column 0. It busts on the 0-based
+ * tiles 64, 119 and 143, the third of which ends the run: 144 tiles, 48 clears,
+ * 900 points. The same line `tests/security/rls_test.sql` submits.
+ */
+const SEED_ONE_V3_GREEDY = [
+  0, 1, 1, 2, 2, 3, 1, 2, 0, 0, 2, 3, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0,
+  1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 2, 1, 0, 1, 2, 0, 0, 0, 0, 0, 1, 1, 2, 0, 2, 2, 0, 0, 0, 0, 3, 0, 2,
+  0, 1, 1, 0, 1, 2, 2, 0, 3, 0, 0, 1, 0, 0, 3, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0,
+  3, 1, 1, 3, 0, 0, 0, 3, 0, 1, 3, 0, 2, 0, 1, 2, 0, 2, 0, 2, 0, 0, 2, 2, 0, 2, 0, 0, 1, 0, 2, 0, 1,
+  0, 2, 0, 2, 1, 0, 0, 0, 0, 1, 2, 0,
+];
+
+function playV3(seed: string, line: number[]): Stack10Run {
+  return line.reduce((run, column) => place(run, column), createEngineRun(seed));
+}
+
+describe("stack-10@3: the draw favours light tiles", () => {
+  it("is the version new runs pin", () => {
+    expect(createEngineRun("1").rulesVersion).toBe("stack-10@3");
+    // A legacy session replays under its own rules; anything unknown gets the new ones.
+    expect(createEngineRun("1", "stack-10@2").rulesVersion).toBe("stack-10@2");
+    expect(createEngineRun("1", "stack-10@9").rulesVersion).toBe("stack-10@3");
+  });
+
+  it("weights the table toward small faces: 1–3 are over half of it, 8 and 9 one slot each", () => {
+    expect(STACK10_DRAW_TABLE).toHaveLength(23);
+    const count = (face: number) => STACK10_DRAW_TABLE.filter((tile) => tile === face).length;
+    expect([1, 2, 3, 4, 5, 6, 7, 8, 9].map(count)).toEqual([4, 4, 4, 3, 2, 2, 2, 1, 1]);
+    expect(count(1) + count(2) + count(3)).toBeGreaterThan(STACK10_DRAW_TABLE.length / 2);
+  });
+
+  it("draws seed 1's tiles from the table, in the order the verifier does", () => {
+    SEED_ONE_V3_TILES.forEach((tile, index) => {
+      expect(engineTileAt("1", index)).toBe(tile);
+    });
+    expect([0, 1, 2, 3, 4, 5, 6, 7].map((i) => engineTileAt("9223372036854775807", i))).toEqual([
+      5, 8, 4, 6, 7, 7, 3, 6,
+    ]);
+    expect([0, 1, 2, 3].map((i) => engineTileAt(0, i))).toEqual([3, 1, 4, 5]);
+  });
+
+  it("keeps the same pressure ramp on top of the table", () => {
+    expect([60, 64, 100, 240, 300, 480].map((i) => engineTileAt("1", i))).toEqual([
+      4, 8, 1, 3, 3, 8,
+    ]);
+  });
+
+  it("deals far fewer heavy tiles than the even draw over the opening", () => {
+    // Over many seeds' opening sixty tiles, a face of 7 or more turns up about
+    // 4 in 23 times under the table, against 3 in 9 under the even draw.
+    let heavyV3 = 0;
+    let heavyV2 = 0;
+    let total = 0;
+    for (let seed = 1; seed <= 40; seed += 1) {
+      for (let placed = 0; placed < STACK10_TILES; placed += 1) {
+        if (engineTileAt(seed, placed) >= 7) heavyV3 += 1;
+        if (engineTileAt(seed, placed, LEGACY) >= 7) heavyV2 += 1;
+        total += 1;
+      }
+    }
+    expect(heavyV3 / total).toBeLessThan(0.23);
+    expect(heavyV2 / total).toBeGreaterThan(0.28);
+  });
+});
+
+describe("stack-10@3: a bust empties the column, and the third ends the run", () => {
+  it("allows three busts, against one under stack-10@2", () => {
+    expect(STACK10_BUSTS).toBe(3);
+    expect(bustLimit(STACK10_RULES_VERSION)).toBe(3);
+    expect(bustLimit(LEGACY)).toBe(1);
+  });
+
+  it("empties a column that passes ten and plays on", () => {
+    // Seed 1 deals 9 then 3: both into column 0 make 12.
+    const run = playV3("1", [0, 0]);
+    expect(run.outcome).toBe("playing");
+    expect(run.busts).toBe(1);
+    expect(bustsLeft(run)).toBe(1);
+    expect(run.columns[0]).toEqual({ tiles: [], sum: 0 });
+    expect(run.score).toBe(0);
+    expect(run.endReason).toBeNull();
+    expect(run.nextTile).toBe(SEED_ONE_V3_TILES[2]);
+  });
+
+  it("still ends a stack-10@2 run on its first overflow", () => {
+    const over = [0, 0, 1, 0, 0, 0, 2, 2, 2, 3, 0, 0, 0, 0].reduce(
+      (run, column) => place(run, column),
+      createRun("1"),
+    );
+    expect(over.busts).toBe(1);
+    expect(over.outcome).toBe("over");
+    expect(bustsLeft(over)).toBe(0);
+  });
+
+  it("plays the documented greedy line to its third bust: 144 tiles, 900 points", () => {
+    const run = playV3("1", SEED_ONE_V3_GREEDY);
+    expect(run.actions).toHaveLength(144);
+    expect(run.busts).toBe(3);
+    expect(run.outcome).toBe("over");
+    expect(run.endReason).toBe("overflow");
+    expect(run.score).toBe(900);
+    expect(run.clearedColumns).toBe(48);
+    expect(run.nextTile).toBeNull();
+    expect(canPlace(run, 0)).toBe(false);
+  });
+
+  it("is still live one tile before the third bust, with no spare left", () => {
+    const run = playV3("1", SEED_ONE_V3_GREEDY.slice(0, 143));
+    expect(run.outcome).toBe("playing");
+    expect(run.busts).toBe(2);
+    expect(bustsLeft(run)).toBe(0);
+  });
+
+  it("submits under stack-10@3", () => {
+    expect(submission(playV3("1", SEED_ONE_V3_GREEDY))).toEqual({
+      rulesVersion: "stack-10@3",
+      actions: SEED_ONE_V3_GREEDY,
+      score: 900,
+      tilesPlaced: 144,
+      clearedColumns: 48,
+    });
+  });
+});
+
+describe("stack-10@3: the tile after next is shown", () => {
+  it("previews the tile the move after this one draws", () => {
+    const run = createEngineRun("1");
+    expect(run.nextTile).toBe(SEED_ONE_V3_TILES[0]);
+    expect(previewTile(run)).toBe(SEED_ONE_V3_TILES[1]);
+    const next = place(run, 2);
+    expect(next.nextTile).toBe(SEED_ONE_V3_TILES[1]);
+    expect(previewTile(next)).toBe(SEED_ONE_V3_TILES[2]);
+  });
+
+  it("shows nothing once the run is over, or under stack-10@2", () => {
+    expect(previewTile(playV3("1", SEED_ONE_V3_GREEDY))).toBeNull();
+    expect(previewTile(finish(createEngineRun("1")))).toBeNull();
+    expect(previewTile(createRun("1"))).toBeNull();
   });
 });

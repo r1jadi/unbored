@@ -134,7 +134,9 @@ var families = map[string]Ruleset{
 // overrides are the versions whose bounds differ from their family's: the
 // endless @2 rules of the first games, and the retired finite boards.
 var overrides = map[string]Ruleset{
+	// stack-10@3 is the winnable rules (weighted draw, three busts), same bounds.
 	"stack-10@2":    {Verifier: "complete_stack10_run", MaxActions: 4096, ActionCodes: 4},
+	"stack-10@3":    {Verifier: "complete_stack10_run", MaxActions: 4096, ActionCodes: 4},
 	"chain@2":       {Verifier: "complete_chain_run", MaxActions: 4096, ActionCodes: 4},
 	"color-merge@2": {Verifier: "complete_color_merge_run", MaxActions: 4096, ActionCodes: 4},
 	// The retired 4×4 board; the endless rules carry up to 4096 taps.

@@ -772,7 +772,16 @@ export const sqGames: Record<string, string> = {
   // Stack 10
   "Add up to exactly ten to clear a column. Past ten ends the run. There is no final tile.":
     "Mblidh saktësisht dhjetë për të pastruar një kolonë. Mbi dhjetë e mbyll lojën. Nuk ka pllakë të fundit.",
+  "Add up to exactly ten to clear a column. Past ten busts it: the third bust ends the run.":
+    "Mblidh saktësisht dhjetë për të pastruar një kolonë. Mbi dhjetë e tejkalon: tejkalimi i tretë e mbyll lojën.",
   "Columns cleared": "Kolona të pastruara",
+  "Last chance": "Shansi i fundit",
+  "1 bust left": "1 tejkalim i mbetur",
+  "{n} busts left": "{n} tejkalime të mbetura",
+  then: "pastaj",
+  "Then {n}": "Pastaj {n}",
+  "Third bust after {tilesPlaced} tiles; {clearedColumns} columns cleared.":
+    "Tejkalimi i tretë pas {tilesPlaced} pllakash; {clearedColumns} kolona të pastruara.",
   "Heavier tile chance {pressurePercent}% · up to +{heavyBonus}":
     "Mundësia e pllakës më të rëndë {pressurePercent}% · deri në +{heavyBonus}",
   "Heavier tiles can start arriving now": "Pllakat më të rënda mund të nisin të vijnë tani",
@@ -1095,4 +1104,15 @@ export const sqGames: Record<string, string> = {
   "Did you mean:": "Mos doje të thoshe:",
   "Dived to {depth}: {tier}": "U zhyt në {depth}: {tier}",
   "Stayed at the surface": "Mbeti në sipërfaqe",
+  // Unlimited in the daily games
+  "Keep playing: Unlimited": "Vazhdo lojën: Pa kufi",
+  "Give up this crossword?": "Të dorëzohesh në këtë fjalëkryq?",
+  "Signed in: one ranked play a day. Unlimited is practice.":
+    "I identifikuar: një lojë e renditur në ditë. Pa kufi është stërvitje.",
+  "Signed in: today's solve can be ranked, once. Unlimited is practice.":
+    "I identifikuar: zgjidhja e sotme mund të hyjë në renditje, një herë. Pa kufi është stërvitje.",
+  "Unlimited: a new deck to practise on, not verified or ranked":
+    "Pa kufi: një paketë e re për stërvitje, pa verifikim dhe pa renditje",
+  "Unlimited is practice: it was not verified or saved, and it is not on the leaderboard. Today's puzzle is the one that counts.":
+    "Pa kufi është stërvitje: nuk u verifikua as u ruajt dhe nuk është në renditje. Llogaritet enigma e sotme.",
 };

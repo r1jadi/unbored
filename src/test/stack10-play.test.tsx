@@ -197,6 +197,33 @@ describe("starting a run", () => {
   });
 });
 
+describe("the stack-10@3 board", () => {
+  it("shows the tile after next, counts busts, and survives a bust", async () => {
+    mockPlayback({ rulesVersion: "stack-10@3" });
+    await renderRuntime();
+
+    await screen.findByText("Next tile");
+    // Seed 1 under stack-10@3 deals 9, then 3, then 5.
+    expect(screen.getByLabelText("Then 3")).toBeInTheDocument();
+    expect(screen.getByText("2 busts left")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Add up to exactly ten to clear a column. Past ten busts it: the third bust ends the run.",
+      ),
+    ).toBeInTheDocument();
+
+    pressColumn(0); // 9 into column 1
+    // The 3 would make 12: the column says it busts rather than ends the run.
+    expect(buttonNamed(/^Column 1, total 9\. Place 3 to make 12, which busts/)).toBeEnabled();
+    pressColumn(0);
+
+    expect(screen.getByText("1 bust left")).toBeInTheDocument();
+    expect(buttonNamed(/^Column 1, total 0\./)).toBeEnabled();
+    expect(screen.getByText("Tile 3")).toBeInTheDocument();
+    expect(screen.getByLabelText("Then 3")).toBeInTheDocument();
+  });
+});
+
 describe("playing the board", () => {
   it("places the next tile in the column that was pressed", async () => {
     mockPlayback();

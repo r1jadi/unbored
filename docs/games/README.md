@@ -99,15 +99,52 @@ the tiles arrive heavier and heavier until the board, not a deck, ends the run.
 
 ### The board
 
-| Thing     | Value                                                                     |
-| --------- | ------------------------------------------------------------------------- |
-| Columns   | 4                                                                         |
-| Tile face | 1–9                                                                       |
-| Opening   | The retired sixty-tile deck, unchanged                                    |
-| Run       | Endless in principle — no deck, no final tile                             |
-| Limits    | 4096 tiles per submission; that is a request ceiling, not an ending        |
-| Rules     | `stack-10@2` (endless); `stack-10@1` (the retired sixty-tile game)        |
-| Runtime   | `stack-10` (the catalogue's `games.runtime` value)                        |
+| Thing     | Value                                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------------------ |
+| Columns   | 4                                                                                                      |
+| Tile face | 1–9, weighted toward light faces under `stack-10@3` (see below)                                        |
+| Busts     | 3 under `stack-10@3`: a column past ten empties; the third bust ends the run                           |
+| Preview   | The next tile and the one after it (`stack-10@3`)                                                      |
+| Opening   | The retired sixty-tile deck, unchanged                                                                 |
+| Run       | Endless in principle — no deck, no final tile                                                          |
+| Limits    | 4096 tiles per submission; that is a request ceiling, not an ending                                    |
+| Rules     | `stack-10@3` (winnable); `stack-10@2` (endless, even draw); `stack-10@1` (the retired sixty-tile game) |
+| Runtime   | `stack-10` (the catalogue's `games.runtime` value)                                                     |
+
+### Why `stack-10@3`: the game was not winnable
+
+Under `stack-10@2` every base tile was 1–9 with equal odds and the first column
+past ten ended the run. Two tiles in three were 4 or more, so once the columns
+sat at 7, 8 or 9 the small tile they needed almost never came. Simulated over
+500 seeds with the real generator:
+
+| Rules        | Random player                    | Greedy player¹ | Planner²     |
+| ------------ | -------------------------------- | -------------- | ------------ |
+| `stack-10@2` | median 9 tiles, 0% reach tile 60 | 11 tiles, 0%   | 12 tiles, 0% |
+| `stack-10@3` | median 28, 1%                    | 53, 41%        | 96, 75%      |
+
+¹ clears when it can, otherwise drops on the fullest column the tile fits.
+² also looks at the previewed tile and scores the board by how many faces still fit.
+
+Even with every future tile known in advance, `stack-10@2` survived a median of
+ten tiles and reached tile sixty 1% of the time. The pressure ramp, which starts at
+tile sixty-one, was never reached in practice. Under `stack-10@3` a careful player
+usually gets past the old deck, and the ramp still ends every run (the planner's
+runs end around tile 100–180).
+
+`stack-10@3` changes three things and keeps the board, the scoring, the ramp and
+the generator:
+
+- **A weighted draw.** `base(n) = table[stateₙ mod 23]`, where the table is
+  `1,1,1,1, 2,2,2,2, 3,3,3,3, 4,4,4, 5,5, 6,6, 7,7, 8, 9` (`stack10_draw_table()`).
+  1–3 are 12 slots in 23; 8 and 9 one each. 23 is odd, so the slot depends on the
+  whole state (not the LCG's short-period low bits) and shares no factor with the
+  promotion roll's 100.
+- **Busts.** A column past ten empties and scores nothing; the third bust ends the
+  run (`stack10_busts()`). Busting the fullest column is a real move when nothing
+  fits, and the hint suggests it.
+- **The tile after next is shown.** It was always a function of the seed and its
+  index, so this changes nothing the verifier checks.
 
 ### The deck and the pressure ramp
 
@@ -120,7 +157,8 @@ full rather than described:
 state₀ = ((seed mod 2³²) + 2³²) mod 2³²        // the seed is a bigint, reduced to 32 bits
 if state₀ = 0 then state₀ = 2654435769         // 0x9E3779B9: a zero state would be degenerate
 stateₙ = (stateₙ₋₁ × 1664525 + 1013904223) mod 2³²
-base(n)    = (stateₙ mod 9) + 1                // 1..9, the retired deck's draw
+base(n)    = (stateₙ mod 9) + 1                // 1..9, the retired deck's draw (@1, @2)
+base₃(n)   = table[stateₙ mod 23]              // stack-10@3: the weighted table above
 roll(n)    = (stateₙ >> 16) mod 100            // the promotion roll
 percent(n) = 0                                 if n < 60
            = min(60, floor((n − 60) / 4))      otherwise
@@ -214,10 +252,10 @@ has at least one move.
 
 ### How a run ends
 
-| Outcome | Reason     | When                                                                       |
-| ------- | ---------- | -------------------------------------------------------------------------- |
-| `over`  | `overflow` | A column passed ten. The only ending the game has.                         |
-| `over`  | `limit`    | The 4096-tile submission bound was reached. A request ceiling, not a level. |
+| Outcome | Reason     | When                                                                                    |
+| ------- | ---------- | --------------------------------------------------------------------------------------- |
+| `over`  | `overflow` | A column passed ten — under `stack-10@3`, the third bust. The only ending the game has. |
+| `over`  | `limit`    | The 4096-tile submission bound was reached. A request ceiling, not a level.             |
 
 The old `cleared` outcome belongs to `stack-10@1` and is never produced under
 `stack-10@2`: a run that places the retired deck's sixty tiles simply keeps
@@ -238,16 +276,18 @@ never trusted — see
   unknown game identically (`not_playable`).
 - `public.complete_stack10_run(session, actions, score, duration)` replays the action
   list from the session's seed under the version the session pinned — `stack-10@1`
-  with its sixty-tile deck, or `stack-10@2` with the pressure ramp — derives the
+  with its sixty-tile deck, `stack-10@2` with the pressure ramp, or `stack-10@3`
+  with the weighted draw and busts — derives the
   score, compares it with the claim, and only then closes the session and records
   it. `stack10_rules_version()`, `stack10_pressure_percent(n)`,
   `stack10_heavy_bonus(n)` and `stack10_max_tiles()` are the ramp as data, so the
   client, the verifier and this document can be compared without replaying a game.
 - A submission carries at most 4096 tiles (`stack10_max_tiles()`). That bound caps
   a request, not a run.
-- Only a finished board can be submitted under `stack-10@2`. A short submission is
-  `invalid_actions`, not a partial run: without a deck there is nothing that makes
-  a prefix of a run complete.
+- Under `stack-10@2` and `stack-10@3` a submission that stops while the board can
+  still take a tile is the player ending the run, and is scored as it stands
+  (`20261107120000_end_run_saves_score.sql`): the score only grows, so stopping
+  early can never earn a point.
 
 Outcomes the API maps onto HTTP:
 
@@ -300,22 +340,31 @@ the same table.
 7. **A full-width seed** — `9223372036854775807` deals `6, 2, 9, 4, 5, 3, 6, 1, …`,
 which is what catches a client that rounded the seed to a double.
 
+8. **`stack-10@3`, seed 1** — deals `9, 3, 5, 3, 3, 6, 2, 2, 1, 5, 2, 4, 8, 5, 4, 3,
+2, 3, 1, 8, …` (`stack10_tile(1, n, 'stack-10@3')`); the full-width seed deals
+   `5, 8, 4, 6, 7, 7, 3, 6`. Dropping the first two tiles into column one busts it
+   (9 + 3) and the run goes on with that column empty. The greedy line (clear when a
+   column can, otherwise the fullest column the tile fits, otherwise column one) busts
+   on 0-based tiles 64, 119 and 143: **144 tiles, 48 clears, 900 points**, ended by the
+   third bust. Both the client engine and the SQL suite replay it.
+
 ### Changing the rules
 
 The rules version is data, not a comment. A session pins the version it was issued
 under, and the verifier only replays versions it implements, so:
 
-1. add a new rules version string (`stack-10@3`),
+1. add a new rules version string (`stack-10@4`),
 2. add the new verifier function rather than editing `complete_stack10_run`,
 3. update the client engine, the vectors above and this document,
-4. sessions pinned to `stack-10@1` or `stack-10@2` keep being verified by the branch
-   that implements them.
+4. sessions pinned to an older version keep being verified by the branch that
+   implements them.
 
 That is how the endless game shipped: `20261029120000_endless_stack10.sql` added
 `stack-10@2` and its ramp, and left `stack-10@1` exactly as it was, so every open
 session and every stored score from the sixty-tile game still replays to the number
 it was graded with. Editing `stack-10@1` in place would instead have silently
-re-graded all of them.
+re-graded all of them. `20270112120000_winnable_stack10.sql` did the same for
+`stack-10@3`: a new branch in `complete_stack10_run`, with `stack-10@2` untouched.
 
 ## Chain
 
@@ -3756,3 +3805,37 @@ word's points (`public.honeycomb_points`, written by
 costs nothing and is not a move. The ranks (Egg to Royal) are the screen's, by share
 of the day's points; the run ends when the player stops or finds every word, and its
 registry row takes the longer session length (12 hours). Found words are not saved across a reload.
+A word is tapped letter by letter, typed, or **swiped**: press a letter, drag across
+the others and let go to enter the word (a swipe picks up a cell only near its
+centre, so cutting a corner doesn't catch a neighbour; a doubled letter is a tap).
+
+## Unlimited in the daily games
+
+Every daily game but Ton Up has **Unlimited**, as Deep Cut does: once today's board
+is played (or from the rules screen), the player can keep going on fresh boards,
+one round after another. The daily stays the one ranked attempt.
+
+An Unlimited round is practice, dealt on the device exactly as the archive deals a
+past day (`src/lib/games/unlimited.ts`, `unlimitedSession` in `offline.ts`): never
+ranked, never submitted, never saved, so it needs no rules version, verifier or
+migration of its own. `startSession(slug, { unlimited: true })` returns it;
+`useDailyRun`, `useCrosswordRun` and `useGuessworkRun` take `begin("unlimited")`,
+and `useSevenSecondRun` has `playUnlimited()` (its restart deals another round).
+
+| Game                           | A round's seed                     | Boards      |
+| ------------------------------ | ---------------------------------- | ----------- |
+| Crossword / Fjalekryqi         | a past day: that day's grid        | 365         |
+| Guesswork / Gjeje              | a past day: that day's word        | 626/199     |
+| Ballpark, Only Once, Honeycomb | a past day: `d mod n`              | 99, 120, 60 |
+| Foursort, Pixelock, Then & Now | a past day: `d mod n`              | 30 each     |
+| Tee Time                       | a past day: a course built from it | endless     |
+| 7 Second                       | a random 31-bit seed (no day's)    | endless     |
+
+A round never deals the board of a live day — yesterday, today or tomorrow, the
+player's own — so Unlimited can't give away today's answer or spoil tomorrow's.
+Bank games also skip the player's recent rounds: the boards dealt are kept in
+`localStorage` (`unbored:unlimited:<rules>`, up to 100, and always fewer than the
+bank has boards to spare), so a small bank deals every board once before any
+comes round again. Lost storage only means a board may come round sooner.
+
+Ton Up is left out: its five categories are too few for a fresh round each time.

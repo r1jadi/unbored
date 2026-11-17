@@ -1,6 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import { Clock, Loader2, RotateCcw, ShieldCheck, TriangleAlert, Trophy } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import {
+  Clock,
+  Infinity as InfinityIcon,
+  Loader2,
+  RotateCcw,
+  ShieldCheck,
+  TriangleAlert,
+  Trophy,
+} from "lucide-react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
@@ -26,6 +34,12 @@ import { playErrorMessage, type PlaySession, type RunResult } from "@/lib/games/
 import type { DailyShare } from "@/lib/games/share";
 import { points } from "@/lib/format";
 import { t } from "@/lib/settings/language";
+
+/**
+ * Starts an Unlimited round, for a result screen inside a `DailyFrame` whose game
+ * has one; null otherwise.
+ */
+const UnlimitedRound = createContext<(() => void) | null>(null);
 
 /**
  * The screens every daily game around a `useDailyRun` shares: the rules before a
@@ -60,6 +74,8 @@ export function DailyFrame<R>({
   board: (session: PlaySession, run: R, verifying: boolean) => ReactNode;
   finished: (run: R, result: RunResult) => ReactNode;
 }) {
+  const playUnlimited = state.unlimited ? () => state.begin("unlimited") : null;
+
   if (state.status === "intro") {
     return (
       <div className="flex flex-1 flex-col justify-center overflow-y-auto px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -74,9 +90,15 @@ export function DailyFrame<R>({
           {intro}
           <RulesList rules={rules.rules} />
           <div className="flex w-full flex-col gap-2">
-            <Button variant="play" size="lg" onClick={state.begin} autoFocus>
+            <Button variant="play" size="lg" onClick={() => state.begin()} autoFocus>
               {playLabel}
             </Button>
+            {playUnlimited && (
+              <Button variant="secondary" size="lg" onClick={playUnlimited}>
+                <InfinityIcon />
+                {t("Unlimited")}
+              </Button>
+            )}
             <Button asChild variant="ghost" size="lg">
               <ExitGameLink slug={slug}>{t("Back to {title}", { title })}</ExitGameLink>
             </Button>
@@ -84,7 +106,9 @@ export function DailyFrame<R>({
           <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="size-3.5" />
             {state.signedIn
-              ? t("Signed in: one ranked play a day")
+              ? playUnlimited
+                ? t("Signed in: one ranked play a day. Unlimited is practice.")
+                : t("Signed in: one ranked play a day")
               : t("Guest run: verified, but not ranked")}
           </p>
         </div>
@@ -114,7 +138,13 @@ export function DailyFrame<R>({
           </p>
           <p className="mx-auto max-w-sm text-xs text-muted-foreground">{nextDailyIn()}</p>
           <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
-            <Button asChild variant="play" size="lg">
+            {playUnlimited && (
+              <Button variant="play" size="lg" onClick={playUnlimited} autoFocus>
+                <InfinityIcon />
+                {t("Keep playing: Unlimited")}
+              </Button>
+            )}
+            <Button asChild variant={playUnlimited ? "secondary" : "play"} size="lg">
               <Link to="/leaderboards/$id" params={{ id: slug }}>
                 {t("See the leaderboard")}
               </Link>
@@ -168,7 +198,11 @@ export function DailyFrame<R>({
   }
 
   if (state.status === "finished") {
-    return <>{finished(state.run, state.result)}</>;
+    return (
+      <UnlimitedRound.Provider value={playUnlimited}>
+        {finished(state.run, state.result)}
+      </UnlimitedRound.Provider>
+    );
   }
 
   return (
@@ -228,7 +262,7 @@ export function RankChip({ session }: { session: PlaySession }) {
     </span>
   ) : (
     <span className="rounded-full bg-surface-2 px-2 py-1">
-      {session.offline ? practiceLabel() : t("Guest run")}
+      {session.offline ? practiceLabel(session) : t("Guest run")}
     </span>
   );
 }
@@ -250,6 +284,7 @@ export function DailyResult({
   stats: readonly { label: string; value: ReactNode }[];
   share: DailyShare;
 }) {
+  const playUnlimited = useContext(UnlimitedRound);
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] text-center">
       <div className="enter flex flex-col items-center gap-2">
@@ -260,6 +295,11 @@ export function DailyResult({
             <ShieldCheck className="size-5 text-muted-foreground" />
           )}
         </div>
+        {result.unlimited && (
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {t("Unlimited")}
+          </p>
+        )}
         <div className="text-sm text-muted-foreground">{headline}</div>
         <p className="pt-1 text-5xl font-semibold tabular">{points(result.score)}</p>
       </div>
@@ -285,7 +325,7 @@ export function DailyResult({
         {result.ranked
           ? t("Verified by replaying your run on the server, then saved to the leaderboard.")
           : result.offline
-            ? offlineResultNote()
+            ? offlineResultNote(result)
             : t(
                 "Verified by replaying your run on the server. This was a guest run, so it is not on the leaderboard.",
               )}
@@ -297,10 +337,13 @@ export function DailyResult({
         slug={slug}
         ranked={result.ranked}
         score={result.score}
-        daily={share}
-        sessionId={result.sessionId}
-        autoFocus
-      />
+        // An Unlimited board is not the day's: its grid is not today's to share.
+        daily={result.unlimited ? undefined : share}
+        sessionId={result.unlimited ? undefined : result.sessionId}
+        autoFocus={!playUnlimited}
+      >
+        {playUnlimited && <UnlimitedButton unlimited={!!result.unlimited} onPlay={playUnlimited} />}
+      </RunEndActions>
     </div>
   );
 }
@@ -314,4 +357,17 @@ function nextDailyIn(): string {
     n: hours ? `${hours} h ` : "",
     minutes,
   });
+}
+
+/**
+ * The way on from a daily result: Unlimited after today's board, or the next round
+ * after an Unlimited one.
+ */
+export function UnlimitedButton({ unlimited, onPlay }: { unlimited: boolean; onPlay: () => void }) {
+  return (
+    <Button variant="play" size="lg" onClick={onPlay} autoFocus>
+      <InfinityIcon />
+      {unlimited ? t("Next round") : t("Keep playing: Unlimited")}
+    </Button>
+  );
 }

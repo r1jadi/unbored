@@ -50,7 +50,7 @@ import {
   type OneMoveRun,
 } from "@/lib/games/one-move";
 import { board as queensBoard, blockedCells, type QueensRun } from "@/lib/games/queens";
-import { canPlace, tileAt, type Stack10Run } from "@/lib/games/stack10";
+import { bustsLeft, canPlace, tileAt, type Stack10Run } from "@/lib/games/stack10";
 import {
   board as sudokuBoard,
   candidates as sudokuCandidates,
@@ -116,7 +116,7 @@ function at(cell: number, side: number): string {
  */
 export function stack10Hint(run: Stack10Run): { column: number; reason: string } | null {
   if (run.outcome !== "playing") return null;
-  const tile = run.nextTile ?? tileAt(run.seed, run.actions.length);
+  const tile = run.nextTile ?? tileAt(run.seed, run.actions.length, run.rulesVersion);
   let best: { column: number; clears: boolean; tiles: number; total: number } | null = null;
   let clearing = 0;
   for (let index = 0; index < run.columns.length; index += 1) {
@@ -140,7 +140,26 @@ export function stack10Hint(run: Stack10Run): { column: number; reason: string }
       best = candidate;
     }
   }
-  if (!best) return null;
+  if (!best) {
+    // Every column would pass ten. Under stack-10@3 that is a bust the run can
+    // survive, so the move is to bust the fullest column: it empties, which leaves
+    // the most room for the tiles after it. Under stack-10@2 any overflow ends the
+    // run, and there is nothing to recommend.
+    if (bustsLeft(run) === 0) return null;
+    let fullest = -1;
+    for (let index = 0; index < run.columns.length; index += 1) {
+      if (!canPlace(run, index)) continue;
+      if (fullest < 0 || run.columns[index].sum > run.columns[fullest].sum) fullest = index;
+    }
+    if (fullest < 0) return null;
+    return {
+      column: fullest,
+      reason: t(
+        "The {tile} fits nowhere. Bust column {n}, the fullest, so it empties and leaves the most room.",
+        { tile, n: fullest + 1 },
+      ),
+    };
+  }
   const name = t("column {n}", { n: best.column + 1 });
   const reason = best.clears
     ? t("The {tile} makes {name} exactly 10, which clears it{n}.", {

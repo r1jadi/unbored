@@ -146,10 +146,10 @@ export const sqRules: Record<string, string> = {
   "Don't let a white tile pass.": "Mos lër të kalojë asnjë pllakë e bardhë.",
 
   // Texts
-  "shown above the board in one of the four columns: tap a column, or press 1 to 4.":
-    "që shfaqet mbi tabelë në një nga katër kolonat: prek një kolonë, ose shtyp 1 deri në 4.",
-  "clears the column and scores. A column that goes past ten ends the run.":
-    "e pastron kolonën dhe jep pikë. Një kolonë që kalon dhjetën e mbyll lojën.",
+  "shown above the board in one of the four columns: tap a column, or press 1 to 4. The tile after it is shown too.":
+    "që shfaqet mbi tabelë në një nga katër kolonat: prek një kolonë, ose shtyp 1 deri në 4. Shfaqet edhe pllaka pas saj.",
+  "clears the column and scores. A column that goes past ten busts: it empties, and the third bust ends the run.":
+    "e pastron kolonën dhe jep pikë. Një kolonë që kalon dhjetën tejkalohet: zbrazet, dhe tejkalimi i tretë e mbyll lojën.",
   "Heavier tiles turn up more often the longer you play, so clears get rarer and the board gets tighter.":
     "Sa më gjatë të luash, aq më shpesh vijnë pllaka më të rënda, ndaj pastrimet rrallohen dhe tabela ngushtohet.",
   "the pads flash in order, then tap them back in the same order. Number keys 1 to 4 work too.":

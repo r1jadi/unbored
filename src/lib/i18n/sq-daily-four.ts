@@ -107,6 +107,9 @@ export const sqDailyFour: Record<string, string> = {
   "The price was": "Çmimi ishte",
   Price: "Çmimi",
   "Give up today's product?": "Dorëzohesh për produktin e sotëm?",
+  "Give up this product?": "Dorëzohesh për këtë produkt?",
+  "The price is shown. It's practice, so nothing is lost.":
+    "Çmimi tregohet. Është ushtrim, ndaj s'humbet asgjë.",
   "The price is shown and the run scores nothing. There is one play a day.":
     "Çmimi tregohet dhe loja nuk merr pikë. Ka një lojë në ditë.",
 
@@ -194,9 +197,15 @@ export const sqDailyFour: Record<string, string> = {
   "Name a country in Europe": "Thuaj një shtet në Evropë",
   "Name a country that borders Spain": "Thuaj një shtet që kufizohet me Spanjën",
   "End today's round here?": "Ta mbyllësh raundin e sotëm këtu?",
+  "End this round here?": "Ta mbyllësh këtë raund këtu?",
+  "Finished holes keep their points. It's practice, so nothing is lost.":
+    "Vrimat e mbaruara i mbajnë pikët. Është ushtrim, ndaj s'humbet asgjë.",
   "Finished holes keep their points; the rest score nothing. There is one ranked round a day.":
     "Vrimat e mbaruara i mbajnë pikët; të tjerat nuk japin asgjë. Ka një raund të renditur në ditë.",
   "End today's seven here?": "T'i mbyllësh të shtatat e sotme këtu?",
+  "End these seven here?": "T'i mbyllësh këto të shtata këtu?",
+  "Questions answered keep their points. It's practice, so nothing is lost.":
+    "Pyetjet e përgjigjura i mbajnë pikët. Është ushtrim, ndaj s'humbet asgjë.",
   "Questions answered keep their points; the rest score nothing. There is one ranked play a day.":
     "Pyetjet e përgjigjura i mbajnë pikët; të tjerat nuk japin asgjë. Ka një lojë të renditur në ditë.",
   "Building today's course…": "Po ndërtohet fusha e sotme…",

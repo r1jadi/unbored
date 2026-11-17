@@ -24,6 +24,7 @@ import {
   type RunResult,
   type RunSubmission,
 } from "@/lib/games/sessions";
+import { hasUnlimited, type PlayMode } from "@/lib/games/unlimited";
 import { t } from "@/lib/settings/language";
 
 /** What a daily game tells the hook about its runs. */
@@ -57,8 +58,13 @@ export type DailyRunState<R> =
 export type DailyRunControls<R> = DailyRunState<R> & {
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
-  /** Presses Start: asks the server for today's session. */
-  begin: () => void;
+  /** Whether the game has an Unlimited mode (`lib/games/unlimited.ts`). */
+  unlimited: boolean;
+  /**
+   * Presses Start: asks the server for today's session. With "unlimited", deals an
+   * Unlimited round instead: practice on a board other than today's.
+   */
+  begin: (mode?: PlayMode) => void;
   /**
    * Applies one of the game's steps to the live run. A step that returns the same
    * run object changed nothing and is ignored.
@@ -89,6 +95,7 @@ export function useDailyRun<R>(
   const endedAt = useRef(0);
   const submitting = useRef(false);
   const mounted = useRef(true);
+  const mode = useRef<PlayMode>("daily");
   // The engine is a module constant; a ref keeps the effects from depending on it.
   const engineRef = useRef(engine);
   engineRef.current = engine;
@@ -111,6 +118,7 @@ export function useDailyRun<R>(
     startSession(gameSlug, {
       signal: controller.signal,
       rulesVersion: engineRef.current.rulesVersion,
+      unlimited: mode.current === "unlimited",
     })
       .then((session) =>
         Promise.resolve(engineRef.current.create(session)).then((run) => ({ session, run })),
@@ -167,7 +175,10 @@ export function useDailyRun<R>(
     });
   }, []);
 
-  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+  const begin = useCallback((next: PlayMode = "daily") => {
+    mode.current = next;
+    setAttempt((n) => n + 1);
+  }, []);
 
   const restart = useCallback(() => {
     submitting.current = false;
@@ -185,5 +196,7 @@ export function useDailyRun<R>(
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, signedIn, begin, play, restart, retry };
+  const unlimited = hasUnlimited(engine.rulesVersion);
+
+  return { ...state, signedIn, unlimited, begin, play, restart, retry };
 }

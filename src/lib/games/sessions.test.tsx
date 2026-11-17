@@ -157,7 +157,7 @@ describe("startSession", () => {
     const body = requestBody(spy);
     expect(body).toEqual({
       gameSlug: "stack-10",
-      rulesVersion: "stack-10@2",
+      rulesVersion: "stack-10@3",
       client: "web/1.0",
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
@@ -203,7 +203,7 @@ describe("startSession", () => {
 
     await startSession("stack-10");
 
-    expect(requestBody(spy).rulesVersion).toBe("stack-10@2");
+    expect(requestBody(spy).rulesVersion).toBe("stack-10@3");
   });
 });
 

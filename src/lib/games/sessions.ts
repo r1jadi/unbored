@@ -52,6 +52,7 @@ import {
   offlineResult,
   archiveSession,
   offlineSession,
+  unlimitedSession,
 } from "@/lib/games/offline";
 import {
   fetchSavedRun,
@@ -336,6 +337,7 @@ import {
 } from "@/lib/games/stack10";
 
 import { currentLanguage, t } from "@/lib/settings/language";
+import type { PlayMode } from "@/lib/games/unlimited";
 /** Routes implemented by `services/game-sessions` and the catalogue's boards. */
 const Routes = {
   sessions: "/sessions",
@@ -367,6 +369,8 @@ export type PlaySession = {
   ranked: boolean;
   /** True for a run issued on this device because the API could not be reached. */
   offline?: boolean;
+  /** An Unlimited round: a board other than today's, issued on this device as practice. */
+  unlimited?: boolean;
   /** A saved run the player ended: its score is already on the board. */
   alreadyScored?: boolean;
 };
@@ -390,6 +394,8 @@ export type RunResult = {
   duplicate: boolean;
   /** An offline practice run: the client's own summary, never verified or saved. */
   offline?: boolean;
+  /** An Unlimited round: practice, as an offline run is. */
+  unlimited?: boolean;
 };
 
 /** One row of a board. The caller's own row is returned separately, as `me`. */
@@ -431,6 +437,8 @@ type RequestOptions = {
   rulesVersion?: string;
   /** The player ended this run themselves, rather than losing it: it can be continued. */
   endedByPlayer?: boolean;
+  /** An Unlimited round of a daily game: practice on a board other than today's. */
+  unlimited?: boolean;
 };
 
 /** Whether a finished run was ended by the player: each game says so one of two ways. */
@@ -455,6 +463,12 @@ function endedByPlayer(run: { stopped?: boolean; ending?: string | null }): bool
  */
 export function startSession(gameSlug: string, options: RequestOptions = {}): Promise<PlaySession> {
   const rulesVersion = options.rulesVersion ?? STACK10_RULES_VERSION;
+  // An Unlimited round is practice, dealt here: today's run is untouched.
+  if (options.unlimited) {
+    return unlimitedSession(gameSlug, rulesVersion).then(
+      (session) => session ?? startSession(gameSlug, { ...options, unlimited: false }),
+    );
+  }
   // A callout's run is the shared board and has to reach the server: there is no
   // offline practice in its place.
   const challenge = getActiveChallenge();
@@ -716,7 +730,7 @@ export function useStack10Run(gameSlug: string): Stack10RunControls {
         if (saved) {
           const run = saved.actions.reduce(
             (current: Stack10Run, action) => placeTile(current, action),
-            createRun(saved.session.seed),
+            createRun(saved.session.seed, saved.session.rulesVersion),
           );
           setState({ status: "saved", session: saved.session, run, playedMs: saved.playedMs });
           return null;
@@ -726,7 +740,7 @@ export function useStack10Run(gameSlug: string): Stack10RunControls {
       .then((session) => {
         if (!session || controller.signal.aborted) return;
         startedAt.current = Date.now();
-        setState({ status: "playing", session, run: createRun(session.seed) });
+        setState({ status: "playing", session, run: createRun(session.seed, session.rulesVersion) });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -4425,8 +4439,11 @@ export type CrosswordRunState =
 export type CrosswordRunControls = CrosswordRunState & {
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
-  /** Presses Start: asks the server for today's session, and the solve starts when it arrives. */
-  begin: () => void;
+  /**
+   * Presses Start: asks the server for today's session, and the solve starts when it
+   * arrives. With "unlimited", deals an Unlimited round instead: practice on another grid.
+   */
+  begin: (mode?: PlayMode) => void;
   /** Puts a letter in a cell, or clears it with "". */
   enter: (cell: number, letter: string) => void;
   /** Checks the grid, at a cost. */
@@ -4459,6 +4476,7 @@ export function useCrosswordRun(gameSlug: string, autoStart = false): CrosswordR
   );
   const endedAt = useRef(0);
   const submitting = useRef(false);
+  const mode = useRef<PlayMode>("daily");
   const mounted = useRef(true);
   const signedIn = !!getAccessToken();
 
@@ -4482,7 +4500,11 @@ export function useCrosswordRun(gameSlug: string, autoStart = false): CrosswordR
     const albanian = currentLanguage() === "sq";
     const rulesVersion = albanian ? FJALEKRYQI_RULES_VERSION : CROSSWORD_RULES_VERSION;
     Promise.all([
-      startSession(gameSlug, { signal: controller.signal, rulesVersion }),
+      startSession(gameSlug, {
+        signal: controller.signal,
+        rulesVersion,
+        unlimited: mode.current === "unlimited",
+      }),
       albanian
         ? import("@/lib/games/fjalekryqi-bank").then((bank) => ({
             minis: bank.FJALEKRYQI_MINIS,
@@ -4573,7 +4595,10 @@ export function useCrosswordRun(gameSlug: string, autoStart = false): CrosswordR
   );
   const finish = useCallback(() => play((run) => finishCrossword(run)), [play]);
 
-  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+  const begin = useCallback((next: PlayMode = "daily") => {
+    mode.current = next;
+    setAttempt((n) => n + 1);
+  }, []);
 
   const restart = useCallback(() => {
     submitting.current = false;
@@ -4633,8 +4658,8 @@ export type GuessworkRunState =
 export type GuessworkRunControls = GuessworkRunState & {
   /** Whether a run started now would be ranked: the player is signed in. */
   signedIn: boolean;
-  /** Presses Start: asks the server for today's session. */
-  begin: () => void;
+  /** Presses Start: asks the server for today's session, or deals an Unlimited round. */
+  begin: (mode?: PlayMode) => void;
   /** Plays a guess. Ignored unless the run is live and the word is in the list. */
   guess: (word: string) => void;
   /** Gives up: the run is submitted unsolved, and scores nothing. */
@@ -4669,6 +4694,7 @@ export function useGuessworkRun(gameSlug: string, autoStart = false): GuessworkR
   const startedAt = useRef(0);
   const endedAt = useRef(0);
   const submitting = useRef(false);
+  const mode = useRef<PlayMode>("daily");
   const mounted = useRef(true);
   const signedIn = !!getAccessToken();
 
@@ -4687,7 +4713,11 @@ export function useGuessworkRun(gameSlug: string, autoStart = false): GuessworkR
     setState({ status: "starting" });
 
     const rulesVersion = currentLanguage() === "sq" ? GJEJE_RULES_VERSION : GUESSWORK_RULES_VERSION;
-    startSession(gameSlug, { signal: controller.signal, rulesVersion })
+    startSession(gameSlug, {
+      signal: controller.signal,
+      rulesVersion,
+      unlimited: mode.current === "unlimited",
+    })
       // The session's rules decide the words.
       .then((session) => guessworkBank(session.rulesVersion).then((bank) => ({ session, bank })))
       .then(({ session, bank }) => {
@@ -4763,7 +4793,10 @@ export function useGuessworkRun(gameSlug: string, autoStart = false): GuessworkR
     [play],
   );
   const finish = useCallback(() => play((run) => finishGuesswork(run)), [play]);
-  const begin = useCallback(() => setAttempt((n) => n + 1), []);
+  const begin = useCallback((next: PlayMode = "daily") => {
+    mode.current = next;
+    setAttempt((n) => n + 1);
+  }, []);
 
   const restart = useCallback(() => {
     submitting.current = false;
@@ -7504,8 +7537,10 @@ export type SevenSecondRunControls = SevenSecondRunState & {
   answer: (option: number) => void;
   /** Ends the run because the clock reached zero. */
   finish: () => void;
-  /** Starts a fresh run, replacing whatever is on the clock. */
+  /** Starts a fresh run, replacing whatever is on the clock, in the mode it was in. */
   restart: () => void;
+  /** Deals an Unlimited round: practice on a deck no day deals. Restart deals another. */
+  playUnlimited: () => void;
   /** Retries whichever step failed — a new session, or the same submission. */
   retry: () => void;
 };
@@ -7537,6 +7572,7 @@ export function useSevenSecondRun(gameSlug: string): SevenSecondRunControls {
   // would describe a run that did not happen.
   const endedAt = useRef(0);
   const submitting = useRef(false);
+  const mode = useRef<PlayMode>("daily");
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -7558,6 +7594,7 @@ export function useSevenSecondRun(gameSlug: string): SevenSecondRunControls {
     startSession(gameSlug, {
       signal: controller.signal,
       rulesVersion: SEVEN_SECOND_RULES_VERSION,
+      unlimited: mode.current === "unlimited",
     })
       .then((session) => {
         if (controller.signal.aborted) return;
@@ -7630,6 +7667,11 @@ export function useSevenSecondRun(gameSlug: string): SevenSecondRunControls {
 
   const restart = useCallback(() => setAttempt((n) => n + 1), []);
 
+  const playUnlimited = useCallback(() => {
+    mode.current = "unlimited";
+    setAttempt((n) => n + 1);
+  }, []);
+
   const retry = useCallback(() => {
     if (state.status !== "error") return;
 
@@ -7646,7 +7688,7 @@ export function useSevenSecondRun(gameSlug: string): SevenSecondRunControls {
     setAttempt((n) => n + 1);
   }, [state]);
 
-  return { ...state, begin, answer, finish, restart, retry };
+  return { ...state, begin, answer, finish, restart, playUnlimited, retry };
 }
 
 // ── Boards ──────────────────────────────────────────────────────────────────

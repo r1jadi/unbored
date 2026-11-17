@@ -5,6 +5,7 @@ import {
   Clock,
   Delete,
   Eye,
+  Infinity as InfinityIcon,
   Loader2,
   RotateCcw,
   ShieldCheck,
@@ -16,6 +17,7 @@ import {
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 
 import { ErrorState } from "@/components/common";
+import { UnlimitedButton } from "@/components/game/DailyShell";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
 import { RulesList } from "@/components/game/RulesList";
@@ -58,7 +60,7 @@ import {
 } from "@/lib/games/sessions";
 import { points } from "@/lib/format";
 import { useGameSounds } from "@/lib/sound";
-import { offlineResultNote, practiceLabel } from "@/lib/games/offline";
+import { isPracticeBoard, offlineResultNote, practiceLabel } from "@/lib/games/offline";
 import { getArchiveDay } from "@/lib/games/archive";
 
 import { t, msg } from "@/lib/settings/language";
@@ -106,7 +108,15 @@ export function CrosswordRuntime({
   const state = useCrosswordRun(slug, autoStart);
 
   if (state.status === "intro") {
-    return <Intro signedIn={state.signedIn} onBegin={state.begin} slug={slug} title={title} />;
+    return (
+      <Intro
+        signedIn={state.signedIn}
+        onBegin={() => state.begin()}
+        onUnlimited={() => state.begin("unlimited")}
+        slug={slug}
+        title={title}
+      />
+    );
   }
 
   if (state.status === "starting") {
@@ -120,7 +130,14 @@ export function CrosswordRuntime({
 
   if (state.status === "error" && state.stage === "start") {
     if (state.error.status === 409) {
-      return <DailyDone slug={slug} title={title} message={playErrorMessage(state.error)} />;
+      return (
+        <DailyDone
+          slug={slug}
+          title={title}
+          message={playErrorMessage(state.error)}
+          onUnlimited={() => state.begin("unlimited")}
+        />
+      );
     }
     return (
       <div className="flex flex-1 flex-col justify-center px-6">
@@ -186,6 +203,7 @@ export function CrosswordRuntime({
         result={state.result}
         clues={state.clues}
         onRestart={state.restart}
+        onUnlimited={() => state.begin("unlimited")}
       />
     );
   }
@@ -201,11 +219,13 @@ export function CrosswordRuntime({
 function Intro({
   signedIn,
   onBegin,
+  onUnlimited,
   slug,
   title,
 }: {
   signedIn: boolean;
   onBegin: () => void;
+  onUnlimited: () => void;
   slug: string;
   title: string;
 }) {
@@ -231,6 +251,10 @@ function Intro({
           <Button variant="play" size="lg" onClick={onBegin} autoFocus>
             {t("Start today's crossword")}
           </Button>
+          <Button variant="secondary" size="lg" onClick={onUnlimited}>
+            <InfinityIcon />
+            {t("Unlimited")}
+          </Button>
           <Button asChild variant="ghost" size="lg">
             <ExitGameLink slug={slug}>{t("Back to {title}", { title })}</ExitGameLink>
           </Button>
@@ -239,7 +263,7 @@ function Intro({
         <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
           <ShieldCheck className="size-3.5" />
           {signedIn
-            ? t("Signed in: today's solve can be ranked, once")
+            ? t("Signed in: today's solve can be ranked, once. Unlimited is practice.")
             : t("Guest run: verified, but not ranked")}
         </p>
       </div>
@@ -248,7 +272,17 @@ function Intro({
 }
 
 /** Today's ranked solve is already in; this is the rules, not a failure. */
-function DailyDone({ slug, title, message }: { slug: string; title: string; message: string }) {
+function DailyDone({
+  slug,
+  title,
+  message,
+  onUnlimited,
+}: {
+  slug: string;
+  title: string;
+  message: string;
+  onUnlimited: () => void;
+}) {
   return (
     <div className="flex flex-1 flex-col justify-center gap-4 px-6 text-center">
       <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-2">
@@ -263,7 +297,8 @@ function DailyDone({ slug, title, message }: { slug: string; title: string; mess
         )}
       </p>
       <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
-        <Button asChild variant="play" size="lg">
+        <UnlimitedButton unlimited={false} onPlay={onUnlimited} />
+        <Button asChild variant="secondary" size="lg">
           <Link to="/leaderboards/$id" params={{ id: slug }}>
             {t("See the leaderboard")}
           </Link>
@@ -484,14 +519,16 @@ function Board({
           >
             {formatSeconds(seconds * 1000)}
           </span>
-          <span className="rounded-full bg-surface-2 px-2 py-1">{dayLabel(puzzle.day)}</span>
+          {!session.unlimited && (
+            <span className="rounded-full bg-surface-2 px-2 py-1">{dayLabel(puzzle.day)}</span>
+          )}
           {session.ranked ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-1">
               <ShieldCheck className="size-3.5" />
               {t("Ranked")}
             </span>
           ) : session.offline ? (
-            <span className="rounded-full bg-surface-2 px-2 py-1">{practiceLabel()}</span>
+            <span className="rounded-full bg-surface-2 px-2 py-1">{practiceLabel(session)}</span>
           ) : null}
         </div>
       </div>
@@ -732,7 +769,11 @@ function Board({
           ) : (
             <>
               <AlertDialogHeader>
-                <AlertDialogTitle>{t("Give up today's crossword?")}</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {isPracticeBoard(session)
+                    ? t("Give up this crossword?")
+                    : t("Give up today's crossword?")}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
                   {session.ranked
                     ? t("An unsolved crossword scores nothing, and this is today's ranked attempt.")
@@ -777,12 +818,14 @@ function Finished({
   result,
   clues,
   onRestart,
+  onUnlimited,
 }: {
   slug: string;
   run: CrosswordRun;
   result: RunResult;
   clues: Readonly<Record<string, string>>;
   onRestart: () => void;
+  onUnlimited: () => void;
 }) {
   const solved = run.ending === "solved";
   return (
@@ -802,8 +845,10 @@ function Finished({
         </div>
         <p className="text-sm text-muted-foreground">
           {solved
-            ? t("Solved · {day}", { day: dayLabel(run.puzzle.day) })
-            : getArchiveDay() !== null
+            ? t("Solved · {day}", {
+                day: result.unlimited ? t("Unlimited") : dayLabel(run.puzzle.day),
+              })
+            : getArchiveDay() !== null || result.unlimited
               ? t("Not solved")
               : t("Not solved today")}
         </p>
@@ -852,7 +897,7 @@ function Finished({
               "Verified by replaying your solve on the server, which timed it itself. That was today's ranked attempt.",
             )
           : result.offline
-            ? offlineResultNote()
+            ? offlineResultNote(result)
             : t(
                 "Verified by replaying your solve on the server. This was a guest run, so it is not on the leaderboard.",
               )}
@@ -863,11 +908,11 @@ function Finished({
         slug={slug}
         ranked={result.ranked}
         score={result.score}
-        daily={crosswordShare(run)}
-        sessionId={result.sessionId}
+        daily={result.unlimited ? undefined : crosswordShare(run)}
+        sessionId={result.unlimited ? undefined : result.sessionId}
         onRestart={onRestart}
-        autoFocus
       >
+        <UnlimitedButton unlimited={!!result.unlimited} onPlay={onUnlimited} />
         {result.ranked && (
           <p className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-surface px-3 py-2 text-xs text-muted-foreground">
             <Clock className="size-3.5" />

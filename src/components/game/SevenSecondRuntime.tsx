@@ -16,6 +16,7 @@ import { BestScore } from "@/components/game/BestScore";
 import { GameExits } from "@/components/game/GameExits";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { RunEndActions } from "@/components/game/RunEndActions";
+import { UnlimitedButton } from "@/components/game/DailyShell";
 import { sevenSecondShare } from "@/lib/games/share";
 import { RulesList } from "@/components/game/RulesList";
 import { Button } from "@/components/ui/button";
@@ -98,7 +99,14 @@ export function SevenSecondRuntime({
     // the rules working, not a failure: showing the generic error state would tell
     // them the game is broken and offer a retry that can only fail again.
     if (state.error.status === 409) {
-      return <DailyDone slug={slug} title={title} message={playErrorMessage(state.error)} />;
+      return (
+        <DailyDone
+          slug={slug}
+          title={title}
+          message={playErrorMessage(state.error)}
+          onUnlimited={state.playUnlimited}
+        />
+      );
     }
     return (
       <div className="flex flex-1 flex-col justify-center px-6">
@@ -161,7 +169,16 @@ export function SevenSecondRuntime({
   }
 
   if (state.status === "finished") {
-    return <Finished slug={slug} run={state.run} result={state.result} onRestart={state.restart} />;
+    return (
+      <Finished
+        slug={slug}
+        run={state.run}
+        result={state.result}
+        onRestart={state.restart}
+        // After an Unlimited round, the next is another; after today's, Unlimited begins.
+        onUnlimited={state.result.unlimited ? state.restart : state.playUnlimited}
+      />
+    );
   }
 
   // The only remaining shape is an error with no run to show, which the branches
@@ -331,11 +348,13 @@ function Table({
             <ShieldCheck className="size-3.5" />
             {session.ranked
               ? t("Signed in: this is today's ranked attempt")
-              : session.offline
-                ? getArchiveDay() !== null
-                  ? t("Past puzzle: practice, not verified or ranked")
-                  : t("Offline practice: not verified or ranked — practise as often as you like")
-                : t("Guest run: verified, but not ranked — practise as often as you like")}
+              : session.unlimited
+                ? t("Unlimited: a new deck to practise on, not verified or ranked")
+                : session.offline
+                  ? getArchiveDay() !== null
+                    ? t("Past puzzle: practice, not verified or ranked")
+                    : t("Offline practice: not verified or ranked — practise as often as you like")
+                  : t("Guest run: verified, but not ranked — practise as often as you like")}
           </p>
         </div>
       </div>
@@ -477,11 +496,13 @@ function Finished({
   run,
   result,
   onRestart,
+  onUnlimited,
 }: {
   slug: string;
   run: SevenSecondRun;
   result: RunResult;
   onRestart: () => void;
+  onUnlimited: () => void;
 }) {
   return (
     <div className="flex flex-1 flex-col justify-center-safe gap-4 overflow-y-auto px-6 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] text-center">
@@ -534,7 +555,7 @@ function Finished({
               "Verified by replaying your answers on the server, then saved to the leaderboard. That was today's ranked attempt.",
             )
           : result.offline
-            ? offlineResultNote()
+            ? offlineResultNote(result)
             : t(
                 "Verified by replaying your answers on the server. This was a guest run, so it is not on the leaderboard.",
               )}
@@ -545,10 +566,8 @@ function Finished({
         slug={slug}
         ranked={result.ranked}
         score={result.score}
-        daily={sevenSecondShare(run)}
-        sessionId={result.sessionId}
-        onRestart={onRestart}
-        autoFocus
+        daily={result.unlimited ? undefined : sevenSecondShare(run)}
+        sessionId={result.unlimited ? undefined : result.sessionId}
       >
         {result.ranked && (
           <p className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-surface px-3 py-2 text-xs text-muted-foreground">
@@ -556,13 +575,31 @@ function Finished({
             {t("The next daily deck arrives at midnight, your time.")}
           </p>
         )}
+        <UnlimitedButton unlimited={!!result.unlimited} onPlay={onUnlimited} />
+        {/* A guest may replay today's deck as often as they like. */}
+        {!result.ranked && !result.unlimited && (
+          <Button variant="secondary" size="lg" onClick={onRestart}>
+            <RotateCcw />
+            {t("Play again")}
+          </Button>
+        )}
       </RunEndActions>
     </div>
   );
 }
 
 /** Today's ranked attempt is already in; this is the rules, not a failure. */
-function DailyDone({ slug, title, message }: { slug: string; title: string; message: string }) {
+function DailyDone({
+  slug,
+  title,
+  message,
+  onUnlimited,
+}: {
+  slug: string;
+  title: string;
+  message: string;
+  onUnlimited: () => void;
+}) {
   return (
     <div className="flex flex-1 flex-col justify-center gap-4 px-6 text-center">
       <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-2">
@@ -576,7 +613,8 @@ function DailyDone({ slug, title, message }: { slug: string; title: string; mess
         )}
       </p>
       <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
-        <Button asChild variant="play" size="lg">
+        <UnlimitedButton unlimited={false} onPlay={onUnlimited} />
+        <Button asChild variant="secondary" size="lg">
           <Link to="/leaderboards/$id" params={{ id: slug }}>
             {t("See the leaderboard")}
           </Link>

@@ -27,6 +27,7 @@ import {
   submission,
   type BallparkRun,
 } from "@/lib/games/ballpark";
+import { isPracticeBoard } from "@/lib/games/offline";
 import { useDailyRun, type DailyEngine } from "@/lib/games/daily-run";
 import { GAME_RULES } from "@/lib/games/rules";
 import { useReportRunProgress } from "@/lib/games/run-progress";
@@ -75,6 +76,7 @@ export function BallparkRuntime({
           run={run}
           verifying={verifying}
           ranked={<RankChip session={session} />}
+          practice={isPracticeBoard(session)}
           onGuess={onGuess}
           onGiveUp={onGiveUp}
         />
@@ -187,12 +189,15 @@ function Board({
   run,
   verifying,
   ranked,
+  practice,
   onGuess,
   onGiveUp,
 }: {
   run: BallparkRun;
   verifying: boolean;
   ranked: ReactNode;
+  /** An Unlimited round or a past day: not today's board, and not ranked. */
+  practice: boolean;
   onGuess: (cents: number) => void;
   onGiveUp: () => void;
 }) {
@@ -286,9 +291,13 @@ function Board({
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("Give up today's product?")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {practice ? t("Give up this product?") : t("Give up today's product?")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {t("The price is shown and the run scores nothing. There is one play a day.")}
+              {practice
+                ? t("The price is shown. It's practice, so nothing is lost.")
+                : t("The price is shown and the run scores nothing. There is one play a day.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

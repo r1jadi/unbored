@@ -242,6 +242,13 @@ describe("starting a run", () => {
     // The daily limit is not a retryable failure, and must not look like one.
     expect(screen.queryByRole("button", { name: "Start run" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+
+    // Unlimited deals a new deck here, as practice.
+    fireEvent.click(screen.getByRole("button", { name: "Keep playing: Unlimited" }));
+    expect(
+      await screen.findByText("Unlimited: a new deck to practise on, not verified or ranked"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start run" })).toBeInTheDocument();
   });
 
   it("reports any other failed start with a retry rather than an empty table", async () => {

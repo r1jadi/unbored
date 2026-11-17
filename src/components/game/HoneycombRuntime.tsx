@@ -1,5 +1,12 @@
 import { Delete, Hexagon, Shuffle } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 
 import { DailyFrame, DailyResult, RankChip } from "@/components/game/DailyShell";
 import { Button } from "@/components/ui/button";
@@ -152,6 +159,28 @@ const SPOTS = [
   [24, 34.5],
 ] as const;
 
+/**
+ * How near a cell's centre a swipe must pass to pick it up, as a share of the hive.
+ * A cell is 32% wide and about 29% high, so this is well inside it: a swipe that
+ * cuts the corner between two cells does not catch the cell beside them.
+ */
+const SWIPE_REACH = 11;
+
+/** The letter whose cell centre is within reach of a point on the hive, if any. */
+function letterNear(
+  cells: readonly { letter: string; x: number; y: number }[],
+  x: number,
+  y: number,
+): string | null {
+  for (const cell of cells) {
+    if (Math.hypot(cell.x - x, cell.y - y) <= SWIPE_REACH) return cell.letter;
+  }
+  return null;
+}
+
+/** A swipe in progress: the pointer, and the letters it has crossed. */
+type Trace = { pointer: number; letters: string[]; swiped: boolean };
+
 function Board({
   run,
   verifying,
@@ -183,31 +212,35 @@ function Board({
   });
   useReportRunProgress(live, onStop);
 
-  const enter = useCallback(() => {
-    if (!live || !typed) return;
-    const result = attempt(run, typed);
-    setTyped("");
-    if (result.kind === "word") {
-      const word = puzzle.words[result.id]!;
-      const gained = wordPoints(puzzle, word);
-      setNotice({
-        text: usesAllSeven(puzzle, word)
-          ? t("All seven! +{n}", { n: points(gained) })
-          : t("+{n}", { n: points(gained) }),
-        good: true,
-      });
-      onFind(result.id);
-      return;
-    }
-    const why: Record<typeof result.kind, string> = {
-      short: t("Too short: four letters at least."),
-      centre: t("Every word needs the centre letter."),
-      letters: t("Only today's seven letters."),
-      unknown: t("Not in the word list."),
-      found: t("Already found."),
-    };
-    setNotice({ text: why[result.kind], good: false });
-  }, [live, typed, run, puzzle, onFind]);
+  const submit = useCallback(
+    (word: string) => {
+      if (!live || !word) return;
+      const result = attempt(run, word);
+      setTyped("");
+      if (result.kind === "word") {
+        const word = puzzle.words[result.id]!;
+        const gained = wordPoints(puzzle, word);
+        setNotice({
+          text: usesAllSeven(puzzle, word)
+            ? t("All seven! +{n}", { n: points(gained) })
+            : t("+{n}", { n: points(gained) }),
+          good: true,
+        });
+        onFind(result.id);
+        return;
+      }
+      const why: Record<typeof result.kind, string> = {
+        short: t("Too short: four letters at least."),
+        centre: t("Every word needs the centre letter."),
+        letters: t("Only these seven letters."),
+        unknown: t("Not in the word list."),
+        found: t("Already found."),
+      };
+      setNotice({ text: why[result.kind], good: false });
+    },
+    [live, run, puzzle, onFind],
+  );
+  const enter = useCallback(() => submit(typed), [submit, typed]);
 
   const add = useCallback(
     (letter: string) => {
@@ -239,6 +272,76 @@ function Board({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [live, add]);
+
+  // Swiping: press a letter and drag across the others, then let go to enter the
+  // word. A press that never reaches another letter is a tap and adds its letter.
+  // The hive keeps the pointer for the whole gesture, so a swipe that strays off
+  // it still ends cleanly; a cell's own click only answers the keyboard.
+  const cells = [
+    { letter: centre, x: 50, y: 50 },
+    ...outer.map((letter, i) => ({ letter, x: SPOTS[i]![0], y: SPOTS[i]![1] })),
+  ];
+  const trace = useRef<Trace | null>(null);
+  const [traced, setTraced] = useState<readonly string[]>([]);
+
+  function hiveLetter(event: ReactPointerEvent<HTMLDivElement>): string | null {
+    const box = event.currentTarget.getBoundingClientRect();
+    if (!box.width || !box.height) return null;
+    return letterNear(
+      cells,
+      ((event.clientX - box.left) / box.width) * 100,
+      ((event.clientY - box.top) / box.height) * 100,
+    );
+  }
+
+  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!live || (event.pointerType === "mouse" && event.button !== 0)) return;
+    const letter = (event.target as HTMLElement).closest<HTMLElement>("[data-letter]")?.dataset[
+      "letter"
+    ];
+    if (!letter) return;
+    event.preventDefault();
+    trace.current = { pointer: event.pointerId, letters: [letter], swiped: false };
+    setTraced([letter]);
+    try {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Capture is a nicety: without it a swipe still works while it stays on the hive.
+    }
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const current = trace.current;
+    if (!current || current.pointer !== event.pointerId) return;
+    const letter = hiveLetter(event);
+    // The same cell again is the pointer resting on it: a doubled letter is a tap.
+    if (!letter || letter === current.letters[current.letters.length - 1]) return;
+    current.letters.push(letter);
+    if (!current.swiped) {
+      current.swiped = true;
+      setNotice(null);
+    }
+    // A swipe is a whole word: it replaces whatever was tapped in before it.
+    setTyped(current.letters.join("").slice(0, 19));
+    setTraced([...current.letters]);
+  }
+
+  function onPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    const current = trace.current;
+    if (!current || current.pointer !== event.pointerId) return;
+    trace.current = null;
+    setTraced([]);
+    if (current.swiped) submit(current.letters.join("").slice(0, 19));
+    else add(current.letters[0]!);
+  }
+
+  function onPointerCancel(event: ReactPointerEvent<HTMLDivElement>) {
+    const current = trace.current;
+    if (!current || current.pointer !== event.pointerId) return;
+    trace.current = null;
+    setTraced([]);
+    if (current.swiped) setTyped("");
+  }
 
   function shuffle() {
     setOuter((current) => {
@@ -303,11 +406,24 @@ function Board({
         </p>
 
         <div
-          className="relative mx-auto aspect-square w-full max-w-[17rem]"
+          className="relative mx-auto aspect-square w-full max-w-[17rem] touch-none select-none"
           role="group"
           aria-label={t("Letters")}
+          aria-description={t("Tap the letters, or swipe across them and let go to enter a word.")}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
         >
-          <Cell letter={centre} centre x={50} y={50} disabled={!live} onPress={add} />
+          <Cell
+            letter={centre}
+            centre
+            x={50}
+            y={50}
+            disabled={!live}
+            traced={traced.includes(centre)}
+            onPress={add}
+          />
           {outer.map((letter, i) => (
             <Cell
               key={letter}
@@ -315,6 +431,7 @@ function Board({
               x={SPOTS[i]![0]}
               y={SPOTS[i]![1]}
               disabled={!live}
+              traced={traced.includes(letter)}
               onPress={add}
             />
           ))}
@@ -373,6 +490,7 @@ function Cell({
   x,
   y,
   disabled,
+  traced = false,
   onPress,
 }: {
   letter: string;
@@ -380,18 +498,27 @@ function Cell({
   x: number;
   y: number;
   disabled: boolean;
+  /** Crossed by the swipe in progress. */
+  traced?: boolean;
   onPress: (letter: string) => void;
 }) {
   return (
     <button
       type="button"
       disabled={disabled}
-      onClick={() => onPress(letter)}
+      data-letter={letter}
+      // A press of the pointer is the hive's (a tap or a swipe); this click is the
+      // keyboard's, whose clicks carry no count.
+      onClick={(event) => {
+        if (event.detail === 0) onPress(letter);
+      }}
       aria-label={letter.toUpperCase()}
       className={cn(
         "absolute flex size-[32%] -translate-x-1/2 -translate-y-1/2 items-center justify-center text-2xl font-bold uppercase transition-transform active:scale-95 motion-reduce:transition-none",
         "[clip-path:polygon(25%_5%,75%_5%,100%_50%,75%_95%,25%_95%,0%_50%)]",
         centre ? "bg-primary text-primary-foreground" : "bg-surface-2 hover:bg-surface",
+        traced && "scale-95 brightness-110",
+        traced && !centre && "bg-primary/30",
       )}
       style={{ left: `${x}%`, top: `${y}%` }}
     >

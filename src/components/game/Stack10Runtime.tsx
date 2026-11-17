@@ -20,7 +20,10 @@ import {
   type RunResult,
 } from "@/lib/games/sessions";
 import {
+  bustLimit,
+  bustsLeft,
   canPlace,
+  previewTile,
   progress,
   STACK10_COLUMNS,
   STACK10_TILES,
@@ -195,6 +198,10 @@ function Board({
     ending: run.stopped || run.endReason === "limit" ? "stop" : "lose",
   });
   const tile = run.nextTile;
+  const then = previewTile(run);
+  // Busts are a stack-10@3 rule: a run under the older rules ends on its first.
+  const forgiving = bustLimit(run.rulesVersion) > 1;
+  const spare = bustsLeft(run);
   const readout = progress(run);
   const placed = readout.placed;
   // Every tile placed is a move made; the hint is for a player still deciding.
@@ -214,6 +221,18 @@ function Board({
         </dl>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="tabular">{t("Tile {n}", { n: placed + 1 })}</span>
+          {forgiving && (
+            <span
+              className={cn("tabular", spare === 0 && "font-semibold text-destructive")}
+              aria-live="polite"
+            >
+              {spare === 0
+                ? t("Last chance")
+                : spare === 1
+                  ? t("1 bust left")
+                  : t("{n} busts left", { n: spare })}
+            </span>
+          )}
           {session.ranked ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-1">
               <ShieldCheck className="size-3.5" />
@@ -236,6 +255,17 @@ function Board({
           >
             {tile ?? "—"}
           </span>
+          {then !== null && (
+            <>
+              <span className="text-xs text-muted-foreground">{t("then")}</span>
+              <span
+                aria-label={t("Then {n}", { n: then })}
+                className="flex size-9 items-center justify-center rounded-lg bg-surface-2 text-base font-semibold tabular text-foreground"
+              >
+                {then}
+              </span>
+            </>
+          )}
         </div>
         {hints.hint ? (
           <HintNote reason={hints.hint.reason} />
@@ -265,7 +295,7 @@ function Board({
               type="button"
               disabled={!playable}
               onClick={() => onPlace(index)}
-              aria-label={`${columnLabel(index, column, tile, playable)}${
+              aria-label={`${columnLabel(index, column, tile, playable, forgiving && spare > 0)}${
                 hinted ? " Hint: place the tile here." : ""
               }`}
               className={cn(
@@ -313,9 +343,13 @@ function Board({
       <p className="pt-3 text-center text-xs text-muted-foreground" aria-live="polite">
         {verifying
           ? t("Verifying your run with the server…")
-          : t(
-              "Add up to exactly ten to clear a column. Past ten ends the run. There is no final tile.",
-            )}
+          : forgiving
+            ? t(
+                "Add up to exactly ten to clear a column. Past ten busts it: the third bust ends the run.",
+              )
+            : t(
+                "Add up to exactly ten to clear a column. Past ten ends the run. There is no final tile.",
+              )}
       </p>
       <EndRunButton
         score={run.score}
@@ -333,6 +367,8 @@ function columnLabel(
   column: { tiles: readonly number[]; sum: number },
   tile: number | null,
   playable: boolean,
+  /** True when going past ten busts the column and the run goes on. */
+  survivable: boolean,
 ): string {
   const position = `Column ${index + 1}, total ${column.sum}`;
   if (tile === null) return `${position}. No tile to place.`;
@@ -342,7 +378,9 @@ function columnLabel(
     // every column would go over it is the only move there is. It is offered with
     // a warning rather than hidden, because a board that silently refuses the only
     // legal move is a board the player cannot finish.
-    return `${position}. Place ${tile} to make ${column.sum + tile}, which ends the run.`;
+    return survivable
+      ? `${position}. Place ${tile} to make ${column.sum + tile}, which busts the column and empties it.`
+      : `${position}. Place ${tile} to make ${column.sum + tile}, which ends the run.`;
   }
   if (column.sum + tile === 10) {
     // The same arithmetic the verifier scores with: 10, plus five for every tile
@@ -391,10 +429,15 @@ function Finished({
                 tilesPlaced: result.tilesPlaced,
                 clearedColumns: result.clearedColumns,
               })
-            : t(
-                "A column passed ten after {tilesPlaced} tiles; {clearedColumns} columns cleared.",
-                { tilesPlaced: result.tilesPlaced, clearedColumns: result.clearedColumns },
-              )}
+            : bustLimit(run.rulesVersion) > 1
+              ? t("Third bust after {tilesPlaced} tiles; {clearedColumns} columns cleared.", {
+                  tilesPlaced: result.tilesPlaced,
+                  clearedColumns: result.clearedColumns,
+                })
+              : t(
+                  "A column passed ten after {tilesPlaced} tiles; {clearedColumns} columns cleared.",
+                  { tilesPlaced: result.tilesPlaced, clearedColumns: result.clearedColumns },
+                )}
         </p>
       </div>
 

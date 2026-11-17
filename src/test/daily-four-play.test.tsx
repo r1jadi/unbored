@@ -15,6 +15,7 @@ import { TeeTimeRuntime } from "@/components/game/TeeTimeRuntime";
 import { TonUpRuntime } from "@/components/game/TonUpRuntime";
 import { clearSession } from "@/lib/auth/session";
 import { createRun as ballparkRun, productOf } from "@/lib/games/ballpark";
+import { BALLPARK_PRODUCTS } from "@/lib/games/ballpark-bank";
 import { createRun as onlyOnceRun, kindOf, puzzleOf } from "@/lib/games/only-once";
 import { RunProgressContext, type RunProgressReporter } from "@/lib/games/run-progress";
 import { categoryOf, createRun as tonUpRun } from "@/lib/games/ton-up";
@@ -160,6 +161,8 @@ describe("Ton Up on screen", () => {
     }
     expect(await screen.findByText("1250")).toBeInTheDocument();
     expect(submitted(spy)).toMatchObject({ actions: darts, score: 125 });
+    // Five categories are too few for fresh rounds: Ton Up has no Unlimited.
+    expect(screen.queryByRole("button", { name: "Keep playing: Unlimited" })).toBeNull();
   });
 });
 
@@ -177,6 +180,44 @@ describe("Ballpark on screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Guess" }));
     expect(await screen.findByText("500")).toBeInTheDocument();
     expect(submitted(spy)).toMatchObject({ actions: [price * 3, price], score: 50 });
+  });
+
+  it("keeps going in Unlimited: other products, played here and never submitted", async () => {
+    // The device's day is the mock server's, so Unlimited steers clear of its product.
+    vi.useFakeTimers({ now: (DAY + 0.5) * 86_400_000, toFake: ["Date"] });
+    const today = productOf(ballparkRun(DAY));
+    const spy = mockServer("ballpark", "ballpark@1", 50);
+    await renderGame(BallparkRuntime, "ballpark");
+    fireEvent.click(screen.getByRole("button", { name: "Play today's product" }));
+    await screen.findByText(today.name);
+    typeAnswer((today.cents / 100).toFixed(2));
+    fireEvent.click(screen.getByRole("button", { name: "Guess" }));
+    await screen.findByText("500");
+    const calls = spy.mock.calls.length;
+
+    const seen = new Set([today.name]);
+    for (const label of ["Keep playing: Unlimited", "Next round"]) {
+      fireEvent.click(await screen.findByRole("button", { name: label }));
+      expect(await screen.findByText("Unlimited · practice")).toBeInTheDocument();
+      const product = BALLPARK_PRODUCTS.find((p) => screen.queryByText(p.name));
+      expect(product).toBeDefined();
+      expect(seen.has(product!.name)).toBe(false);
+      seen.add(product!.name);
+      typeAnswer((product!.cents / 100).toFixed(2));
+      fireEvent.click(screen.getByRole("button", { name: "Guess" }));
+      expect(await screen.findByText(/^Unlimited is practice/)).toBeInTheDocument();
+    }
+
+    // Giving up an Unlimited round is not giving up today's.
+    fireEvent.click(await screen.findByRole("button", { name: "Next round" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Give up" }));
+    expect(await screen.findByText("Give up this product?")).toBeInTheDocument();
+    expect(
+      screen.getByText("The price is shown. It's practice, so nothing is lost."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/today's/)).toBeNull();
+    // Nothing more reached the server: no session, no submission.
+    expect(spy.mock.calls.length).toBe(calls);
   });
 });
 

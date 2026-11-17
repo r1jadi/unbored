@@ -3,6 +3,7 @@ import {
   Clock,
   CornerDownLeft,
   Delete,
+  Infinity as InfinityIcon,
   Loader2,
   RotateCcw,
   ShieldCheck,
@@ -13,6 +14,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
+import { UnlimitedButton } from "@/components/game/DailyShell";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
 import { RulesList } from "@/components/game/RulesList";
@@ -82,7 +84,15 @@ export function GuessworkRuntime({
   const state = useGuessworkRun(slug, autoStart);
 
   if (state.status === "intro") {
-    return <Intro signedIn={state.signedIn} onBegin={state.begin} slug={slug} title={title} />;
+    return (
+      <Intro
+        signedIn={state.signedIn}
+        onBegin={() => state.begin()}
+        onUnlimited={() => state.begin("unlimited")}
+        slug={slug}
+        title={title}
+      />
+    );
   }
 
   if (state.status === "starting") {
@@ -96,7 +106,14 @@ export function GuessworkRuntime({
 
   if (state.status === "error" && state.stage === "start") {
     if (state.error.status === 409) {
-      return <DailyDone slug={slug} title={title} message={playErrorMessage(state.error)} />;
+      return (
+        <DailyDone
+          slug={slug}
+          title={title}
+          message={playErrorMessage(state.error)}
+          onUnlimited={() => state.begin("unlimited")}
+        />
+      );
     }
     return (
       <div className="flex flex-1 flex-col justify-center px-6">
@@ -154,7 +171,14 @@ export function GuessworkRuntime({
   }
 
   if (state.status === "finished") {
-    return <Finished slug={slug} run={state.run} result={state.result} />;
+    return (
+      <Finished
+        slug={slug}
+        run={state.run}
+        result={state.result}
+        onUnlimited={() => state.begin("unlimited")}
+      />
+    );
   }
 
   return (
@@ -168,11 +192,13 @@ export function GuessworkRuntime({
 function Intro({
   signedIn,
   onBegin,
+  onUnlimited,
   slug,
   title,
 }: {
   signedIn: boolean;
   onBegin: () => void;
+  onUnlimited: () => void;
   slug: string;
   title: string;
 }) {
@@ -194,6 +220,10 @@ function Intro({
           <Button variant="play" size="lg" onClick={onBegin} autoFocus>
             {t("Play today's word")}
           </Button>
+          <Button variant="secondary" size="lg" onClick={onUnlimited}>
+            <InfinityIcon />
+            {t("Unlimited")}
+          </Button>
           <Button asChild variant="ghost" size="lg">
             <ExitGameLink slug={slug}>{t("Back to {title}", { title })}</ExitGameLink>
           </Button>
@@ -202,7 +232,7 @@ function Intro({
         <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
           <ShieldCheck className="size-3.5" />
           {signedIn
-            ? t("Signed in: one ranked play a day")
+            ? t("Signed in: one ranked play a day. Unlimited is practice.")
             : t("Guest run: verified, but not ranked")}
         </p>
       </div>
@@ -229,7 +259,17 @@ function MarkLegend() {
   );
 }
 
-function DailyDone({ slug, title, message }: { slug: string; title: string; message: string }) {
+function DailyDone({
+  slug,
+  title,
+  message,
+  onUnlimited,
+}: {
+  slug: string;
+  title: string;
+  message: string;
+  onUnlimited: () => void;
+}) {
   return (
     <div className="flex flex-1 flex-col justify-center gap-4 px-6 text-center">
       <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-surface-2">
@@ -239,7 +279,8 @@ function DailyDone({ slug, title, message }: { slug: string; title: string; mess
       <p className="mx-auto max-w-sm text-sm text-muted-foreground">{message}</p>
       <p className="mx-auto max-w-sm text-xs text-muted-foreground">{nextWordIn()}</p>
       <div className="mx-auto flex w-full max-w-xs flex-col gap-2">
-        <Button asChild variant="play" size="lg">
+        <UnlimitedButton unlimited={false} onPlay={onUnlimited} />
+        <Button asChild variant="secondary" size="lg">
           <Link to="/leaderboards/$id" params={{ id: slug }}>
             {t("See the leaderboard")}
           </Link>
@@ -315,6 +356,7 @@ function Board({
   const [shake, setShake] = useState(0);
   const [confirming, setConfirming] = useState(false);
   const accepting = !verifying && run.outcome === "playing";
+  const practice = getArchiveDay() !== null || session.unlimited === true;
   const alphabet = alphabetFor(run.rulesVersion);
   const keyboard = keyboardFor(run.rulesVersion);
   const marks = letterMarks(run);
@@ -410,7 +452,7 @@ function Board({
           </span>
         ) : (
           <span className="rounded-full bg-surface-2 px-2 py-1">
-            {session.offline ? practiceLabel() : t("Guest run")}
+            {session.offline ? practiceLabel(session) : t("Guest run")}
           </span>
         )}
       </div>
@@ -529,10 +571,10 @@ function Board({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {getArchiveDay() !== null ? t("Give up this word?") : t("Give up today's word?")}
+              {practice ? t("Give up this word?") : t("Give up today's word?")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {getArchiveDay() !== null
+              {practice
                 ? t("The word is shown. It's practice, so nothing is lost.")
                 : t("The word is shown and the run scores nothing. There is one play a day.")}
             </AlertDialogDescription>
@@ -548,7 +590,17 @@ function Board({
 }
 
 /** The end of a run: the word, the guesses, and the score the server verified. */
-function Finished({ slug, run, result }: { slug: string; run: GuessworkRun; result: RunResult }) {
+function Finished({
+  slug,
+  run,
+  result,
+  onUnlimited,
+}: {
+  slug: string;
+  run: GuessworkRun;
+  result: RunResult;
+  onUnlimited: () => void;
+}) {
   const solved = run.ending === "solved";
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] text-center">
@@ -563,7 +615,7 @@ function Finished({ slug, run, result }: { slug: string; run: GuessworkRun; resu
         <p className="text-sm text-muted-foreground">
           {solved
             ? t("Solved in {n} of {max}", { n: run.guesses.length, max: MAX_GUESSES })
-            : getArchiveDay() !== null
+            : getArchiveDay() !== null || result.unlimited
               ? t("The word was")
               : t("Today's word was")}
         </p>
@@ -611,7 +663,7 @@ function Finished({ slug, run, result }: { slug: string; run: GuessworkRun; resu
         {result.ranked
           ? t("Verified by replaying your guesses on the server, then saved to the leaderboard.")
           : result.offline
-            ? offlineResultNote()
+            ? offlineResultNote(result)
             : t(
                 "Verified by replaying your guesses on the server. This was a guest run, so it is not on the leaderboard.",
               )}
@@ -623,10 +675,11 @@ function Finished({ slug, run, result }: { slug: string; run: GuessworkRun; resu
         slug={slug}
         ranked={result.ranked}
         score={result.score}
-        daily={guessworkShare(run)}
-        sessionId={result.sessionId}
-        autoFocus
-      />
+        daily={result.unlimited ? undefined : guessworkShare(run)}
+        sessionId={result.unlimited ? undefined : result.sessionId}
+      >
+        <UnlimitedButton unlimited={!!result.unlimited} onPlay={onUnlimited} />
+      </RunEndActions>
     </div>
   );
 }

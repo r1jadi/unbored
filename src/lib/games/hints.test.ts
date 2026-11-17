@@ -64,6 +64,23 @@ describe("hints", () => {
     });
   });
 
+  it("Stack 10: when nothing fits, busts the fullest column (stack-10@3 only)", () => {
+    const run = createStack10(1); // stack-10@3: seed 1 deals a 9 first
+    const sums = [5, 8, 3, 7];
+    const columns = sums.map((sum) => ({ tiles: [sum], sum }));
+    expect(stack10Hint({ ...run, columns } as Stack10Run)).toEqual({
+      column: 1,
+      reason:
+        "The 9 fits nowhere. Bust column 2, the fullest, so it empties and leaves the most room.",
+    });
+    // On the last bust, or under stack-10@2, an overflow ends the run: no hint.
+    expect(stack10Hint({ ...run, columns, busts: 2 } as Stack10Run)).toBeNull();
+    const legacy = createStack10(1, "stack-10@2");
+    // Seed 1 deals a 1 under @2: columns at ten leave it nowhere to go.
+    const full = legacy.columns.map(() => ({ tiles: [10], sum: 10 }));
+    expect(stack10Hint({ ...legacy, columns: full } as Stack10Run)).toBeNull();
+  });
+
   it("Color Merge: points at a slide that moves the board", () => {
     const run = createColorMerge(1);
     const hint = colorMergeHint(run);

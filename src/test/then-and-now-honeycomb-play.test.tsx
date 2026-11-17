@@ -224,6 +224,72 @@ describe("Honeycomb on screen", () => {
       timeout: 15_000,
     });
   }, 30_000);
+
+  it("takes a word swiped across the hive, and a tap is still one letter", async () => {
+    // jsdom has no PointerEvent: a mouse event with a pointer id stands in.
+    class TestPointerEvent extends MouseEvent {
+      readonly pointerId: number;
+      readonly pointerType: string;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 0;
+        this.pointerType = init.pointerType ?? "touch";
+      }
+    }
+    vi.stubGlobal("PointerEvent", TestPointerEvent);
+    const puzzle = honeycombPuzzle(honeycombRun(DAY));
+    // A word a swipe can spell: no letter twice in a row.
+    const id = puzzle.words.findIndex((w) => ![...w].some((ch, i) => ch === w[i - 1]));
+    const word = puzzle.words[id]!;
+    const spy = mockServer("honeycomb", "honeycomb@1", wordPoints(puzzle, word));
+    await renderGame(HoneycombRuntime, "honeycomb");
+    fireEvent.click(screen.getByRole("button", { name: "Play today's letters" }));
+    const hive = await screen.findByRole("group", { name: "Letters" });
+    // The hive as a 100 × 100 box, so a cell's centre is its left and top percentages.
+    vi.spyOn(hive, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 100,
+      bottom: 100,
+      width: 100,
+      height: 100,
+      toJSON: () => ({}),
+    });
+    const cell = (ch: string) => screen.getByRole("button", { name: ch.toUpperCase() });
+    const at = (ch: string) => ({
+      clientX: parseFloat(cell(ch).style.left),
+      clientY: parseFloat(cell(ch).style.top),
+    });
+    const typed = () => screen.getByLabelText("Your word").textContent;
+
+    // A tap: down and up on one cell adds its letter, once.
+    fireEvent.pointerDown(cell(word[0]!), { pointerId: 1, ...at(word[0]!) });
+    fireEvent.pointerUp(hive, { pointerId: 1, ...at(word[0]!) });
+    expect(typed()).toBe(word[0]);
+
+    // A swipe replaces it with the whole word, and letting go enters it.
+    fireEvent.pointerDown(cell(word[0]!), { pointerId: 2, ...at(word[0]!) });
+    // Cutting the corner between two neighbouring outer cells catches neither.
+    fireEvent.pointerMove(hive, { pointerId: 2, clientX: 63, clientY: 26.75 });
+    expect(typed()).toBe(word[0]);
+    for (const ch of word.slice(1)) fireEvent.pointerMove(hive, { pointerId: 2, ...at(ch) });
+    expect(typed()).toBe(word);
+    fireEvent.pointerUp(hive, { pointerId: 2, ...at(word[word.length - 1]!) });
+    expect(await screen.findByText(/^(All seven! )?\+\d+$/)).toBeInTheDocument();
+
+    // A cancelled swipe leaves nothing behind.
+    fireEvent.pointerDown(cell(word[0]!), { pointerId: 3, ...at(word[0]!) });
+    fireEvent.pointerMove(hive, { pointerId: 3, ...at(word[1]!) });
+    fireEvent.pointerCancel(hive, { pointerId: 3 });
+    expect(typed()).toBe("");
+
+    fireEvent.click(screen.getByRole("button", { name: /I'm done/ }));
+    await waitFor(() => expect(submitted(spy)).toMatchObject({ actions: [id] }), {
+      timeout: 15_000,
+    });
+  }, 30_000);
 });
 
 function escape(text: string) {

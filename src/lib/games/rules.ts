@@ -35,12 +35,14 @@ export const GAME_RULES = {
       {
         lead: msg("Place the tile"),
         text: msg(
-          "shown above the board in one of the four columns: tap a column, or press 1 to 4.",
+          "shown above the board in one of the four columns: tap a column, or press 1 to 4. The tile after it is shown too.",
         ),
       },
       {
         lead: msg("Exactly ten"),
-        text: msg("clears the column and scores. A column that goes past ten ends the run."),
+        text: msg(
+          "clears the column and scores. A column that goes past ten busts: it empties, and the third bust ends the run.",
+        ),
       },
       {
         lead: msg("No final tile."),

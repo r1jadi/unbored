@@ -8,10 +8,11 @@
  * one ruleset is a real risk, so the copy is pinned in three ways:
  *
  *   - **The rules version is data.** A session carries the version it was started
- *     under (`stack-10@2`), the server refuses to verify a version it does not
+ *     under (`stack-10@3`), the server refuses to verify a version it does not
  *     implement, and this module declares the same string. The server still
- *     verifies the retired finite `stack-10@1` runs a session may have pinned. A
- *     change to the rules is a change to the version, not an edit in place.
+ *     verifies `stack-10@2` and the retired finite `stack-10@1` runs a session may
+ *     have pinned, and this module still replays `stack-10@2`. A change to the
+ *     rules is a change to the version, not an edit in place.
  *   - **The state machine is total and pure.** `place` takes a run and a column
  *     and returns a run — no clock, no randomness, no I/O — so the same inputs
  *     produce the same tiles on both sides.
@@ -36,13 +37,49 @@
  * arrive promoted to a heavier value, with a chance and a weight that both climb,
  * so clears get rarer and the next overflow comes sooner. The ramp is a pure
  * function of how many tiles have been placed, mirrored by the verifier.
+ *
+ * Winnable rule (`stack-10@3`): `stack-10@2` drew every face from 1 to 9 equally
+ * and ended the run on the first overflow. Over hundreds of seeds, even play that
+ * could see every future tile survived a median of ten tiles, and almost no run
+ * reached the ramp at all. `stack-10@3` keeps the board, the scoring and the ramp,
+ * and changes three things:
+ *
+ *   - **The draw favours light faces** (`STACK10_DRAW_TABLE`).
+ *   - **An overflow busts the column instead of ending the run.** The column
+ *     empties, its tiles are lost, nothing scores, and the third bust ends the run.
+ *   - **The tile after next is shown** (`previewTile`). It was always known — a
+ *     tile depends only on its index — so showing it changes nothing the verifier
+ *     checks, and it rewards planning.
+ *
+ * The before/after survival numbers are in `docs/games/README.md`.
  */
 
 /** The `runtime` value the catalogue must carry for these rules to play a game. */
 export const STACK10_RUNTIME = "stack-10";
 
-/** The rules the server can verify. Sent with every run, pinned to a session. */
-export const STACK10_RULES_VERSION = "stack-10@2";
+/** The rules new runs pin. Sent with every run, pinned to a session. */
+export const STACK10_RULES_VERSION = "stack-10@3";
+
+/**
+ * The previous endless rules: even 1–9 draws, and one overflow ends the run. Still
+ * replayable here, because a session issued before `stack-10@3` keeps its version.
+ */
+export const STACK10_LEGACY_RULES_VERSION = "stack-10@2";
+
+/** The busts a `stack-10@3` run can take; the last one ends it. */
+export const STACK10_BUSTS = 3;
+
+/**
+ * The `stack-10@3` base draw: the generator's state modulo 23 picks a slot. Light
+ * faces are common (1, 2 and 3 four times each, 4 three times, 5, 6 and 7 twice, 8
+ * and 9 once), so a column can usually be finished exactly. Twenty-three is odd,
+ * like the old modulus of nine, so the slot depends on every bit of the state
+ * rather than on the LCG's short-period low bits, and it shares no factor with the
+ * promotion roll's 100.
+ */
+export const STACK10_DRAW_TABLE: readonly number[] = [
+  1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 7, 7, 8, 9,
+];
 
 /** The board: four columns, and the retired deck's sixty tiles. */
 export const STACK10_COLUMNS = 4;
@@ -134,6 +171,11 @@ export type Stack10Run = {
   readonly score: number;
   readonly clearedColumns: number;
   /**
+   * Columns that went past ten. Under `stack-10@3` a bust empties the column and
+   * the run goes on until `STACK10_BUSTS`; under `stack-10@2` the first one ends it.
+   */
+  readonly busts: number;
+  /**
    * The tile the next move places, or null once the run has ended. The tile is a
    * function of how many tiles have been placed, not of which column they went
    * into, so it is known before the player chooses.
@@ -173,10 +215,28 @@ function toBigInt(seed: string | number | bigint): bigint {
   return BigInt(trimmed);
 }
 
-/** Advances the generator once and returns its state and base tile. */
-function draw(state: bigint): { state: bigint; tile: number } {
-  const next = (state * LCG_MULTIPLIER + LCG_INCREMENT) % SEED_MODULUS;
-  return { state: next, tile: Number(next % 9n) + 1 };
+/** Advances the generator once. */
+function advance(state: bigint): bigint {
+  return (state * LCG_MULTIPLIER + LCG_INCREMENT) % SEED_MODULUS;
+}
+
+const DRAW_TABLE_SIZE = BigInt(STACK10_DRAW_TABLE.length);
+
+/** Whether a ruleset is `stack-10@3`: weighted draw, busts, preview. */
+function isWinnable(rulesVersion: string): boolean {
+  return rulesVersion === STACK10_RULES_VERSION;
+}
+
+/** The base tile a generator state draws: even 1–9 under `@2`, the table under `@3`. */
+function baseTile(state: bigint, rulesVersion: string): number {
+  return isWinnable(rulesVersion)
+    ? STACK10_DRAW_TABLE[Number(state % DRAW_TABLE_SIZE)]
+    : Number(state % 9n) + 1;
+}
+
+/** The busts a run can take, the last of which ends it: one under `stack-10@2`. */
+export function bustLimit(rulesVersion: string): number {
+  return isWinnable(rulesVersion) ? STACK10_BUSTS : 1;
 }
 
 function requirePlaced(placed: number): void {
@@ -217,32 +277,46 @@ export function heavyBonus(placed: number): number {
  *
  * It is the generator's base draw, plus the ramp: a promoted tile is heavier, and
  * a tile can never exceed nine, because ten would be unplaceable on a board whose
- * columns clear at ten.
+ * columns clear at ten. The base draw depends on the rules (`baseTile`); the ramp
+ * is the same under both endless versions.
  */
-export function tileAt(seed: string | number | bigint, placed: number): number {
+export function tileAt(
+  seed: string | number | bigint,
+  placed: number,
+  rulesVersion: string = STACK10_RULES_VERSION,
+): number {
   requirePlaced(placed);
   let state = initialState(seed);
-  let tile = 0;
   for (let index = 0; index <= placed; index += 1) {
-    const next = draw(state);
-    state = next.state;
-    tile = next.tile;
+    state = advance(state);
   }
+  const tile = baseTile(state, rulesVersion);
   const promotionRoll = Number((state >> PROMOTION_SHIFT) % PROMOTION_MODULUS);
   return promotionRoll < pressurePercent(placed) ? Math.min(9, tile + heavyBonus(placed)) : tile;
 }
 
-/** A fresh run at the start of the board. */
-export function createRun(seed: string | number | bigint): Stack10Run {
+/**
+ * A fresh run at the start of the board, under the rules its session pinned:
+ * `stack-10@3`, unless a `stack-10@2` session is being replayed.
+ */
+export function createRun(
+  seed: string | number | bigint,
+  rulesVersion: string = STACK10_RULES_VERSION,
+): Stack10Run {
   const normalized = toBigInt(seed).toString();
+  const version =
+    rulesVersion === STACK10_LEGACY_RULES_VERSION
+      ? STACK10_LEGACY_RULES_VERSION
+      : STACK10_RULES_VERSION;
   return {
     seed: normalized,
-    rulesVersion: STACK10_RULES_VERSION,
+    rulesVersion: version,
     columns: emptyColumns(),
     actions: [],
     score: 0,
     clearedColumns: 0,
-    nextTile: tileAt(seed, 0),
+    busts: 0,
+    nextTile: tileAt(seed, 0, version),
     outcome: "playing",
     endReason: null,
   };
@@ -278,7 +352,7 @@ export function place(run: Stack10Run, column: number): Stack10Run {
   if (!canPlace(run, column)) return run;
 
   const placed = run.actions.length;
-  const tile = tileAt(run.seed, placed);
+  const tile = tileAt(run.seed, placed, run.rulesVersion);
   const columns = run.columns.map((existing, index) => {
     if (index !== column) return existing;
     const tiles = [...existing.tiles, tile];
@@ -287,12 +361,15 @@ export function place(run: Stack10Run, column: number): Stack10Run {
 
   const target = columns[column];
   const cleared = target.sum === CLEAR_TOTAL;
-  const overflowed = target.sum > CLEAR_TOTAL;
+  const busted = target.sum > CLEAR_TOTAL;
+  const busts = busted ? run.busts + 1 : run.busts;
+  const overflowed = busted && busts >= bustLimit(run.rulesVersion);
 
-  if (cleared) {
+  if (cleared || (busted && !overflowed)) {
     // Stacking more tiles into a column before it clears is the riskier play —
     // fewer free columns, less room for the next tile — so it is what scores.
-    // Identical arithmetic to the verifier's `10 + 5 * (stacks - 1)`.
+    // Identical arithmetic to the verifier's `10 + 5 * (stacks - 1)`. A bust the
+    // run survives (`stack-10@3`) empties the column too, and scores nothing.
     columns[column] = { tiles: [], sum: 0 };
   }
 
@@ -306,10 +383,28 @@ export function place(run: Stack10Run, column: number): Stack10Run {
     actions,
     score: cleared ? run.score + CLEAR_SCORE + STACK_BONUS * (target.tiles.length - 1) : run.score,
     clearedColumns: cleared ? run.clearedColumns + 1 : run.clearedColumns,
-    nextTile: outcome === "playing" ? tileAt(run.seed, actions.length) : null,
+    busts,
+    nextTile: outcome === "playing" ? tileAt(run.seed, actions.length, run.rulesVersion) : null,
     outcome,
     endReason: overflowed ? "overflow" : limit ? "limit" : null,
   };
+}
+
+/**
+ * The tile after the next one, for the board's preview. `stack-10@3` shows it so a
+ * player can plan two drops ahead; null once the run has ended, at the submission
+ * bound, and under `stack-10@2`, which never showed it.
+ */
+export function previewTile(run: Stack10Run): number | null {
+  if (!isWinnable(run.rulesVersion) || run.outcome !== "playing") return null;
+  const following = run.actions.length + 1;
+  if (following >= STACK10_MAX_TILES) return null;
+  return tileAt(run.seed, following, run.rulesVersion);
+}
+
+/** Busts the run can take without ending: the next bust past these ends it. */
+export function bustsLeft(run: Stack10Run): number {
+  return Math.max(0, bustLimit(run.rulesVersion) - run.busts - 1);
 }
 
 /**

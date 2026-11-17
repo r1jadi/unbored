@@ -22,6 +22,7 @@ import { t } from "@/lib/settings/language";
 import { archiveSeed, getArchiveDay } from "@/lib/games/archive";
 import { localDayNumber } from "@/lib/games/crossword";
 import type { PlaySession, RunResult, RunSubmission } from "@/lib/games/sessions";
+import { unlimitedSeed } from "@/lib/games/unlimited";
 
 const OFFLINE_PREFIX = "offline-";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -31,6 +32,8 @@ const DAILY_CROSSWORD =
 
 /** The game each offline run on this page belongs to, for its result. */
 const offlineGames = new Map<string, string>();
+/** The offline runs on this page that are Unlimited rounds, for their result. */
+const unlimitedRuns = new Set<string>();
 
 /** True when the browser reports that it has no network at all. */
 export function browserOffline(): boolean {
@@ -85,8 +88,33 @@ export function archiveSession(
   return { ...session, seed };
 }
 
-/** What a practice run is called on its board: a past puzzle, or offline practice. */
-export function practiceLabel(): string {
+/**
+ * An Unlimited round (`lib/games/unlimited.ts`): a board other than today's, dealt
+ * here like offline practice: never ranked, never submitted. Null for a game
+ * without an Unlimited.
+ */
+export async function unlimitedSession(
+  gameSlug: string,
+  rulesVersion: string,
+): Promise<PlaySession | null> {
+  const seed = await unlimitedSeed(rulesVersion);
+  if (seed === null) return null;
+  const session = offlineSession(gameSlug, rulesVersion);
+  unlimitedRuns.add(session.id);
+  return { ...session, seed, unlimited: true };
+}
+
+/**
+ * Whether a run's board is not today's: an Unlimited round or a past day. Offline
+ * practice plays today's board, so it is not one.
+ */
+export function isPracticeBoard(session: Pick<PlaySession, "unlimited" | "offline">): boolean {
+  return session.unlimited === true || (session.offline === true && getArchiveDay() !== null);
+}
+
+/** What a practice run is called on its board: Unlimited, a past puzzle, or offline practice. */
+export function practiceLabel(session?: Pick<PlaySession, "unlimited">): string {
+  if (session?.unlimited) return t("Unlimited · practice");
   return getArchiveDay() !== null ? t("Past puzzle · practice") : t("Offline practice");
 }
 
@@ -127,11 +155,17 @@ export function offlineResult(
     rank: null,
     duplicate: false,
     offline: true,
+    ...(unlimitedRuns.has(sessionId) ? { unlimited: true } : {}),
   };
 }
 
 /** The result screens' note for an offline run, in place of "Verified by replaying…". */
-export function offlineResultNote(): string {
+export function offlineResultNote(result?: Pick<RunResult, "unlimited">): string {
+  if (result?.unlimited) {
+    return t(
+      "Unlimited is practice: it was not verified or saved, and it is not on the leaderboard. Today's puzzle is the one that counts.",
+    );
+  }
   if (getArchiveDay() !== null) {
     return t(
       "A past puzzle is practice: it was not verified or saved, and it is not on the leaderboard. Today's puzzle is the one that counts.",

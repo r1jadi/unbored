@@ -40,6 +40,8 @@ export const sqHints: Record<string, string> = {
   right: "djathtas",
   suns: "diej",
   moons: "hëna",
+  "The {tile} fits nowhere. Bust column {n}, the fullest, so it empties and leaves the most room.":
+    "{tile} nuk zë vend askund. Tejkalo kolonën {n}, më të mbushurën, që të zbrazet dhe të lërë më shumë vend.",
   "No column reaches exactly 10 with a {tile}. {n} gets closest, at {total}, without going over.":
     "Asnjë kolonë nuk arrin saktësisht 10 me një {tile}. {n} afrohet më shumë, me {total}, pa e kaluar.",
   "No slide merges anything yet. Sliding {name} moves the board so new pairs can line up.":

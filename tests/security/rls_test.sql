@@ -1449,6 +1449,10 @@ reset role;
 -- last tile overflows: sixty-seven tiles, 435 points, twenty-six clears. The
 -- shortest run past the old deck is the same line plus one tile: sixty-one
 -- tiles for 420. See the Stack 10 section of docs/games/README.md.
+-- stack-10@3, seed 1, greedy (clear if a column can, otherwise the fullest
+-- column the tile fits, otherwise column 0): busts on 0-based tiles 64, 119 and
+-- 143, the third of which ends the run. 144 tiles, 48 clears, 900 points.
+\set stack10_winnable 'array[0,1,1,2,2,3,1,2,0,0,2,3,1,0,0,0,1,0,0,0,1,0,1,0,0,0,0,1,0,0,0,1,0,1,1,1,1,0,0,1,0,0,0,2,1,0,1,2,0,0,0,0,0,1,1,2,0,2,2,0,0,0,0,3,0,2,0,1,1,0,1,2,2,0,3,0,0,1,0,0,3,1,0,1,0,1,1,0,0,1,1,1,0,0,1,0,0,1,0,3,1,1,3,0,0,0,3,0,1,3,0,2,0,1,2,0,2,0,2,0,0,2,2,0,2,0,0,1,0,2,0,1,0,2,0,2,1,0,0,0,0,1,2,0]'
 \set stack10_endless 'array[0,0,1,0,0,0,2,2,2,3,0,0,2,0,2,2,0,0,2,0,2,2,3,2,2,2,2,3,0,1,0,0,0,0,0,2,1,2,1,0,0,2,0,0,0,0,0,0,1,1,1,1,2,3,1,1,2,1,1,0,0,2,3,0,1,0,1]'
 \set stack10_past_deck 'array[0,0,1,0,0,0,2,2,2,3,0,0,2,0,2,2,0,0,2,0,2,2,3,2,2,2,2,3,0,1,0,0,0,0,0,2,1,2,1,0,0,2,0,0,0,0,0,0,1,1,1,1,2,3,1,1,2,1,1,0,1]'
 -- Seed 1's Chain line: symbols 0,0,2,3,0,0,2,2,0,1 dealt into ten rounds, 55
@@ -1529,6 +1533,8 @@ reset role;
 \set stack10_endless_session       'cccccccc-7777-4777-8777-cccccccccccc'
 \set stack10_endless_two_session   'cccccccc-8888-4888-8888-cccccccccccc'
 \set stack10_endless_guest_session 'cccccccc-9999-4999-8999-cccccccccccc'
+\set stack10_winnable_session     'cccccccc-aaaa-4aaa-8aaa-cccccccccccc'
+\set stack10_winnable_two_session 'cccccccc-bbbb-4bbb-8bbb-cccccccccccc'
 \set old_rules_session 'cccccccc-5555-4555-8555-cccccccccccc'
 \set bob_session       'cccccccc-6666-4666-8666-cccccccccccc'
 \set chain_session       'dddddddd-1111-4111-8111-dddddddddddd'
@@ -1767,6 +1773,9 @@ insert into public.game_sessions (id, game_id, user_id, seed, rules_version, sta
   (:'stack10_endless_session',       :'stack10_endless_game', :'alice', 1, 'stack-10@2', now() - interval '5 minutes', now() + interval '2 hours', null),
   (:'stack10_endless_two_session',   :'stack10_endless_game', :'alice', 1, 'stack-10@2', now() - interval '5 minutes', now() + interval '2 hours', null),
   (:'stack10_endless_guest_session', :'stack10_endless_game', null,     1, 'stack-10@2', now() - interval '5 minutes', now() + interval '2 hours', null),
+  -- Winnable Stack 10 (stack-10@3): two guest runs on seed 1.
+  (:'stack10_winnable_session',      :'stack10_endless_game', null,     1, 'stack-10@3', now() - interval '5 minutes', now() + interval '2 hours', null),
+  (:'stack10_winnable_two_session',  :'stack10_endless_game', null,     1, 'stack-10@3', now() - interval '5 minutes', now() + interval '2 hours', null),
   -- Chain fixtures under the same rules. Seed 1 deals symbols 0,0,2,3,0,0,2,2,0,1:
   -- round 1 is [0], round 2 [0,0], round 3 [0,0,2], and so on to ten rounds.
   (:'chain_session',       :'chain_game', :'alice', 1, 'chain@1', now() - interval '5 minutes', now() + interval '2 hours', null),
@@ -2321,7 +2330,7 @@ select rls_test.raises(
 -- promoted, heavier by a chance and a weight that both climb. A drift here is a
 -- drift in both copies, and every honest endless run would be refused.
 select rls_test.ok(
-  public.stack10_rules_version() = 'stack-10@2'
+  public.stack10_rules_version() = 'stack-10@3'
   and public.stack10_tiles() = 60
   and public.stack10_max_tiles() = 4096,
   'the endless rules: no deck, a 4096-tile submission bound, and the legacy 60 kept for stack-10@1'
@@ -2371,6 +2380,32 @@ select rls_test.ok(
 select rls_test.raises(
   $$select public.stack10_tile(1, -1)$$,
   '22023', 'a tile index is zero or more'
+);
+-- stack-10@3 draws its base tile from a table weighted toward light faces, and a
+-- run survives two busts. The two-argument draw above stays stack-10@2's.
+select rls_test.ok(
+  public.stack10_draw_table() = array[1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,5,5,6,6,7,7,8,9]::integer[]
+  and public.stack10_busts() = 3,
+  'stack-10@3: the weighted draw table and three busts'
+);
+select rls_test.ok(
+  (select array_agg(public.stack10_tile(1, placed, 'stack-10@3') order by placed)
+     from generate_series(0, 19) as placed)
+    = array[9,3,5,3,3,6,2,2,1,5,2,4,8,5,4,3,2,3,1,8]::integer[]
+  and (select array_agg(public.stack10_tile(9223372036854775807, placed, 'stack-10@3') order by placed)
+         from generate_series(0, 7) as placed)
+    = array[5,8,4,6,7,7,3,6]::integer[],
+  'stack-10@3: the generator deals the weighted tiles the client engine computes'
+);
+select rls_test.ok(
+  public.stack10_tile(1, 60, 'stack-10@3') = 4
+  and public.stack10_tile(1, 64, 'stack-10@3') = 8
+  and public.stack10_tile(1, 100, 'stack-10@3') = 1
+  and public.stack10_tile(1, 240, 'stack-10@3') = 3
+  and public.stack10_tile(1, 300, 'stack-10@3') = 3
+  and public.stack10_tile(1, 480, 'stack-10@3') = 8
+  and public.stack10_tile(1, 60, 'stack-10@2') = public.stack10_tile(1, 60),
+  'stack-10@3: the same ramp on top of the table, and stack-10@2 keeps its own draw'
 );
 -- The Don't Touch the Black generator, asserted directly: the whole sixty-cell
 -- deck is the one the client engine computes and the verifier replays. A drift
@@ -2530,6 +2565,10 @@ select rls_test.says(
 );
 select rls_test.says(
   $$public.start_game_session('fixture-runnable', 'stack-10@3', 'test')$$,
+  'started', 'a winnable Stack 10 run can be started'
+);
+select rls_test.says(
+  $$public.start_game_session('fixture-runnable', 'stack-10@4', 'test')$$,
   'unsupported_runtime', 'rules the verifier does not implement are refused at the door'
 );
 -- The shipped game itself, not a fixture: after every migration has been applied,
@@ -2555,6 +2594,14 @@ select rls_test.says_field(
 select rls_test.says_field(
   $$public.start_game_session('stack-10', 'stack-10@2', 'test/1.0')$$,
   'rules_version', 'stack-10@2', 'the shipped Stack 10 game issues the endless rules'
+);
+select rls_test.says_field(
+  $$public.start_game_session('stack-10', 'stack-10@3', 'test/1.0')$$,
+  'rules_version', 'stack-10@3', 'the shipped Stack 10 game issues the winnable rules'
+);
+select rls_test.says_field(
+  $$public.start_game_session('stack-10', 'stack-10@3', 'test/1.0')$$,
+  'tile_count', '4096', 'a winnable Stack 10 session reports the submission bound'
 );
 select rls_test.says_field(
   $$public.start_game_session('stack-10', 'stack-10@2', 'test/1.0')$$,
@@ -3109,6 +3156,31 @@ select rls_test.says(
 select rls_test.says_field(
   format($$public.complete_stack10_run('cccccccc-9999-4999-8999-cccccccccccc'::uuid, %s, 435, 45000)$$, :'stack10_endless'),
   'ranked', 'false', 'a guest endless Stack 10 run is never ranked'
+);
+-- stack-10@3: the greedy line survives two busts and ends on the third. The
+-- replay agrees with the client engine's 900 points; a wrong claim is told the
+-- real score, a tile past the third bust is impossible play, and the even draw's
+-- 435-point line is not a stack-10@3 run.
+select rls_test.says_field(
+  format($$public.complete_stack10_run('cccccccc-bbbb-4bbb-8bbb-cccccccccccc'::uuid, %s, 1, 45000)$$, :'stack10_winnable'),
+  'score', '900', 'stack-10@3: the replay of the greedy line is 900, and it is reported back'
+);
+select rls_test.says(
+  format($$public.complete_stack10_run('cccccccc-bbbb-4bbb-8bbb-cccccccccccc'::uuid, %s || 0, 900, 45000)$$, :'stack10_winnable'),
+  'invalid_actions', 'stack-10@3: a tile after the third bust is impossible play'
+);
+select rls_test.says_field(
+  format($$public.complete_stack10_run('cccccccc-bbbb-4bbb-8bbb-cccccccccccc'::uuid, (%s)[1:143], 900, 45000)$$, :'stack10_winnable'),
+  'score', '900', 'stack-10@3: after two busts the run is still live, and ending it there scores as it stands'
+);
+select rls_test.ok(
+  (select outcome = 'recorded' and tiles_placed = 144 and cleared_columns = 48 and score = 900
+     from public.complete_stack10_run('cccccccc-aaaa-4aaa-8aaa-cccccccccccc'::uuid, :stack10_winnable, 900, 45000)),
+  'stack-10@3: a guest run that survives two busts is recorded: 144 tiles, 48 clears'
+);
+select rls_test.says(
+  format($$public.complete_stack10_run('cccccccc-aaaa-4aaa-8aaa-cccccccccccc'::uuid, %s, 900, 45000)$$, :'stack10_winnable'),
+  'duplicate', 'stack-10@3: the same run again is a duplicate, not a second record'
 );
 -- A guest Chain run completes the same way: verified, recorded, unranked.
 select rls_test.says(

@@ -46,6 +46,7 @@ func TestLookupKeepsTheRetiredVersionsBounds(t *testing.T) {
 	}{
 		{"stack-10@1", 60, 4},
 		{"stack-10@2", 4096, 4},
+		{"stack-10@3", 4096, 4},
 		{"memory-flash@1", 60, 16},
 		{"memory-flash@2", 4096, 225},
 		{"one-move@1", 60, 25},

@@ -176,6 +176,10 @@ describe("starting a run", () => {
     expect(
       await screen.findByRole("heading", { name: "You've done today's crossword" }),
     ).toBeInTheDocument();
+
+    // Unlimited deals another grid here, as practice.
+    fireEvent.click(screen.getByRole("button", { name: "Keep playing: Unlimited" }));
+    expect(await screen.findByText("Unlimited · practice")).toBeInTheDocument();
   });
 });
 

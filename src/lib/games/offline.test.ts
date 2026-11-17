@@ -31,7 +31,7 @@ describe("offline practice", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(session).toMatchObject({
       gameSlug: "stack-10",
-      rulesVersion: "stack-10@2",
+      rulesVersion: "stack-10@3",
       ranked: false,
       offline: true,
     });

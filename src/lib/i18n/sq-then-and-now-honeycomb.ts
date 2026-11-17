@@ -30,6 +30,7 @@ export const sqThenAndNowHoneycomb: Record<string, string> = {
   "Fetching today's timeline…": "Po merret vija e sotme kohore…",
   "You've played today's timeline": "E ke luajtur vijën e sotme kohore",
   "Today's theme": "Tema e sotme",
+  "The theme": "Tema",
   "Tap two events to swap them. Oldest at the top.":
     "Prek dy ngjarje për t'i ndërruar. Më e vjetra lart.",
   Timeline: "Vija kohore",
@@ -308,7 +309,9 @@ export const sqThenAndNowHoneycomb: Record<string, string> = {
   "All seven! +{n}": "Të shtatat! +{n}",
   "Too short: four letters at least.": "Shumë e shkurtër: të paktën katër shkronja.",
   "Every word needs the centre letter.": "Çdo fjalë duhet të ketë shkronjën në mes.",
-  "Only today's seven letters.": "Vetëm shtatë shkronjat e sotme.",
+  "Only these seven letters.": "Vetëm këto shtatë shkronja.",
+  "Tap the letters, or swipe across them and let go to enter a word.":
+    "Prek shkronjat, ose rrëshqit mbi to dhe lësho për të futur një fjalë.",
   "Not in the word list.": "Nuk është në listën e fjalëve.",
   "Already found.": "E gjetur tashmë.",
   "I'm done ({points})": "Mbarova ({points})",

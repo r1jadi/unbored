@@ -36,6 +36,7 @@ import type { PlaySession } from "@/lib/games/sessions";
  */
 export const RESUMABLE_RULES: ReadonlySet<string> = new Set([
   "stack-10@2",
+  "stack-10@3",
   "chain@2",
   "memory-flash@2",
   "one-move@2",
