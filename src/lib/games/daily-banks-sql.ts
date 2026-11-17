@@ -1,5 +1,5 @@
 /**
- * The database's copies of the Ton Up, Ballpark, Only Once, Pixelock and Honeycomb banks, as the SQL
+ * The database's copies of the Ton Up, Ballpark, Only Once, Pixelock, Honeycomb and Meander banks, as the SQL
  * that sits between each sessions migration's `-- name:begin` and `-- name:end`
  * markers. `scripts/generate-daily-banks.ts` writes them there; the games' tests
  * read the migrations and compare, so the two can never drift apart silently.
@@ -8,6 +8,7 @@
 import { BALLPARK_PRODUCTS } from "@/lib/games/ballpark-bank";
 import { KINDS, ONLY_ONCE_PUZZLES, toHexMask } from "@/lib/games/only-once-bank";
 import { HONEYCOMB_PUZZLES } from "@/lib/games/honeycomb-bank";
+import { MEANDER_PUZZLES } from "@/lib/games/meander-bank";
 import { pointsList } from "@/lib/games/honeycomb";
 import { PIXELOCK_PICTURES } from "@/lib/games/pixelock-bank";
 import { TON_UP_CATEGORIES } from "@/lib/games/ton-up-bank";
@@ -58,6 +59,16 @@ export function honeycombBlocks(): Record<string, string> {
   };
 }
 
+export function meanderBlocks(): Record<string, string> {
+  return {
+    "meander-count": `    ${MEANDER_PUZZLES.length}`,
+    "meander-bank": MEANDER_PUZZLES.map(
+      (puzzle, i) =>
+        `    when ${i} then array[${[puzzle.rows.join(""), ...puzzle.words].map((s) => `'${s}'`).join(", ")}]`,
+    ).join("\n"),
+  };
+}
+
 /** Every migration that holds a bank, and the blocks it should hold. */
 export const BANK_TARGETS: readonly { file: string; blocks: () => Record<string, string> }[] = [
   { file: "supabase/migrations/20270104120000_ton_up_sessions.sql", blocks: tonUpBlocks },
@@ -65,6 +76,7 @@ export const BANK_TARGETS: readonly { file: string; blocks: () => Record<string,
   { file: "supabase/migrations/20270104120200_only_once_sessions.sql", blocks: onlyOnceBlocks },
   { file: "supabase/migrations/20270105120100_pixelock_sessions.sql", blocks: pixelockBlocks },
   { file: "supabase/migrations/20270106120100_honeycomb_sessions.sql", blocks: honeycombBlocks },
+  { file: "supabase/migrations/20270113120000_meander_sessions.sql", blocks: meanderBlocks },
 ];
 
 /** The text between a block's markers in a migration, or null when it has none. */

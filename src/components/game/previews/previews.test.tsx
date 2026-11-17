@@ -199,6 +199,8 @@ import { GROUP_POINTS, MAX_MISTAKES as FOURSORT_MISTAKES } from "@/lib/games/fou
 import { PIXELOCK_PICTURES } from "@/lib/games/pixelock-bank";
 import { THEN_AND_NOW_PUZZLES } from "@/lib/games/then-and-now-bank";
 import { HONEYCOMB_PUZZLES } from "@/lib/games/honeycomb-bank";
+import { MEANDER_PUZZLES } from "@/lib/games/meander-bank";
+import { lettersOf as meanderLetters, maxScore as meanderMax } from "@/lib/games/meander";
 import { MIN_LENGTH, usesAllSeven, wordPoints } from "@/lib/games/honeycomb";
 import {
   cluesOf as pixelockClues,
@@ -244,6 +246,7 @@ import {
   HONEYCOMB_PREVIEW_WORDS,
   HoneycombPreview,
 } from "./HoneycombPreview";
+import { MEANDER_PREVIEW_BEATS, MEANDER_PREVIEW_PUZZLE, MeanderPreview } from "./MeanderPreview";
 import {
   TON_UP_PREVIEW_BEATS,
   TON_UP_PREVIEW_CATEGORY,
@@ -299,6 +302,7 @@ const SCRIPTED: Row[] = [
   { name: "pixelock", beats: PIXELOCK_PREVIEW_BEATS, Preview: PixelockPreview },
   { name: "then-and-now", beats: THEN_AND_NOW_PREVIEW_BEATS, Preview: ThenAndNowPreview },
   { name: "honeycomb", beats: HONEYCOMB_PREVIEW_BEATS, Preview: HoneycombPreview },
+  { name: "meander", beats: MEANDER_PREVIEW_BEATS, Preview: MeanderPreview },
 ];
 
 const loopMs = (beats: readonly { ms: number }[]) => beats.reduce((sum, beat) => sum + beat.ms, 0);
@@ -888,5 +892,22 @@ describe("the Honeycomb preview", () => {
       HONEYCOMB_PREVIEW_WORDS.map((w) => wordPoints(HONEYCOMB_PREVIEW_PUZZLE, w)),
     );
     expect(floated).toEqual([1, 5, 14]);
+  });
+});
+
+describe("the Meander preview", () => {
+  it("winds words no day uses through its own grid, and fills it by the real rules", () => {
+    const used = new Set(MEANDER_PUZZLES.flatMap((p) => p.words));
+    expect(MEANDER_PREVIEW_PUZZLE.words.filter((w) => used.has(w))).toEqual([]);
+    const letters = meanderLetters(MEANDER_PREVIEW_PUZZLE);
+    MEANDER_PREVIEW_PUZZLE.paths.forEach((path, i) => {
+      expect(path.map((cell) => letters[cell]).join("")).toBe(MEANDER_PREVIEW_PUZZLE.words[i]);
+    });
+    const end = MEANDER_PREVIEW_BEATS[MEANDER_PREVIEW_BEATS.length - 1]!.run;
+    expect(end.ending).toBe("solved");
+    const floated = MEANDER_PREVIEW_BEATS.flatMap((beat) =>
+      beat.gain === null ? [] : [beat.gain],
+    );
+    expect(floated).toEqual([meanderMax(MEANDER_PREVIEW_PUZZLE)]);
   });
 });

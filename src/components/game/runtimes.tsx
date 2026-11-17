@@ -76,6 +76,7 @@ const LOADERS: Readonly<Record<string, Loader>> = {
   "then-and-now": () =>
     import("./ThenAndNowRuntime").then((m) => ({ default: m.ThenAndNowRuntime })),
   honeycomb: () => import("./HoneycombRuntime").then((m) => ({ default: m.HoneycombRuntime })),
+  meander: () => import("./MeanderRuntime").then((m) => ({ default: m.MeanderRuntime })),
 };
 
 /** Shown when a game's code could not be downloaded (offline, or a stale deploy). */

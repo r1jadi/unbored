@@ -34,6 +34,7 @@ const LOADERS: Record<string, Loader> = {
   guesswork: () => import("./GuessworkPreview").then((m) => ({ default: m.GuessworkPreview })),
   honeycomb: () => import("./HoneycombPreview").then((m) => ({ default: m.HoneycombPreview })),
   huedini: () => import("./HuediniPreview").then((m) => ({ default: m.HuediniPreview })),
+  meander: () => import("./MeanderPreview").then((m) => ({ default: m.MeanderPreview })),
   "memory-flash": () =>
     import("./MemoryFlashPreview").then((m) => ({ default: m.MemoryFlashPreview })),
   minefield: () => import("./MinefieldPreview").then((m) => ({ default: m.MinefieldPreview })),

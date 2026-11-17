@@ -137,6 +137,16 @@ const GAMES: readonly { pattern: RegExp; bank: () => Promise<Bank> }[] = [
         }),
       ),
   },
+  {
+    pattern: /^meander@/,
+    bank: () =>
+      Promise.all([import("@/lib/games/meander"), import("@/lib/games/meander-bank")]).then(
+        ([engine, bank]) => ({
+          size: bank.MEANDER_PUZZLES.length,
+          key: (day) => String(engine.puzzleIndexForDay(day)),
+        }),
+      ),
+  },
   { pattern: /^tee-time@/, bank: () => Promise.resolve(ENDLESS) },
 ];
 

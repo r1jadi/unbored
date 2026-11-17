@@ -700,4 +700,42 @@ begin
   end if;
 end $$;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Meander: a day's moves and the score they make
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  got bigint;
+begin
+  for v in select * from (values
+    -- vectors:meander:begin
+    ('meander', '20406', '6065014,296552,27370,78535', '165'),
+    ('meander', '20407', '373780,0,1,373780,386197,314964,10125', '140'),
+    ('meander', '20408', '40197,5009403', '20'),
+    ('meander', '20409', '0,0,0,99728,23727,1260597,4956212', '90')
+    -- vectors:meander:end
+  ) as vectors(game, day, actions, score) loop
+    got := public.meander_score(v.day::bigint, string_to_array(v.actions, ',')::integer[]);
+    if got::text is distinct from v.score then
+      raise exception 'ASSERTION FAILED: % day % — the database scores %, the engine %',
+        v.game, v.day, got, v.score;
+    end if;
+    raise notice 'ok   % day %: the verifier scores the engine''s run', v.game, v.day;
+  end loop;
+
+  -- Not legal: lifting a word not placed, a code between the lifts and the traces,
+  -- a fourth hint, a trace over a placed word, a move after the grid is full, and
+  -- a negative code.
+  if public.meander_score(20406, array[5]) is not null
+     or public.meander_score(20406, array[50]) is not null
+     or public.meander_score(20406, array[0, 0, 0, 0]) is not null
+     or public.meander_score(20406, array[6065014, 6065014]) is not null
+     or public.meander_score(20406, array[6065014, 296552, 27370, 78535, 0]) is not null
+     or public.meander_score(20406, array[-1]) is not null then
+    raise exception 'ASSERTION FAILED: Meander scored moves that are not a legal run';
+  end if;
+end $$;
+
 rollback;

@@ -740,7 +740,11 @@ export function useStack10Run(gameSlug: string): Stack10RunControls {
       .then((session) => {
         if (!session || controller.signal.aborted) return;
         startedAt.current = Date.now();
-        setState({ status: "playing", session, run: createRun(session.seed, session.rulesVersion) });
+        setState({
+          status: "playing",
+          session,
+          run: createRun(session.seed, session.rulesVersion),
+        });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;

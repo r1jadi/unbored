@@ -27,6 +27,7 @@ import { replay as foursortReplay, scoreOf as foursortScore } from "@/lib/games/
 import { replay as pixelockReplay, scoreOf as pixelockScore } from "@/lib/games/pixelock";
 import { replay as thenAndNowReplay, scoreOf as thenAndNowScore } from "@/lib/games/then-and-now";
 import { replay as honeycombReplay, scoreOf as honeycombScore } from "@/lib/games/honeycomb";
+import { replay as meanderReplay, scoreOf as meanderScore } from "@/lib/games/meander";
 
 /**
  * The other half of tests/security/verifier_vectors.sql.
@@ -304,6 +305,17 @@ describe("the verifier vectors", () => {
       const [got, played] = engines[game!]!(Number(day), moves);
       expect(played, `${game} day ${day} plays every move`).toBe(moves.length);
       expect(String(got), `${game} day ${day}`).toBe(score);
+    }
+  });
+
+  it("are Meander's runs as the engine scores them", () => {
+    const cases = vectors("meander");
+    expect(cases.length).toBeGreaterThanOrEqual(4);
+    for (const [game, day, actions, score] of cases) {
+      const moves = actions!.split(",").map(Number);
+      const run = meanderReplay(Number(day), moves);
+      expect(run.moves.length, `${game} day ${day} plays every move`).toBe(moves.length);
+      expect(String(meanderScore(run)), `${game} day ${day}`).toBe(score);
     }
   });
 

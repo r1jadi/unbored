@@ -1034,6 +1034,36 @@ export const GAME_RULES = {
       },
     ],
   },
+  meander: {
+    heading: msg("Words that wind"),
+    summary: msg("Find the day's hidden words. Together they use every letter once."),
+    rules: [
+      {
+        lead: msg("Drag through the letters"),
+        text: msg(
+          "up, down, left or right, turning as you go. A word of the day's theme stays on the grid.",
+        ),
+      },
+      {
+        lead: msg("Every letter, once."),
+        text: msg(
+          "The words fill the grid between them. You know the theme and how long each word is.",
+        ),
+      },
+      {
+        lead: msg("Stuck letters?"),
+        text: msg(
+          "A word can often be traced more than one way. Tap a placed word to lift it and try another route.",
+        ),
+      },
+      {
+        lead: msg("100 a word,"),
+        text: msg(
+          "and filling the grid adds 500 and 250 for every hint you didn't take: 1,750 for a clean five-word day. A new grid arrives at midnight, your time.",
+        ),
+      },
+    ],
+  },
 } satisfies Record<string, GameRules>;
 
 /** A game's rules by its runtime, or null for a runtime with none written. */

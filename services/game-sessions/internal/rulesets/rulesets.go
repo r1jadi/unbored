@@ -129,6 +129,10 @@ var families = map[string]Ruleset{
 	"then-and-now": {Verifier: "complete_then_and_now_run", MaxActions: 4, ActionCodes: 46656},
 	// Honeycomb: a move is a word's place in the day's list, at most 64 words.
 	"honeycomb": {Verifier: "complete_honeycomb_run", MaxActions: 64, ActionCodes: 64},
+	// Meander: a move is a hint (0), a lift (1 + word) or a trace, start + 25 ×
+	// length + 400 × its directions in base 4; eight letters make seven steps, so
+	// every code is below 400 × 4⁷. Placing and lifting can repeat: 256 moves.
+	"meander": {Verifier: "complete_meander_run", MaxActions: 256, ActionCodes: 400 << 14},
 }
 
 // overrides are the versions whose bounds differ from their family's: the

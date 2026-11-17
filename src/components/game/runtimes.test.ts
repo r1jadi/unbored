@@ -18,6 +18,7 @@ import { FUSEBOX_RUNTIME } from "@/lib/games/fusebox";
 import { GRIDBURST_RUNTIME } from "@/lib/games/gridburst";
 import { GUESSWORK_RUNTIME } from "@/lib/games/guesswork";
 import { HONEYCOMB_RUNTIME } from "@/lib/games/honeycomb";
+import { MEANDER_RUNTIME } from "@/lib/games/meander";
 import { HUEDINI_RUNTIME } from "@/lib/games/huedini";
 import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
 import { MINEFIELD_RUNTIME } from "@/lib/games/minefield";
@@ -59,6 +60,7 @@ const CONSTANTS = [
   GRIDBURST_RUNTIME,
   GUESSWORK_RUNTIME,
   HONEYCOMB_RUNTIME,
+  MEANDER_RUNTIME,
   HUEDINI_RUNTIME,
   MEMORY_FLASH_RUNTIME,
   MINEFIELD_RUNTIME,

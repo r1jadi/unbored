@@ -85,6 +85,7 @@ export function GameArt({
       {id === "pixelock" && <Pixelock />}
       {id === "then-and-now" && <ThenAndNow />}
       {id === "honeycomb" && <Honeycomb />}
+      {id === "meander" && <Meander />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </GameStage>
   );
@@ -167,6 +168,7 @@ const KNOWN = new Set([
   "pixelock",
   "then-and-now",
   "honeycomb",
+  "meander",
 ]);
 
 /**
@@ -965,6 +967,27 @@ function Honeycomb() {
             i === 0 ? "bg-primary text-primary-foreground" : "bg-foreground/10",
           )}
           style={{ left: `${x}%`, top: `${y}%` }}
+        >
+          {letter}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Meander() {
+  // A 4 × 4 grid of letters with one word winding through it, lit.
+  const letters = "MEANRDLOWTEINGSH";
+  const path = [0, 1, 2, 3, 7, 6, 5, 9, 13, 14];
+  return (
+    <div className="grid aspect-square w-[78%] grid-cols-4 gap-[min(1.5cqw,1.5cqh,0.4rem)]">
+      {letters.split("").map((letter, i) => (
+        <div
+          key={i}
+          className={cn(
+            "flex items-center justify-center rounded-[min(2cqw,2cqh,0.5rem)] text-[min(7cqw,7cqh,1.75rem)] font-bold",
+            path.includes(i) ? "bg-primary text-primary-foreground" : "bg-foreground/10",
+          )}
         >
           {letter}
         </div>

@@ -2584,7 +2584,7 @@ select rls_test.visible(
 -- ships, only the thirty-seven with runtimes are playable.
 select rls_test.visible(
   $$select 1 from public.games
-     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku', 'scatter', 'huedini', 'cascade', 'checkmate', 'bolted', 'fusebox', 'minefield', 'sumdoku', 'guesswork', 'whittle', 'flipside', 'deep-cut', 'ton-up', 'ballpark', 'only-once', 'tee-time', 'foursort', 'pixelock', 'then-and-now', 'honeycomb') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
+     where slug not in ('stack-10', 'dont-break-the-chain', 'memory-flash', 'one-move', 'color-merge', 'dont-touch-the-black', '7-second', 'crowns', 'trail', '8-puzzle', 'sun-and-moon', 'sudoku', 'crossword', 'gridburst', 'updraft', 'decant', 'mini-sudoku', 'scatter', 'huedini', 'cascade', 'checkmate', 'bolted', 'fusebox', 'minefield', 'sumdoku', 'guesswork', 'whittle', 'flipside', 'deep-cut', 'ton-up', 'ballpark', 'only-once', 'tee-time', 'foursort', 'pixelock', 'then-and-now', 'honeycomb', 'meander') and slug not like 'fixture-%' and (playable or runtime is not null)$$,
   0, 'no shipped game besides the thirty-seven runtimes is marked playable'
 );
 select rls_test.says_field(
