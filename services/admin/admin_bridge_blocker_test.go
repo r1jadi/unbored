@@ -506,14 +506,14 @@ func (g *guardBackend) Broadcasts(_ context.Context, token, actor string, page s
 	return nil, nil
 }
 
-func (g *guardBackend) SendBroadcast(_ context.Context, token, actor, title, body, link string) (supabaseadmin.BroadcastResult, error) {
-	g.record("SendBroadcast", title, body, link)
+func (g *guardBackend) SendBroadcast(_ context.Context, token, actor string, m supabaseadmin.BroadcastMessage) (supabaseadmin.BroadcastResult, error) {
+	g.record("SendBroadcast", m.Title, m.Body, m.Link, m.Style, m.Game, m.Action)
 	g.lastActor = actor
 	return supabaseadmin.BroadcastResult{ID: "broadcast-1", Recipients: 3}, nil
 }
 
-func (g *guardBackend) UpdateBroadcast(_ context.Context, token, actor, id, title, body, link string) error {
-	g.record("UpdateBroadcast", id, title, body, link)
+func (g *guardBackend) UpdateBroadcast(_ context.Context, token, actor, id string, m supabaseadmin.BroadcastMessage) error {
+	g.record("UpdateBroadcast", id, m.Title, m.Body, m.Link, m.Style, m.Game, m.Action)
 	g.lastActor = actor
 	return nil
 }

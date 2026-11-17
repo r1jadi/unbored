@@ -12,6 +12,12 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import { getAccessToken, getAuthState, subscribe as subscribeToAuth } from "@/lib/auth/session";
 import { restGet, restMutate, SupabaseRestError } from "@/lib/supabase/rest";
+import {
+  isAnnouncementAction,
+  isAnnouncementStyle,
+  type AnnouncementAction,
+  type AnnouncementStyle,
+} from "@/lib/notifications/announcement-styles";
 
 import { t } from "@/lib/settings/language";
 /**
@@ -363,16 +369,41 @@ export function newGameOf(
   return { slug: game, title, tagline: typeof tagline === "string" ? tagline : null };
 }
 
+export type Announcement = {
+  title: string;
+  body: string;
+  link: string | null;
+  /** The label and icon. Rows sent before styles existed read as news. */
+  style: AnnouncementStyle;
+  /** A game's slug, whose picture the card shows. */
+  game: string | null;
+  gameTitle: string | null;
+  /** The button. Rows sent before buttons existed get Open when they have a link. */
+  action: AnnouncementAction | null;
+};
+
 /** The announcement a notification carries, or null for any other row. */
-export function announcementOf(
-  item: AppNotification,
-): { title: string; body: string; link: string | null } | null {
-  const { reason, title, text, link } = item.payload;
+export function announcementOf(item: AppNotification): Announcement | null {
+  const { reason, title, text, link, style, game, game_title: gameTitle, action } = item.payload;
   if (item.kind !== "system" || reason !== "announcement") return null;
   if (typeof title !== "string" || typeof text !== "string") return null;
   // Only a path inside the app: the database holds the same rule.
   const safe = typeof link === "string" && /^\/[^/\\]/.test(link) ? link : null;
-  return { title, body: text, link: safe };
+  const slug = typeof game === "string" && /^[a-z0-9][a-z0-9-]*$/.test(game) ? game : null;
+  let button: AnnouncementAction | null = isAnnouncementAction(action) ? action : null;
+  // A button that has nowhere to go is left off rather than drawn broken.
+  if (button === "play" && !slug) button = null;
+  if (button && button !== "play" && !safe) button = null;
+  if (!button && safe) button = "open";
+  return {
+    title,
+    body: text,
+    link: safe,
+    style: isAnnouncementStyle(style) ? style : "news",
+    game: slug,
+    gameTitle: typeof gameTitle === "string" ? gameTitle : null,
+    action: button,
+  };
 }
 
 /** Human-readable line for a notification row. Never invents actor names. */

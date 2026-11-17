@@ -4,6 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { EmptyState, ErrorState, ListSkeleton, Page, PageHeader } from "@/components/common";
 import { toast } from "sonner";
 import { NewGameCard } from "@/components/game/NewGameCard";
+import { AnnouncementCard } from "@/components/notifications/AnnouncementCard";
+import {
+  IconArt,
+  NotificationCard,
+  type NotificationCardAction,
+} from "@/components/notifications/NotificationCard";
 import { SwipeRow } from "@/components/social/SwipeRow";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +24,6 @@ import {
 } from "@/lib/notifications/store";
 import { seo } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import { formatAgo } from "@/lib/admin/api";
 
 import { t, msg } from "@/lib/settings/language";
 export const Route = createFileRoute("/notifications")({
@@ -26,13 +31,14 @@ export const Route = createFileRoute("/notifications")({
   component: Notifications,
 });
 
-const icon: Record<AppNotification["kind"], typeof Bell> = {
-  like: Heart,
-  follow: UserPlus,
-  comment: MessageCircle,
-  score: Zap,
-  moderation: Trophy,
-  system: Bell,
+/** The label and icon for each kind Unbored sends by itself. */
+const KIND: Record<AppNotification["kind"], { label: string; icon: typeof Bell }> = {
+  like: { label: msg("New like"), icon: Heart },
+  follow: { label: msg("New follower"), icon: UserPlus },
+  comment: { label: msg("Comment"), icon: MessageCircle },
+  score: { label: msg("Score"), icon: Zap },
+  moderation: { label: msg("Update"), icon: Trophy },
+  system: { label: msg("Unbored"), icon: Bell },
 };
 
 const filters = [msg("All"), msg("Games"), msg("Scores"), msg("Social"), msg("Comments")] as const;
@@ -193,7 +199,7 @@ function Notifications() {
           body={t("New follows, comments and score updates show up here.")}
         />
       ) : (
-        <ul className="divide-y divide-border md:space-y-1 md:divide-y-0">
+        <ul className="md:space-y-1">
           {list.map((item) => {
             const row = {
               deleteLabel: t("Delete notification"),
@@ -203,74 +209,63 @@ function Notifications() {
               },
               onDelete: () => void remove(item),
             };
-            if (newGameOf(item)) {
-              return (
-                <SwipeRow key={item.id} {...row} className="mx-4 my-2 rounded-2xl md:mx-0">
-                  <NewGameCard item={item} />
-                </SwipeRow>
-              );
-            }
-            const Icon = icon[item.kind];
-            const announcement = announcementOf(item);
-            const actor =
-              typeof item.payload["username"] === "string"
-                ? (item.payload["username"] as string)
-                : undefined;
-            const game =
-              typeof item.payload["game"] === "string"
-                ? (item.payload["game"] as string)
-                : undefined;
             return (
-              <SwipeRow key={item.id} {...row} className="md:rounded-lg">
-                <div
-                  className={cn(
-                    "enter flex items-center gap-3 px-4 py-3.5 md:px-3 [@media(pointer:fine)]:pr-12",
-                    !item.readAt && "bg-surface",
-                  )}
-                >
-                  <div className="relative">
-                    <span className="flex size-10 items-center justify-center rounded-full bg-surface-2">
-                      <Icon className="size-4" />
-                    </span>
-                  </div>
-                  <p className="min-w-0 flex-1 text-sm">
-                    {actor && (
-                      <Link to="/u/$username" params={{ username: actor }} className="font-medium">
-                        @{actor}{" "}
-                      </Link>
-                    )}
-                    {announcement && (
-                      <span className="block font-medium">{announcement.title}</span>
-                    )}
-                    <span className={actor ? "text-muted-foreground" : ""}>
-                      {describeNotification(item)}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {" "}
-                      · {formatAgo(item.createdAt) ?? "recently"}
-                    </span>
-                  </p>
-                  {game && (
-                    <Button asChild size="sm" variant="secondary">
-                      <Link to="/games/$id" params={{ id: game }}>
-                        {t("Open")}
-                      </Link>
-                    </Button>
-                  )}
-                  {announcement?.link && (
-                    <Button asChild size="sm" variant="secondary">
-                      <Link to={announcement.link}>{t("Open")}</Link>
-                    </Button>
-                  )}
-                  {!item.readAt && (
-                    <span className="size-2 rounded-full bg-primary" aria-label={t("New")} />
-                  )}
-                </div>
+              <SwipeRow key={item.id} {...row} className="mx-4 my-2 rounded-2xl md:mx-0">
+                <InboxCard item={item} />
               </SwipeRow>
             );
           })}
         </ul>
       )}
     </Page>
+  );
+}
+
+/**
+ * One row of the inbox. Every notification takes the same card, so a new game, a
+ * follow, a reply and an administrator's announcement all read alike.
+ */
+function InboxCard({ item }: { item: AppNotification }) {
+  if (newGameOf(item)) return <NewGameCard item={item} />;
+  const announcement = announcementOf(item);
+  if (announcement) {
+    return (
+      <AnnouncementCard
+        announcement={announcement}
+        createdAt={item.createdAt}
+        unread={!item.readAt}
+      />
+    );
+  }
+  const { label, icon } = KIND[item.kind] ?? KIND.system;
+  const actor =
+    typeof item.payload["username"] === "string" ? (item.payload["username"] as string) : undefined;
+  const game =
+    typeof item.payload["game"] === "string" ? (item.payload["game"] as string) : undefined;
+  let action: NotificationCardAction | null = null;
+  if (game) {
+    action = { label: t("Open"), to: "/games/$id", params: { id: game } };
+  } else if (actor && item.kind === "follow") {
+    action = { label: t("View"), to: "/u/$username", params: { username: actor } };
+  }
+  return (
+    <NotificationCard
+      art={<IconArt icon={icon} />}
+      eyebrow={t(label)}
+      eyebrowIcon={icon}
+      headline={
+        <>
+          {actor && (
+            <Link to="/u/$username" params={{ username: actor }}>
+              @{actor}{" "}
+            </Link>
+          )}
+          <span className={actor ? "font-normal" : undefined}>{describeNotification(item)}</span>
+        </>
+      }
+      createdAt={item.createdAt}
+      unread={!item.readAt}
+      action={action}
+    />
   );
 }

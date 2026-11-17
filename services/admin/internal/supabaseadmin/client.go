@@ -865,10 +865,39 @@ type Broadcast struct {
 	Title          string    `json:"title"`
 	Body           string    `json:"body"`
 	Link           *string   `json:"link"`
+	Style          string    `json:"style"`
+	Game           *string   `json:"game"`
+	Action         *string   `json:"action"`
 	SentByUsername *string   `json:"sent_by_username"`
 	Recipients     int64     `json:"recipients"`
 	ReadCount      int64     `json:"read_count"`
 	CreatedAt      time.Time `json:"created_at"`
+}
+
+// BroadcastMessage is what an administrator writes and picks for an announcement: its
+// words, and the parts that make it look like the notifications Unbored sends itself.
+type BroadcastMessage struct {
+	Title  string
+	Body   string
+	Link   string
+	Style  string
+	Game   string
+	Action string
+}
+
+func (m BroadcastMessage) params() map[string]any {
+	style := m.Style
+	if style == "" {
+		style = "news"
+	}
+	return map[string]any{
+		"p_title":  m.Title,
+		"p_body":   m.Body,
+		"p_link":   nullable(m.Link),
+		"p_style":  style,
+		"p_game":   nullable(m.Game),
+		"p_action": nullable(m.Action),
+	}
 }
 
 // BroadcastResult is what sending an announcement did.
@@ -888,8 +917,8 @@ func (c *Client) Broadcasts(ctx context.Context, token, actor string, page Page)
 }
 
 // SendBroadcast writes one announcement to every player who hasn't opted out.
-func (c *Client) SendBroadcast(ctx context.Context, token, actor, title, body, link string) (BroadcastResult, error) {
-	payload := map[string]any{"p_title": title, "p_body": body, "p_link": nullable(link)}
+func (c *Client) SendBroadcast(ctx context.Context, token, actor string, message BroadcastMessage) (BroadcastResult, error) {
+	payload := message.params()
 	var result BroadcastResult
 	if err := c.invoke(ctx, "send-broadcast", "admin_send_broadcast", "admin_send_broadcast_svc", payload, token, actor, &result); err != nil {
 		return BroadcastResult{}, err
@@ -898,8 +927,9 @@ func (c *Client) SendBroadcast(ctx context.Context, token, actor, title, body, l
 }
 
 // UpdateBroadcast rewrites a sent announcement, and the copy in every inbox.
-func (c *Client) UpdateBroadcast(ctx context.Context, token, actor, id, title, body, link string) error {
-	payload := map[string]any{"p_id": id, "p_title": title, "p_body": body, "p_link": nullable(link)}
+func (c *Client) UpdateBroadcast(ctx context.Context, token, actor, id string, message BroadcastMessage) error {
+	payload := message.params()
+	payload["p_id"] = id
 	return c.invoke(ctx, "update-broadcast", "admin_update_broadcast", "admin_update_broadcast_svc", payload, token, actor, nil)
 }
 

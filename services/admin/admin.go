@@ -164,8 +164,8 @@ type Backend interface {
 	PlatformSettings(ctx context.Context, token, actor string) (supabaseadmin.PlatformSettings, error)
 	SetPlatformSettings(ctx context.Context, token, actor, bannerText string, commentsEnabled, messagesEnabled bool) error
 	Broadcasts(ctx context.Context, token, actor string, page supabaseadmin.Page) ([]supabaseadmin.Broadcast, error)
-	SendBroadcast(ctx context.Context, token, actor, title, body, link string) (supabaseadmin.BroadcastResult, error)
-	UpdateBroadcast(ctx context.Context, token, actor, id, title, body, link string) error
+	SendBroadcast(ctx context.Context, token, actor string, message supabaseadmin.BroadcastMessage) (supabaseadmin.BroadcastResult, error)
+	UpdateBroadcast(ctx context.Context, token, actor, id string, message supabaseadmin.BroadcastMessage) error
 	DeleteBroadcast(ctx context.Context, token, actor, id string) error
 	DeepCutReviews(ctx context.Context, token, actor, verdict, search string, page supabaseadmin.Page) ([]supabaseadmin.DeepCutReview, error)
 	DeepCutAnswers(ctx context.Context, token, actor string, questionID int) ([]supabaseadmin.DeepCutAnswer, error)

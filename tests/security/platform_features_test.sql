@@ -353,6 +353,44 @@ begin
     raise exception 'deleting a missing broadcast did not say so';
   end if;
 
+  -- An announcement built like a new-game card carries its parts to every inbox, and
+  -- the parts must fit together: a real published game, and a button with somewhere to go.
+  v_result := public.admin_send_broadcast_svc(
+    '10000000-0000-4000-8000-000000000003', 'Fresh out of the oven', 'A styled message', null,
+    'new_game', (select g.slug::text from public.games g where g.id = v_game), 'play'
+  );
+  if exists (
+    select 1 from public.notifications n
+     where n.payload ->> 'broadcast' = v_result ->> 'id'
+       and (n.payload ->> 'style' <> 'new_game'
+            or n.payload ->> 'action' <> 'play'
+            or n.payload ->> 'game_title' is null)
+  ) or not exists (
+    select 1 from public.broadcasts b
+     where b.id = (v_result ->> 'id')::uuid and b.style = 'new_game' and b.action = 'play'
+  ) then
+    raise exception 'a styled broadcast lost its parts';
+  end if;
+  perform public.admin_delete_broadcast_svc(
+    '10000000-0000-4000-8000-000000000003', (v_result ->> 'id')::uuid
+  );
+  if pg_temp.fails_with($q$select public.admin_send_broadcast_svc('10000000-0000-4000-8000-000000000003', 'No game here', 'A styled message', null, 'new_game')$q$)
+     is distinct from '22023' then
+    raise exception 'a new-game broadcast went out without a game';
+  end if;
+  if pg_temp.fails_with($q$select public.admin_send_broadcast_svc('10000000-0000-4000-8000-000000000003', 'Not a game', 'A styled message', null, 'news', 'no-such-game', 'play')$q$)
+     is distinct from '22023' then
+    raise exception 'a broadcast pictured a game that does not exist';
+  end if;
+  if pg_temp.fails_with($q$select public.admin_send_broadcast_svc('10000000-0000-4000-8000-000000000003', 'Nowhere to go', 'A styled message', null, 'feature', null, 'try')$q$)
+     is distinct from '22023' then
+    raise exception 'a broadcast button went out without a link';
+  end if;
+  if pg_temp.fails_with($q$select public.admin_send_broadcast_svc('10000000-0000-4000-8000-000000000003', 'Odd style', 'A styled message', null, 'shout')$q$)
+     is distinct from '22023' then
+    raise exception 'a broadcast went out in a style nobody can draw';
+  end if;
+
   -- Opting out is respected.
   insert into public.user_preferences (user_id, notify_announcements)
   values ('10000000-0000-4000-8000-000000000001', false)

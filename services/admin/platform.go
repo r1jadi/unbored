@@ -9,6 +9,7 @@ import (
 
 	"github.com/r1jadi/unbored/packages/go/platform/apierr"
 	"github.com/r1jadi/unbored/packages/go/platform/httpx"
+	"github.com/r1jadi/unbored/services/admin/internal/supabaseadmin"
 )
 
 const (
@@ -28,6 +29,16 @@ const (
 // broadcastLink is a path inside the app, so an announcement can't send every
 // player to another site. The database holds the same rule.
 var broadcastLink = regexp.MustCompile(`^/[^/\\]`)
+
+// broadcastGame is a catalogue slug. The database checks that the game is published.
+var broadcastGame = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,63}$`)
+
+// The parts an administrator picks so an announcement looks like the notifications
+// Unbored sends by itself: a label with an icon, and a button.
+var (
+	broadcastStyles  = map[string]bool{"news": true, "new_game": true, "feature": true, "event": true, "theme": true, "update": true}
+	broadcastActions = map[string]bool{"open": true, "play": true, "try": true, "look": true}
+)
 
 type featuredView struct {
 	GameID        string    `json:"gameId"`
@@ -145,6 +156,9 @@ type broadcastView struct {
 	Title          string    `json:"title"`
 	Body           string    `json:"body"`
 	Link           *string   `json:"link"`
+	Style          string    `json:"style"`
+	Game           *string   `json:"game"`
+	Action         *string   `json:"action"`
 	SentByUsername *string   `json:"sentByUsername"`
 	Recipients     int64     `json:"recipients"`
 	ReadCount      int64     `json:"readCount"`
@@ -172,6 +186,9 @@ func (s *service) listBroadcasts(w http.ResponseWriter, r *http.Request) {
 			Title:          row.Title,
 			Body:           row.Body,
 			Link:           row.Link,
+			Style:          row.Style,
+			Game:           row.Game,
+			Action:         row.Action,
 			SentByUsername: row.SentByUsername,
 			Recipients:     row.Recipients,
 			ReadCount:      row.ReadCount,
@@ -182,20 +199,23 @@ func (s *service) listBroadcasts(w http.ResponseWriter, r *http.Request) {
 }
 
 type sendBroadcastRequest struct {
-	Title string `json:"title"`
-	Body  string `json:"body"`
-	Link  string `json:"link"`
+	Title  string `json:"title"`
+	Body   string `json:"body"`
+	Link   string `json:"link"`
+	Style  string `json:"style"`
+	Game   string `json:"game"`
+	Action string `json:"action"`
 }
 
 func (s *service) sendBroadcast(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAdminTier(w, r) {
 		return
 	}
-	title, text, link, ok := s.broadcastBody(w, r)
+	message, ok := s.broadcastBody(w, r)
 	if !ok {
 		return
 	}
-	result, err := s.backend.SendBroadcast(r.Context(), s.token(r), s.actor(r), title, text, link)
+	result, err := s.backend.SendBroadcast(r.Context(), s.token(r), s.actor(r), message)
 	if err != nil {
 		s.moderationFailure(w, r, "send a broadcast", err)
 		return
@@ -203,33 +223,57 @@ func (s *service) sendBroadcast(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, r, http.StatusCreated, result)
 }
 
-// broadcastBody reads and validates the words of an announcement, for sending one and
-// for editing one. The database holds the same rules.
-func (s *service) broadcastBody(w http.ResponseWriter, r *http.Request) (title, text, link string, ok bool) {
+// broadcastBody reads and validates an announcement, for sending one and for editing
+// one. The database holds the same rules.
+func (s *service) broadcastBody(w http.ResponseWriter, r *http.Request) (supabaseadmin.BroadcastMessage, bool) {
 	var body sendBroadcastRequest
 	if !s.decode(w, r, &body) {
-		return "", "", "", false
+		return supabaseadmin.BroadcastMessage{}, false
 	}
-	title, text, link = strings.TrimSpace(body.Title), strings.TrimSpace(body.Body), strings.TrimSpace(body.Link)
-	if n := utf8.RuneCountInString(title); n < 3 || n > 80 {
-		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
-			"A title is 3 to 80 characters.",
-			apierr.Detail{Field: "title", Rule: "length"}))
-		return "", "", "", false
+	m := supabaseadmin.BroadcastMessage{
+		Title:  strings.TrimSpace(body.Title),
+		Body:   strings.TrimSpace(body.Body),
+		Link:   strings.TrimSpace(body.Link),
+		Style:  strings.TrimSpace(body.Style),
+		Game:   strings.ToLower(strings.TrimSpace(body.Game)),
+		Action: strings.TrimSpace(body.Action),
 	}
-	if n := utf8.RuneCountInString(text); n < 3 || n > 300 {
-		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
-			"A message is 3 to 300 characters.",
-			apierr.Detail{Field: "body", Rule: "length"}))
-		return "", "", "", false
+	if m.Style == "" {
+		m.Style = "news"
 	}
-	if link != "" && (len(link) > 200 || !broadcastLink.MatchString(link)) {
-		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest,
-			"A link must be a path inside Unbored, such as /games/sudoku.",
-			apierr.Detail{Field: "link", Rule: "format"}))
-		return "", "", "", false
+	fail := func(message, field, rule string) (supabaseadmin.BroadcastMessage, bool) {
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeBadRequest, message,
+			apierr.Detail{Field: field, Rule: rule}))
+		return supabaseadmin.BroadcastMessage{}, false
 	}
-	return title, text, link, true
+	if n := utf8.RuneCountInString(m.Title); n < 3 || n > 80 {
+		return fail("A title is 3 to 80 characters.", "title", "length")
+	}
+	if n := utf8.RuneCountInString(m.Body); n < 3 || n > 300 {
+		return fail("A message is 3 to 300 characters.", "body", "length")
+	}
+	if m.Link != "" && (len(m.Link) > 200 || !broadcastLink.MatchString(m.Link)) {
+		return fail("A link must be a path inside Unbored, such as /games/sudoku.", "link", "format")
+	}
+	if !broadcastStyles[m.Style] {
+		return fail("Pick a type from the list.", "style", "enum")
+	}
+	if m.Action != "" && !broadcastActions[m.Action] {
+		return fail("Pick a button from the list.", "action", "enum")
+	}
+	if m.Game != "" && !broadcastGame.MatchString(m.Game) {
+		return fail("Pick a game from the list.", "game", "format")
+	}
+	if m.Style == "new_game" && m.Game == "" {
+		return fail("A new-game announcement needs a game.", "game", "required")
+	}
+	if m.Action == "play" && m.Game == "" {
+		return fail("A Play button needs a game.", "game", "required")
+	}
+	if m.Action != "" && m.Action != "play" && m.Link == "" {
+		return fail("This button needs a link.", "link", "required")
+	}
+	return m, true
 }
 
 // updateBroadcast rewrites an announcement that was already sent, in the console and
@@ -242,11 +286,11 @@ func (s *service) updateBroadcast(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	title, text, link, ok := s.broadcastBody(w, r)
+	message, ok := s.broadcastBody(w, r)
 	if !ok {
 		return
 	}
-	if err := s.backend.UpdateBroadcast(r.Context(), s.token(r), s.actor(r), id, title, text, link); err != nil {
+	if err := s.backend.UpdateBroadcast(r.Context(), s.token(r), s.actor(r), id, message); err != nil {
 		s.moderationFailure(w, r, "edit a broadcast", err)
 		return
 	}

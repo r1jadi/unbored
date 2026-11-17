@@ -985,14 +985,14 @@ func (f *fakeBackend) Broadcasts(_ context.Context, token, actor string, page su
 	return nil, nil
 }
 
-func (f *fakeBackend) SendBroadcast(_ context.Context, token, actor, title, body, link string) (supabaseadmin.BroadcastResult, error) {
-	f.record("SendBroadcast", title, body, link)
+func (f *fakeBackend) SendBroadcast(_ context.Context, token, actor string, m supabaseadmin.BroadcastMessage) (supabaseadmin.BroadcastResult, error) {
+	f.record("SendBroadcast", m.Title, m.Body, m.Link, m.Style, m.Game, m.Action)
 	f.lastActor = actor
 	return supabaseadmin.BroadcastResult{ID: "broadcast-1", Recipients: 3}, nil
 }
 
-func (f *fakeBackend) UpdateBroadcast(_ context.Context, token, actor, id, title, body, link string) error {
-	f.record("UpdateBroadcast", id, title, body, link)
+func (f *fakeBackend) UpdateBroadcast(_ context.Context, token, actor, id string, m supabaseadmin.BroadcastMessage) error {
+	f.record("UpdateBroadcast", id, m.Title, m.Body, m.Link, m.Style, m.Game, m.Action)
 	f.lastActor = actor
 	return nil
 }

@@ -20,6 +20,10 @@
  * so removal from the allowlist takes effect on the next read.
  */
 
+import type {
+  AnnouncementAction,
+  AnnouncementStyle,
+} from "@/lib/notifications/announcement-styles";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiError, apiFetch, type ApiRequestOptions } from "@/lib/api/client";
@@ -296,6 +300,9 @@ export type AdminBroadcast = {
   title: string;
   body: string;
   link: string | null;
+  style: AnnouncementStyle;
+  game: string | null;
+  action: AnnouncementAction | null;
   sentByUsername: string | null;
   recipients: number;
   readCount: number;
@@ -520,11 +527,21 @@ export function internalLink(value: string): string {
   }
 }
 
-export async function sendAdminBroadcast(message: {
+/** What an administrator writes and picks for an announcement. */
+export type AdminBroadcastMessage = {
   title: string;
   body: string;
   link: string;
-}): Promise<{ id: string; recipients: number }> {
+  style: AnnouncementStyle;
+  /** A published game's slug, or "" for none. */
+  game: string;
+  /** The button, or "" for none. */
+  action: AnnouncementAction | "";
+};
+
+export async function sendAdminBroadcast(
+  message: AdminBroadcastMessage,
+): Promise<{ id: string; recipients: number }> {
   return apiFetch<{ id: string; recipients: number }>(Routes.broadcasts, {
     method: "POST",
     token: requireToken(),
@@ -535,7 +552,7 @@ export async function sendAdminBroadcast(message: {
 /** Rewrites a sent announcement, in the console and in every inbox. Nobody is re-notified. */
 export async function updateAdminBroadcast(
   id: string,
-  message: { title: string; body: string; link: string },
+  message: AdminBroadcastMessage,
 ): Promise<{ id: string }> {
   return apiFetch<{ id: string }>(Routes.broadcast(id), {
     method: "PATCH",

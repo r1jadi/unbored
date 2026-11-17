@@ -275,7 +275,44 @@ describe("announcements in the inbox", () => {
   it("reads an announcement", () => {
     expect(
       announcementOf(row({ reason: "announcement", title: "T", text: "B", link: "/games/sudoku" })),
-    ).toEqual({ title: "T", body: "B", link: "/games/sudoku" });
+    ).toEqual({
+      title: "T",
+      body: "B",
+      link: "/games/sudoku",
+      style: "news",
+      game: null,
+      gameTitle: null,
+      action: "open",
+    });
+  });
+
+  it("reads the parts an administrator picked", () => {
+    expect(
+      announcementOf(
+        row({
+          reason: "announcement",
+          title: "T",
+          text: "B",
+          link: null,
+          style: "new_game",
+          game: "honeycomb",
+          game_title: "Honeycomb",
+          action: "play",
+        }),
+      ),
+    ).toMatchObject({
+      style: "new_game",
+      game: "honeycomb",
+      gameTitle: "Honeycomb",
+      action: "play",
+    });
+  });
+
+  it("leaves off a button with nowhere to go", () => {
+    const parts = { reason: "announcement", title: "T", text: "B" };
+    expect(announcementOf(row({ ...parts, action: "play" }))?.action).toBeNull();
+    expect(announcementOf(row({ ...parts, action: "try" }))?.action).toBeNull();
+    expect(announcementOf(row({ ...parts, style: "shout" }))?.style).toBe("news");
   });
 
   it("never follows a link out of the app", () => {

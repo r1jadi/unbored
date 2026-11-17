@@ -2706,6 +2706,18 @@ paths:
                 title: { type: string, minLength: 3, maxLength: 80 }
                 body: { type: string, minLength: 3, maxLength: 300 }
                 link: { type: string, maxLength: 200 }
+                style:
+                  type: string
+                  enum: [news, new_game, feature, event, theme, update]
+                  description: The label and icon. Defaults to news. new_game needs a game.
+                game:
+                  type: string
+                  maxLength: 64
+                  description: A published game's slug; the card shows its picture.
+                action:
+                  type: string
+                  enum: [open, play, try, look]
+                  description: The button. play needs a game; the others need a link.
       responses:
         "201":
           description: Sent.
@@ -2750,6 +2762,18 @@ paths:
                 title: { type: string, minLength: 3, maxLength: 80 }
                 body: { type: string, minLength: 3, maxLength: 300 }
                 link: { type: string, maxLength: 200 }
+                style:
+                  type: string
+                  enum: [news, new_game, feature, event, theme, update]
+                  description: The label and icon. Defaults to news. new_game needs a game.
+                game:
+                  type: string
+                  maxLength: 64
+                  description: A published game's slug; the card shows its picture.
+                action:
+                  type: string
+                  enum: [open, play, try, look]
+                  description: The button. play needs a game; the others need a link.
       responses:
         "200":
           description: Updated.
@@ -3844,12 +3868,15 @@ components:
               createdAt: { type: string, format: date-time }
     AdminBroadcast:
       type: object
-      required: [id, title, body, recipients, readCount, createdAt]
+      required: [id, title, body, style, recipients, readCount, createdAt]
       properties:
         id: { type: string, format: uuid }
         title: { type: string }
         body: { type: string }
         link: { type: [string, "null"] }
+        style: { type: string, enum: [news, new_game, feature, event, theme, update] }
+        game: { type: [string, "null"] }
+        action: { type: [string, "null"], enum: [open, play, try, look, null] }
         sentByUsername: { type: [string, "null"] }
         recipients: { type: integer }
         readCount: { type: integer }

@@ -58,6 +58,14 @@ func TestAdministratorCanBroadcastAndChangeSettings(t *testing.T) {
 	if status != http.StatusCreated || payload["recipients"] != float64(3) {
 		t.Errorf("broadcast = %d %v, want 201 with its reach", status, payload)
 	}
+	status, payload = call(t, server, http.MethodPost, BroadcastsPath, token,
+		map[string]any{"title": "Fresh game", "body": "Seven letters", "style": "new_game", "game": "Honeycomb", "action": "play"})
+	if status != http.StatusCreated {
+		t.Errorf("styled broadcast = %d %v, want 201", status, payload)
+	}
+	if got := strings.Join(backend.lastArgs, "|"); got != "Fresh game|Seven letters||new_game|honeycomb|play" {
+		t.Errorf("styled broadcast reached the database as %q", got)
+	}
 	if status, payload := call(t, server, http.MethodPatch, PlatformSettingsPath, token,
 		map[string]any{"bannerText": "Back soon", "commentsEnabled": false, "messagesEnabled": true}); status != http.StatusOK {
 		t.Errorf("settings = %d, want 200 (%v)", status, payload)
@@ -84,6 +92,12 @@ func TestPlatformWritesValidateBeforeTheDatabase(t *testing.T) {
 		{"outside link", http.MethodPost, BroadcastsPath, map[string]any{"title": "Big news", "body": "Something new", "link": "https://evil.example"}},
 		{"scheme-relative link", http.MethodPost, BroadcastsPath, map[string]any{"title": "Big news", "body": "Something new", "link": "//evil.example"}},
 		{"backslash link", http.MethodPost, BroadcastsPath, map[string]any{"title": "Big news", "body": "Something new", "link": `/\evil.example`}},
+		{"unknown style", http.MethodPost, BroadcastsPath, map[string]any{"title": "Big news", "body": "Something new", "style": "shout"}},
+		{"unknown button", http.MethodPost, BroadcastsPath, map[string]any{"title": "Big news", "body": "Something new", "action": "buy", "link": "/shop"}},
+		{"new game without a game", http.MethodPost, BroadcastsPath, map[string]any{"title": "Big news", "body": "Something new", "style": "new_game"}},
+		{"play without a game", http.MethodPost, BroadcastsPath, map[string]any{"title": "Big news", "body": "Something new", "action": "play"}},
+		{"button without a link", http.MethodPost, BroadcastsPath, map[string]any{"title": "Big news", "body": "Something new", "action": "open"}},
+		{"bad game slug", http.MethodPost, BroadcastsPath, map[string]any{"title": "Big news", "body": "Something new", "game": "../x"}},
 		{"long banner", http.MethodPatch, PlatformSettingsPath, map[string]any{"bannerText": strings.Repeat("x", 201), "commentsEnabled": true, "messagesEnabled": true}},
 		{"missing switch", http.MethodPatch, PlatformSettingsPath, map[string]any{"bannerText": ""}},
 		{"bad game id", http.MethodPut, FeaturedPath, map[string]any{"gameIds": []string{"nope"}}},

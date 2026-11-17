@@ -677,6 +677,54 @@ describe("announcements", () => {
       title: "Fixed news",
       body: "Sent before",
       link: "/settings/appearance",
+      style: "news",
+      game: "",
+      // A link with no button chosen gets Open, as the inbox draws it.
+      action: "open",
+    });
+  });
+
+  it("sends the type, game and button an administrator picked", async () => {
+    const spy = adminApi("admin", {
+      "/admin/games": () =>
+        jsonResponse({
+          items: [{ id: "g1", slug: "honeycomb", title: "Honeycomb", status: "published" }],
+          hasMore: false,
+        }),
+      "/admin/broadcasts": sentPage,
+    });
+    await signedIn(spy);
+    await renderPage(() => <NotificationsAdmin />);
+
+    fireEvent.change(await screen.findByLabelText("Notification type"), {
+      target: { value: "new_game" },
+    });
+    // A new-game announcement can't go without its game.
+    expect(screen.getByText("A new-game announcement needs a game.")).toBeInTheDocument();
+    await screen.findByRole("option", { name: "Honeycomb" });
+    fireEvent.change(screen.getByLabelText("Game (optional)"), { target: { value: "honeycomb" } });
+    // Picking a game offers Play straight away.
+    expect(screen.getByLabelText("Button")).toHaveValue("play");
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Fresh out of the oven" },
+    });
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Seven letters." } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Yes, send to everyone" }));
+
+    const post = () =>
+      spy.mock.calls.find(
+        ([input, init]) =>
+          String(input).includes("/admin/broadcasts") && (init as RequestInit)?.method === "POST",
+      );
+    await waitFor(() => expect(post()).toBeDefined());
+    expect(JSON.parse((post()![1] as RequestInit).body as string)).toEqual({
+      title: "Fresh out of the oven",
+      body: "Seven letters.",
+      link: "",
+      style: "new_game",
+      game: "honeycomb",
+      action: "play",
     });
   });
 
