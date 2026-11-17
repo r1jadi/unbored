@@ -5,6 +5,9 @@
  * Registration is production-only: the dev server serves source modules that
  * change on every edit, and a worker holding on to them would only get in the way.
  *
+ * After launch it also tells the worker which build is live, so an installed app
+ * moves to each deploy's files instead of staying on the build it was installed with.
+ *
  * Warming asks the worker to keep the play page of every playable game, and reads
  * each game's catalogue entry through it so the worker keeps that too. Each page is a
  * server render, so this runs only when it has to: after a deploy (a kept page names
@@ -72,6 +75,9 @@ async function warm(registration: ServiceWorkerRegistration): Promise<void> {
   if (!navigator.onLine || !registration.active) return;
   // Cheap to ask: this is a static file the CDN answers.
   const build = await currentBuild();
+  // The worker script doesn't change with a deploy, so it learns of one here and
+  // moves its cache to the new build in the background (a no-op when it has it).
+  if (build !== null) registration.active.postMessage({ type: "update", version: build });
   if (!warmIsDue(Date.now() - readWarmedAt(), build, readWarmedBuild())) return;
   try {
     const list = await fetchGames({ limit: MAX_PAGE_SIZE });

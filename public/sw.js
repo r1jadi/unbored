@@ -12,6 +12,12 @@
  *     change content, so they are served from the cache first. A launch asks for
  *     about a hundred of these, so each lookup goes straight to its one cache by
  *     exact name: scanning every cache, which `caches.match` does, cost 100x more.
+ *     The worker script itself rarely changes, so a deploy doesn't reinstall it:
+ *     the app reports the live build (`{ type: "update", version }`) and the worker
+ *     moves to it in the background, keeping one build back for a page still open
+ *     on it. Without that, an installed app stayed on the build it was installed
+ *     with, sent every newer file through the worker to the network, and its cache
+ *     grew with every deploy.
  *   - **Pages**: network first, so a visitor online always gets a fresh render;
  *     the copy is kept for when the network is gone. The app warms the play page
  *     of every playable game (`src/lib/offline-warm.ts`), so a game the player has
@@ -85,7 +91,7 @@ self.addEventListener("activate", (event) => {
  * A build without a manifest (the dev server) caches only the static files, and
  * whatever is fetched later is kept as it is used.
  */
-async function cacheBuild() {
+async function cacheBuild(parallel = 8) {
   let manifest = { version: "dev", files: [] };
   try {
     const response = await fetch(MANIFEST_URL, { cache: "no-store" });
@@ -108,12 +114,37 @@ async function cacheBuild() {
   }
   // One file at a time would be slow and all at once can trip a rate limit; a
   // few in parallel is enough. A file that fails is fetched again on use.
-  for (let i = 0; i < missing.length; i += 8) {
-    await Promise.all(missing.slice(i, i + 8).map((url) => cache.add(url).catch(() => undefined)));
+  for (let i = 0; i < missing.length; i += parallel) {
+    await Promise.all(missing.slice(i, i + parallel).map((url) => cache.add(url).catch(() => undefined)));
   }
   await cache.put(
     "/__build-version",
     new Response(manifest.version, { headers: { "content-type": "text/plain" } }),
+  );
+  return name;
+}
+
+/**
+ * Moves to the build the app says is live, unless this worker already has it. Runs
+ * after launch at low concurrency, so it doesn't compete with the page. The build
+ * that was current is kept, since an open page may still load its chunks (the host
+ * only serves the newest build); anything older is deleted.
+ */
+async function updateBuild(version) {
+  const was = await currentBuildCache();
+  const target = `${BUILD_CACHE_PREFIX}${version}`;
+  if (was === target) return;
+  // A leftover of that build (a rollback) would sort before the current cache, and
+  // the newest cache is the current one: start it again.
+  await caches.delete(target);
+  const name = await cacheBuild(4);
+  if (!name.endsWith(version)) return; // The manifest answered with another build.
+  buildCache = caches.open(name);
+  const names = await caches.keys();
+  await Promise.all(
+    names
+      .filter((n) => n.startsWith(BUILD_CACHE_PREFIX) && n !== name && n !== was)
+      .map((n) => caches.delete(n)),
   );
 }
 
@@ -201,7 +232,10 @@ function openBuildCache() {
  */
 async function buildFile(request, url) {
   const cache = await openBuildCache();
-  const cached = await cache.match(url.pathname, { ignoreVary: true });
+  const cached =
+    (await cache.match(url.pathname, { ignoreVary: true })) ??
+    // A chunk of the build kept one back, for a page that opened before the update.
+    (await caches.match(url.pathname, { ignoreVary: true }));
   if (cached) return cached;
   const response = await fetch(request);
   if (response.ok) {
@@ -340,12 +374,23 @@ function escapeHtml(text) {
  */
 self.addEventListener("message", (event) => {
   const data = event.data;
+  if (data && data.type === "update" && typeof data.version === "string") {
+    event.waitUntil(queue(() => updateBuild(data.version)));
+    return;
+  }
   if (!data || data.type !== "warm" || !Array.isArray(data.games)) return;
   const games = data.games
     .filter((game) => game && typeof game.slug === "string" && typeof game.title === "string")
     .map((game) => ({ slug: game.slug, title: game.title }));
-  event.waitUntil(warm(games));
+  event.waitUntil(queue(() => warm(games)));
 });
+
+/** Background work, one job at a time, so an update and a warm don't both hit the network. */
+let work = Promise.resolve();
+function queue(task) {
+  work = work.then(task).catch(() => undefined);
+  return work;
+}
 
 /**
  * A push from `services/notifications/push.go`. Browsers require a visible
