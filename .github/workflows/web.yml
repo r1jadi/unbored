@@ -77,5 +77,12 @@ jobs:
         # Advisories that live in a transitive dependency, where no range in
         # package.json can reach the patched release, are pinned by the
         # "overrides" block in package.json instead of being ignored here.
-        run: bun audit --audit-level=high
+        #
+        # GHSA-fc5q-39xc-vjpf (picomatch ReDoS) has no patched release yet: every
+        # version through 4.0.7, the latest, is affected, so no override can reach
+        # a fix. picomatch only runs inside the build tools (Vite, Vitest, the
+        # TanStack plugins, ESLint) on glob patterns from this repository's own
+        # config, never on user input. Drop the ignore once a fixed picomatch
+        # ships, and pin it in "overrides".
+        run: bun audit --audit-level=high --ignore=GHSA-fc5q-39xc-vjpf
         continue-on-error: false

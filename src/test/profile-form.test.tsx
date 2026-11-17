@@ -409,7 +409,7 @@ describe("ProfileForm", () => {
 
     await waitFor(() => expect(patchRequests(spy)).toHaveLength(1));
     const patch = JSON.parse(String(patchRequests(spy)[0]![1]!.body)) as Record<string, unknown>;
-    expect(patch.avatarPath).toBeNull();
+    expect(patch["avatarPath"]).toBeNull();
     const deleted = spy.mock.calls.find(([, init]) => init?.method === "DELETE");
     expect(String(deleted?.[0])).toContain(`/storage/v1/object/avatars/${photoPath}`);
     // With no photo left, there is nothing to remove.
