@@ -65,7 +65,7 @@ export const terms = [
   [
     msg("9. Intellectual property"),
     msg(
-      "Games, artwork, branding and the app itself remain the property of their respective owners. You may not copy, redistribute or misrepresent them.",
+      "Games, artwork, branding and the app itself remain the property of their respective owners. You may not copy, redistribute or misrepresent them. Only upload or post content (such as a profile picture, bio or comment) that you own or have the right to use. Copyright complaints (DMCA): if you believe material on Unbored infringes your copyright, send a notice to our designated copyright agent at contactunbored@gmail.com with the subject “DMCA notice”, including your physical or electronic signature; the copyrighted work; the link to or location of the material on Unbored; your name, address, phone number and email; a statement that you believe in good faith the use is not authorised by the owner, its agent or the law; and a statement, under penalty of perjury, that the notice is accurate and that you are the owner or authorised to act for them. We remove or disable access to the material promptly and tell the person who posted it, who may send a counter-notice to the same address. We terminate, in appropriate circumstances, the accounts of repeat infringers.",
     ),
   ],
   [
@@ -92,7 +92,7 @@ export const privacy = [
   [
     msg("What we do not collect"),
     msg(
-      "No payment data (no payments feature exists) and no device fingerprint inventory beyond what the browser necessarily sends. Nothing is sold. Analytics do not start, and set no cookies, until you accept them.",
+      "No payment data (no payments feature exists) and no device fingerprint inventory beyond what the browser necessarily sends. Nothing is sold. Analytics do not start, and set no cookies, until you accept them. Your date of birth is asked once at sign-up, only to confirm you are 13 or older; it is checked and not stored. If we learn that an account belongs to a child under 13, we delete it.",
     ),
   ],
   [

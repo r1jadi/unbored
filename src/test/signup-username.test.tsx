@@ -139,6 +139,7 @@ describe("choosing a username during sign-up", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     await acceptTerms();
+    fireEvent.change(screen.getByLabelText("Date of birth"), { target: { value: "1990-05-17" } });
     fireEvent.click(screen.getByRole("button", { name: "Agree and create account" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/account-created"));
@@ -148,6 +149,7 @@ describe("choosing a username during sign-up", () => {
     expect(JSON.parse(String(signUp?.[1]?.body))).toMatchObject({
       email: "player@example.com",
       username: "rijad",
+      birthDate: "1990-05-17",
     });
 
     // The username was not written a second time after registration: the
@@ -250,6 +252,7 @@ describe("choosing a username during sign-up", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     await acceptTerms();
+    fireEvent.change(screen.getByLabelText("Date of birth"), { target: { value: "1990-05-17" } });
     fireEvent.click(screen.getByRole("button", { name: "Agree and create account" }));
 
     // No account was created; the visitor is back on the name step with the
@@ -324,6 +327,7 @@ describe("choosing a username during sign-up", () => {
     expect(await screen.findByText("Username is available")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await acceptTerms();
+    fireEvent.change(screen.getByLabelText("Date of birth"), { target: { value: "1990-05-17" } });
     fireEvent.click(screen.getByRole("button", { name: "Agree and create account" }));
 
     await waitFor(() => expect(patches).toHaveLength(1));

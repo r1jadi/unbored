@@ -59,6 +59,7 @@ async function fillSignup(email: string, password: string) {
   const boxes = await screen.findAllByRole("checkbox");
   fireEvent.click(boxes[0]);
   fireEvent.click(boxes[1]);
+  fireEvent.change(screen.getByLabelText("Date of birth"), { target: { value: "1990-05-17" } });
   fireEvent.click(screen.getByRole("button", { name: "Agree and create account" }));
 }
 

@@ -177,7 +177,7 @@ export function CookieConsent() {
               </dt>
               <dd className="mt-0.5 text-muted-foreground">
                 {t(
-                  "PostHog counts visits and how games are played. It sets cookies, so it only starts if you accept.",
+                  "PostHog counts visits and how games are played, and records sessions with everything you type hidden. It sets cookies, so it only starts if you accept.",
                 )}
               </dd>
             </div>
