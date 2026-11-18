@@ -38,6 +38,8 @@ type recapService struct {
 	logger  *slog.Logger
 	secret  string
 	siteURL string
+	signer  *unsubscribeSigner
+	address string
 }
 
 func newRecapService(backend RecapBackend, mailer Mailer, logger *slog.Logger, secret, siteURL string) *recapService {
@@ -50,6 +52,8 @@ func newRecapService(backend RecapBackend, mailer Mailer, logger *slog.Logger, s
 		logger:  logger,
 		secret:  strings.TrimSpace(secret),
 		siteURL: normalizeSiteURL(siteURL),
+		signer:  newUnsubscribeSigner(secret, apiURL()),
+		address: postalAddress(),
 	}
 }
 
@@ -80,6 +84,12 @@ func (s *recapService) send(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnavailable, "The weekly recap is not available right now."))
 		return
 	}
+	if s.address == "" {
+		// CAN-SPAM: every commercial email must carry a valid postal address.
+		s.logger.WarnContext(r.Context(), "EMAIL_POSTAL_ADDRESS is not set; the weekly recap cannot send")
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnavailable, "The weekly recap is not available right now."))
+		return
+	}
 
 	response := recapResponse{Status: "idle"}
 	for response.Sent+response.Failed < maxRecipientsPerRun {
@@ -93,12 +103,13 @@ func (s *recapService) send(w http.ResponseWriter, r *http.Request) {
 		}
 		response.Status = "sent"
 		for _, recipient := range recipients {
-			content := renderRecap(recipient, s.siteURL)
+			content := renderRecap(recipient, s.siteURL, s.signer.URL(recipient.UserID, kindWeeklyRecap), s.address)
 			_, sendErr := s.mailer.Send(r.Context(), email.Message{
 				To:             []string{recipient.Email},
 				Subject:        content.Subject,
 				HTML:           content.HTML,
 				Text:           content.Text,
+				Headers:        s.signer.Headers(recipient.UserID, kindWeeklyRecap),
 				IdempotencyKey: "weekly-recap/" + recipient.WeekStart + "/" + recipient.UserID,
 			})
 			failure := ""
@@ -180,6 +191,7 @@ type recapTemplateData struct {
 	SettingsURL  string
 	SettingsText string
 	Footer       string
+	Address      string
 }
 
 var recapTemplate = template.Must(template.New("weekly-recap").Parse(`<!doctype html>
@@ -188,11 +200,13 @@ var recapTemplate = template.Must(template.New("weekly-recap").Parse(`<!doctype 
 <p style="font-size:20px;font-weight:600;margin:0 0 16px">{{.Greeting}}</p>
 {{range .Lines}}<p style="font-size:16px;line-height:1.5;margin:0 0 12px">{{.}}</p>
 {{end}}<p style="margin:24px 0"><a href="{{.PlayURL}}" style="display:inline-block;background:#f27a3d;color:#16171b;font-weight:600;text-decoration:none;padding:12px 20px;border-radius:10px">{{.PlayCTA}}</a></p>
-<p style="font-size:12px;color:#9a9ba3;margin:32px 0 0">{{.Footer}} <a href="{{.SettingsURL}}" style="color:#9a9ba3">{{.SettingsText}}</a></p>
+<p style="font-size:12px;color:#9a9ba3;margin:32px 0 0">{{.Footer}} <a href="{{.SettingsURL}}" style="color:#9a9ba3">{{.SettingsText}}</a><br>Unbored · {{.Address}}</p>
 </div></body></html>`))
 
-// renderRecap words one player's week in their language.
-func renderRecap(recipient supabasedigest.RecapRecipient, siteURL string) emailContent {
+// renderRecap words one player's week in their language. unsubscribeURL is the
+// player's signed one-click link and address the sender's postal address
+// (both CAN-SPAM); the "turn off" link goes straight to the former.
+func renderRecap(recipient supabasedigest.RecapRecipient, siteURL, unsubscribeURL, address string) emailContent {
 	words, ok := recapCopies[recipient.Language]
 	if !ok {
 		words = recapCopies["en"]
@@ -238,9 +252,10 @@ func renderRecap(recipient supabasedigest.RecapRecipient, siteURL string) emailC
 		Lines:        lines,
 		PlayURL:      playURL,
 		PlayCTA:      words.playCTA,
-		SettingsURL:  siteURL + "/settings/notifications",
+		SettingsURL:  unsubscribeURL,
 		SettingsText: words.settingsText,
 		Footer:       words.footerText,
+		Address:      address,
 	}
 	var html strings.Builder
 	if err := recapTemplate.Execute(&html, data); err != nil {
@@ -248,6 +263,6 @@ func renderRecap(recipient supabasedigest.RecapRecipient, siteURL string) emailC
 		html.Reset()
 	}
 	text := greeting + "\n\n" + strings.Join(lines, "\n") + "\n\n" + words.playCTA + ": " + playURL +
-		"\n\n" + words.footerText + "\n" + words.settingsText + ": " + data.SettingsURL + "\n"
+		"\n\n" + words.footerText + "\n" + words.settingsText + ": " + data.SettingsURL + "\nUnbored · " + address + "\n"
 	return emailContent{Subject: subject, HTML: html.String(), Text: text}
 }

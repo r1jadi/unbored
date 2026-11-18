@@ -36,6 +36,8 @@ type Message struct {
 	HTML    string   `json:"html,omitempty"`
 	Text    string   `json:"text,omitempty"`
 	ReplyTo string   `json:"reply_to,omitempty"`
+	// Headers are extra message headers, e.g. List-Unsubscribe.
+	Headers map[string]string `json:"headers,omitempty"`
 	// IdempotencyKey makes a retried send deliver at most once (24h window).
 	IdempotencyKey string `json:"-"`
 }

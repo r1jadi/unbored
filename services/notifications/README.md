@@ -137,6 +137,8 @@ rather than retried forever, so one bad mailbox cannot hold the queue.
 | `SUPABASE_SECRET_KEY` (or legacy `SUPABASE_SERVICE_ROLE_KEY`) | Runs the service-role RPCs; never a client key |
 | `RESEND_API_KEY` | Sending. Without it the route answers `503` |
 | `EMAIL_FROM` | Verified Resend sender, e.g. `Unbored <hello@unbored.lol>` |
+| `EMAIL_POSTAL_ADDRESS` | Required (CAN-SPAM). Physical postal address shown in every digest and recap; both refuse to send without it |
+| `PUBLIC_API_URL` | API origin for the signed one-click unsubscribe links (`GET`/`POST /api/v1/email/unsubscribe`); defaults to `https://api.unbored.lol` |
 | `PUBLIC_SITE_URL` | Play and preferences links. Falls back to `https://unbored.lol` |
 | `CRON_SECRET` | Shared secret the cron workflow presents. Unset disables the route |
 

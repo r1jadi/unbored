@@ -260,3 +260,10 @@ func (c *Client) RecordRecap(ctx context.Context, week, userID, failure string) 
 	}
 	return c.call(ctx, "record_weekly_recap_delivery", payload, nil)
 }
+
+// Unsubscribe turns off one marketing email kind ("new-games" or
+// "weekly-recap") for one account. It is idempotent.
+func (c *Client) Unsubscribe(ctx context.Context, userID, kind string) error {
+	payload := map[string]any{"p_user_id": userID, "p_kind": kind}
+	return c.call(ctx, "email_unsubscribe", payload, nil)
+}

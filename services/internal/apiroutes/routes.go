@@ -66,6 +66,9 @@ func Groups() []Group {
 		// mistaken for a staff route, and the gateway forwards it through the
 		// existing games upstream.
 		{Prefix: BasePath + "/cron", Service: "games"},
+		// One-click unsubscribe links in marketing emails. Served by the same
+		// notifications package; the link itself is the credential (signed).
+		{Prefix: BasePath + "/email", Service: "games"},
 	}
 }
 

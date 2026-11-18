@@ -72,6 +72,10 @@ type service struct {
 	logger  *slog.Logger
 	secret  string
 	siteURL string
+	// signer makes each recipient's unsubscribe link; address is the postal
+	// address every commercial email must show (CAN-SPAM).
+	signer  *unsubscribeSigner
+	address string
 }
 
 func newService(backend Backend, mailer Mailer, logger *slog.Logger, secret, siteURL string) *service {
@@ -84,6 +88,8 @@ func newService(backend Backend, mailer Mailer, logger *slog.Logger, secret, sit
 		logger:  logger,
 		secret:  strings.TrimSpace(secret),
 		siteURL: normalizeSiteURL(siteURL),
+		signer:  newUnsubscribeSigner(secret, apiURL()),
+		address: postalAddress(),
 	}
 }
 
@@ -114,6 +120,13 @@ func (s *service) sendDigest(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.mailer == nil || !s.mailer.Configured() {
 		s.logger.WarnContext(r.Context(), "RESEND_API_KEY or EMAIL_FROM is not set; the digest cannot send")
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnavailable,
+			"Game digests are not available right now."))
+		return
+	}
+	if s.address == "" {
+		// CAN-SPAM: every commercial email must carry a valid postal address.
+		s.logger.WarnContext(r.Context(), "EMAIL_POSTAL_ADDRESS is not set; the digest cannot send")
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnavailable,
 			"Game digests are not available right now."))
 		return
@@ -151,8 +164,9 @@ func (s *service) sendDigest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := renderDigest(games, s.siteURL)
-	if err != nil {
+	// Rendered once up front so a template fault fails the run before anyone
+	// is mailed; each recipient's copy differs only in its unsubscribe link.
+	if _, err := renderDigest(games, s.siteURL, "", s.address); err != nil {
 		s.logger.ErrorContext(r.Context(), "rendering a game digest failed",
 			slog.String("digest_id", digestID), slog.Any("error", err))
 		httpx.WriteError(w, r, httpx.NewError(httpx.CodeInternal,
@@ -172,11 +186,13 @@ func (s *service) sendDigest(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		for _, recipient := range recipients {
+			content, _ := renderDigest(games, s.siteURL, s.signer.URL(recipient.UserID, kindNewGames), s.address)
 			_, sendErr := s.mailer.Send(r.Context(), email.Message{
 				To:             []string{recipient.Email},
 				Subject:        content.Subject,
 				HTML:           content.HTML,
 				Text:           content.Text,
+				Headers:        s.signer.Headers(recipient.UserID, kindNewGames),
 				IdempotencyKey: "game-digest/" + digestID + "/" + recipient.UserID,
 			})
 			failure := ""
@@ -251,10 +267,12 @@ type emailContent struct {
 }
 
 type digestTemplateData struct {
-	Games       []emailGame
-	SettingsURL string
-	Count       int
-	Intro       string
+	Games          []emailGame
+	SettingsURL    string
+	UnsubscribeURL string
+	Address        string
+	Count          int
+	Intro          string
 }
 
 var digestTemplate = template.Must(template.New("game-digest").Parse(`<!doctype html>
@@ -273,14 +291,18 @@ var digestTemplate = template.Must(template.New("game-digest").Parse(`<!doctype 
       {{end}}
       <p style="margin:28px 0 0;border-top:1px solid #27272a;padding-top:20px;font-size:12px;line-height:1.6;color:#a1a1aa">
         You are receiving this because you opted in to occasional emails about new games.
-        <a href="{{.SettingsURL}}" style="color:#a3e635">Manage email preferences</a>.
+        <a href="{{.UnsubscribeURL}}" style="color:#a3e635">Unsubscribe</a> ·
+        <a href="{{.SettingsURL}}" style="color:#a3e635">Manage email preferences</a>
+        <br>Unbored · {{.Address}}
       </p>
     </div>
   </body>
 </html>
 `))
 
-func renderDigest(games []supabasedigest.Game, siteURL string) (emailContent, error) {
+// renderDigest words the digest for one recipient: unsubscribeURL is their
+// signed link and address the sender's postal address (both CAN-SPAM).
+func renderDigest(games []supabasedigest.Game, siteURL, unsubscribeURL, address string) (emailContent, error) {
 	items := make([]emailGame, 0, len(games))
 	for _, game := range games {
 		instructions := ""
@@ -299,10 +321,12 @@ func renderDigest(games []supabasedigest.Game, siteURL string) (emailContent, er
 		intro = "A game was published since the last update. Here is what is new and how to play."
 	}
 	data := digestTemplateData{
-		Games:       items,
-		SettingsURL: siteURL + "/settings/notifications",
-		Count:       len(items),
-		Intro:       intro,
+		Games:          items,
+		SettingsURL:    siteURL + "/settings/notifications",
+		UnsubscribeURL: unsubscribeURL,
+		Address:        address,
+		Count:          len(items),
+		Intro:          intro,
 	}
 
 	var html strings.Builder
@@ -328,7 +352,8 @@ func renderDigest(games []supabasedigest.Game, siteURL string) (emailContent, er
 		}
 		fmt.Fprintf(&text, "   Play: %s\n", item.URL)
 	}
-	fmt.Fprintf(&text, "\nYou are receiving this because you opted in to occasional emails about new games.\nManage email preferences: %s\n", data.SettingsURL)
+	fmt.Fprintf(&text, "\nYou are receiving this because you opted in to occasional emails about new games.\nUnsubscribe: %s\nManage email preferences: %s\nUnbored · %s\n",
+		data.UnsubscribeURL, data.SettingsURL, data.Address)
 
 	return emailContent{Subject: subject, HTML: html.String(), Text: text.String()}, nil
 }
@@ -361,6 +386,11 @@ func Options() servicekit.Options {
 			newService(backend, mailer, logger, secret, siteURL()).register(router)
 			newFeedbackService(feedbackBackend, mailer, logger, secret, os.Getenv("FEEDBACK_EMAIL_TO")).register(router)
 			newRecapService(recapBackend, mailer, logger, secret, siteURL()).register(router)
+			var unsubscriber Unsubscriber
+			if client != nil {
+				unsubscriber = client
+			}
+			newUnsubscribeService(unsubscriber, newUnsubscribeSigner(secret, apiURL()), logger, siteURL()).register(router)
 			subject := strings.TrimSpace(os.Getenv("VAPID_SUBJECT"))
 			if subject == "" {
 				subject = siteURL()

@@ -132,6 +132,7 @@ Render dashboard and never committed.
 | `GROQ_API_KEY`, `DEEP_CUT_JUDGE_KEY` | `gsk_…` (console.groq.com), a long random value (dashboard) | Optional: Deep Cut's AI judge (`openai/gpt-oss-120b` on Groq) for answers its bank lacks. The judge key's SHA-256 goes in `public.deep_cut_judge_keys`. Without either, unknown answers score nothing and queue for staff review |
 | `RESEND_API_KEY` | `re_…` (dashboard) | Digest and feedback mail |
 | `EMAIL_FROM` | `Unbored <hello@unbored.lol>` | Verified Resend sender |
+| `EMAIL_POSTAL_ADDRESS` | your street address or P.O. box | Required by CAN-SPAM; marketing email is not sent without it |
 | `CRON_SECRET` | long random value (dashboard) | Bearer token GitHub Actions sends to `/api/v1/cron/*`; unset disables the routes |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | from `npx web-push generate-vapid-keys` (dashboard) | Web push; see [services/notifications](../../services/notifications/README.md#turning-it-on) |
 | `RATE_LIMIT_*`, `AUTH_RATE_LIMIT_*` | see `render.yaml` | Global and credential-endpoint limits |

@@ -737,6 +737,7 @@ export function signUp(
   username?: string,
   displayName?: string,
   marketing?: boolean,
+  birthDate?: string,
 ): Promise<AuthSession> {
   const chosen = username?.trim();
   const name = displayName?.trim();
@@ -748,6 +749,8 @@ export function signUp(
       ...(chosen ? { username: chosen } : {}),
       ...(name ? { displayName: name } : {}),
       ...(marketing ? { marketing: true } : {}),
+      // Checked by the auth service (13 or older) and never stored.
+      ...(birthDate ? { birthDate } : {}),
     },
   }).then(adopt);
 }

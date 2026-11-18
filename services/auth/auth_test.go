@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -448,7 +449,7 @@ func TestSignUpCreatesAnAccountAndReturnsTheSession(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignUpPath,
-		`{"email":"player@example.com","password":"correct-horse-battery"}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`, nil)
 	if response.StatusCode != http.StatusCreated {
 		t.Fatalf("status = %d, want 201", response.StatusCode)
 	}
@@ -491,6 +492,49 @@ func TestSignUpCreatesAnAccountAndReturnsTheSession(t *testing.T) {
 	}
 }
 
+func TestSignUpRefusesAMissingOrUnderageBirthDate(t *testing.T) {
+	young := time.Now().AddDate(-12, 0, 0).Format("2006-01-02")
+	cases := []struct {
+		name, body string
+		status     int
+		rule       string
+	}{
+		{"missing", `{"email":"player@example.com","password":"correct-horse-battery"}`, http.StatusUnprocessableEntity, "required"},
+		{"malformed", `{"email":"player@example.com","password":"correct-horse-battery","birthDate":"17/05/1990"}`, http.StatusUnprocessableEntity, "required"},
+		{"future", `{"email":"player@example.com","password":"correct-horse-battery","birthDate":"2999-01-01"}`, http.StatusUnprocessableEntity, "required"},
+		{"under 13", `{"email":"player@example.com","password":"correct-horse-battery","birthDate":"` + young + `"}`, http.StatusForbidden, "minimum_age"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			backend := &fakeBackend{signUpResult: sessionResult("a", "r")}
+			h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
+			response := h.do(t, http.MethodPost, SignUpPath, testCase.body, nil)
+			if response.StatusCode != testCase.status {
+				t.Fatalf("status = %d, want %d", response.StatusCode, testCase.status)
+			}
+			if body := fmt.Sprint(decode(t, response)); !strings.Contains(body, testCase.rule) {
+				t.Errorf("response %s does not name rule %q", body, testCase.rule)
+			}
+			if backend.signupCalls() != 0 {
+				t.Errorf("sign-up calls = %d, want none", backend.signupCalls())
+			}
+		})
+	}
+}
+
+func TestAgeOnCountsWholeYears(t *testing.T) {
+	now := time.Date(2026, 5, 16, 12, 0, 0, 0, time.UTC)
+	if age, _ := ageOn("2013-05-17", now); age != 12 {
+		t.Errorf("day before 13th birthday: age = %d, want 12", age)
+	}
+	if age, _ := ageOn("2013-05-16", now); age != 13 {
+		t.Errorf("13th birthday: age = %d, want 13", age)
+	}
+	if _, ok := ageOn("2013-02-30", now); ok {
+		t.Error("an impossible date was accepted")
+	}
+}
+
 func TestSignUpSucceedsWhileEmailConfirmationIsPending(t *testing.T) {
 	// A project with email confirmation on returns a user and no session. That is
 	// a created account, not an error, and the response says so by omitting the
@@ -499,7 +543,7 @@ func TestSignUpSucceedsWhileEmailConfirmationIsPending(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignUpPath,
-		`{"email":"player@example.com","password":"correct-horse-battery"}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`, nil)
 	if response.StatusCode != http.StatusCreated {
 		t.Fatalf("status = %d, want 201", response.StatusCode)
 	}
@@ -525,7 +569,7 @@ func TestSignInReturnsTokensAndTheRoleFromTheToken(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignInPath,
-		`{"email":"player@example.com","password":"correct-horse-battery"}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`, nil)
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", response.StatusCode)
 	}
@@ -736,7 +780,7 @@ func TestSupabaseFailuresMapOntoPlatformCodes(t *testing.T) {
 			h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 			response := h.do(t, http.MethodPost, SignInPath,
-				`{"email":"player@example.com","password":"correct-horse-battery"}`, nil)
+				`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`, nil)
 			if response.StatusCode != testCase.wantStatus {
 				t.Fatalf("status = %d, want %d", response.StatusCode, testCase.wantStatus)
 			}
@@ -756,7 +800,7 @@ func TestSignUpMapsAnExistingAccountToConflict(t *testing.T) {
 		h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 		response := h.do(t, http.MethodPost, SignUpPath,
-			`{"email":"player@example.com","password":"correct-horse-battery"}`, nil)
+			`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`, nil)
 		if response.StatusCode != http.StatusConflict {
 			t.Fatalf("%s: status = %d, want 409", supabaseCode, response.StatusCode)
 		}
@@ -784,7 +828,7 @@ func TestSignUpPersistsTheChosenUsername(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignUpPath,
-		`{"email":"player@example.com","password":"correct-horse-battery","username":"  Rijad  "}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17","username":"  Rijad  "}`, nil)
 	if response.StatusCode != http.StatusCreated {
 		t.Fatalf("status = %d, want 201", response.StatusCode)
 	}
@@ -807,7 +851,7 @@ func TestSignUpForwardsTheChosenDisplayName(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignUpPath,
-		`{"email":"player@example.com","password":"correct-horse-battery","username":"rijad","displayName":"  Rijad H  "}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17","username":"rijad","displayName":"  Rijad H  "}`, nil)
 	if response.StatusCode != http.StatusCreated {
 		t.Fatalf("status = %d, want 201", response.StatusCode)
 	}
@@ -828,7 +872,7 @@ func TestSignUpForwardsTheProductUpdatesChoice(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignUpPath,
-		`{"email":"player@example.com","password":"correct-horse-battery","username":"rijad","marketing":true}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17","username":"rijad","marketing":true}`, nil)
 	response.Body.Close()
 	if response.StatusCode != http.StatusCreated {
 		t.Fatalf("status = %d, want 201", response.StatusCode)
@@ -846,7 +890,7 @@ func TestSignUpDefaultsToNoProductUpdates(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignUpPath,
-		`{"email":"player@example.com","password":"correct-horse-battery","username":"rijad"}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17","username":"rijad"}`, nil)
 	response.Body.Close()
 	if response.StatusCode != http.StatusCreated {
 		t.Fatalf("status = %d, want 201", response.StatusCode)
@@ -864,7 +908,7 @@ func TestSignUpRejectsAnOverlongDisplayName(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignUpPath,
-		`{"email":"player@example.com","password":"correct-horse-battery","username":"rijad","displayName":"`+strings.Repeat("a", 61)+`"}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17","username":"rijad","displayName":"`+strings.Repeat("a", 61)+`"}`, nil)
 	response.Body.Close()
 	if response.StatusCode != http.StatusUnprocessableEntity {
 		t.Fatalf("status = %d, want 422", response.StatusCode)
@@ -879,7 +923,7 @@ func TestSignUpRejectsATakenUsernameBeforeCreatingAnAccount(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignUpPath,
-		`{"email":"player@example.com","password":"correct-horse-battery","username":"rijad"}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17","username":"rijad"}`, nil)
 	if response.StatusCode != http.StatusConflict {
 		t.Fatalf("status = %d, want 409", response.StatusCode)
 	}
@@ -924,7 +968,7 @@ func TestSignUpRejectsAnInvalidUsernameBeforeSupabase(t *testing.T) {
 			h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 			response := h.do(t, http.MethodPost, SignUpPath,
-				`{"email":"player@example.com","password":"correct-horse-battery","username":"`+testCase.username+`"}`, nil)
+				`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17","username":"`+testCase.username+`"}`, nil)
 			if response.StatusCode != http.StatusUnprocessableEntity {
 				t.Fatalf("status = %d, want 422", response.StatusCode)
 			}
@@ -957,7 +1001,7 @@ func TestSignUpMapsALostUsernameRaceToAFieldConflict(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignUpPath,
-		`{"email":"player@example.com","password":"correct-horse-battery","username":"rijad"}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17","username":"rijad"}`, nil)
 	if response.StatusCode != http.StatusConflict {
 		t.Fatalf("status = %d, want 409", response.StatusCode)
 	}
@@ -978,7 +1022,7 @@ func TestSignUpDoesNotCreateAnAccountWhenAvailabilityCannotBeChecked(t *testing.
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignUpPath,
-		`{"email":"player@example.com","password":"correct-horse-battery","username":"rijad"}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17","username":"rijad"}`, nil)
 	if response.StatusCode != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", response.StatusCode)
 	}
@@ -1063,7 +1107,7 @@ func TestRateLimitedResponsesCarryRetryAfter(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignInPath,
-		`{"email":"player@example.com","password":"correct-horse-battery"}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`, nil)
 	if response.StatusCode != http.StatusTooManyRequests {
 		t.Fatalf("status = %d, want 429", response.StatusCode)
 	}
@@ -1079,7 +1123,7 @@ func TestUpstreamFailureIsReportedAsUnavailableWithoutLeakingIt(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignInPath,
-		`{"email":"player@example.com","password":"correct-horse-battery"}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`, nil)
 	if response.StatusCode != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", response.StatusCode)
 	}
@@ -1299,7 +1343,7 @@ func TestSignInMarksALegacyAccountWithoutASecondAgeRead(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignInPath,
-		`{"email":"player@example.com","password":"correct-horse-battery"}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`, nil)
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", response.StatusCode)
 	}
@@ -1320,7 +1364,7 @@ func TestSignUpDoesNotMarkANewAccount(t *testing.T) {
 	h := newHarness(t, harnessOptions{backend: backend, withAuth: true})
 
 	response := h.do(t, http.MethodPost, SignUpPath,
-		`{"email":"player@example.com","password":"correct-horse-battery"}`, nil)
+		`{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`, nil)
 	if response.StatusCode != http.StatusCreated {
 		t.Fatalf("status = %d, want 201", response.StatusCode)
 	}
@@ -1639,13 +1683,13 @@ func TestThrottlingCredentialsDoesNotBlockTheRestOfTheAPI(t *testing.T) {
 		credentials: credentials,
 	})
 
-	spent := h.do(t, http.MethodPost, SignInPath, `{"email":"player@example.com","password":"correct-horse-battery"}`, nil)
+	spent := h.do(t, http.MethodPost, SignInPath, `{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`, nil)
 	if spent.StatusCode != http.StatusOK {
 		t.Fatalf("first sign-in = %d, want 200", spent.StatusCode)
 	}
 	spent.Body.Close()
 
-	throttled := h.do(t, http.MethodPost, SignInPath, `{"email":"player@example.com","password":"correct-horse-battery"}`, nil)
+	throttled := h.do(t, http.MethodPost, SignInPath, `{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`, nil)
 	if throttled.StatusCode != http.StatusTooManyRequests {
 		t.Fatalf("second sign-in = %d, want 429", throttled.StatusCode)
 	}
@@ -1754,8 +1798,8 @@ func TestOptionsMountsTheAuthRoutesAndFailsClosedWithoutSupabase(t *testing.T) {
 	})
 
 	credentialBodies := map[string]string{
-		SignUpPath:  `{"email":"player@example.com","password":"correct-horse-battery"}`,
-		SignInPath:  `{"email":"player@example.com","password":"correct-horse-battery"}`,
+		SignUpPath:  `{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`,
+		SignInPath:  `{"email":"player@example.com","password":"correct-horse-battery","birthDate":"1990-05-17"}`,
 		RefreshPath: `{"refreshToken":"some-refresh-token-value"}`,
 	}
 	for path, body := range credentialBodies {

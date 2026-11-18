@@ -22,9 +22,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { ageOn, blockAge, isAgeBlocked, MINIMUM_AGE } from "@/lib/age-gate";
 import { ApiError } from "@/lib/api/client";
 import { authErrorMessage, loadSession, signOut, signUp, useAuth } from "@/lib/auth/session";
 import { useProfile } from "@/lib/users/profile";
+import { deleteAccount } from "@/lib/users/account";
 import { completeRegistration } from "@/lib/users/registration";
 import {
   normalizeUsername,
@@ -138,6 +140,14 @@ function Signup() {
   const [err, setErr] = useState<string>();
   const [errCode, setErrCode] = useState<string>();
   const [busy, setBusy] = useState(false);
+  // The date of birth is asked on the last step, which every path (email or
+  // Google) passes before the registration is recorded. See `lib/age-gate`.
+  const [birthDate, setBirthDate] = useState("");
+  const [ageBlocked, setAgeBlocked] = useState(false);
+
+  useEffect(() => {
+    if (isAgeBlocked()) setAgeBlocked(true);
+  }, []);
 
   // A signed-in account that has not finished signing up — a Google sign-in, or
   // an email whose confirmation link was just opened — completes here: the
@@ -207,6 +217,12 @@ function Signup() {
   // auth service validates it again, then Supabase stores it on the auth user so
   // the profile trigger writes it in the same transaction as the account.
   async function createAccount() {
+    const age = ageOn(birthDate);
+    if (age === undefined) return setErr(t("Enter your date of birth."));
+    if (age < MINIMUM_AGE) {
+      await refuseUnderAge();
+      return;
+    }
     if (completing) {
       // The Supabase account (and its profile row, created by the database
       // trigger) already exists; only the registration marker is missing.
@@ -235,6 +251,7 @@ function Signup() {
         chosenUsername,
         name,
         accept.marketing,
+        birthDate,
       );
       if (name !== "") rememberPendingDisplayName(name);
       if (result.tokens) {
@@ -277,6 +294,30 @@ function Signup() {
   }
 
   /**
+   * An answer under 13 ends sign-up. Nothing typed so far is sent; an account
+   * that already exists (a Google sign-in completing here) is deleted, so no
+   * child's data is kept. The browser remembers the answer (`lib/age-gate`).
+   */
+  async function refuseUnderAge() {
+    blockAge();
+    setCreds(undefined);
+    setErr(undefined);
+    if (completing) {
+      setBusy(true);
+      try {
+        await deleteAccount();
+      } catch {
+        // The local session is still cleared below; the account is unfinished
+        // (no onboarding marker) and is removed on request.
+      } finally {
+        await signOut().catch(() => undefined);
+        setBusy(false);
+      }
+    }
+    setAgeBlocked(true);
+  }
+
+  /**
    * Records the registration exactly once: the display name goes through the
    * users API and the marker through the database (see
    * `lib/users/registration`). The session view is re-read afterwards so the
@@ -313,6 +354,26 @@ function Signup() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (ageBlocked) {
+    return (
+      <AuthLayout
+        title={t("We can't create your account")}
+        subtitle={t("Unbored is only for people 13 and older.")}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {t(
+              "Based on the date of birth you entered, you can't sign up right now. Nothing you typed has been kept. You can still play the daily games without an account.",
+            )}
+          </p>
+          <Button asChild variant="play" size="xl" className="w-full">
+            <Link to="/">{t("Back to the games")}</Link>
+          </Button>
+        </div>
+      </AuthLayout>
+    );
   }
 
   // A completed account is not sent back through registration. The signed-in
@@ -653,14 +714,26 @@ function Signup() {
               )}
             </div>
           )}
-          <p className="mt-4 text-xs text-muted-foreground">
-            {t("You must be 13 or older to use Unbored.")}
-          </p>
+          <div className="mt-4 space-y-2">
+            <Label htmlFor="birth-date">{t("Date of birth")}</Label>
+            <Input
+              id="birth-date"
+              name="birthDate"
+              type="date"
+              required
+              autoComplete="bday"
+              min="1900-01-01"
+              max={new Date().toISOString().slice(0, 10)}
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              className="h-12 rounded-lg bg-surface text-base md:text-sm"
+            />
+          </div>
           <Button
             variant="play"
             size="xl"
             className="mt-auto w-full lg:mt-6"
-            disabled={!accept.terms || !accept.privacy || busy}
+            disabled={!accept.terms || !accept.privacy || birthDate === "" || busy}
             onClick={createAccount}
           >
             {t("Agree and create account")}

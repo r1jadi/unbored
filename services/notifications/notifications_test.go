@@ -222,7 +222,7 @@ func TestDigestRecordsAFailedSend(t *testing.T) {
 func TestDigestEscapesGameTextInHTML(t *testing.T) {
 	instructions := `<script>alert("x")</script>`
 	games := []supabasedigest.Game{{Slug: "game", Title: `<b>Title</b>`, Instructions: &instructions}}
-	content, err := renderDigest(games, "https://example.test")
+	content, err := renderDigest(games, "https://example.test", "https://api.example/u", "1 Test St, Testville")
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}

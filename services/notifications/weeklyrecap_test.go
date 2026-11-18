@@ -91,7 +91,7 @@ func TestWeeklyRecapSendsEachPlayerTheirWeekOnce(t *testing.T) {
 		"Hi Ana,", "You played 9 games this week, across 3 different ones.",
 		"Your favourite was Sudoku.", "You set 2 new personal bests.",
 		"A friend beat one of your scores.", "5-day streak",
-		"https://unbored.lol/play/sudoku", "https://unbored.lol/settings/notifications",
+		"https://unbored.lol/play/sudoku", "https://api.example.test/api/v1/email/unsubscribe?k=weekly-recap", testPostalAddress,
 	} {
 		if !strings.Contains(ana.Text, want) {
 			t.Errorf("ana's text has no %q:\n%s", want, ana.Text)
@@ -126,7 +126,7 @@ func TestWeeklyRecapRecordsAFailedSend(t *testing.T) {
 }
 
 func TestWeeklyRecapGreetsWithoutAName(t *testing.T) {
-	content := renderRecap(supabasedigest.RecapRecipient{Language: "en"}, "https://unbored.lol")
+	content := renderRecap(supabasedigest.RecapRecipient{Language: "en"}, "https://unbored.lol", "https://api.example/u", "1 Test St, Testville")
 	if !strings.HasPrefix(content.Text, "Hi,\n") {
 		t.Errorf("greeting = %q", strings.SplitN(content.Text, "\n", 2)[0])
 	}

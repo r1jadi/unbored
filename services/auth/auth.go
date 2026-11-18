@@ -185,6 +185,10 @@ type credentialsRequest struct {
 	// choice and is forwarded as auth metadata, where the database trigger turns
 	// it into the notify_new_games preference. Omitted means no consent.
 	Marketing bool `json:"marketing"`
+	// BirthDate (YYYY-MM-DD) is only read on sign-up. It is required and must
+	// make the person at least minimumAge years old (COPPA). It is checked here
+	// and never forwarded or stored.
+	BirthDate string `json:"birthDate"`
 }
 
 // usernameAvailabilityView is the answer to GET /auth/username-available. It
@@ -274,6 +278,10 @@ func (s *service) signUp(w http.ResponseWriter, r *http.Request) {
 		if username, ok = normalizedUsername(w, r, request.Username); !ok {
 			return
 		}
+	}
+
+	if !s.oldEnough(w, r, request.BirthDate) {
+		return
 	}
 
 	displayName := strings.TrimSpace(request.DisplayName)
@@ -655,6 +663,46 @@ func timePointer(value time.Time) *time.Time {
 }
 
 // ── Username rules ─────────────────────────────────────────────────────────
+
+// minimumAge is the youngest age Unbored accepts at sign-up (COPPA).
+const minimumAge = 13
+
+// oldEnough refuses a sign-up whose date of birth is missing, malformed or
+// under minimumAge. The date is used for this decision only and is not kept.
+func (s *service) oldEnough(w http.ResponseWriter, r *http.Request, raw string) bool {
+	age, ok := ageOn(strings.TrimSpace(raw), time.Now())
+	if !ok {
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeUnprocessable,
+			"Enter your date of birth.",
+			apierr.Detail{Field: "birthDate", Rule: "required"}))
+		return false
+	}
+	if age < minimumAge {
+		httpx.WriteError(w, r, httpx.NewError(httpx.CodeForbidden,
+			"Unbored is only for people 13 and older.",
+			apierr.Detail{Field: "birthDate", Rule: "minimum_age"}))
+		return false
+	}
+	return true
+}
+
+// ageOn returns the whole years between a YYYY-MM-DD birth date and now, or
+// false when the date is not real or lies in the future.
+func ageOn(birthDate string, now time.Time) (int, bool) {
+	born, err := time.Parse("2006-01-02", birthDate)
+	if err != nil {
+		return 0, false
+	}
+	now = now.UTC()
+	age := now.Year() - born.Year()
+	if now.Month() < born.Month() || (now.Month() == born.Month() && now.Day() < born.Day()) {
+		age--
+	}
+	if age < 0 || age > 130 {
+		return 0, false
+	}
+	return age, true
+}
 
 // maxDisplayNameLength mirrors `profiles_display_name_length`.
 const maxDisplayNameLength = 60

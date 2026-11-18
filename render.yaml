@@ -35,6 +35,12 @@ services:
         value: authenticated
       - key: EMAIL_FROM
         value: Unbored <hello@unbored.lol>
+      # CAN-SPAM: the postal address printed in every marketing email. The
+      # digest and weekly recap refuse to send until it is set in the dashboard.
+      - key: EMAIL_POSTAL_ADDRESS
+        sync: false
+      - key: PUBLIC_API_URL
+        value: https://api.unbored.lol
       - key: RATE_LIMIT_ENABLED
         value: "1"
       - key: RATE_LIMIT_REQUESTS_PER_MINUTE
