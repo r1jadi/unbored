@@ -178,7 +178,7 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [email, password]
+              required: [email, password, birthDate]
               properties:
                 email: { type: string, format: email, minLength: 3, maxLength: 254 }
                 password: { type: string, minLength: 8, maxLength: 72 }
@@ -205,6 +205,14 @@ paths:
                     collected from the optional "Product updates" checkbox.
                     Omitted or false means no digest. The sign-up trigger stores
                     true as `user_preferences.notify_new_games`.
+                birthDate:
+                  type: string
+                  format: date
+                  description: |
+                    Date of birth (YYYY-MM-DD) from the sign-up age screen. The
+                    person must be at least 13 (COPPA): a missing or impossible
+                    date answers `422` and an under-13 date `403`, both with
+                    `field: birthDate`. It is checked and never stored.
       responses:
         "201":
           description: |
@@ -214,6 +222,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AuthSession" }
         "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
         "413": { $ref: "#/components/responses/PayloadTooLarge" }
         "422": { $ref: "#/components/responses/Unprocessable" }
@@ -2813,6 +2822,58 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/RateLimited" }
         "503": { $ref: "#/components/responses/Unavailable" }
+
+  /email/unsubscribe:
+    parameters:
+      - { name: u, in: query, required: true, schema: { type: string, format: uuid }, description: Account id. }
+      - { name: k, in: query, required: true, schema: { type: string, enum: [new-games, weekly-recap] }, description: Email kind. }
+      - { name: s, in: query, required: true, schema: { type: string }, description: HMAC signature of the account and kind. }
+    get:
+      operationId: confirmEmailUnsubscribe
+      tags: [notifications]
+      summary: Show the one-click unsubscribe page
+      description: |
+        The signed link in every marketing email (CAN-SPAM). Shows an HTML page
+        with an Unsubscribe button and changes nothing, so link scanners cannot
+        unsubscribe anyone. No sign-in; the signature is the credential.
+      security: []
+      x-status: available
+      responses:
+        "200":
+          description: The confirmation page.
+          content:
+              text/html:
+                schema: { type: string }
+        "400":
+          description: The link is incomplete or its signature does not match.
+          content:
+              text/html:
+                schema: { type: string }
+    post:
+      operationId: emailUnsubscribe
+      tags: [notifications]
+      summary: Turn one marketing email off
+      description: |
+        Answers the confirmation page's form and a mail app's RFC 8058
+        `List-Unsubscribe=One-Click` POST. Idempotent; links never expire.
+      security: []
+      x-status: available
+      responses:
+        "200":
+          description: Unsubscribed.
+          content:
+              text/html:
+                schema: { type: string }
+        "400":
+          description: The link is incomplete or its signature does not match.
+          content:
+              text/html:
+                schema: { type: string }
+        "503":
+          description: The database is unavailable; the page asks to retry.
+          content:
+              text/html:
+                schema: { type: string }
 
   /cron/game-digests:
     get:
