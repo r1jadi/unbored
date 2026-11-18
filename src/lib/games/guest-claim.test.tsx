@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api/client";
 
 const apiFetch = vi.fn();
 let accessToken: string | undefined;
+let authStatus: "anonymous" | "authenticated" = "anonymous";
 
 vi.mock("@/lib/api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/client")>()),
@@ -14,6 +15,10 @@ vi.mock("@/lib/api/client", async (importOriginal) => ({
 vi.mock("@/lib/auth/session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/auth/session")>()),
   getAccessToken: () => accessToken,
+  useAuth: () =>
+    authStatus === "authenticated"
+      ? { status: "authenticated", session: { userId: "u1", role: "user" } }
+      : { status: "anonymous" },
 }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, onClick }: { children: ReactNode; onClick?: () => void }) => (
@@ -38,6 +43,7 @@ beforeEach(() => {
   claim.resetGuestClaimForTests();
   apiFetch.mockReset();
   accessToken = undefined;
+  authStatus = "anonymous";
 });
 
 afterEach(() => {
@@ -65,6 +71,14 @@ describe("the end screen's guest offer", () => {
   it("doesn't offer another game's run", () => {
     act(() => claim.noteGuestRun({ ...run, gameSlug: "stack-10", finishedAt: Date.now() }));
     render(<RunEndActions slug="whittle" ranked={false} onRestart={() => undefined} />);
+    expect(screen.queryByText(/Save your score/)).toBeNull();
+  });
+
+  it("isn't shown to a signed-in player whose run wasn't ranked", () => {
+    authStatus = "authenticated";
+    act(() => claim.noteGuestRun({ ...run, finishedAt: Date.now() }));
+    render(<RunEndActions slug="whittle" ranked={false} onRestart={() => undefined} />);
+    expect(screen.queryByText("Guest runs aren't ranked")).toBeNull();
     expect(screen.queryByText(/Save your score/)).toBeNull();
   });
 

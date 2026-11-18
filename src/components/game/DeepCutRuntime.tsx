@@ -51,6 +51,7 @@ import {
   type PlayedTurn,
   type Tier,
 } from "@/lib/games/deep-cut";
+import { useAuth } from "@/lib/auth/session";
 import { useDeepCutRun, type DeepCutControls } from "@/lib/games/deep-cut-run";
 import type { Check, CheckResult } from "@/lib/games/deep-cut";
 import { GAME_RULES } from "@/lib/games/rules";
@@ -764,6 +765,7 @@ function Finished({
   const shown = useCountUp(points);
   const rank = ratingFor(points);
   const deepest = deepestTier(turns);
+  const auth = useAuth();
   const correct = turns.filter((turn) => turn.verdict === "correct").length;
   useGameSounds({
     moves: turns.length + 1,
@@ -841,7 +843,7 @@ function Finished({
           ))}
         </ol>
 
-        {result && !result.ranked && (
+        {result && !result.ranked && auth.status === "anonymous" && (
           <p className="text-xs text-muted-foreground">
             {t("Guest run: verified, but not ranked. Sign in to keep your scores and streak.")}
           </p>

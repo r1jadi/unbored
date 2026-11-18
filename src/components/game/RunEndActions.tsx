@@ -7,6 +7,7 @@ import { StreakNote } from "@/components/game/StreakNote";
 import { Button } from "@/components/ui/button";
 import { points } from "@/lib/format";
 import { titleFromSlug, useGame } from "@/lib/games/catalog";
+import { useAuth } from "@/lib/auth/session";
 import { useMyDailyRank } from "@/lib/games/daily-rank";
 import { guestRunFor, holdGuestRun, subscribeGuestRun } from "@/lib/games/guest-claim";
 import { hasContinuableRun } from "@/lib/games/saved-runs";
@@ -59,6 +60,9 @@ export function RunEndActions({
   // The player ended this run themselves: it's saved, and the next start offers it.
   const continuable = hasContinuableRun(slug);
   const play = useRef<HTMLButtonElement>(null);
+  // Only a signed-out player is a guest. A signed-in player's run can be unranked
+  // too (practice, unlimited, offline), and must never be pitched an account.
+  const guest = useAuth().status === "anonymous";
   useEffect(() => {
     // Focused without scrolling: on a short screen the result scrolls, and opening
     // it scrolled down to the button would hide the score the player came to see.
@@ -113,7 +117,7 @@ export function RunEndActions({
           most. A verified guest run can be saved to the account they make or
           sign in to; an offline run never reached the server, so for that one
           the offer is about the next run, said plainly. */}
-      {!ranked && <GuestOffer slug={slug} />}
+      {!ranked && guest && <GuestOffer slug={slug} />}
     </div>
   );
 }
