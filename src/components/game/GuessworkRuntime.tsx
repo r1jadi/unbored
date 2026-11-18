@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
 import { UnlimitedButton } from "@/components/game/DailyShell";
+import { GuestOr } from "@/components/game/GuestOr";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
 import { RulesList } from "@/components/game/RulesList";
@@ -452,7 +453,11 @@ function Board({
           </span>
         ) : (
           <span className="rounded-full bg-surface-2 px-2 py-1">
-            {session.offline ? practiceLabel(session) : t("Guest run")}
+            {session.offline ? (
+              practiceLabel(session)
+            ) : (
+              <GuestOr signedIn={t("Unranked run")}>{t("Guest run")}</GuestOr>
+            )}
           </span>
         )}
       </div>

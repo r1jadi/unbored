@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { ErrorState } from "@/components/common";
 import { BestScore } from "@/components/game/BestScore";
+import { GuestOr } from "@/components/game/GuestOr";
 import { ChessPiece, PIECE_NAMES } from "@/components/game/ChessPiece";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
@@ -412,7 +413,9 @@ function Board({
               Ranked
             </span>
           ) : (
-            <span className="rounded-full bg-surface-2 px-2 py-1">Guest run</span>
+            <span className="rounded-full bg-surface-2 px-2 py-1">
+              <GuestOr signedIn="Unranked run">Guest run</GuestOr>
+            </span>
           )}
         </div>
       </div>

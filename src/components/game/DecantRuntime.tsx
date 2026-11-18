@@ -12,6 +12,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { ErrorState } from "@/components/common";
 import { BestScore } from "@/components/game/BestScore";
+import { GuestOr } from "@/components/game/GuestOr";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
@@ -366,7 +367,11 @@ function Board({
             </span>
           ) : (
             <span className="rounded-full bg-surface-2 px-2 py-1">
-              {session.offline ? t("Offline practice") : t("Guest run")}
+              {session.offline ? (
+                t("Offline practice")
+              ) : (
+                <GuestOr signedIn={t("Unranked run")}>{t("Guest run")}</GuestOr>
+              )}
             </span>
           )}
         </div>

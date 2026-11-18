@@ -12,6 +12,7 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 
 import { ErrorState } from "@/components/common";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
+import { GuestOr } from "@/components/game/GuestOr";
 import { GameExits } from "@/components/game/GameExits";
 import { RulesList } from "@/components/game/RulesList";
 import { RunEndActions } from "@/components/game/RunEndActions";
@@ -262,7 +263,11 @@ export function RankChip({ session }: { session: PlaySession }) {
     </span>
   ) : (
     <span className="rounded-full bg-surface-2 px-2 py-1">
-      {session.offline ? practiceLabel(session) : t("Guest run")}
+      {session.offline ? (
+        practiceLabel(session)
+      ) : (
+        <GuestOr signedIn={t("Unranked run")}>{t("Guest run")}</GuestOr>
+      )}
     </span>
   );
 }

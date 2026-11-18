@@ -10,6 +10,7 @@ import {
 
 import { ErrorState } from "@/components/common";
 import { CASCADE_TILES, CascadeTile, SPECIAL_NAMES } from "@/components/game/CascadeTile";
+import { GuestOr } from "@/components/game/GuestOr";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { GameExits } from "@/components/game/GameExits";
 import { LevelUpOverlay } from "@/components/game/LevelUp";
@@ -537,7 +538,9 @@ function Board({
               Ranked
             </span>
           ) : (
-            <span className="rounded-full bg-surface-2 px-2 py-1">Guest run</span>
+            <span className="rounded-full bg-surface-2 px-2 py-1">
+              <GuestOr signedIn="Unranked run">Guest run</GuestOr>
+            </span>
           )}
         </div>
       </div>

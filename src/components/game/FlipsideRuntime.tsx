@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
 import { BestScore } from "@/components/game/BestScore";
+import { GuestOr } from "@/components/game/GuestOr";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { FLIPSIDE_VIEWBOX, rockColor } from "@/lib/games/flipside-view";
 import { TunnelHazard, TunnelRock, TunnelRunner } from "@/components/game/FlipsideScene";
@@ -305,7 +306,11 @@ function Field({
             </span>
           ) : (
             <span className="rounded-full bg-surface-2 px-2 py-1">
-              {session.offline ? t("Offline practice") : t("Guest run")}
+              {session.offline ? (
+                t("Offline practice")
+              ) : (
+                <GuestOr signedIn={t("Unranked run")}>{t("Guest run")}</GuestOr>
+              )}
             </span>
           )}
         </div>

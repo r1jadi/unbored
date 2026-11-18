@@ -37,6 +37,7 @@ export const sqGames: Record<string, string> = {
   "Every round adds a tap and tightens the beat. A wrong tap ends the run.":
     "Çdo raund shton një prekje dhe e shpejton ritmin. Një prekje e gabuar e mbyll lojën.",
   "Guest run": "Lojë si mysafir",
+  "Unranked run": "Lojë pa renditje",
   "Offline practice": "Ushtrim pa internet",
   Pads: "Butonat",
   Rank: "Vendi",
@@ -71,6 +72,9 @@ export const sqGames: Record<string, string> = {
   "Color Merge board. Use the arrow keys to slide.":
     "Tabela e Bashko Ngjyrat. Përdor shigjetat për të rrëshqitur.",
   "Guest run: verified, but not ranked": "Lojë si mysafir: e verifikuar, por jo në renditje",
+  "Verified, but not ranked": "E verifikuar, por jo në renditje",
+  "Verified, but not ranked — practise as often as you like":
+    "E verifikuar, por jo në renditje — ushtrohu sa herë të duash",
   "Next tile: {promotionPercent}% chance it arrives as a {promotedValue}. Each tile merges once per slide.":
     "Pllaka e radhës: {promotionPercent}% mundësi të vijë si {promotedValue}. Çdo pllakë bashkohet një herë për rrëshqitje.",
   "Row {row} column {column}, {shade}": "Rreshti {row}, kolona {column}, {shade}",

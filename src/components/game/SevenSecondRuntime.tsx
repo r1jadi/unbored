@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/common";
 import { BestScore } from "@/components/game/BestScore";
+import { GuestOr } from "@/components/game/GuestOr";
 import { GameExits } from "@/components/game/GameExits";
 import { ExitGameLink } from "@/components/game/ExitGameLink";
 import { RunEndActions } from "@/components/game/RunEndActions";
@@ -346,15 +347,21 @@ function Table({
 
           <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="size-3.5" />
-            {session.ranked
-              ? t("Signed in: this is today's ranked attempt")
-              : session.unlimited
-                ? t("Unlimited: a new deck to practise on, not verified or ranked")
-                : session.offline
-                  ? getArchiveDay() !== null
-                    ? t("Past puzzle: practice, not verified or ranked")
-                    : t("Offline practice: not verified or ranked — practise as often as you like")
-                  : t("Guest run: verified, but not ranked — practise as often as you like")}
+            {session.ranked ? (
+              t("Signed in: this is today's ranked attempt")
+            ) : session.unlimited ? (
+              t("Unlimited: a new deck to practise on, not verified or ranked")
+            ) : session.offline ? (
+              getArchiveDay() !== null ? (
+                t("Past puzzle: practice, not verified or ranked")
+              ) : (
+                t("Offline practice: not verified or ranked — practise as often as you like")
+              )
+            ) : (
+              <GuestOr signedIn={t("Verified, but not ranked — practise as often as you like")}>
+                {t("Guest run: verified, but not ranked — practise as often as you like")}
+              </GuestOr>
+            )}
           </p>
         </div>
       </div>
