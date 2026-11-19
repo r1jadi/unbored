@@ -62,6 +62,7 @@ const DYNAMIC_PATHS = [
     "then-and-now",
     "honeycomb",
     "meander",
+    "dead-reckoning",
   ].map((id) => `/games/${id}`),
 ];
 

@@ -35,6 +35,8 @@ const LOADERS: Record<string, Loader> = {
   honeycomb: () => import("./HoneycombPreview").then((m) => ({ default: m.HoneycombPreview })),
   huedini: () => import("./HuediniPreview").then((m) => ({ default: m.HuediniPreview })),
   meander: () => import("./MeanderPreview").then((m) => ({ default: m.MeanderPreview })),
+  "dead-reckoning": () =>
+    import("./DeadReckoningPreview").then((m) => ({ default: m.DeadReckoningPreview })),
   "memory-flash": () =>
     import("./MemoryFlashPreview").then((m) => ({ default: m.MemoryFlashPreview })),
   minefield: () => import("./MinefieldPreview").then((m) => ({ default: m.MinefieldPreview })),

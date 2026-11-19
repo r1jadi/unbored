@@ -1,4 +1,4 @@
-import { Flag } from "lucide-react";
+import { Flag, Plane } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 
 import { CascadeTile } from "@/components/game/CascadeTile";
@@ -86,6 +86,7 @@ export function GameArt({
       {id === "then-and-now" && <ThenAndNow />}
       {id === "honeycomb" && <Honeycomb />}
       {id === "meander" && <Meander />}
+      {id === "dead-reckoning" && <DeadReckoning />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </GameStage>
   );
@@ -169,6 +170,7 @@ const KNOWN = new Set([
   "then-and-now",
   "honeycomb",
   "meander",
+  "dead-reckoning",
 ]);
 
 /**
@@ -971,6 +973,20 @@ function Honeycomb() {
           {letter}
         </div>
       ))}
+    </div>
+  );
+}
+
+function DeadReckoning() {
+  // A target number, and a plane climbing toward it past the clouds.
+  return (
+    <div className="relative flex aspect-square w-[80%] flex-col items-center justify-center gap-[min(2cqw,2cqh,0.5rem)]">
+      <span className="absolute top-[12%] left-[8%] h-[8%] w-[28%] rounded-full bg-foreground/10" />
+      <span className="absolute top-[30%] right-[6%] h-[7%] w-[22%] rounded-full bg-foreground/10" />
+      <div className="rounded-[min(3cqw,3cqh,0.75rem)] bg-primary px-[min(5cqw,5cqh,1.25rem)] py-[min(2.5cqw,2.5cqh,0.6rem)] text-[min(11cqw,11cqh,2.75rem)] font-bold leading-none text-primary-foreground tabular">
+        6,200
+      </div>
+      <Plane className="size-[min(18cqw,18cqh,4.5rem)] rotate-45 fill-current text-foreground" />
     </div>
   );
 }

@@ -133,6 +133,9 @@ var families = map[string]Ruleset{
 	// length + 400 × its directions in base 4; eight letters make seven steps, so
 	// every code is below 400 × 4⁷. Placing and lifting can repeat: 256 moves.
 	"meander": {Verifier: "complete_meander_run", MaxActions: 256, ActionCodes: 400 << 14},
+	// Dead Reckoning: one move a round, (answer + 1) × 32 + seconds left, the answer
+	// an entry's index or an estimate up to 9 999 999.
+	"dead-reckoning": {Verifier: "complete_dead_reckoning_run", MaxActions: 7, ActionCodes: 10_000_000*32 + 31},
 }
 
 // overrides are the versions whose bounds differ from their family's: the

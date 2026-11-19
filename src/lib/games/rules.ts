@@ -1064,6 +1064,36 @@ export const GAME_RULES = {
       },
     ],
   },
+  "dead-reckoning": {
+    heading: msg("How close can you get?"),
+    summary: msg("Seven rounds, thirty seconds each. Land as near the number as you can."),
+    rules: [
+      {
+        lead: msg("Name it or guess it."),
+        text: msg(
+          "Pick something from the suggestions whose real value is closest to the number, or type your own estimate.",
+        ),
+      },
+      {
+        lead: msg("Miss to Dialed."),
+        text: msg(
+          "Within 1% is Dialed, worth 1,000. Then Sharp (3%), Near (7%), Warm (15%) and Rough (30%). Further is a Miss.",
+        ),
+      },
+      {
+        lead: msg("The plane sinks"),
+        text: msg(
+          "while the clock runs: answer at once for every point, at the buzzer for 40%. Time out and the round scores nothing.",
+        ),
+      },
+      {
+        lead: msg("One golden round"),
+        text: msg(
+          "a day counts double. Seven new rounds arrive at midnight, your time, and there is one ranked play a day.",
+        ),
+      },
+    ],
+  },
 } satisfies Record<string, GameRules>;
 
 /** A game's rules by its runtime, or null for a runtime with none written. */

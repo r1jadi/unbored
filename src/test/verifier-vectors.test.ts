@@ -28,6 +28,10 @@ import { replay as pixelockReplay, scoreOf as pixelockScore } from "@/lib/games/
 import { replay as thenAndNowReplay, scoreOf as thenAndNowScore } from "@/lib/games/then-and-now";
 import { replay as honeycombReplay, scoreOf as honeycombScore } from "@/lib/games/honeycomb";
 import { replay as meanderReplay, scoreOf as meanderScore } from "@/lib/games/meander";
+import {
+  replay as deadReckoningReplay,
+  scoreOf as deadReckoningScore,
+} from "@/lib/games/dead-reckoning";
 
 /**
  * The other half of tests/security/verifier_vectors.sql.
@@ -317,6 +321,20 @@ describe("the verifier vectors", () => {
       expect(run.moves.length, `${game} day ${day} plays every move`).toBe(moves.length);
       expect(String(meanderScore(run)), `${game} day ${day}`).toBe(score);
     }
+  });
+
+  it("are Dead Reckoning's runs as the engine scores them", () => {
+    const cases = vectors("dead-reckoning");
+    expect(cases.length).toBeGreaterThanOrEqual(4);
+    for (const [game, day, actions, score] of cases) {
+      const moves = actions!.split(",").map(Number);
+      const run = deadReckoningReplay(Number(day), moves);
+      expect(run.answers.length, `${game} day ${day} plays every move`).toBe(moves.length);
+      expect(String(deadReckoningScore(run)), `${game} day ${day}`).toBe(score);
+    }
+    // The illegal runs the SQL turns down are no moves to the engine either.
+    expect(deadReckoningReplay(20406, [31]).answers).toHaveLength(0);
+    expect(deadReckoningReplay(20406, [3200]).answers).toHaveLength(0);
   });
 
   it("are Checkmate's first ten puzzles as the engine deals them", () => {

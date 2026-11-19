@@ -21,6 +21,7 @@ const ARCHIVE_RUNTIMES = new Set([
   "then-and-now",
   "honeycomb",
   "meander",
+  "dead-reckoning",
 ]);
 
 /** How many past days the game page lists; the archive itself goes back further. */

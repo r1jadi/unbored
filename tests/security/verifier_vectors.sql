@@ -738,4 +738,39 @@ begin
   end if;
 end $$;
 
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Dead Reckoning: a day's moves and the score they make
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  got bigint;
+begin
+  for v in select * from (values
+    -- vectors:dead-reckoning:begin
+    ('dead-reckoning', '20406', '1278,766,53374,318,926,6846,111230', '800'),
+    ('dead-reckoning', '20407', '33,23110,64299,40880,53,58,32', '26'),
+    ('dead-reckoning', '20408', '34440,0,146,0,9593692,0,135', '112'),
+    ('dead-reckoning', '20409', '37231,1300,1913', '0')
+    -- vectors:dead-reckoning:end
+  ) as vectors(game, day, actions, score) loop
+    got := public.dead_reckoning_score(v.day::bigint, string_to_array(v.actions, ',')::integer[]);
+    if got::text is distinct from v.score then
+      raise exception 'ASSERTION FAILED: % day % — the database scores %, the engine %',
+        v.game, v.day, got, v.score;
+    end if;
+    raise notice 'ok   % day %: the verifier scores the engine''s run', v.game, v.day;
+  end loop;
+
+  -- Not legal: 31 seconds on the clock, an entry past the end of the first
+  -- round's list, an eighth move, and a negative code.
+  if public.dead_reckoning_score(20406, array[31]) is not null
+     or public.dead_reckoning_score(20406, array[3200]) is not null
+     or public.dead_reckoning_score(20406, array[1278, 766, 53374, 318, 926, 6846, 111230, 0]) is not null
+     or public.dead_reckoning_score(20406, array[-1]) is not null then
+    raise exception 'ASSERTION FAILED: Dead Reckoning scored moves that are not a legal run';
+  end if;
+end $$;
+
 rollback;

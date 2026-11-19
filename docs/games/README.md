@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Thirty-eight games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Thirty-nine games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword**, **Guesswork**, the daily word, **Deep Cut**, the rare-answer trivia game, and four more daily games: **Ton Up** (three darts at exactly 100), **Ballpark** (guess the price), **Only Once** (seven questions, never the same answer twice) **Tee Time** (a daily nine-hole golf course), **Foursort** (sixteen words, four hidden groups), **Pixelock** (a daily picture logic puzzle), **Then & Now** (six events in the order they happened), **Honeycomb** (seven letters, every word they make) and **Meander** (a day's themed words wound through a 5 × 5 grid). The daily games — 7 Second, the crossword, Guesswork, Deep Cut and the nine above — have one board a day; the rest are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
+**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword**, **Guesswork**, the daily word, **Deep Cut**, the rare-answer trivia game, and four more daily games: **Ton Up** (three darts at exactly 100), **Ballpark** (guess the price), **Only Once** (seven questions, never the same answer twice) **Tee Time** (a daily nine-hole golf course), **Foursort** (sixteen words, four hidden groups), **Pixelock** (a daily picture logic puzzle), **Then & Now** (six events in the order they happened), **Honeycomb** (seven letters, every word they make), **Meander** (a day's themed words wound through a 5 × 5 grid) and **Dead Reckoning** (seven numbers, thirty seconds each). The daily games — 7 Second, the crossword, Guesswork, Deep Cut and the ten above — have one board a day; the rest are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
 
@@ -3848,6 +3848,53 @@ by `bun scripts/generate-daily-banks.ts --write`); `meander.test.ts` fails if th
 copies drift or a grid does not hold its words. Words stay English in Albanian; the
 themes are translated.
 
+## Dead Reckoning
+
+A daily numbers game in the same shape as the daily games above: day-seeded
+sessions (`20270121120100_dead_reckoning_start.sql`), one ranked play a day,
+`useDailyRun` and `DailyShell`, a pure engine (`src/lib/games/dead-reckoning.ts`),
+a verifier whose replay is `public.dead_reckoning_score(day, actions)`, the
+`dead-reckoning` rows of `tests/security/verifier_vectors.sql`, a feed preview on a
+round of its own (planets, which no day uses), and
+`20270121120200_dead_reckoning_playable.sql` for the catalogue.
+
+| Rules              | A move                                                       | Score (×10 on screen)                             |
+| ------------------ | ------------------------------------------------------------ | ------------------------------------------------- |
+| `dead-reckoning@1` | (answer + 1) × 32 + seconds left; answer + 1 = 0 a time-out  | ⌊points × (20 + seconds) ÷ 50⌋ a round, ×2 golden |
+
+Seven rounds a day (`d mod n` of the 120 in `dead-reckoning-bank.ts`), thirty
+seconds each. Four are **name it** rounds, from four of five lists (mountains by
+height, rivers by length, buildings and structures by height, famous people by
+birth year, countries by area): the board shows a number and the player picks the
+entry whose real value is nearest, by autocomplete. The answer is the entry's index.
+Three are **estimates** (two quantities and a year, or one and two): the answer is
+the number typed, 0 to 9 999 999. One round a day is **golden** and counts double.
+
+**The rating** is the error in thousandths, `|value − target| × 1000 ÷ span`, the
+span being the target for a quantity and 100 for a year: within 10 is Dialed (100
+points), 30 Sharp (75), 70 Near (50), 150 Warm (30), 300 Rough (10), and further a
+Miss. The round's points drain with the clock, from all of them with 30 seconds left
+to 40% at the buzzer; the plane on the board flies at the points banked plus the
+points the round still offers, so it sinks as the clock runs and climbs on an answer.
+A perfect day is 800 (8,000 on screen).
+
+**The clock is the player's own.** As in Only Once, the seconds are not replayed:
+the verifier bounds them (0–30) but cannot check them, so a bot can always claim
+the full clock, as it can reach any score here. The verifier proves a run is legal.
+
+**The days** are built once, in the bank, by a seeded walk: each list and each kind of
+estimate is dealt from a deck that hands out every card before any comes round
+again, and a name round's target is the dealt entry's value rounded to the fewest
+significant figures within 0.5% (a year to the nearest ten when within a year), so
+the board asks for "6,200 m" and always has a Dialed answer. The database holds only
+numbers: each list's values (`public.dead_reckoning_values`) and each day's
+(list, scale, target) triples and golden round (`public.dead_reckoning_puzzle`),
+written by `bun scripts/generate-daily-banks.ts --write`;
+`dead-reckoning.test.ts` fails if the two copies drift. Because the walk depends
+on the lists, only ever append to them. The values are as commonly cited (mostly
+Wikipedia's, in 2026); entry names and estimate questions stay English in
+Albanian, while the prompts and the screens are translated.
+
 ## Unlimited in the daily games
 
 Every daily game but Ton Up has **Unlimited**, as Deep Cut does: once today's board
@@ -3867,6 +3914,7 @@ and `useSevenSecondRun` has `playUnlimited()` (its restart deals another round).
 | Guesswork / Gjeje              | a past day: that day's word        | 626/199     |
 | Ballpark, Only Once, Honeycomb | a past day: `d mod n`              | 99, 120, 60 |
 | Meander                        | a past day: `d mod n`              | 40          |
+| Dead Reckoning                 | a past day: `d mod n`              | 120         |
 | Foursort, Pixelock, Then & Now | a past day: `d mod n`              | 30 each     |
 | Tee Time                       | a past day: a course built from it | endless     |
 | 7 Second                       | a random 31-bit seed (no day's)    | endless     |

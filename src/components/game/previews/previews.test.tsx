@@ -223,6 +223,7 @@ import {
   OnlyOncePreview,
 } from "./OnlyOncePreview";
 import { TEE_TIME_PREVIEW_BEATS, TEE_TIME_PREVIEW_RUNS, TeeTimePreview } from "./TeeTimePreview";
+import { DEAD_RECKONING_PREVIEW_BEATS, DeadReckoningPreview } from "./DeadReckoningPreview";
 import {
   FOURSORT_PREVIEW_BEATS,
   FOURSORT_PREVIEW_GROUPS,
@@ -303,6 +304,11 @@ const SCRIPTED: Row[] = [
   { name: "then-and-now", beats: THEN_AND_NOW_PREVIEW_BEATS, Preview: ThenAndNowPreview },
   { name: "honeycomb", beats: HONEYCOMB_PREVIEW_BEATS, Preview: HoneycombPreview },
   { name: "meander", beats: MEANDER_PREVIEW_BEATS, Preview: MeanderPreview },
+  {
+    name: "dead-reckoning",
+    beats: DEAD_RECKONING_PREVIEW_BEATS,
+    Preview: DeadReckoningPreview,
+  },
 ];
 
 const loopMs = (beats: readonly { ms: number }[]) => beats.reduce((sum, beat) => sum + beat.ms, 0);

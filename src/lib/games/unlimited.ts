@@ -147,6 +147,17 @@ const GAMES: readonly { pattern: RegExp; bank: () => Promise<Bank> }[] = [
         }),
       ),
   },
+  {
+    pattern: /^dead-reckoning@/,
+    bank: () =>
+      Promise.all([
+        import("@/lib/games/dead-reckoning"),
+        import("@/lib/games/dead-reckoning-bank"),
+      ]).then(([engine, bank]) => ({
+        size: bank.PUZZLES.length,
+        key: (day) => String(engine.puzzleIndexForDay(day)),
+      })),
+  },
   { pattern: /^tee-time@/, bank: () => Promise.resolve(ENDLESS) },
 ];
 
