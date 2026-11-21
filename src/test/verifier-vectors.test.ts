@@ -32,6 +32,8 @@ import {
   replay as deadReckoningReplay,
   scoreOf as deadReckoningScore,
 } from "@/lib/games/dead-reckoning";
+import { replay as alibiReplay, scoreOf as alibiScore } from "@/lib/games/alibi";
+import { ALIBI_ANSWERS } from "@/lib/games/alibi-answers";
 
 /**
  * The other half of tests/security/verifier_vectors.sql.
@@ -320,6 +322,17 @@ describe("the verifier vectors", () => {
       const run = meanderReplay(Number(day), moves);
       expect(run.moves.length, `${game} day ${day} plays every move`).toBe(moves.length);
       expect(String(meanderScore(run)), `${game} day ${day}`).toBe(score);
+    }
+  });
+
+  it("are Alibi's runs as the engine scores them", () => {
+    const cases = vectors("alibi");
+    expect(cases.length).toBeGreaterThanOrEqual(4);
+    for (const [game, day, actions, score] of cases) {
+      const moves = actions!.split(",").map(Number);
+      const run = alibiReplay(Number(day), moves, ALIBI_ANSWERS);
+      expect(run.moves.length, `${game} day ${day} plays every move`).toBe(moves.length);
+      expect(String(alibiScore(run)), `${game} day ${day}`).toBe(score);
     }
   });
 

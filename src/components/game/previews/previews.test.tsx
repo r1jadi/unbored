@@ -224,6 +224,7 @@ import {
 } from "./OnlyOncePreview";
 import { TEE_TIME_PREVIEW_BEATS, TEE_TIME_PREVIEW_RUNS, TeeTimePreview } from "./TeeTimePreview";
 import { DEAD_RECKONING_PREVIEW_BEATS, DeadReckoningPreview } from "./DeadReckoningPreview";
+import { ALIBI_PREVIEW_BEATS, AlibiPreview } from "./AlibiPreview";
 import {
   FOURSORT_PREVIEW_BEATS,
   FOURSORT_PREVIEW_GROUPS,
@@ -309,6 +310,7 @@ const SCRIPTED: Row[] = [
     beats: DEAD_RECKONING_PREVIEW_BEATS,
     Preview: DeadReckoningPreview,
   },
+  { name: "alibi", beats: ALIBI_PREVIEW_BEATS, Preview: AlibiPreview },
 ];
 
 const loopMs = (beats: readonly { ms: number }[]) => beats.reduce((sum, beat) => sum + beat.ms, 0);

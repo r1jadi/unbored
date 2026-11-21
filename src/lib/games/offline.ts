@@ -26,9 +26,9 @@ import { unlimitedSeed } from "@/lib/games/unlimited";
 
 const OFFLINE_PREFIX = "offline-";
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** The day-seeded games — the crossword or Fjalekryqi, Guesswork or Gjeje, Ton Up, Ballpark, Only Once, Tee Time, Foursort, Pixelock, Then & Now, Honeycomb, Meander, Dead Reckoning. */
+/** The day-seeded games — the crossword or Fjalekryqi, Guesswork or Gjeje, Ton Up, Ballpark, Only Once, Tee Time, Foursort, Pixelock, Then & Now, Honeycomb, Meander, Dead Reckoning, Alibi. */
 const DAILY_CROSSWORD =
-  /^(crossword|fjalekryqi|guesswork|gjeje|ton-up|ballpark|only-once|tee-time|foursort|pixelock|then-and-now|honeycomb|meander|dead-reckoning)@/;
+  /^(crossword|fjalekryqi|guesswork|gjeje|ton-up|ballpark|only-once|tee-time|foursort|pixelock|then-and-now|honeycomb|meander|dead-reckoning|alibi)@/;
 
 /** The game each offline run on this page belongs to, for its result. */
 const offlineGames = new Map<string, string>();

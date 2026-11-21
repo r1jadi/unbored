@@ -1094,6 +1094,34 @@ export const GAME_RULES = {
       },
     ],
   },
+  alibi: {
+    heading: msg("One of them is lying"),
+    summary: msg(
+      "Three suspects, a few files of evidence. Find the lie, and the file that proves it.",
+    ),
+    rules: [
+      {
+        lead: msg("Read the statements."),
+        text: msg("Each suspect says where they were. Two of them are telling the truth."),
+      },
+      {
+        lead: msg("Open the files you need."),
+        text: msg("Every file opened costs 80 points, so the sharpest detectives open few."),
+      },
+      {
+        lead: msg("Accuse with proof."),
+        text: msg(
+          "Pick the suspect who is lying and the file that contradicts them. A first-try solve with only the proof open is worth 920.",
+        ),
+      },
+      {
+        lead: msg("Two accusations."),
+        text: msg(
+          "A wrong one costs 300, and a second one closes the case. One ranked case a day; a new one arrives at midnight, your time.",
+        ),
+      },
+    ],
+  },
 } satisfies Record<string, GameRules>;
 
 /** A game's rules by its runtime, or null for a runtime with none written. */

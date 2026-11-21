@@ -1,4 +1,4 @@
-import { Flag, Plane } from "lucide-react";
+import { Fingerprint, Flag, Plane } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 
 import { CascadeTile } from "@/components/game/CascadeTile";
@@ -87,6 +87,7 @@ export function GameArt({
       {id === "honeycomb" && <Honeycomb />}
       {id === "meander" && <Meander />}
       {id === "dead-reckoning" && <DeadReckoning />}
+      {id === "alibi" && <Alibi />}
       {!KNOWN.has(id) && <Generated seed={id} />}
     </GameStage>
   );
@@ -171,6 +172,7 @@ const KNOWN = new Set([
   "honeycomb",
   "meander",
   "dead-reckoning",
+  "alibi",
 ]);
 
 /**
@@ -987,6 +989,29 @@ function DeadReckoning() {
         6,200
       </div>
       <Plane className="size-[min(18cqw,18cqh,4.5rem)] rotate-45 fill-current text-foreground" />
+    </div>
+  );
+}
+
+function Alibi() {
+  // Three suspects in a row, the middle one marked, over a fingerprint.
+  return (
+    <div className="relative flex aspect-square w-[80%] flex-col items-center justify-center gap-[min(4cqw,4cqh,1rem)]">
+      <Fingerprint className="size-[min(26cqw,26cqh,6.5rem)] text-foreground/80" />
+      <div className="flex gap-[min(3cqw,3cqh,0.75rem)]">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className={
+              i === 1
+                ? "flex size-[min(11cqw,11cqh,2.75rem)] items-center justify-center rounded-full bg-primary text-[min(6cqw,6cqh,1.5rem)] font-bold text-primary-foreground"
+                : "flex size-[min(11cqw,11cqh,2.75rem)] items-center justify-center rounded-full bg-foreground/10 text-[min(6cqw,6cqh,1.5rem)] font-bold"
+            }
+          >
+            ?
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

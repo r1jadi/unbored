@@ -1,10 +1,12 @@
 /**
- * The database's copies of the Ton Up, Ballpark, Only Once, Pixelock, Honeycomb and Meander banks, as the SQL
+ * The database's copies of the Ton Up, Ballpark, Only Once, Pixelock, Honeycomb, Meander, Dead Reckoning and Alibi banks, as the SQL
  * that sits between each sessions migration's `-- name:begin` and `-- name:end`
  * markers. `scripts/generate-daily-banks.ts` writes them there; the games' tests
  * read the migrations and compare, so the two can never drift apart silently.
  */
 
+import { ALIBI_ANSWERS } from "@/lib/games/alibi-answers";
+import { ALIBI_CASES } from "@/lib/games/alibi-bank";
 import { BALLPARK_PRODUCTS } from "@/lib/games/ballpark-bank";
 import { KINDS, ONLY_ONCE_PUZZLES, toHexMask } from "@/lib/games/only-once-bank";
 import { HONEYCOMB_PUZZLES } from "@/lib/games/honeycomb-bank";
@@ -100,6 +102,20 @@ export function deadReckoningBlocks(): Record<string, string> {
   };
 }
 
+/**
+ * Alibi: each case's file count, then the suspect who is lying and the file that
+ * proves it, by their places in the bank. The case text stays in the client.
+ */
+export function alibiBlocks(): Record<string, string> {
+  return {
+    "alibi-count": `    ${ALIBI_CASES.length}`,
+    "alibi-bank": ALIBI_CASES.map((alibiCase, i) => {
+      const answer = ALIBI_ANSWERS[i]!;
+      return `    when ${i} then array[${alibiCase.cards.length}, ${answer.culprit}, ${answer.proof}] -- ${alibiCase.id}`;
+    }).join("\n"),
+  };
+}
+
 /** Every migration that holds a bank, and the blocks it should hold. */
 export const BANK_TARGETS: readonly { file: string; blocks: () => Record<string, string> }[] = [
   { file: "supabase/migrations/20270104120000_ton_up_sessions.sql", blocks: tonUpBlocks },
@@ -112,6 +128,7 @@ export const BANK_TARGETS: readonly { file: string; blocks: () => Record<string,
     file: "supabase/migrations/20270121120000_dead_reckoning_sessions.sql",
     blocks: deadReckoningBlocks,
   },
+  { file: "supabase/migrations/20270122120000_alibi_sessions.sql", blocks: alibiBlocks },
 ];
 
 /** The text between a block's markers in a migration, or null when it has none. */

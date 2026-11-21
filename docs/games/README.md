@@ -3,10 +3,10 @@
 How Unbored's games work: the rules, who is allowed to decide a score, and how a
 game earns the right to be called playable.
 
-Thirty-nine games are implemented today: **Stack 10**, **Chain** (Don't Break the
+Forty games are implemented today: **Stack 10**, **Chain** (Don't Break the
 Chain), **Memory Flash**, **One Move**, **Color Merge**, **Don't Touch the Black**,
 **7 Second**, **Crowns**, **Trail**, **8 Puzzle**, **Sun & Moon**, **Sudoku**,
-**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword**, **Guesswork**, the daily word, **Deep Cut**, the rare-answer trivia game, and four more daily games: **Ton Up** (three darts at exactly 100), **Ballpark** (guess the price), **Only Once** (seven questions, never the same answer twice) **Tee Time** (a daily nine-hole golf course), **Foursort** (sixteen words, four hidden groups), **Pixelock** (a daily picture logic puzzle), **Then & Now** (six events in the order they happened), **Honeycomb** (seven letters, every word they make), **Meander** (a day's themed words wound through a 5 × 5 grid) and **Dead Reckoning** (seven numbers, thirty seconds each). The daily games — 7 Second, the crossword, Guesswork, Deep Cut and the ten above — have one board a day; the rest are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
+**Mini Sudoku**, **Sumdoku**, **Whittle**, **Gridburst**, **Flutter**, **Flipside**, **Decant**, **Scatter**, **Huedini**, **Cascade**, **Checkmate**, **Bolted**, **Fusebox**, **Minefield**, the **Daily Crossword**, **Guesswork**, the daily word, **Deep Cut**, the rare-answer trivia game, and four more daily games: **Ton Up** (three darts at exactly 100), **Ballpark** (guess the price), **Only Once** (seven questions, never the same answer twice) **Tee Time** (a daily nine-hole golf course), **Foursort** (sixteen words, four hidden groups), **Pixelock** (a daily picture logic puzzle), **Then & Now** (six events in the order they happened), **Honeycomb** (seven letters, every word they make), **Meander** (a day's themed words wound through a 5 × 5 grid), **Dead Reckoning** (seven numbers, thirty seconds each) and **Alibi** (a small mystery: one of three suspects is lying). The daily games — 7 Second, the crossword, Guesswork, Deep Cut and the eleven above — have one board a day; the rest are endless, with no final tile, round, pattern, board, slide or row. Every catalogue record is playable, and each one names the runtime that plays
 it; the "no runtime yet" screen remains for any future entry that is published
 before its runtime ships.
 
@@ -3895,6 +3895,58 @@ on the lists, only ever append to them. The values are as commonly cited (mostly
 Wikipedia's, in 2026); entry names and estimate questions stay English in
 Albanian, while the prompts and the screens are translated.
 
+## Alibi
+
+A daily mystery in the same shape as the daily games above: day-seeded sessions
+(`20270122120100_alibi_start.sql`), one ranked play a day, `useDailyRun` and
+`DailyShell`, a pure engine (`src/lib/games/alibi.ts`), a verifier whose replay is
+`public.alibi_score(day, actions)`, the `alibi` rows of
+`tests/security/verifier_vectors.sql`, a feed preview on a case of its own, and
+`20270122120200_alibi_playable.sql` for the catalogue.
+
+| Rules     | A move                                                           | Score (×10 on screen)                                  |
+| --------- | ---------------------------------------------------------------- | ------------------------------------------------------ |
+| `alibi@1` | open file c: c (0–5); accuse suspect s with file c: 6 + 6s + c  | a solve: 100 − 8 a file opened − 30 a wrong accusation |
+
+One case a day (`d mod n` of `ALIBI_CASES` in `alibi-bank.ts`): a setup, **three
+suspects** with a statement each, and **four to six files** of evidence (a log, a
+text message, a receipt, a notice, a report, a photo). Exactly one statement is
+contradicted by one file; the other two fit every file, even when those people have
+a motive. The player opens files (each costs 8, 80 on screen) and accuses one
+suspect **with one open file as the proof**: right suspect and right file is a
+solve; anything else is a miss, and a second miss closes the case with 0. Asking for
+the proof means a 1-in-3 guess is not a solve. Stars: ★★★ a first-try solve with at
+most half the files opened, ★★ any first-try solve, ★ a second-try solve. A perfect
+day is 92 (920 on screen): the proof opened and nothing else.
+
+The screen shows the suspects and files in an order shuffled from the day
+(`suspectOrder`, `cardOrder`), so the liar and the proof are not always in the same
+place; the moves address them by their place in the bank.
+
+**Each language has its own world.** A case is written twice, side by side
+(`{ en, sq }`): English names, places and pounds in English, Albanian names, places
+and euros or lekë in Albanian. The story, times, clues and answer are the same, and
+`alibi.test.ts` fails if a time (`HH:MM`) in a case's English is missing from its
+Albanian. Suspect ids are roles (`cleaner`, `best-friend`), never names.
+
+**The answers** (culprit, proof and the reveal) live in `alibi-answers.ts`, which the
+runtime imports only when a run starts, so they are not in the code that draws the
+catalogue or the case. Like every daily game's bank they still reach the browser:
+this keeps them out of casual sight, not out of reach. The database holds each
+case's file count, culprit and proof (`public.alibi_case`), written by
+`bun scripts/generate-daily-banks.ts --write`; `alibi.test.ts` fails if the two
+copies drift.
+
+**The bank checker** in `alibi.test.ts` runs over every case: three suspects and
+four to six files with unique ids, an answer that exists, both languages filled in,
+statements of at most four sentences and files of at most 45 words, matching times,
+and a proof that shares at least a word, name or time with the culprit's statement
+in each language. Whether a case is _fair_ (exactly one lie, no second reading)
+cannot be checked by code: every case is reviewed by a person before it ships. Only
+ever append cases, and never reorder a case's suspects or files.
+
+After the reveal, one quiet line links to Powehi's full-length cases.
+
 ## Unlimited in the daily games
 
 Every daily game but Ton Up has **Unlimited**, as Deep Cut does: once today's board
@@ -3915,6 +3967,7 @@ and `useSevenSecondRun` has `playUnlimited()` (its restart deals another round).
 | Ballpark, Only Once, Honeycomb | a past day: `d mod n`              | 99, 120, 60 |
 | Meander                        | a past day: `d mod n`              | 40          |
 | Dead Reckoning                 | a past day: `d mod n`              | 120         |
+| Alibi                          | a past day: `d mod n`              | 10          |
 | Foursort, Pixelock, Then & Now | a past day: `d mod n`              | 30 each     |
 | Tee Time                       | a past day: a course built from it | endless     |
 | 7 Second                       | a random 31-bit seed (no day's)    | endless     |

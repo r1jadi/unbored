@@ -33,6 +33,7 @@ func TestLookupRoutesEachFamilyToItsVerifier(t *testing.T) {
 		"honeycomb@1":      "complete_honeycomb_run",
 		"meander@1":        "complete_meander_run",
 		"dead-reckoning@1": "complete_dead_reckoning_run",
+		"alibi@1":          "complete_alibi_run",
 	} {
 		if got := Lookup(version).Verifier; got != verifier {
 			t.Errorf("Lookup(%q).Verifier = %q, want %q", version, got, verifier)

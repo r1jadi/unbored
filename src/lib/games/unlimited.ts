@@ -158,6 +158,16 @@ const GAMES: readonly { pattern: RegExp; bank: () => Promise<Bank> }[] = [
         key: (day) => String(engine.puzzleIndexForDay(day)),
       })),
   },
+  {
+    pattern: /^alibi@/,
+    bank: () =>
+      Promise.all([import("@/lib/games/alibi"), import("@/lib/games/alibi-bank")]).then(
+        ([engine, bank]) => ({
+          size: bank.ALIBI_CASES.length,
+          key: (day) => String(engine.puzzleIndexForDay(day)),
+        }),
+      ),
+  },
   { pattern: /^tee-time@/, bank: () => Promise.resolve(ENDLESS) },
 ];
 

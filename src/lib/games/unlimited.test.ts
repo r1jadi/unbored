@@ -96,6 +96,7 @@ describe("which games have Unlimited", () => {
       "honeycomb@1",
       "meander@1",
       "dead-reckoning@1",
+      "alibi@1",
       "seven-second@1",
     ]) {
       expect(hasUnlimited(rules), rules).toBe(true);

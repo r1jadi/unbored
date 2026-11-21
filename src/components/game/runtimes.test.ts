@@ -20,6 +20,7 @@ import { GUESSWORK_RUNTIME } from "@/lib/games/guesswork";
 import { HONEYCOMB_RUNTIME } from "@/lib/games/honeycomb";
 import { MEANDER_RUNTIME } from "@/lib/games/meander";
 import { DEAD_RECKONING_RUNTIME } from "@/lib/games/dead-reckoning";
+import { ALIBI_RUNTIME } from "@/lib/games/alibi";
 import { HUEDINI_RUNTIME } from "@/lib/games/huedini";
 import { MEMORY_FLASH_RUNTIME } from "@/lib/games/memory-flash";
 import { MINEFIELD_RUNTIME } from "@/lib/games/minefield";
@@ -63,6 +64,7 @@ const CONSTANTS = [
   HONEYCOMB_RUNTIME,
   MEANDER_RUNTIME,
   DEAD_RECKONING_RUNTIME,
+  ALIBI_RUNTIME,
   HUEDINI_RUNTIME,
   MEMORY_FLASH_RUNTIME,
   MINEFIELD_RUNTIME,

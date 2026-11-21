@@ -79,6 +79,7 @@ const LOADERS: Readonly<Record<string, Loader>> = {
   meander: () => import("./MeanderRuntime").then((m) => ({ default: m.MeanderRuntime })),
   "dead-reckoning": () =>
     import("./DeadReckoningRuntime").then((m) => ({ default: m.DeadReckoningRuntime })),
+  alibi: () => import("./AlibiRuntime").then((m) => ({ default: m.AlibiRuntime })),
 };
 
 /** Shown when a game's code could not be downloaded (offline, or a stale deploy). */

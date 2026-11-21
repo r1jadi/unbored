@@ -1,5 +1,5 @@
 /**
- * Writes the banks of Ton Up, Ballpark, Only Once, Pixelock, Honeycomb, Meander and Dead Reckoning into their migrations.
+ * Writes the banks of Ton Up, Ballpark, Only Once, Pixelock, Honeycomb, Meander, Dead Reckoning and Alibi into their migrations.
  *
  *   bun scripts/generate-daily-banks.ts           # report whether they match
  *   bun scripts/generate-daily-banks.ts --write   # rewrite the migrations' blocks

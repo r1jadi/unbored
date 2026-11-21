@@ -136,6 +136,9 @@ var families = map[string]Ruleset{
 	// Dead Reckoning: one move a round, (answer + 1) × 32 + seconds left, the answer
 	// an entry's index or an estimate up to 9 999 999.
 	"dead-reckoning": {Verifier: "complete_dead_reckoning_run", MaxActions: 7, ActionCodes: 10_000_000*32 + 31},
+	// Alibi: open file c (0 to 5) or accuse suspect s with file c (6 + s × 6 + c,
+	// up to 23); six files and two accusations at most.
+	"alibi": {Verifier: "complete_alibi_run", MaxActions: 8, ActionCodes: 24},
 }
 
 // overrides are the versions whose bounds differ from their family's: the

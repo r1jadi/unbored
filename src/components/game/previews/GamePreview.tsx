@@ -37,6 +37,7 @@ const LOADERS: Record<string, Loader> = {
   meander: () => import("./MeanderPreview").then((m) => ({ default: m.MeanderPreview })),
   "dead-reckoning": () =>
     import("./DeadReckoningPreview").then((m) => ({ default: m.DeadReckoningPreview })),
+  alibi: () => import("./AlibiPreview").then((m) => ({ default: m.AlibiPreview })),
   "memory-flash": () =>
     import("./MemoryFlashPreview").then((m) => ({ default: m.MemoryFlashPreview })),
   minefield: () => import("./MinefieldPreview").then((m) => ({ default: m.MinefieldPreview })),

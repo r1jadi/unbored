@@ -773,4 +773,44 @@ begin
   end if;
 end $$;
 
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Alibi: a day's moves and the score they make
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $$
+declare
+  v record;
+  got bigint;
+begin
+  for v in select * from (values
+    -- vectors:alibi:begin
+    ('alibi', '20406', '2,8', '92'),
+    ('alibi', '20407', '0,3,1,15,21', '46'),
+    ('alibi', '20408', '0,1,2,3,4,14,22', '0'),
+    ('alibi', '20409', '0,1,2,3,4,10,22', '30')
+    -- vectors:alibi:end
+  ) as vectors(game, day, actions, score) loop
+    got := public.alibi_score(v.day::bigint, string_to_array(v.actions, ',')::integer[]);
+    if got::text is distinct from v.score then
+      raise exception 'ASSERTION FAILED: % day % — the database scores %, the engine %',
+        v.game, v.day, got, v.score;
+    end if;
+    raise notice 'ok   % day %: the verifier scores the engine''s run', v.game, v.day;
+  end loop;
+
+  -- Not legal: an accusation with its file still closed, a file opened twice, a
+  -- move after the solve, a file past the case's last, the same accusation twice,
+  -- and codes out of range.
+  if public.alibi_score(20406, array[8]) is not null
+     or public.alibi_score(20406, array[2, 2]) is not null
+     or public.alibi_score(20406, array[2, 8, 0]) is not null
+     or public.alibi_score(20406, array[4]) is not null
+     or public.alibi_score(20406, array[0, 6, 6]) is not null
+     or public.alibi_score(20406, array[24]) is not null
+     or public.alibi_score(20406, array[-1]) is not null then
+    raise exception 'ASSERTION FAILED: Alibi scored moves that are not a legal run';
+  end if;
+end $$;
+
 rollback;
