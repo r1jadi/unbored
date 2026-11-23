@@ -23,7 +23,7 @@ import { useTwoFactorRequired } from "@/lib/auth/security";
 import { initializeSession, SESSION_BOOT_SCRIPT, useAuth } from "@/lib/auth/session";
 import { applyAnalyticsConsent, identifyUser, resetAnalytics } from "@/lib/analytics";
 import { useConsent } from "@/lib/consent";
-import { ADSENSE_CLIENT, loadAdSense } from "@/lib/ads";
+import { ADSENSE_CLIENT, adsAllowedOn, loadAdSense } from "@/lib/ads";
 import { CookieConsent } from "@/components/layout/CookieConsent";
 import { LogoLoader } from "@/components/layout/Logo";
 import { ACCESSIBILITY_BOOT_SCRIPT, restoreAccessibility } from "@/lib/settings/accessibility";
@@ -287,11 +287,15 @@ function RootComponent() {
     if (consent === undefined) return;
     applyAnalyticsConsent(analyticsAllowed);
   }, [consent, analyticsAllowed]);
-  // Ads load after hydration, never during SSR; Google asks for ad consent
-  // where the law needs it (see lib/ads.ts).
+  // Ads load after hydration, never during SSR, and only on content pages: not
+  // on game, sign-in, account, error or "not found" screens (see lib/ads.ts).
+  // Google asks for ad consent where the law needs it.
+  const pageFailed = useRouterState({
+    select: (st) => st.matches.some((m) => m.status === "notFound" || m.status === "error"),
+  });
   useEffect(() => {
-    loadAdSense();
-  }, []);
+    if (adsAllowedOn(path, pageFailed)) loadAdSense();
+  }, [path, pageFailed]);
   useEffect(() => {
     if (auth.status === "restoring" || !analyticsAllowed) return;
     if (analyticsUserId) identifyUser(analyticsUserId, { role: analyticsRole });

@@ -114,6 +114,12 @@ export const privacy = [
     ),
   ],
   [
+    msg("Advertising"),
+    msg(
+      "Unbored is free to play and shows ads from Google AdSense on its content pages (not on game, sign-in or account screens). Third-party vendors, including Google, use cookies to serve ads based on your prior visits to this website or other websites. Google's use of advertising cookies enables it and its partners to serve ads to you based on your visits to this site and/or other sites on the internet. You can opt out of personalised advertising in Google's Ads Settings at https://adssettings.google.com, or opt out of a third-party vendor's use of cookies for personalised advertising at https://www.aboutads.info. How Google uses information from sites that use its services is explained at https://policies.google.com/technologies/partner-sites.",
+    ),
+  ],
+  [
     msg("Infrastructure"),
     msg(
       "Hosting: Cloudflare (web app, domain and DNS). API: Render (the Go services at api.unbored.lol, in Frankfurt). Identity, database and storage: Supabase (Auth, Postgres with Row Level Security, Storage). OAuth, when enabled: Google. Email (the new-games digest and feedback mail): Resend. Product analytics, only with your consent: PostHog. Advertising: Google AdSense, which in its own messages asks visitors in the EU, the UK and Switzerland for consent and offers visitors in US states with privacy laws an opt-out. Push messages pass through your browser's own push service (for example Google, Apple, Mozilla or Microsoft), encrypted so that service can't read them. No other processors are used by this deployment.",

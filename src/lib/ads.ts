@@ -14,7 +14,29 @@
  * Under the CSP's `'strict-dynamic'` a script added by our own (nonced)
  * bundle is trusted, so no nonce is needed.
  */
+import { isIndexable } from "@/lib/seo";
+
 export const ADSENSE_CLIENT = "ca-pub-4469987351010196";
+
+/**
+ * Whether Google ads may load on this screen.
+ *
+ * Google's publisher policies don't allow its ads on screens without publisher
+ * content: sign-in and account forms, settings, messages, error and "not
+ * found" pages, and the game screens themselves, where an ad next to the
+ * controls invites accidental clicks. The screens that are content are exactly
+ * the ones we let search engines index (`lib/seo.ts`), so ads follow that list,
+ * minus any page that turned out to be missing or broken.
+ *
+ * Auto ads load once and then stay for the visit, so this decides on the
+ * screen a visit starts on, and on later screens until it has loaded. A visit
+ * that starts on a game screen gets no ads until the player reaches a content
+ * page. Exclude the remaining screens in AdSense too (Auto ads → Page
+ * exclusions), which covers overlay formats after a client-side navigation.
+ */
+export function adsAllowedOn(pathname: string, pageFailed = false): boolean {
+  return !pageFailed && isIndexable(pathname);
+}
 
 const ADSENSE_SRC = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`;
 
