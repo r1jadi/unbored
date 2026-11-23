@@ -71,13 +71,13 @@ const INDEXABLE_PATHS = new Set([
   "/categories",
   "/leaderboards",
   "/welcome",
-  "/login",
-  "/signup",
   "/privacy",
   "/terms",
   "/support",
-  "/delete-account",
 ]);
+// Not listed, on purpose: /login, /signup and /delete-account. They are forms
+// with no content of their own, and a site whose indexed pages are mostly
+// thin forms reads as "low value content" to search and to ad review.
 
 const INDEXABLE_PATTERNS = [/^\/categories\/[a-z0-9-]+$/, /^\/games\/[a-z0-9-]+$/];
 
@@ -96,6 +96,27 @@ export function normalizePath(pathname: string): string {
   const path = (pathname.split(/[?#]/)[0] ?? "/").trim();
   if (path === "" || path === "/") return "/";
   return path.replace(/\/+$/, "").toLowerCase();
+}
+
+/** The length search results show before they cut a description off. */
+const META_DESCRIPTION_MAX = 160;
+
+/**
+ * A meta description from a record's own text: the parts that exist, joined,
+ * cut at a word boundary near 160 characters. `undefined` when there is no
+ * text at all, so the caller can fall back to something generic.
+ */
+export function metaDescription(parts: Array<string | null | undefined>): string | undefined {
+  const joined = parts
+    .map((part) => part?.trim().replace(/\s+/g, " ") ?? "")
+    .filter((part) => part !== "")
+    .map((part) => (/[.!?…]$/.test(part) ? part : `${part}.`))
+    .join(" ");
+  if (joined === "") return undefined;
+  if (joined.length <= META_DESCRIPTION_MAX) return joined;
+  const cut = joined.slice(0, META_DESCRIPTION_MAX - 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > 80 ? cut.slice(0, space) : cut).replace(/[\s,;:.]+$/, "")}…`;
 }
 
 type MetaEntry = Record<string, string>;

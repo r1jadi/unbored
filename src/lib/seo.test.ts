@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { absoluteUrl, isIndexable, normalizePath, rootSeo, seo } from "@/lib/seo";
+import { absoluteUrl, isIndexable, metaDescription, normalizePath, rootSeo, seo } from "@/lib/seo";
 
 describe("indexability allowlist", () => {
   it("indexes public routes", () => {
@@ -14,8 +14,6 @@ describe("indexability allowlist", () => {
       "/categories",
       "/leaderboards",
       "/welcome",
-      "/login",
-      "/signup",
       "/privacy",
       "/terms",
       "/categories/puzzle",
@@ -27,6 +25,9 @@ describe("indexability allowlist", () => {
 
   it("refuses to index account, admin, session and search routes", () => {
     for (const path of [
+      "/login",
+      "/signup",
+      "/delete-account",
       "/admin",
       "/admin/users",
       "/settings",
@@ -104,5 +105,23 @@ describe("seo", () => {
 
     expect(scripts?.[0].type).toBe("application/ld+json");
     expect(JSON.parse(scripts?.[0].children ?? "{}")).toEqual({ "@type": "CollectionPage" });
+  });
+});
+
+describe("metaDescription", () => {
+  it("joins the parts that exist into sentences", () => {
+    expect(metaDescription(["One word a day", null, " Six tries. ", ""])).toBe(
+      "One word a day. Six tries.",
+    );
+  });
+
+  it("is undefined with no text", () => {
+    expect(metaDescription([null, undefined, "  "])).toBeUndefined();
+  });
+
+  it("cuts a long text at a word, under 160 characters", () => {
+    const long = metaDescription(["word ".repeat(60)]);
+    expect(long?.length).toBeLessThanOrEqual(160);
+    expect(long).toMatch(/word…$/);
   });
 });

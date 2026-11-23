@@ -665,6 +665,7 @@ export const sqApp: Record<string, string> = {
   "No such category.": "Nuk ekziston kjo kategori.",
   "Nothing in this category yet": "Ende asgjë në këtë kategori",
   "Play the best {n} games on Unbored.": "Luaj lojërat më të mira {n} në Unbored.",
+  "{title} on Unbored.": "{title} në Unbored.",
   "That category does not exist. Browse every category from the Categories page.":
     "Ajo kategori nuk ekziston. Shfleto të gjitha kategoritë nga faqja Kategoritë.",
   "Browse every game category on Unbored.": "Shfleto çdo kategori lojërash në Unbored.",

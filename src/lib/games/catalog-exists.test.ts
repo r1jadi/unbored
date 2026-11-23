@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { categoryExists, gameExists, serverApiBase } from "./catalog-exists";
+import {
+  categoryExists,
+  gameExists,
+  readCategory,
+  readGame,
+  serverApiBase,
+} from "./catalog-exists";
 
 function answer(status: number, body: unknown = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -81,5 +87,56 @@ describe("categoryExists", () => {
     expect(await categoryExists("nope", BASE)).toBe(true);
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("down")));
     expect(await categoryExists("nope", BASE)).toBe(true);
+  });
+});
+
+describe("readGame", () => {
+  it("returns the game's text for the server render", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        answer(200, {
+          slug: "guesswork",
+          title: "Guesswork",
+          tagline: "One hidden word a day.",
+          description: "Find the word.",
+          instructions: "",
+          category: { slug: "word", name: "Word" },
+          plays: 12,
+        }),
+      ),
+    );
+    expect(await readGame("guesswork", BASE)).toEqual({
+      slug: "guesswork",
+      title: "Guesswork",
+      tagline: "One hidden word a day.",
+      description: "Find the word.",
+      category: { slug: "word", name: "Word" },
+    });
+  });
+
+  it("is missing on a 404 and unknown on anything unexpected", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(answer(404)));
+    expect(await readGame("nope", BASE)).toBe("missing");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(answer(200, { nothing: true })));
+    expect(await readGame("sudoku", BASE)).toBeUndefined();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(answer(500)));
+    expect(await readGame("sudoku", BASE)).toBeUndefined();
+  });
+});
+
+describe("readCategory", () => {
+  it("returns the listed category's name and description", async () => {
+    const list = { items: [{ slug: "word", name: "Word", description: "Letters." }] };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => answer(200, list)),
+    );
+    expect(await readCategory("word", BASE)).toEqual({
+      slug: "word",
+      name: "Word",
+      description: "Letters.",
+    });
+    expect(await readCategory("nope", BASE)).toBe("missing");
   });
 });

@@ -25,9 +25,9 @@ import {
 } from "@/lib/games/catalog";
 import { useGameEngagement } from "@/lib/social/engagement";
 import { useDocumentTitle } from "@/lib/document-title";
-import { requireGame } from "@/lib/games/catalog-exists";
+import { loadGame, type CrawlGame } from "@/lib/games/catalog-exists";
 import { prefetchGamePage } from "@/lib/prefetch";
-import { breadcrumbJsonLd, gameImage, seo, videoGameJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, gameImage, metaDescription, seo, videoGameJsonLd } from "@/lib/seo";
 
 import { t } from "@/lib/settings/language";
 export const Route = createFileRoute("/games/$id")({
@@ -39,25 +39,36 @@ export const Route = createFileRoute("/games/$id")({
     const from = typeof search["from"] === "string" ? search["from"] : "";
     return /^[a-z0-9_]{3,24}$/.test(from) ? { beat, from } : { beat };
   },
-  // The prefetch never blocks. The existence check does, on the server only, so
-  // an unknown slug is answered with a 404 status instead of a 200 shell.
+  // The prefetch never blocks. The server read does, on the server only: an
+  // unknown slug is answered with a 404 status instead of a 200 shell, and a
+  // known one has its text in the HTML (title, description, rules) rather than a
+  // loading skeleton, which is all a crawler would otherwise see.
   loader: async ({ context, params }) => {
     prefetchGamePage(context.queryClient, params.id);
-    await requireGame(params.id);
+    return loadGame(params.id);
   },
-  // Document metadata is built before the record arrives, so the title comes from
-  // the URL. It is the same title the API will report, and nothing is claimed
-  // that is not known: no description, no category, no metrics.
-  head: ({ params, match }) => {
+  // On the server the record is in the loader data. In the browser it is not (the
+  // screen reads it itself), so the title falls back to the URL and nothing is
+  // claimed that is not known.
+  head: ({ params, match, loaderData }) => {
     if (match.status === "notFound") {
       return seo(t("Game not found"), t("No such game"), { indexable: false });
     }
-    const title = titleFromSlug(params.id);
-    return seo(title, `${title} on Unbored.`, {
+    const game = loaderData?.game;
+    const title = game?.title ?? titleFromSlug(params.id);
+    const description = game
+      ? metaDescription([game.tagline, game.description, game.instructions])
+      : undefined;
+    return seo(title, description ?? t("{title} on Unbored.", { title }), {
       type: "video.other",
       ...gameImage(params.id),
       jsonLd: [
-        videoGameJsonLd({ id: params.id, title }),
+        videoGameJsonLd({
+          id: params.id,
+          title,
+          ...(game?.description ? { description: game.description } : {}),
+          ...(game?.category ? { category: game.category.name } : {}),
+        }),
         breadcrumbJsonLd([
           { name: t("Explore"), path: "/explore" },
           { name: title, path: `/games/${params.id}` },
@@ -92,7 +103,13 @@ function GameNotFound() {
 function GameDetails() {
   const { id } = Route.useParams();
   const state = useGame(id);
+  const { game: served } = Route.useLoaderData();
   useDocumentTitle(state.status === "ready" ? state.game.title : undefined);
+
+  // The first paint after a server render: the browser's own read is still in
+  // flight, but the server already put the game's text on the page. Showing it
+  // (and not a skeleton) is what a crawler indexes, and it hydrates unchanged.
+  if (state.status === "loading" && served) return <ServedDetail game={served} />;
 
   if (state.status === "loading") {
     return (
@@ -119,6 +136,49 @@ function GameDetails() {
   }
 
   return <Detail game={state.game} />;
+}
+
+/**
+ * The game's text as the server knows it, laid out like `Detail` so that the
+ * swap to the full page once the browser's read lands does not jump. Nothing
+ * here depends on the viewer, the clock or the browser, so it hydrates as is.
+ */
+function ServedDetail({ game }: { game: CrawlGame }) {
+  return (
+    <Page className="max-w-5xl pb-40 md:pb-12">
+      <PageHeader back title={game.title} />
+      <div className="md:grid md:grid-cols-[minmax(0,1fr)_340px] md:gap-8">
+        <div>
+          <GameArt
+            id={game.slug}
+            className="aspect-square w-full border-glass-border md:rounded-2xl md:border"
+          />
+          <div className="px-4 pt-4 md:px-0">
+            {game.tagline && <p className="mt-1 text-lg font-medium">{game.tagline}</p>}
+            {game.description && <p className="mt-3 text-muted-foreground">{game.description}</p>}
+            {game.category && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                {t("Category")}:{" "}
+                <Link
+                  to="/categories/$slug"
+                  params={{ slug: game.category.slug }}
+                  className="font-medium text-foreground hover:underline"
+                >
+                  {game.category.name}
+                </Link>
+              </p>
+            )}
+            {game.instructions && (
+              <section className="mt-4 rounded-xl border border-border p-4">
+                <h2 className="text-sm font-semibold">{t("How to play")}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{game.instructions}</p>
+              </section>
+            )}
+          </div>
+        </div>
+      </div>
+    </Page>
+  );
 }
 
 function Detail({ game }: { game: Game }) {
