@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AdSlot } from "@/components/ads/AdSlot";
 import { GameListPage } from "@/components/game/GameListPage";
 import { EmptyState } from "@/components/common";
 import { DEFAULT_PAGE_SIZE, titleFromSlug, useCategories } from "@/lib/games/catalog";
@@ -75,7 +76,12 @@ function CategoryPage() {
         body: t("No game has been published here yet."),
       }}
       ranked
-      footer={<CategoryIntro slug={slug} />}
+      footer={
+        <>
+          <CategoryIntro slug={slug} />
+          <AdSlot key={slug} placement="category" className="mt-8" />
+        </>
+      }
     />
   );
 }

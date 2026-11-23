@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, Page, PageHeader, Section } from "@/components/
 import { BeatBanner } from "@/components/game/BeatBanner";
 import { PastPuzzles } from "@/components/game/PastPuzzles";
 import { GameArt } from "@/components/game/GameArt";
+import { AdSlot } from "@/components/ads/AdSlot";
 import { GameGuide } from "@/components/game/GameGuide";
 import { GameCard } from "@/components/game/GameCard";
 import { LeaderboardList } from "@/components/game/Leaderboard";
@@ -318,6 +319,8 @@ function Detail({ game }: { game: Game }) {
               runtime={game.runtime}
               instructions={game.instructions}
             />
+
+            <AdSlot key={game.slug} placement="game" className="mt-8" />
           </div>
         </div>
 

@@ -666,6 +666,7 @@ export const sqApp: Record<string, string> = {
   "Nothing in this category yet": "Ende asgjë në këtë kategori",
   "Play the best {n} games on Unbored.": "Luaj lojërat më të mira {n} në Unbored.",
   "{title} on Unbored.": "{title} në Unbored.",
+  Advertisement: "Reklamë",
   "About Unbored": "Rreth Unbored",
   "Who makes Unbored, what you can play here, and how to reach us.":
     "Kush e bën Unbored, çfarë mund të luash këtu dhe si të na kontaktosh.",
