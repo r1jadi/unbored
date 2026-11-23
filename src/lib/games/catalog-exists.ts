@@ -64,6 +64,8 @@ export type CrawlGame = {
   tagline?: string;
   description?: string;
   instructions?: string;
+  /** The engine that plays it, which picks its written rules. */
+  runtime?: string;
   category?: { slug: string; name: string };
 };
 
@@ -99,6 +101,7 @@ function toCrawlGame(slug: string, body: unknown): CrawlGame | undefined {
     ...(text(game.tagline) ? { tagline: game.tagline as string } : {}),
     ...(text(game.description) ? { description: game.description as string } : {}),
     ...(text(game.instructions) ? { instructions: game.instructions as string } : {}),
+    ...(text(record["runtime"]) ? { runtime: record["runtime"] as string } : {}),
     ...(game.category ? { category: game.category } : {}),
   };
 }

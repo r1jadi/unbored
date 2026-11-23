@@ -71,6 +71,7 @@ const INDEXABLE_PATHS = new Set([
   "/categories",
   "/leaderboards",
   "/welcome",
+  "/about",
   "/privacy",
   "/terms",
   "/support",

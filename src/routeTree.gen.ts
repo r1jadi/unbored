@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as AccountCreatedRouteImport } from './routes/account-created'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -69,6 +70,11 @@ import { Route as UUsernameConnectionsRouteImport } from './routes/u.$username.c
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountCreatedRoute = AccountCreatedRouteImport.update({
@@ -349,6 +355,7 @@ const UUsernameConnectionsRoute = UUsernameConnectionsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/account-created': typeof AccountCreatedRoute
   '/activity': typeof ActivityRoute
   '/admin': typeof AdminRouteWithChildren
@@ -407,6 +414,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/account-created': typeof AccountCreatedRoute
   '/activity': typeof ActivityRoute
   '/delete-account': typeof DeleteAccountRoute
@@ -465,6 +473,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/account-created': typeof AccountCreatedRoute
   '/activity': typeof ActivityRoute
   '/admin': typeof AdminRouteWithChildren
@@ -525,6 +534,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/account-created'
     | '/activity'
     | '/admin'
@@ -583,6 +593,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/account-created'
     | '/activity'
     | '/delete-account'
@@ -640,6 +651,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/about'
     | '/account-created'
     | '/activity'
     | '/admin'
@@ -699,6 +711,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   AccountCreatedRoute: typeof AccountCreatedRoute
   ActivityRoute: typeof ActivityRoute
   AdminRoute: typeof AdminRouteWithChildren
@@ -749,6 +762,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account-created': {
@@ -1177,6 +1197,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   AccountCreatedRoute: AccountCreatedRoute,
   ActivityRoute: ActivityRoute,
   AdminRoute: AdminRouteWithChildren,

@@ -69,6 +69,7 @@ function Support() {
           <ul className="divide-y divide-border overflow-hidden rounded-xl bg-surface">
             {(
               [
+                ["/about", t("About Unbored")],
                 ["/delete-account", t("Delete your account")],
                 ["/privacy", t("Privacy Policy")],
                 ["/terms", t("Terms & Conditions")],

@@ -29,6 +29,7 @@ export function GameListPage({
   },
   children,
   action,
+  footer,
 }: {
   title: string;
   subtitle?: string;
@@ -45,6 +46,8 @@ export function GameListPage({
   /** Rendered instead of a list, for a page whose data does not exist yet. */
   children?: ReactNode;
   action?: ReactNode;
+  /** Shown under the list: text about the page, rendered on the server. */
+  footer?: ReactNode;
 }) {
   return (
     <Page className="max-w-5xl">
@@ -54,6 +57,7 @@ export function GameListPage({
       ) : (
         <div className="px-4 md:px-0">{children}</div>
       )}
+      {footer && <div className="px-4 pt-8 pb-4 md:px-0">{footer}</div>}
     </Page>
   );
 }

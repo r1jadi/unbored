@@ -3,9 +3,10 @@ import { GameListPage } from "@/components/game/GameListPage";
 import { EmptyState } from "@/components/common";
 import { DEFAULT_PAGE_SIZE, titleFromSlug, useCategories } from "@/lib/games/catalog";
 import { loadCategory } from "@/lib/games/catalog-exists";
+import { categoryGuideFor } from "@/lib/games/category-guides";
 import { breadcrumbJsonLd, metaDescription, seo } from "@/lib/seo";
 
-import { t } from "@/lib/settings/language";
+import { currentLanguage, t } from "@/lib/settings/language";
 export const Route = createFileRoute("/categories/$slug")({
   // Server only: an unknown slug is answered with a 404 status, not a 200 shell,
   // and a known one brings its name and description into the HTML.
@@ -74,6 +75,25 @@ function CategoryPage() {
         body: t("No game has been published here yet."),
       }}
       ranked
+      footer={<CategoryIntro slug={slug} />}
     />
+  );
+}
+
+/** The category's introduction, for English readers (it is written in English). */
+function CategoryIntro({ slug }: { slug: string }) {
+  const guide = currentLanguage() === "en" ? categoryGuideFor(slug) : null;
+  if (!guide) return null;
+  return (
+    <section aria-labelledby="category-about" className="max-w-2xl">
+      <h2 id="category-about" className="text-base font-semibold">
+        {guide.heading}
+      </h2>
+      {guide.paragraphs.map((paragraph) => (
+        <p key={paragraph} className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          {paragraph}
+        </p>
+      ))}
+    </section>
   );
 }

@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, Page, PageHeader, Section } from "@/components/
 import { BeatBanner } from "@/components/game/BeatBanner";
 import { PastPuzzles } from "@/components/game/PastPuzzles";
 import { GameArt } from "@/components/game/GameArt";
+import { GameGuide } from "@/components/game/GameGuide";
 import { GameCard } from "@/components/game/GameCard";
 import { LeaderboardList } from "@/components/game/Leaderboard";
 import { YourStats } from "@/components/game/YourStats";
@@ -109,13 +110,22 @@ function GameDetails() {
   // The first paint after a server render: the browser's own read is still in
   // flight, but the server already put the game's text on the page. Showing it
   // (and not a skeleton) is what a crawler indexes, and it hydrates unchanged.
-  if (state.status === "loading" && served) return <ServedDetail game={served} />;
+  // Also when the browser's read fails: what the server sent is still right, and
+  // better than an error in its place.
+  if ((state.status === "loading" || state.status === "error") && served) {
+    return <ServedDetail game={served} />;
+  }
 
   if (state.status === "loading") {
+    // The guide needs only the slug, so it is on the page even when the server
+    // could not read the game in time.
     return (
       <Page className="max-w-5xl pb-40 md:pb-12">
         <PageHeader back title={titleFromSlug(id)} />
         <Skeleton className="aspect-square w-full md:rounded-2xl" />
+        <div className="px-4 md:px-0">
+          <GameGuide slug={id} title={titleFromSlug(id)} />
+        </div>
       </Page>
     );
   }
@@ -131,6 +141,9 @@ function GameDetails() {
           body={catalogErrorMessage(state.error)}
           onRetry={state.retry}
         />
+        <div className="px-4 md:px-0">
+          <GameGuide slug={id} title={titleFromSlug(id)} />
+        </div>
       </Page>
     );
   }
@@ -168,12 +181,12 @@ function ServedDetail({ game }: { game: CrawlGame }) {
                 </Link>
               </p>
             )}
-            {game.instructions && (
-              <section className="mt-4 rounded-xl border border-border p-4">
-                <h2 className="text-sm font-semibold">{t("How to play")}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{game.instructions}</p>
-              </section>
-            )}
+            <GameGuide
+              slug={game.slug}
+              title={game.title}
+              runtime={game.runtime}
+              instructions={game.instructions}
+            />
           </div>
         </div>
       </div>
@@ -244,13 +257,6 @@ function Detail({ game }: { game: Game }) {
               ))}
             </dl>
 
-            {game.instructions && (
-              <section className="mt-4 rounded-xl border border-border p-4">
-                <h2 className="text-sm font-semibold">{t("How to play")}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{game.instructions}</p>
-              </section>
-            )}
-
             <PastPuzzles game={game} />
 
             <YourStats slug={game.slug} />
@@ -305,6 +311,13 @@ function Detail({ game }: { game: Game }) {
                 </Button>
               )}
             </div>
+
+            <GameGuide
+              slug={game.slug}
+              title={game.title}
+              runtime={game.runtime}
+              instructions={game.instructions}
+            />
           </div>
         </div>
 

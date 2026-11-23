@@ -105,6 +105,7 @@ const UNFINISHED_SIGNUP_PATHS = [
   "/two-factor",
   "/terms",
   "/privacy",
+  "/about",
   "/support",
   "/delete-account",
 ];
@@ -118,6 +119,7 @@ const TWO_FACTOR_FREE_PATHS = [
   "/reset-password",
   "/terms",
   "/privacy",
+  "/about",
   "/support",
   "/delete-account",
 ];

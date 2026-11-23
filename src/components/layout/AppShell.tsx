@@ -155,6 +155,25 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           )}
         </div>
+        {/* The site's own pages, on every screen that has the sidebar: who runs it,
+            how to reach us, and the policies. */}
+        <nav
+          aria-label={t("About Unbored")}
+          className="flex flex-wrap gap-x-3 gap-y-1 px-3 pt-4 text-xs text-sidebar-foreground/60"
+        >
+          <Link to="/about" className="hover:text-sidebar-foreground">
+            {t("About")}
+          </Link>
+          <Link to="/support" className="hover:text-sidebar-foreground">
+            {t("Support")}
+          </Link>
+          <Link to="/privacy" className="hover:text-sidebar-foreground">
+            {t("Privacy Policy")}
+          </Link>
+          <Link to="/terms" className="hover:text-sidebar-foreground">
+            {t("Terms & Conditions")}
+          </Link>
+        </nav>
       </aside>
 
       <main className="min-w-0 flex-1">
