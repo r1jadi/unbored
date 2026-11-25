@@ -13,6 +13,7 @@ describe("indexability allowlist", () => {
       "/recent",
       "/categories",
       "/leaderboards",
+      "/unloop",
       "/welcome",
       "/privacy",
       "/terms",

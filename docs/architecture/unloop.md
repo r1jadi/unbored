@@ -46,5 +46,5 @@ Every admin route is on the admin tier and re-checks it in the handler.
   has an `admin` row in `public.user_roles` can upload.
 - The CSP allows `media-src` from the Supabase origin; videos stream from the
   bucket's public URLs.
-- `/unloop` is `noindex` for now and not in the sitemap. Add it to
-  `INDEXABLE_PATHS` in `src/lib/seo.ts` when there is enough to index.
+- `/unloop` is indexable and listed in the sitemap (`INDEXABLE_PATHS` in
+  `src/lib/seo.ts`). Shared links (`?v=…`) canonicalise to `/unloop`.

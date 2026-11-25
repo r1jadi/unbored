@@ -64,6 +64,7 @@ export function absoluteUrl(path: string): string {
 const INDEXABLE_PATHS = new Set([
   "/",
   "/explore",
+  "/unloop",
   "/popular",
   "/new",
   "/trending",
