@@ -11,6 +11,7 @@
 
 import { ApiError, apiFetch } from "@/lib/api/client";
 import { getAccessToken } from "@/lib/auth/session";
+import { publicConfig } from "@/lib/config";
 import { useResource } from "@/lib/admin/api";
 import { t } from "@/lib/settings/language";
 import type { UnloopCategory } from "@/lib/unloop/categories";
@@ -129,6 +130,10 @@ export async function uploadUnloopFile(
     request.open("PUT", uploadUrl);
     request.setRequestHeader("Content-Type", file.type);
     request.setRequestHeader("x-upsert", "false");
+    // What Supabase's own client sends: the gateway identifies the project by it.
+    if (publicConfig.supabase.publishableKey) {
+      request.setRequestHeader("apikey", publicConfig.supabase.publishableKey);
+    }
     request.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress?.(event.loaded / event.total);
     };
@@ -137,12 +142,7 @@ export async function uploadUnloopFile(
         onProgress?.(1);
         resolve();
       } else {
-        reject(
-          new ApiError(t("The upload didn't go through. Try again."), {
-            code: "upload_failed",
-            status: request.status,
-          }),
-        );
+        reject(storageUploadError(request.status, request.responseText));
       }
     };
     request.onerror = () =>
@@ -155,6 +155,55 @@ export async function uploadUnloopFile(
     request.send(file);
   });
   return path;
+}
+
+/**
+ * Explains a refused upload. Supabase Storage answers most refusals with HTTP 400
+ * and the real status in the body (`{"statusCode":"413","error":"Payload too large"}`),
+ * so the body, not the HTTP status, says what went wrong.
+ */
+export function storageUploadError(status: number, body: string): ApiError {
+  let code = String(status);
+  let detail = "";
+  try {
+    const parsed = JSON.parse(body) as { statusCode?: unknown; error?: unknown; message?: unknown };
+    if (parsed.statusCode !== undefined) code = String(parsed.statusCode);
+    detail = [parsed.error, parsed.message].filter((part) => typeof part === "string").join(": ");
+  } catch {
+    // Not JSON: the HTTP status is all there is.
+  }
+  if (code === "413" || /too large|maximum allowed size/i.test(detail)) {
+    return new ApiError(
+      t(
+        "That file is bigger than this project's upload limit. Raise the global file size limit in Supabase (Storage → Settings), or upload a smaller file.",
+      ),
+      { code: "too_large", status },
+    );
+  }
+  if (code === "415" || /mime|content type/i.test(detail)) {
+    return new ApiError(t("Storage refused this file type. Use MP4, WebM or MOV."), {
+      code: "unsupported_type",
+      status,
+    });
+  }
+  if (code === "409" || /already exists|duplicate/i.test(detail)) {
+    return new ApiError(t("The upload didn't go through. Try again."), {
+      code: "upload_conflict",
+      status,
+    });
+  }
+  if (code === "403" || code === "401" || /signature|jwt|token|expired/i.test(detail)) {
+    return new ApiError(t("The upload link expired. Choose the file again."), {
+      code: "upload_expired",
+      status,
+    });
+  }
+  return new ApiError(
+    detail
+      ? t("Storage refused the upload: {reason}", { reason: detail })
+      : t("The upload didn't go through. Try again."),
+    { code: "upload_failed", status },
+  );
 }
 
 /** Reads a video file's length in the browser, or null when it can't be read. */

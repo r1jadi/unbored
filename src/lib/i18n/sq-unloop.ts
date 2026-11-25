@@ -104,4 +104,11 @@ export const sqUnloop: Record<string, string> = {
   "Your saved loops live here": "Videot e tua të ruajtura janë këtu",
   loop: "video",
   "{likes} likes · {saves} saves": "{likes} pëlqime · {saves} ruajtje",
+  "That file is bigger than this project's upload limit. Raise the global file size limit in Supabase (Storage → Settings), or upload a smaller file.":
+    "Ky skedar është më i madh se kufiri i ngarkimit të projektit. Rrite kufirin global të madhësisë së skedarëve në Supabase (Storage → Settings) ose ngarko një skedar më të vogël.",
+  "Storage refused this file type. Use MP4, WebM or MOV.":
+    "Ruajtja e refuzoi këtë lloj skedari. Përdor MP4, WebM ose MOV.",
+  "The upload link expired. Choose the file again.":
+    "Lidhja e ngarkimit skadoi. Zgjidh skedarin përsëri.",
+  "Storage refused the upload: {reason}": "Ruajtja e refuzoi ngarkimin: {reason}",
 };

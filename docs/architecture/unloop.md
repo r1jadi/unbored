@@ -41,6 +41,10 @@ Every admin route is on the admin tier and re-checks it in the handler.
 
 ## Operating it
 
+- Supabase's **global file size limit** (Storage → Settings, 50 MB by default on
+  every plan) caps every upload, whatever the bucket allows. Raise it to at least
+  100 MB for Unloop's bucket limit to apply.
+
 - Uploading needs `SUPABASE_SECRET_KEY` on the API (the service-role bridge). Without
   it, signed uploads are minted as the caller and only an administrator who also
   has an `admin` row in `public.user_roles` can upload.

@@ -15,6 +15,7 @@ import { clearSession, signIn } from "@/lib/auth/session";
 import { contentSecurityPolicy } from "@/lib/csp";
 import { getQueryClient } from "@/lib/query";
 import { fetchUnloopPage, unloopFileUrl } from "@/lib/unloop/feed";
+import { storageUploadError } from "@/lib/unloop/admin";
 import { Route as UnloopAdminRoute } from "@/routes/admin.unloop";
 
 const viewerId = "3f7c2b1e-4d5a-4c9b-8e2f-1a2b3c4d5e6f";
@@ -299,5 +300,36 @@ describe("Unloop studio", () => {
     const composer = screen.getByText("Upload a video to continue.").closest("form")!;
     expect(within(composer).getByRole("button", { name: "Publish" })).toBeDisabled();
     expect(screen.getByText("Upload a video to continue.")).toBeInTheDocument();
+  });
+});
+
+describe("Unloop uploads", () => {
+  it("reads Storage's real reason out of a 400", () => {
+    expect(
+      storageUploadError(
+        400,
+        JSON.stringify({
+          statusCode: "413",
+          error: "Payload too large",
+          message: "The object exceeded the maximum allowed size",
+        }),
+      ).code,
+    ).toBe("too_large");
+    expect(
+      storageUploadError(400, JSON.stringify({ statusCode: "415", error: "invalid_mime_type" }))
+        .code,
+    ).toBe("unsupported_type");
+    expect(
+      storageUploadError(
+        400,
+        JSON.stringify({ statusCode: "400", error: "InvalidJWT", message: "jwt expired" }),
+      ).code,
+    ).toBe("upload_expired");
+    const other = storageUploadError(
+      400,
+      JSON.stringify({ statusCode: "400", error: "Something new" }),
+    );
+    expect(other.message).toContain("Something new");
+    expect(storageUploadError(500, "<html>").code).toBe("upload_failed");
   });
 });
