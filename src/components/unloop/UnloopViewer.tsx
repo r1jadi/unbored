@@ -74,6 +74,16 @@ export function UnloopViewer({
   const [active, setActive] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
+  // Clear display: only the picture. It stays on from loop to loop until a tap.
+  const [clear, setClear] = useState(false);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (clear) root.dataset["unloopClear"] = "";
+    else delete root.dataset["unloopClear"];
+    return () => {
+      delete root.dataset["unloopClear"];
+    };
+  }, [clear]);
   useEffect(() => {
     try {
       if (safeSessionStorage()?.getItem(SOUND_KEY) === "on") setMuted(false);
@@ -209,6 +219,12 @@ export function UnloopViewer({
           event.preventDefault();
           go(-1);
           break;
+        case "c":
+          setClear((value) => !value);
+          break;
+        case "Escape":
+          setClear(false);
+          break;
         case "m":
           toggleSound();
           break;
@@ -299,6 +315,8 @@ export function UnloopViewer({
             onToggleSave={(v, on) => void mark("save", v, on)}
             onShare={(v) => void share(v)}
             onPlayingChange={setPlaying}
+            clear={clear}
+            onClearChange={setClear}
           />
         ))}
         {!hasNextPage && (
@@ -339,6 +357,7 @@ export function UnloopViewer({
         muted={muted}
         onToggleSound={toggleSound}
         playing={playing && !!current}
+        hidden={clear}
       />
 
       <div
@@ -350,7 +369,12 @@ export function UnloopViewer({
       </div>
 
       {shown.length > 1 && (
-        <div className="absolute top-1/2 right-6 hidden -translate-y-1/2 flex-col gap-3 lg:flex">
+        <div
+          className={cn(
+            "absolute top-1/2 right-6 hidden -translate-y-1/2 flex-col gap-3 transition-opacity duration-300 lg:flex",
+            clear && "pointer-events-none opacity-0",
+          )}
+        >
           <button
             type="button"
             onClick={() => go(-1)}
@@ -381,12 +405,14 @@ function UnloopHeader({
   muted,
   onToggleSound,
   playing,
+  hidden = false,
 }: {
   channel: UnloopChannel;
   onChannel: (channel: UnloopChannel) => void;
   muted: boolean;
   onToggleSound: () => void;
   playing: boolean;
+  hidden?: boolean;
 }) {
   const channels: Array<{
     key: UnloopChannel;
@@ -404,8 +430,19 @@ function UnloopHeader({
     { key: "saved", label: t("Saved"), hue: 40 },
   ];
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-20 md:left-60 lg:left-64">
-      <div className="pointer-events-auto mx-auto max-w-[460px] pt-[calc(0.75rem+var(--safe-top))] md:pt-9">
+    <header
+      className={cn(
+        "pointer-events-none fixed inset-x-0 top-0 z-20 transition-opacity duration-300 md:left-60 lg:left-64",
+        hidden && "opacity-0",
+      )}
+      aria-hidden={hidden || undefined}
+    >
+      <div
+        className={cn(
+          "mx-auto max-w-[460px] pt-[calc(0.75rem+var(--safe-top))] md:pt-9",
+          hidden ? "pointer-events-none" : "pointer-events-auto",
+        )}
+      >
         <div className="flex items-center justify-between px-4">
           <span className="text-white drop-shadow">
             <UnloopWordmark playing={playing} />

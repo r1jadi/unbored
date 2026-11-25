@@ -333,3 +333,42 @@ describe("Unloop uploads", () => {
     expect(storageUploadError(500, "<html>").code).toBe("upload_failed");
   });
 });
+
+describe("Unloop overlay", () => {
+  it("shows one line of description with more, and opens it on request", async () => {
+    stubFetch((url) =>
+      url.includes("rpc/unloop_feed")
+        ? jsonResponse([row(loopA, "First loop", { description: "A long story ".repeat(40) })])
+        : undefined,
+    );
+    await renderAt(() => <UnloopViewer channel="all" onChannel={() => {}} />);
+
+    const slide = await screen.findByRole("article", { name: "First loop" });
+    fireEvent.click(within(slide).getByRole("button", { name: "more" }));
+    expect(within(slide).getByRole("button", { name: "less" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    fireEvent.click(within(slide).getByRole("button", { name: "less" }));
+    expect(within(slide).getByRole("button", { name: "more" })).toBeInTheDocument();
+  });
+
+  it("clears the display down to the picture, and a tap brings it back", async () => {
+    stubFetch((url) =>
+      url.includes("rpc/unloop_feed") ? jsonResponse([row(loopA, "First loop")]) : undefined,
+    );
+    await renderAt(() => <UnloopViewer channel="all" onChannel={() => {}} />);
+
+    const slide = await screen.findByRole("article", { name: "First loop" });
+    fireEvent.click(within(slide).getByRole("button", { name: "Clear display" }));
+    expect(document.documentElement.dataset["unloopClear"]).toBe("");
+    expect(within(slide).queryByRole("button", { name: "Like, 3" })).toBeNull();
+
+    fireEvent.pointerDown(within(slide).getByRole("button", { name: "Show controls" }));
+    fireEvent.pointerUp(within(slide).getByRole("button", { name: "Show controls" }));
+    await waitFor(() =>
+      expect(within(slide).getByRole("button", { name: "Like, 3" })).toBeInTheDocument(),
+    );
+    expect(document.documentElement.dataset["unloopClear"]).toBeUndefined();
+  });
+});

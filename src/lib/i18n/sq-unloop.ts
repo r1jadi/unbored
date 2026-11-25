@@ -111,4 +111,8 @@ export const sqUnloop: Record<string, string> = {
   "The upload link expired. Choose the file again.":
     "Lidhja e ngarkimit skadoi. Zgjidh skedarin përsëri.",
   "Storage refused the upload: {reason}": "Ruajtja e refuzoi ngarkimin: {reason}",
+  "Clear display": "Pastro ekranin",
+  "Show controls": "Shfaq kontrollet",
+  less: "më pak",
+  more: "më shumë",
 };

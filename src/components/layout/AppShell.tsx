@@ -200,7 +200,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div
         aria-hidden
         className={cn(
-          "fixed inset-x-0 bottom-0 z-30 h-[env(safe-area-inset-bottom)] bg-background keyboard-open:hidden md:hidden",
+          "app-tabbar fixed inset-x-0 bottom-0 z-30 h-[env(safe-area-inset-bottom)] bg-background keyboard-open:hidden md:hidden",
           thread && "hidden",
         )}
       />
@@ -208,7 +208,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         aria-label={t("Main")}
         className={cn(
           // Hidden while typing: the keyboard covers it, or worse, lifts it above the keys.
-          "ny-lights fixed inset-x-0 bottom-0 z-40 safe-bottom keyboard-open:hidden md:hidden",
+          "app-tabbar ny-lights fixed inset-x-0 bottom-0 z-40 safe-bottom keyboard-open:hidden md:hidden",
           thread && "hidden",
           // Solid outside the feed: a translucent bar over a page of text lets the
           // text show through behind the labels and reads as a rendering bug.

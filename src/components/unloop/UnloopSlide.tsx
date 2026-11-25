@@ -1,4 +1,4 @@
-import { Bookmark, Heart, Play, Share2 } from "lucide-react";
+import { Bookmark, Heart, Maximize2, Play, Share2 } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -18,6 +18,7 @@ import type { UnloopVideo } from "@/lib/unloop/feed";
 import { cn } from "@/lib/utils";
 
 const DOUBLE_TAP_MS = 260;
+const LONG_PRESS_MS = 550;
 
 /**
  * One loop, filling the screen.
@@ -27,6 +28,10 @@ const DOUBLE_TAP_MS = 260;
  *   - Tap pauses and resumes. Double-tap likes (never unlikes), with a burst where
  *     the finger landed.
  *   - The loop ring fills as the video runs; each time it wraps, the counter ticks.
+ *   - The description shows one line and "more"; opened, it scrolls in a panel
+ *     capped below the title, so the video stays visible.
+ *   - Clear display (the rail button, a long press, or C) hides everything but the
+ *     picture and a hairline of progress; a tap brings it all back.
  */
 export function UnloopSlide({
   video,
@@ -39,6 +44,8 @@ export function UnloopSlide({
   onToggleSave,
   onShare,
   onPlayingChange,
+  clear = false,
+  onClearChange,
 }: {
   video: UnloopVideo;
   active: boolean;
@@ -50,12 +57,18 @@ export function UnloopSlide({
   onToggleSave: (video: UnloopVideo, on: boolean) => void;
   onShare: (video: UnloopVideo) => void;
   onPlayingChange?: (playing: boolean) => void;
+  /** Everything but the picture hidden. */
+  clear?: boolean;
+  onClearChange?: (clear: boolean) => void;
 }) {
   const element = useRef<HTMLVideoElement>(null);
   const ring = useRef<SVGCircleElement>(null);
   const lastTime = useRef(0);
   const tapTimer = useRef<number | undefined>(undefined);
   const lastTap = useRef(0);
+  const bar = useRef<HTMLDivElement>(null);
+  const pressTimer = useRef<number | undefined>(undefined);
+  const longPressed = useRef(false);
 
   const [paused, setPaused] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -113,6 +126,7 @@ export function UnloopSlide({
         if (now + 0.4 < lastTime.current) setLoops((count) => count + 1);
         lastTime.current = now;
         setRingProgress(ring.current, now / player.duration);
+        if (bar.current) bar.current.style.transform = `scaleX(${now / player.duration})`;
       }
       frame = requestAnimationFrame(tick);
     };
@@ -120,7 +134,28 @@ export function UnloopSlide({
     return () => cancelAnimationFrame(frame);
   }, [active]);
 
-  useEffect(() => () => window.clearTimeout(tapTimer.current), []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(tapTimer.current);
+      window.clearTimeout(pressTimer.current);
+    },
+    [],
+  );
+
+  // A long press clears the display, as it does elsewhere.
+  function onSurfaceDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    longPressed.current = false;
+    window.clearTimeout(pressTimer.current);
+    pressTimer.current = window.setTimeout(() => {
+      longPressed.current = true;
+      onClearChange?.(true);
+    }, LONG_PRESS_MS);
+  }
+
+  function cancelPress() {
+    window.clearTimeout(pressTimer.current);
+  }
 
   const like = useCallback(
     (on: boolean) => {
@@ -132,6 +167,11 @@ export function UnloopSlide({
 
   function onSurfaceTap(event: PointerEvent<HTMLDivElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    cancelPress();
+    if (longPressed.current) {
+      longPressed.current = false;
+      return;
+    }
     const now = Date.now();
     const rect = event.currentTarget.getBoundingClientRect();
     if (now - lastTap.current < DOUBLE_TAP_MS) {
@@ -148,6 +188,15 @@ export function UnloopSlide({
     }
     lastTap.current = now;
     tapTimer.current = window.setTimeout(() => {
+      // A tap first puts back what was hidden or closes the open description.
+      if (clear) {
+        onClearChange?.(false);
+        return;
+      }
+      if (expanded) {
+        setExpanded(false);
+        return;
+      }
       if (blocked) {
         setBlocked(false);
         setPaused(false);
@@ -158,7 +207,8 @@ export function UnloopSlide({
     }, DOUBLE_TAP_MS);
   }
 
-  const showPlay = active && (paused || blocked);
+  const showPlay = active && (paused || blocked) && !clear;
+  const chrome = cn("transition-opacity duration-300", clear && "pointer-events-none opacity-0");
 
   return (
     <article
@@ -198,16 +248,37 @@ export function UnloopSlide({
           />
         ) : null}
 
-        <div className="unloop-shade-top pointer-events-none absolute inset-x-0 top-0 h-40" />
-        <div className="unloop-shade-bottom pointer-events-none absolute inset-x-0 bottom-0 h-[55%]" />
+        <div
+          className={cn(
+            "unloop-shade-top pointer-events-none absolute inset-x-0 top-0 h-40",
+            chrome,
+          )}
+        />
+        <div
+          className={cn(
+            "unloop-shade-bottom pointer-events-none absolute inset-x-0 bottom-0 h-[55%]",
+            chrome,
+          )}
+        />
+        {/* An open description gets a deeper shade, so long text stays readable. */}
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-0 bg-black/45 transition-opacity duration-300",
+            expanded && !clear ? "opacity-100" : "opacity-0",
+          )}
+        />
 
         {/* The tap surface: everything not covered by a control. */}
         <div
           className="absolute inset-0 cursor-pointer select-none"
+          onPointerDown={onSurfaceDown}
           onPointerUp={onSurfaceTap}
+          onPointerLeave={cancelPress}
+          onPointerCancel={cancelPress}
+          onContextMenu={(event) => event.preventDefault()}
           role="button"
           tabIndex={-1}
-          aria-label={paused ? t("Play") : t("Pause")}
+          aria-label={clear ? t("Show controls") : paused ? t("Play") : t("Pause")}
         >
           {bursts.map((burst) => (
             <span key={burst.id} className="unloop-burst" style={{ left: burst.x, top: burst.y }}>
@@ -228,7 +299,13 @@ export function UnloopSlide({
         )}
 
         {/* The rail: like, save, share, and the loop ring. */}
-        <div className="absolute right-3 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] flex flex-col items-center gap-4 md:bottom-8">
+        <div
+          className={cn(
+            "absolute right-3 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] flex flex-col items-center gap-4 md:bottom-8",
+            chrome,
+          )}
+          aria-hidden={clear || undefined}
+        >
           <RailButton
             label={video.liked ? t("Unlike") : t("Like")}
             count={video.likes}
@@ -259,6 +336,9 @@ export function UnloopSlide({
           <RailButton label={t("Share")} onClick={() => onShare(video)}>
             <Share2 className="size-[22px]" strokeWidth={1.9} />
           </RailButton>
+          <RailButton label={t("Clear display")} onClick={() => onClearChange?.(true)}>
+            <Maximize2 className="size-[20px]" strokeWidth={1.9} />
+          </RailButton>
           <LoopRing
             ref={ring}
             loops={loops}
@@ -268,8 +348,14 @@ export function UnloopSlide({
           />
         </div>
 
-        {/* What it is. */}
-        <div className="absolute inset-x-0 bottom-0 pr-20 pb-[calc(5.25rem+env(safe-area-inset-bottom))] pl-4 text-white md:pb-6">
+        {/* What it is: the title, one line of description, and "more". */}
+        <div
+          className={cn(
+            "absolute inset-x-0 bottom-0 pr-20 pb-[calc(5.25rem+env(safe-area-inset-bottom))] pl-4 text-white md:pb-6",
+            chrome,
+          )}
+          aria-hidden={clear || undefined}
+        >
           <span
             className="mb-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
             style={{
@@ -280,23 +366,43 @@ export function UnloopSlide({
             <category.icon className="size-3.5" aria-hidden />
             {t(category.label)}
           </span>
-          <h2 className="text-lg leading-snug font-semibold text-balance drop-shadow">
+          <h2
+            className={cn(
+              "text-lg leading-snug font-semibold text-balance drop-shadow",
+              !expanded && "line-clamp-2",
+            )}
+          >
             {video.title}
           </h2>
-          {video.description && (
-            <button
-              type="button"
-              onClick={() => setExpanded((value) => !value)}
-              className={cn(
-                "mt-1 block text-left text-sm text-white/80",
-                !expanded && "line-clamp-2",
-              )}
-              aria-expanded={expanded}
-            >
-              {video.description}
-            </button>
-          )}
-          {upNext && active && (
+          {video.description &&
+            (expanded ? (
+              <div className="mt-1">
+                <p className="unloop-description max-h-[34dvh] overflow-y-auto overscroll-contain pr-1 text-sm leading-relaxed whitespace-pre-line text-white/90">
+                  {video.description}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(false)}
+                  aria-expanded
+                  className="mt-1 text-sm font-semibold text-white"
+                >
+                  {t("less")}
+                </button>
+              </div>
+            ) : (
+              <p className="mt-1 flex min-w-0 items-baseline gap-1 text-sm text-white/80">
+                <span className="min-w-0 truncate">{video.description}</span>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(true)}
+                  aria-expanded={false}
+                  className="shrink-0 font-semibold text-white"
+                >
+                  {t("more")}
+                </button>
+              </p>
+            ))}
+          {upNext && active && !expanded && (
             <p className="unloop-up-next mt-3 flex items-center gap-2 text-xs text-white/60">
               <span className="rounded-full bg-white/10 px-2 py-0.5 font-medium tracking-wide uppercase">
                 {t("Next loop")}
@@ -304,6 +410,21 @@ export function UnloopSlide({
               <span className="truncate">{upNext.title}</span>
             </p>
           )}
+        </div>
+
+        {/* Clear display keeps only a hairline of progress. */}
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-white/15 transition-opacity duration-300",
+            clear && active ? "opacity-100" : "opacity-0",
+          )}
+          aria-hidden
+        >
+          <div
+            ref={bar}
+            className="unloop-ring-fill-bg h-full origin-left"
+            style={{ transform: "scaleX(0)" }}
+          />
         </div>
       </div>
     </article>

@@ -2516,6 +2516,26 @@ a.ranks-rung:hover {
   }
 }
 
+/* Clear display's hairline of progress, in the channel's hue. */
+.unloop-ring-fill-bg {
+  background-color: oklch(0.78 0.16 var(--loop-hue, 40));
+}
+
+/* An opened description scrolls inside its panel with a quiet scrollbar. */
+.unloop-description {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(1 0 0 / 0.3) transparent;
+}
+
+/* Clear display hides the app's tab bar too, so only the picture is left. */
+.app-tabbar {
+  transition: opacity 300ms var(--ease-out);
+}
+:root[data-unloop-clear] .app-tabbar {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .unloop-up-next {
   animation: enter 300ms var(--ease-out) both;
 }
