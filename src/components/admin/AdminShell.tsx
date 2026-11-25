@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   Flag,
   Gamepad2,
+  Infinity as InfinityIcon,
   LayoutDashboard,
   Lock,
   MessageSquare,
@@ -36,6 +37,7 @@ type AdminRoute =
   | "/admin/games"
   | "/admin/categories"
   | "/admin/featured"
+  | "/admin/unloop"
   | "/admin/leaderboards"
   | "/admin/users"
   | "/admin/analytics"
@@ -65,6 +67,7 @@ const nav: { label: string; items: AdminNavItem[] }[] = [
       { to: "/admin/games", label: msg("Games"), icon: Gamepad2, exact: false },
       { to: "/admin/categories", label: msg("Categories"), icon: Tags, exact: false },
       { to: "/admin/featured", label: msg("Featured"), icon: Star, exact: false },
+      { to: "/admin/unloop", label: msg("Unloop"), icon: InfinityIcon, exact: false },
       { to: "/admin/leaderboards", label: msg("Leaderboards"), icon: Trophy, exact: false },
     ],
   },

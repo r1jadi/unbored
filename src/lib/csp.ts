@@ -79,6 +79,9 @@ export function contentSecurityPolicy(nonce: string): string {
     `style-src-elem 'self' 'nonce-${nonce}'`,
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
+    // Unloop's videos stream from the Supabase storage bucket; blob: is the admin
+    // console's preview of a file before it is uploaded.
+    `media-src ${["'self'", "blob:", ...(supabase ? [supabase] : [])].join(" ")}`,
     "font-src 'self'",
     `connect-src ${[...connect].join(" ")}`,
     "worker-src 'self' blob:",

@@ -2823,6 +2823,155 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "503": { $ref: "#/components/responses/Unavailable" }
 
+  /admin/unloop/videos:
+    get:
+      operationId: listUnloopVideos
+      tags: [admin]
+      summary: Every Unloop video, drafts included, newest change first
+      description: Requires an administrator.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [draft, published] }
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: One page of videos.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, hasMore]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminUnloopVideo" }
+                  hasMore: { type: boolean }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+    post:
+      operationId: createUnloopVideo
+      tags: [admin]
+      summary: Create an Unloop video, as a draft or published
+      description: |
+        Requires an administrator. The video (and the thumbnail, if any) must already
+        be uploaded to a path minted by `POST /admin/unloop/uploads`.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminUnloopVideoInput" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUnloopChange" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /admin/unloop/videos/{videoID}:
+    parameters:
+      - name: videoID
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      operationId: updateUnloopVideo
+      tags: [admin]
+      summary: Change an Unloop video, including publishing or unpublishing it
+      description: |
+        Requires an administrator. Replaces every field. A file the change replaced is
+        removed from storage.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminUnloopVideoInput" }
+      responses:
+        "200":
+          description: Changed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUnloopChange" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+    delete:
+      operationId: deleteUnloopVideo
+      tags: [admin]
+      summary: Delete an Unloop video with its likes, saves and files
+      description: Requires an administrator. Cannot be undone.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUnloopChange" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /admin/unloop/uploads:
+    post:
+      operationId: signUnloopUpload
+      tags: [admin]
+      summary: Mint a one-time URL to upload one Unloop video or thumbnail
+      description: |
+        Requires an administrator. The service picks the file's path; the browser
+        sends the file straight to storage with `PUT` to `uploadUrl`, so large videos
+        never pass through the API's request-size limit.
+      x-status: available
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, contentType]
+              properties:
+                kind: { type: string, enum: [video, thumbnail] }
+                contentType:
+                  type: string
+                  enum: [video/mp4, video/webm, video/quicktime, image/jpeg, image/png, image/webp]
+      responses:
+        "201":
+          description: The path the file will have, and where to send it.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [path, uploadUrl]
+                properties:
+                  path: { type: string }
+                  uploadUrl: { type: string, format: uri }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
   /email/unsubscribe:
     parameters:
       - { name: u, in: query, required: true, schema: { type: string, format: uuid }, description: Account id. }
@@ -3942,6 +4091,45 @@ components:
         recipients: { type: integer }
         readCount: { type: integer }
         createdAt: { type: string, format: date-time }
+    AdminUnloopVideo:
+      type: object
+      required: [id, title, description, category, videoPath, status, createdAt, updatedAt, likes, saves]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        category: { $ref: "#/components/schemas/UnloopCategory" }
+        videoPath: { type: string }
+        thumbnailPath: { type: [string, "null"] }
+        durationSeconds: { type: [number, "null"] }
+        status: { type: string, enum: [draft, published] }
+        createdByUsername: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        publishedAt: { type: [string, "null"], format: date-time }
+        likes: { type: integer }
+        saves: { type: integer }
+    AdminUnloopVideoInput:
+      type: object
+      additionalProperties: false
+      required: [title, category, videoPath, status]
+      properties:
+        title: { type: string, minLength: 2, maxLength: 80 }
+        description: { type: string, maxLength: 500 }
+        category: { $ref: "#/components/schemas/UnloopCategory" }
+        videoPath: { type: string, description: A path minted by POST /admin/unloop/uploads. }
+        thumbnailPath: { type: [string, "null"] }
+        durationSeconds: { type: [number, "null"], minimum: 0, maximum: 600 }
+        status: { type: string, enum: [draft, published] }
+    AdminUnloopChange:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [draft, published] }
+    UnloopCategory:
+      type: string
+      enum: [highlights, how-to, speedruns, brain-food, behind-the-scenes, just-for-fun]
     AdminSystemReport:
       type: object
       required: [measured, note, items]

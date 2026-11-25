@@ -11,6 +11,7 @@ change something safely, not to describe the project to a stranger.
 | [architecture/api.md](architecture/api.md)               | To add or change an API endpoint, or to understand the gateway.        |
 | [architecture/data-model.md](architecture/data-model.md) | To change the schema, or to understand ownership and row access.       |
 | [architecture/web-app.md](architecture/web-app.md)       | To work on the web app: SSR, SEO, PWA, performance, bundle.            |
+| [architecture/unloop.md](architecture/unloop.md)         | To work on Unloop, the short-video destination, or to operate it.      |
 | [games/README.md](games/README.md)                       | To work on a game's rules, or to make another catalogue game playable. |
 
 ## Development — how to work on it

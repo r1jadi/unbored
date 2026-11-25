@@ -6,6 +6,7 @@ import {
   Compass,
   Home,
   Inbox,
+  Infinity as InfinityIcon,
   Search,
   Settings,
   Shield,
@@ -27,6 +28,7 @@ import { msg, t } from "@/lib/settings/language";
 const mobile: Array<{ to: string; key: string; icon: typeof Home }> = [
   { to: "/", key: msg("Home"), icon: Home },
   { to: "/explore", key: msg("Explore"), icon: Compass },
+  { to: "/unloop", key: msg("Unloop"), icon: InfinityIcon },
   { to: "/leaderboards", key: msg("Ranks"), icon: Trophy },
   { to: "/messages", key: msg("Inbox"), icon: Inbox },
   { to: "/profile", key: msg("Profile"), icon: User },
@@ -36,6 +38,7 @@ const desktop: Array<{ to: string; key: string; icon: typeof Home }> = [
   { to: "/", key: msg("For You"), icon: Home },
   { to: "/following", key: msg("Following"), icon: Users },
   { to: "/explore", key: msg("Explore"), icon: Compass },
+  { to: "/unloop", key: msg("Unloop"), icon: InfinityIcon },
   { to: "/search", key: msg("Search"), icon: Search },
   { to: "/leaderboards", key: msg("Leaderboards"), icon: Trophy },
   { to: "/messages", key: msg("Inbox"), icon: Inbox },
@@ -76,7 +79,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     to === "/"
       ? path === "/"
       : path.startsWith(to) || (to === "/messages" && path.startsWith("/notifications"));
-  const feed = path === "/" || path === "/following";
+  // Unloop plays full-screen video under the bar, like the feed's cards.
+  const feed = path === "/" || path === "/following" || path === "/unloop";
   // A conversation is a full screen with its own way back, like any chat app: the
   // tab bar would only sit between the composer and the keyboard.
   const thread = /^\/messages\/[^/]+/.test(path);
@@ -211,7 +215,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           feed ? "bg-background/80 backdrop-blur-xl" : "border-t border-border bg-background",
         )}
       >
-        <ul className="mx-auto grid h-16 max-w-md grid-cols-5">
+        <ul className="mx-auto grid h-16 max-w-md grid-cols-6">
           {mobile.map(({ to, key, icon: Icon }) => (
             <li key={to}>
               <Link

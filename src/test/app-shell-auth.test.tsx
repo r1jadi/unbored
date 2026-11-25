@@ -269,7 +269,7 @@ describe("language selection", () => {
 });
 
 describe("mobile navigation stays consistent", () => {
-  it("keeps the five tabs and carries no demo entry", async () => {
+  it("keeps the six tabs, Unloop among them, and carries no demo entry", async () => {
     await renderShell();
 
     const nav = mobileNav();
@@ -277,6 +277,7 @@ describe("mobile navigation stays consistent", () => {
     expect(links.map((link) => link.textContent)).toEqual([
       "Home",
       "Explore",
+      "Unloop",
       "Ranks",
       "Inbox",
       "Profile",
@@ -285,13 +286,13 @@ describe("mobile navigation stays consistent", () => {
     expect(within(nav).queryByText("Get started")).toBeNull();
   });
 
-  it("keeps the same five tabs once signed in", async () => {
+  it("keeps the same six tabs once signed in", async () => {
     stubBackend({ isStaff: false });
     await signIn("player@example.com", "correct-horse");
     await renderShell();
 
     const nav = mobileNav();
-    expect(within(nav).getAllByRole("link")).toHaveLength(5);
+    expect(within(nav).getAllByRole("link")).toHaveLength(6);
     expect(within(nav).queryByText("Sign-in screens")).toBeNull();
   });
 });

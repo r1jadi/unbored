@@ -19,9 +19,11 @@ import { sqThenAndNowHoneycomb } from "@/lib/i18n/sq-then-and-now-honeycomb";
 import { sqMeander } from "@/lib/i18n/sq-meander";
 import { sqDeadReckoning } from "@/lib/i18n/sq-dead-reckoning";
 import { sqAlibi } from "@/lib/i18n/sq-alibi";
+import { sqUnloop } from "@/lib/i18n/sq-unloop";
 
 export const sq: Record<string, string> = {
   // First, so an existing translation of a shared word always wins.
+  ...sqUnloop,
   ...sqThenAndNowHoneycomb,
   ...sqMeander,
   ...sqDeadReckoning,

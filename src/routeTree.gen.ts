@@ -35,6 +35,7 @@ import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TrendingRouteImport } from './routes/trending'
 import { Route as TwoFactorRouteImport } from './routes/two-factor'
+import { Route as UnloopRouteImport } from './routes/unloop'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -50,6 +51,7 @@ import { Route as AdminNotificationsRouteImport } from './routes/admin.notificat
 import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as AdminReviewRouteImport } from './routes/admin.review'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminUnloopRouteImport } from './routes/admin.unloop'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as CategoriesIndexRouteImport } from './routes/categories.index'
@@ -197,6 +199,11 @@ const TwoFactorRoute = TwoFactorRouteImport.update({
   path: '/two-factor',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UnloopRoute = UnloopRouteImport.update({
+  id: '/unloop',
+  path: '/unloop',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
   path: '/verify-email',
@@ -270,6 +277,11 @@ const AdminReviewRoute = AdminReviewRouteImport.update({
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUnloopRoute = AdminUnloopRouteImport.update({
+  id: '/unloop',
+  path: '/unloop',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -380,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/two-factor': typeof TwoFactorRoute
+  '/unloop': typeof UnloopRoute
   '/verify-email': typeof VerifyEmailRoute
   '/welcome': typeof WelcomeRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -394,6 +407,7 @@ export interface FileRoutesByFullPath {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/review': typeof AdminReviewRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/unloop': typeof AdminUnloopRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/categories/$slug': typeof CategoriesSlugRoute
@@ -438,6 +452,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/two-factor': typeof TwoFactorRoute
+  '/unloop': typeof UnloopRoute
   '/verify-email': typeof VerifyEmailRoute
   '/welcome': typeof WelcomeRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -452,6 +467,7 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/review': typeof AdminReviewRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/unloop': typeof AdminUnloopRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/categories/$slug': typeof CategoriesSlugRoute
@@ -498,6 +514,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/trending': typeof TrendingRoute
   '/two-factor': typeof TwoFactorRoute
+  '/unloop': typeof UnloopRoute
   '/verify-email': typeof VerifyEmailRoute
   '/welcome': typeof WelcomeRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -512,6 +529,7 @@ export interface FileRoutesById {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/review': typeof AdminReviewRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/unloop': typeof AdminUnloopRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/categories/$slug': typeof CategoriesSlugRoute
@@ -559,6 +577,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/trending'
     | '/two-factor'
+    | '/unloop'
     | '/verify-email'
     | '/welcome'
     | '/admin/analytics'
@@ -573,6 +592,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/review'
     | '/admin/settings'
+    | '/admin/unloop'
     | '/admin/users'
     | '/auth/callback'
     | '/categories/$slug'
@@ -617,6 +637,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/trending'
     | '/two-factor'
+    | '/unloop'
     | '/verify-email'
     | '/welcome'
     | '/admin/analytics'
@@ -631,6 +652,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/review'
     | '/admin/settings'
+    | '/admin/unloop'
     | '/admin/users'
     | '/auth/callback'
     | '/categories/$slug'
@@ -676,6 +698,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/trending'
     | '/two-factor'
+    | '/unloop'
     | '/verify-email'
     | '/welcome'
     | '/admin/analytics'
@@ -690,6 +713,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/review'
     | '/admin/settings'
+    | '/admin/unloop'
     | '/admin/users'
     | '/auth/callback'
     | '/categories/$slug'
@@ -736,6 +760,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   TrendingRoute: typeof TrendingRoute
   TwoFactorRoute: typeof TwoFactorRoute
+  UnloopRoute: typeof UnloopRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   WelcomeRoute: typeof WelcomeRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -939,6 +964,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TwoFactorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/unloop': {
+      id: '/unloop'
+      path: '/unloop'
+      fullPath: '/unloop'
+      preLoaderRoute: typeof UnloopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/verify-email': {
       id: '/verify-email'
       path: '/verify-email'
@@ -1042,6 +1074,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/unloop': {
+      id: '/admin/unloop'
+      path: '/unloop'
+      fullPath: '/admin/unloop'
+      preLoaderRoute: typeof AdminUnloopRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/users': {
@@ -1172,6 +1211,7 @@ interface AdminRouteChildren {
   AdminReportsRoute: typeof AdminReportsRoute
   AdminReviewRoute: typeof AdminReviewRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminUnloopRoute: typeof AdminUnloopRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -1189,6 +1229,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminReportsRoute: AdminReportsRoute,
   AdminReviewRoute: AdminReviewRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminUnloopRoute: AdminUnloopRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -1222,6 +1263,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   TrendingRoute: TrendingRoute,
   TwoFactorRoute: TwoFactorRoute,
+  UnloopRoute: UnloopRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   WelcomeRoute: WelcomeRoute,
   AuthCallbackRoute: AuthCallbackRoute,

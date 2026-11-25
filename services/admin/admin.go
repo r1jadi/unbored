@@ -171,6 +171,10 @@ type Backend interface {
 	DeepCutAnswers(ctx context.Context, token, actor string, questionID int) ([]supabaseadmin.DeepCutAnswer, error)
 	RuleDeepCut(ctx context.Context, token, actor string, questionID int, key, verdict, canonical string, tier int) (supabaseadmin.DeepCutRuling, error)
 	SetDeepCutTier(ctx context.Context, token, actor string, answerID, tier int) (supabaseadmin.DeepCutRetier, error)
+	UnloopVideos(ctx context.Context, token, actor, status string, page supabaseadmin.Page) ([]supabaseadmin.UnloopVideo, error)
+	SaveUnloopVideo(ctx context.Context, token, actor, id string, draft supabaseadmin.UnloopDraft) (supabaseadmin.UnloopSaved, error)
+	DeleteUnloopVideo(ctx context.Context, token, actor, id string) (supabaseadmin.UnloopDeleted, error)
+	SignUnloopUpload(ctx context.Context, token, path string) (string, error)
 }
 
 // staffTier is what a staff request was authorized as: an allowlisted
@@ -483,6 +487,9 @@ func (s *service) register(router *httpx.Router) {
 
 	// Ruling on Deep Cut answers is moderation work, like the comment queue.
 	s.registerDeepCut(router)
+
+	// Publishing Unloop videos reaches every player, like a broadcast: admin tier.
+	s.registerUnloop(router)
 }
 
 // staff authorizes every staff request, after the router verified the token.
